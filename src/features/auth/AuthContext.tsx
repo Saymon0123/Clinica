@@ -30,8 +30,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   async function signIn(email: string, password: string) {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    return { error: error ? 'E-mail ou senha inválidos.' : null }
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) return { error: 'E-mail ou senha inválidos.' }
+    setSession(data.session)
+    return { error: null }
   }
 
   async function signOut() {

@@ -14,13 +14,19 @@ export function LoginPage() {
     e.preventDefault()
     setSubmitting(true)
     setError(null)
-    const { error } = await signIn(email, password)
-    setSubmitting(false)
-    if (error) {
-      setError(error)
-      return
+    try {
+      const { error } = await signIn(email, password)
+      if (error) {
+        setError(error)
+        return
+      }
+      navigate('/')
+    } catch (err) {
+      console.error('Erro inesperado ao entrar:', err)
+      setError('Não foi possível entrar. Tente novamente.')
+    } finally {
+      setSubmitting(false)
     }
-    navigate('/')
   }
 
   return (

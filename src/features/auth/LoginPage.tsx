@@ -24,8 +24,8 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm bg-white p-8 rounded-lg shadow space-y-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <form onSubmit={handleSubmit} className="w-full max-w-sm bg-white p-6 sm:p-8 rounded-lg shadow space-y-4">
         <h1 className="text-xl font-semibold text-gray-900">Entrar</h1>
 
         <div>
@@ -35,9 +35,10 @@ export function LoginPage() {
             type="email"
             required
             autoComplete="email"
+            inputMode="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+            className="w-full border border-gray-300 rounded px-3 py-3 text-base"
           />
         </div>
 
@@ -50,7 +51,7 @@ export function LoginPage() {
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+            className="w-full border border-gray-300 rounded px-3 py-3 text-base"
           />
         </div>
 
@@ -59,7 +60,7 @@ export function LoginPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full bg-gray-900 text-white rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+          className="w-full bg-gray-900 text-white rounded px-3 py-3 text-sm font-medium disabled:opacity-50"
         >
           {submitting ? 'Entrando...' : 'Entrar'}
         </button>

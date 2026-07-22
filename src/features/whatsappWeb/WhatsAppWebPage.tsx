@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { AlertCircle, MessageCircle } from 'lucide-react'
+import { useState, type FormEvent } from 'react'
+import { AlertCircle, MessageCircle, Send } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
 import { useConversations } from './useConversations'
 import { useMessages } from './useMessages'
@@ -26,9 +27,38 @@ export function WhatsAppWebPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const { conversations, loading, error } = useConversations(salonId, tab === 'precisa_dono')
-  const { messages } = useMessages(selectedId)
+  const { messages, reload: reloadMessages } = useMessages(selectedId)
+
+  const [draft, setDraft] = useState('')
+  const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
 
   const selectedConversation = conversations.find((c) => c.id === selectedId) ?? null
+
+  async function handleSend(e: FormEvent) {
+    e.preventDefault()
+    const content = draft.trim()
+    if (!content || !selectedId || sending) return
+
+    setSending(true)
+    setSendError(null)
+    try {
+      const { data, error: sendErr } = await supabase.functions.invoke('whatsapp', {
+        body: { action: 'send', conversationId: selectedId, content },
+      })
+      if (sendErr || data?.error) {
+        setSendError(data?.error ?? 'Não foi possível enviar a mensagem.')
+        return
+      }
+      setDraft('')
+      reloadMessages()
+    } catch (err) {
+      console.error('Erro ao enviar mensagem:', err)
+      setSendError('Não foi possível enviar a mensagem.')
+    } finally {
+      setSending(false)
+    }
+  }
 
   if (salonLoading) {
     return <div className="p-6 text-sm text-gray-500">Carregando...</div>
@@ -150,6 +180,33 @@ export function WhatsAppWebPage() {
                   </div>
                 ))}
               </div>
+
+              <form onSubmit={handleSend} className="bg-white border-t border-gray-200 p-3">
+                {sendError && <p className="text-xs text-red-600 mb-2">{sendError}</p>}
+                <div className="flex items-end gap-2">
+                  <textarea
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        handleSend(e)
+                      }
+                    }}
+                    placeholder="Digite uma mensagem"
+                    rows={1}
+                    className="flex-1 resize-none border border-gray-300 rounded-lg px-3 py-2 text-sm max-h-32"
+                  />
+                  <button
+                    type="submit"
+                    disabled={sending || !draft.trim()}
+                    aria-label="Enviar mensagem"
+                    className="bg-green-600 text-white rounded-full p-2.5 disabled:opacity-40 shrink-0"
+                  >
+                    <Send size={18} />
+                  </button>
+                </div>
+              </form>
             </>
           )}
         </main>

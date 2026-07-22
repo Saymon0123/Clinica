@@ -50,5 +50,5 @@ export function useMessages(conversationId: string | null) {
     }
   }, [conversationId, reload])
 
-  return { messages, loading }
+  return { messages, loading, reload }
 }

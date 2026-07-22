@@ -69,7 +69,7 @@ Deno.serve(async (req: Request) => {
   const salonId = profile.salon_id as string
   const instanceName = instanceNameFor(salonId)
 
-  let body: { action?: string } = {}
+  let body: { action?: string; conversationId?: string; content?: string } = {}
   try {
     body = await req.json()
   } catch {
@@ -136,6 +136,57 @@ Deno.serve(async (req: Request) => {
       })
 
       return json({ status: 'close' })
+    }
+
+    if (body.action === 'send') {
+      const { conversationId, content } = body
+      if (!conversationId || !content?.trim()) {
+        return json({ error: 'Conversa e mensagem são obrigatórias.' }, 400)
+      }
+
+      const { data: conversation, error: convError } = await supabase
+        .from('whatsapp_conversations')
+        .select('id, contact_phone, salon_id')
+        .eq('id', conversationId)
+        .maybeSingle()
+
+      if (convError || !conversation || conversation.salon_id !== salonId) {
+        return json({ error: 'Conversa não encontrada.' }, 404)
+      }
+
+      const sendResult = await evoFetch(`/message/sendText/${instanceName}`, {
+        method: 'POST',
+        body: JSON.stringify({
+          number: conversation.contact_phone,
+          text: content.trim(),
+        }),
+      })
+
+      if (!sendResult.ok) {
+        return json({ error: 'Não foi possível enviar a mensagem pelo WhatsApp.' }, 502)
+      }
+
+      const { data: message, error: insertError } = await supabase
+        .from('whatsapp_messages')
+        .insert({
+          conversation_id: conversationId,
+          direction: 'out',
+          sender: 'dono',
+          content: content.trim(),
+        })
+        .select()
+        .single()
+
+      if (insertError) {
+        return json({ error: 'Mensagem enviada, mas não foi possível salvar no histórico.' }, 500)
+      }
+
+      await supabase
+        .from('whatsapp_conversations')
+        .update({ needs_human: false })
+        .eq('id', conversationId)
+
+      return json({ message })
     }
 
     return json({ error: 'Ação inválida.' }, 400)

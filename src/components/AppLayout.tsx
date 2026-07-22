@@ -91,10 +91,10 @@ export function AppLayout() {
         ))}
       </nav>
 
-      {/* Botão flutuante: abre o espelho do WhatsApp em nova aba */}
+      {/* Botão flutuante: abre o espelho do WhatsApp em nova aba (só desktop) */}
       <button
         onClick={() => window.open('/web', '_blank', 'noopener,noreferrer')}
-        className={`fixed bottom-20 md:bottom-6 right-4 z-20 flex items-center gap-2 text-white rounded-full pl-3 pr-4 py-3 shadow-lg transition-colors ${
+        className={`hidden md:flex fixed bottom-6 right-4 z-20 items-center gap-2 text-white rounded-full pl-3 pr-4 py-3 shadow-lg transition-colors ${
           hasPending ? 'bg-red-600 hover:bg-red-700 animate-pulse' : 'bg-green-600 hover:bg-green-700'
         }`}
       >

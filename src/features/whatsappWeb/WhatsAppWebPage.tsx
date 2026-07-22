@@ -27,13 +27,14 @@ export function WhatsAppWebPage() {
   const [tab, setTab] = useState<Tab>('todas')
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  const { conversations, loading, error } = useConversations(salonId, tab === 'precisa_dono')
+  const { conversations, loading, error, reload: reloadConversations } = useConversations(salonId, tab === 'precisa_dono')
   const { messages, reload: reloadMessages } = useMessages(selectedId)
 
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
   const [resuming, setResuming] = useState(false)
+  const [resumeError, setResumeError] = useState<string | null>(null)
 
   const selectedConversation = conversations.find((c) => c.id === selectedId) ?? null
 
@@ -78,12 +79,19 @@ export function WhatsAppWebPage() {
   async function handleResumeAgent() {
     if (!selectedId || resuming) return
     setResuming(true)
+    setResumeError(null)
     try {
-      await supabase.functions.invoke('whatsapp', {
+      const { data, error: resumeErr } = await supabase.functions.invoke('whatsapp', {
         body: { action: 'resume_agent', conversationId: selectedId },
       })
+      if (resumeErr || data?.error) {
+        setResumeError(data?.error ?? 'Não foi possível devolver a conversa ao agente.')
+        return
+      }
+      await reloadConversations()
     } catch (err) {
       console.error('Erro ao devolver conversa ao agente:', err)
+      setResumeError('Não foi possível devolver a conversa ao agente.')
     } finally {
       setResuming(false)
     }
@@ -191,14 +199,17 @@ export function WhatsAppWebPage() {
                 </div>
 
                 {tab === 'precisa_dono' && selectedConversation.needs_human && (
-                  <button
-                    onClick={handleResumeAgent}
-                    disabled={resuming}
-                    className="flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-800 rounded-full px-3 py-1.5 shrink-0 disabled:opacity-50"
-                  >
-                    <Bot size={14} />
-                    {resuming ? 'Devolvendo...' : 'Devolver ao agente'}
-                  </button>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <button
+                      onClick={handleResumeAgent}
+                      disabled={resuming}
+                      className="flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-800 rounded-full px-3 py-1.5 disabled:opacity-50"
+                    >
+                      <Bot size={14} />
+                      {resuming ? 'Devolvendo...' : 'Devolver ao agente'}
+                    </button>
+                    {resumeError && <p className="text-xs text-red-600 dark:text-red-400">{resumeError}</p>}
+                  </div>
                 )}
               </div>
 

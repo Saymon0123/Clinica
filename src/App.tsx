@@ -8,6 +8,7 @@ import { AppLayout } from './components/AppLayout'
 import { AgendaPage } from './features/agenda/AgendaPage'
 import { ClientesPage } from './features/clientes/ClientesPage'
 import { FinanceiroPage } from './features/financeiro/FinanceiroPage'
+import { ConexaoPage } from './features/conexao/ConexaoPage'
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
           <Route path="/" element={<AgendaPage />} />
           <Route path="/clientes" element={<ClientesPage />} />
           <Route path="/financeiro" element={<FinanceiroPage />} />
+          <Route path="/conexao" element={<ConexaoPage />} />
         </Route>
       </Routes>
     </AuthProvider>

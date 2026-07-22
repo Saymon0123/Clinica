@@ -3,6 +3,7 @@ export type Conversation = {
   contact_phone: string
   contact_name: string | null
   last_message_at: string | null
+  last_opened_at: string | null
   needs_human: boolean
 }
 

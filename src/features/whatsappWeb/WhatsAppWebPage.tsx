@@ -35,6 +35,19 @@ export function WhatsAppWebPage() {
 
   const selectedConversation = conversations.find((c) => c.id === selectedId) ?? null
 
+  function isUnread(c: { last_message_at: string | null; last_opened_at: string | null }) {
+    if (!c.last_message_at) return false
+    return !c.last_opened_at || c.last_message_at > c.last_opened_at
+  }
+
+  async function handleSelectConversation(id: string) {
+    setSelectedId(id)
+    await supabase
+      .from('whatsapp_conversations')
+      .update({ last_opened_at: new Date().toISOString() })
+      .eq('id', id)
+  }
+
   async function handleSend(e: FormEvent) {
     e.preventDefault()
     const content = draft.trim()
@@ -117,7 +130,7 @@ export function WhatsAppWebPage() {
           {conversations.map((c) => (
             <button
               key={c.id}
-              onClick={() => setSelectedId(c.id)}
+              onClick={() => handleSelectConversation(c.id)}
               className={`w-full text-left px-4 py-3 border-b border-gray-50 flex items-start gap-3 hover:bg-gray-50 ${
                 selectedId === c.id ? 'bg-gray-100' : ''
               }`}
@@ -127,11 +140,11 @@ export function WhatsAppWebPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-medium text-gray-900 truncate">
+                  <span className={`text-sm truncate ${isUnread(c) ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>
                     {c.contact_name ?? formatPhone(c.contact_phone)}
                   </span>
-                  {c.needs_human && (
-                    <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" title="Precisa do dono" />
+                  {isUnread(c) && (
+                    <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" title="Não lida" />
                   )}
                 </div>
                 <div className="text-xs text-gray-400 truncate">{formatPhone(c.contact_phone)}</div>

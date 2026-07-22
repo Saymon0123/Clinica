@@ -1,6 +1,10 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { Calendar, Users, Wallet, Link2, LogOut, Globe } from 'lucide-react'
 import { useAuth } from '../features/auth/AuthContext'
+import { useSalon } from '../features/auth/useSalon'
+import { useAppointmentAlerts } from '../features/agenda/useAppointmentAlerts'
+import { AppointmentAlertBanner } from '../features/agenda/AppointmentAlertBanner'
+import { usePendingConversations } from '../features/whatsappWeb/usePendingConversations'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Agenda', icon: Calendar },
@@ -11,6 +15,9 @@ const NAV_ITEMS = [
 
 export function AppLayout() {
   const { signOut } = useAuth()
+  const { salonId } = useSalon()
+  const { alerts, dismiss } = useAppointmentAlerts(salonId)
+  const { hasPending } = usePendingConversations(salonId)
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
@@ -87,11 +94,15 @@ export function AppLayout() {
       {/* Botão flutuante: abre o espelho do WhatsApp em nova aba */}
       <button
         onClick={() => window.open('/web', '_blank', 'noopener,noreferrer')}
-        className="fixed bottom-20 md:bottom-6 right-4 z-20 flex items-center gap-2 bg-green-600 text-white rounded-full pl-3 pr-4 py-3 shadow-lg hover:bg-green-700"
+        className={`fixed bottom-20 md:bottom-6 right-4 z-20 flex items-center gap-2 text-white rounded-full pl-3 pr-4 py-3 shadow-lg transition-colors ${
+          hasPending ? 'bg-red-600 hover:bg-red-700 animate-pulse' : 'bg-green-600 hover:bg-green-700'
+        }`}
       >
         <Globe size={18} />
         <span className="text-sm font-semibold">WEB</span>
       </button>
+
+      <AppointmentAlertBanner alerts={alerts} onDismiss={dismiss} />
     </div>
   )
 }

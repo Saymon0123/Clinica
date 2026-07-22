@@ -8,8 +8,6 @@ import { AppLayout } from './components/AppLayout'
 import { AgendaPage } from './features/agenda/AgendaPage'
 import { ClientesPage } from './features/clientes/ClientesPage'
 import { FinanceiroPage } from './features/financeiro/FinanceiroPage'
-import { EstoquePage } from './features/estoque/EstoquePage'
-import { ProfissionaisPage } from './features/profissionais/ProfissionaisPage'
 
 function App() {
   return (
@@ -28,8 +26,6 @@ function App() {
           <Route path="/" element={<AgendaPage />} />
           <Route path="/clientes" element={<ClientesPage />} />
           <Route path="/financeiro" element={<FinanceiroPage />} />
-          <Route path="/estoque" element={<EstoquePage />} />
-          <Route path="/profissionais" element={<ProfissionaisPage />} />
         </Route>
       </Routes>
     </AuthProvider>

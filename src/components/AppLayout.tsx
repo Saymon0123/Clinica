@@ -1,13 +1,11 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Calendar, Users, Wallet, Package, UserCog, LogOut } from 'lucide-react'
+import { Calendar, Users, Wallet, LogOut } from 'lucide-react'
 import { useAuth } from '../features/auth/AuthContext'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Agenda', icon: Calendar },
   { to: '/clientes', label: 'Clientes', icon: Users },
   { to: '/financeiro', label: 'Financeiro', icon: Wallet },
-  { to: '/estoque', label: 'Estoque', icon: Package },
-  { to: '/profissionais', label: 'Equipe', icon: UserCog },
 ]
 
 export function AppLayout() {

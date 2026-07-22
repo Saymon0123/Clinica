@@ -9,6 +9,7 @@ import { AgendaPage } from './features/agenda/AgendaPage'
 import { ClientesPage } from './features/clientes/ClientesPage'
 import { FinanceiroPage } from './features/financeiro/FinanceiroPage'
 import { ConexaoPage } from './features/conexao/ConexaoPage'
+import { WhatsAppWebPage } from './features/whatsappWeb/WhatsAppWebPage'
 
 function App() {
   return (
@@ -17,6 +18,14 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/esqueci-senha" element={<ForgotPasswordPage />} />
         <Route path="/redefinir-senha" element={<ResetPasswordPage />} />
+        <Route
+          path="/web"
+          element={
+            <RequireAuth>
+              <WhatsAppWebPage />
+            </RequireAuth>
+          }
+        />
         <Route
           element={
             <RequireAuth>

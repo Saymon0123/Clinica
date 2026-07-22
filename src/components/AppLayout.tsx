@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Calendar, Users, Wallet, Link2, LogOut } from 'lucide-react'
+import { Calendar, Users, Wallet, Link2, LogOut, Globe } from 'lucide-react'
 import { useAuth } from '../features/auth/AuthContext'
 
 const NAV_ITEMS = [
@@ -83,6 +83,15 @@ export function AppLayout() {
           </NavLink>
         ))}
       </nav>
+
+      {/* Botão flutuante: abre o espelho do WhatsApp em nova aba */}
+      <button
+        onClick={() => window.open('/web', '_blank', 'noopener,noreferrer')}
+        className="fixed bottom-20 md:bottom-6 right-4 z-20 flex items-center gap-2 bg-green-600 text-white rounded-full pl-3 pr-4 py-3 shadow-lg hover:bg-green-700"
+      >
+        <Globe size={18} />
+        <span className="text-sm font-semibold">WEB</span>
+      </button>
     </div>
   )
 }

@@ -5,6 +5,7 @@ import { useSalon } from '../features/auth/useSalon'
 import { useAppointmentAlerts } from '../features/agenda/useAppointmentAlerts'
 import { AppointmentAlertBanner } from '../features/agenda/AppointmentAlertBanner'
 import { usePendingConversations } from '../features/whatsappWeb/usePendingConversations'
+import { ThemeToggle } from './ThemeToggle'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Agenda', icon: Calendar },
@@ -20,23 +21,27 @@ export function AppLayout() {
   const { hasPending } = usePendingConversations(salonId)
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
+    <div className="min-h-screen flex flex-col md:flex-row bg-gray-50 dark:bg-gray-950">
       {/* Topbar (mobile only) */}
-      <header className="md:hidden flex items-center justify-between px-4 h-14 bg-white border-b border-gray-200 sticky top-0 z-10">
-        <span className="font-semibold text-gray-900">Salão CRM</span>
-        <button
-          onClick={() => signOut()}
-          aria-label="Sair"
-          className="p-2 -mr-2 text-gray-500 active:text-gray-900"
-        >
-          <LogOut size={20} />
-        </button>
+      <header className="md:hidden flex items-center justify-between px-4 h-14 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10">
+        <span className="font-semibold text-gray-900 dark:text-gray-100">Salão CRM</span>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <button
+            onClick={() => signOut()}
+            aria-label="Sair"
+            className="p-2 -mr-2 text-gray-500 dark:text-gray-400 active:text-gray-900 dark:active:text-gray-100"
+          >
+            <LogOut size={20} />
+          </button>
+        </div>
       </header>
 
       {/* Sidebar (desktop only) */}
-      <aside className="hidden md:flex w-56 border-r border-gray-200 bg-white flex-col shrink-0">
-        <div className="px-4 py-4 font-semibold text-gray-900 border-b border-gray-200">
-          Salão CRM
+      <aside className="hidden md:flex w-56 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex-col shrink-0">
+        <div className="px-4 py-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-800">
+          <span className="font-semibold text-gray-900 dark:text-gray-100">Salão CRM</span>
+          <ThemeToggle />
         </div>
         <nav className="flex-1 py-2">
           {NAV_ITEMS.map((item) => (
@@ -46,7 +51,9 @@ export function AppLayout() {
               end={item.to === '/'}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-2 text-sm ${
-                  isActive ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100'
+                  isActive
+                    ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`
               }
             >
@@ -57,7 +64,7 @@ export function AppLayout() {
         </nav>
         <button
           onClick={() => signOut()}
-          className="flex items-center gap-3 px-4 py-3 text-sm text-left text-gray-500 border-t border-gray-200 hover:bg-gray-100"
+          className="flex items-center gap-3 px-4 py-3 text-sm text-left text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800"
         >
           <LogOut size={18} />
           Sair
@@ -71,7 +78,7 @@ export function AppLayout() {
 
       {/* Bottom nav (mobile only) */}
       <nav
-        className="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 flex z-10"
+        className="md:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 flex z-10"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         {NAV_ITEMS.map((item) => (
@@ -81,7 +88,7 @@ export function AppLayout() {
             end={item.to === '/'}
             className={({ isActive }) =>
               `flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] ${
-                isActive ? 'text-gray-900' : 'text-gray-400'
+                isActive ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500'
               }`
             }
           >

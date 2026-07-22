@@ -28,28 +28,28 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-sm bg-white p-6 sm:p-8 rounded-lg shadow space-y-4">
-        <h1 className="text-xl font-semibold text-gray-900">Esqueci minha senha</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
+      <div className="w-full max-w-sm bg-white dark:bg-gray-900 p-6 sm:p-8 rounded-lg shadow space-y-4">
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Esqueci minha senha</h1>
 
         {sent ? (
           <>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
               Se houver uma conta cadastrada com esse e-mail, enviamos um link para redefinir a senha.
               Verifique também a caixa de spam.
             </p>
-            <Link to="/login" className="block text-center text-sm text-gray-500 underline">
+            <Link to="/login" className="block text-center text-sm text-gray-500 dark:text-gray-400 underline">
               Voltar para o login
             </Link>
           </>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
               Informe o e-mail da sua conta. Vamos enviar um link para você criar uma nova senha.
             </p>
 
             <div>
-              <label className="block text-sm text-gray-600 mb-1" htmlFor="email">E-mail</label>
+              <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1" htmlFor="email">E-mail</label>
               <input
                 id="email"
                 type="email"
@@ -58,21 +58,21 @@ export function ForgotPasswordPage() {
                 inputMode="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-3 text-base"
+                className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded px-3 py-3 text-base"
               />
             </div>
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
             <button
               type="submit"
               disabled={submitting}
-              className="w-full bg-gray-900 text-white rounded px-3 py-3 text-sm font-medium disabled:opacity-50"
+              className="w-full bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded px-3 py-3 text-sm font-medium disabled:opacity-50"
             >
               {submitting ? 'Enviando...' : 'Enviar link de redefinição'}
             </button>
 
-            <Link to="/login" className="block text-center text-sm text-gray-500 underline">
+            <Link to="/login" className="block text-center text-sm text-gray-500 dark:text-gray-400 underline">
               Voltar para o login
             </Link>
           </form>

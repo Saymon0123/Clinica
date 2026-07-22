@@ -109,46 +109,46 @@ export function NewAppointmentModal({
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-lg">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Nova reserva</h2>
-          <button onClick={onClose} aria-label="Fechar" className="text-gray-500 p-1">
+      <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-lg shadow-lg">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Nova reserva</h2>
+          <button onClick={onClose} aria-label="Fechar" className="text-gray-500 dark:text-gray-400 p-1">
             <X size={20} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div>
-            <label className="block text-sm text-gray-600 mb-1" htmlFor="clientName">Cliente</label>
+            <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1" htmlFor="clientName">Cliente</label>
             <input
               id="clientName"
               value={clientName}
               onChange={(e) => setClientName(e.target.value)}
               required
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded px-3 py-2 text-sm"
               placeholder="Nome do cliente"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-gray-600 mb-1" htmlFor="clientPhone">Telefone (opcional)</label>
+            <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1" htmlFor="clientPhone">Telefone (opcional)</label>
             <input
               id="clientPhone"
               value={clientPhone}
               onChange={(e) => setClientPhone(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded px-3 py-2 text-sm"
               placeholder="(11) 90000-0000"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-gray-600 mb-1" htmlFor="professional">Profissional</label>
+            <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1" htmlFor="professional">Profissional</label>
             <select
               id="professional"
               value={professionalId}
               onChange={(e) => setProfessionalId(e.target.value)}
               required
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded px-3 py-2 text-sm"
             >
               {professionals.map((p) => (
                 <option key={p.id} value={p.id}>{p.nome}</option>
@@ -157,13 +157,13 @@ export function NewAppointmentModal({
           </div>
 
           <div>
-            <label className="block text-sm text-gray-600 mb-1" htmlFor="service">Serviço</label>
+            <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1" htmlFor="service">Serviço</label>
             <select
               id="service"
               value={serviceId}
               onChange={(e) => setServiceId(e.target.value)}
               required
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded px-3 py-2 text-sm"
             >
               {services.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -174,31 +174,31 @@ export function NewAppointmentModal({
           </div>
 
           <div>
-            <label className="block text-sm text-gray-600 mb-1" htmlFor="time">Horário</label>
+            <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1" htmlFor="time">Horário</label>
             <input
               id="time"
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
               required
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded px-3 py-2 text-sm"
             />
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
           <div className="flex gap-2 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm font-medium text-gray-700"
+              className="flex-1 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={submitting || professionals.length === 0 || services.length === 0}
-              className="flex-1 bg-gray-900 text-white rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+              className="flex-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
               {submitting ? 'Salvando...' : 'Salvar reserva'}
             </button>

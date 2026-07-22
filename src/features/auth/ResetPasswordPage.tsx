@@ -1,31 +1,40 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
-import { useAuth } from './AuthContext'
+import { supabase } from '../../lib/supabase'
 
-export function LoginPage() {
-  const { signIn } = useAuth()
+export function ResetPasswordPage() {
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    setSubmitting(true)
     setError(null)
+
+    if (password.length < 6) {
+      setError('A senha precisa ter pelo menos 6 caracteres.')
+      return
+    }
+    if (password !== confirmPassword) {
+      setError('As senhas não coincidem.')
+      return
+    }
+
+    setSubmitting(true)
     try {
-      const { error } = await signIn(email, password)
+      const { error } = await supabase.auth.updateUser({ password })
       if (error) {
-        setError(error)
+        setError('Não foi possível redefinir a senha. O link pode ter expirado — solicite um novo.')
         return
       }
       navigate('/')
     } catch (err) {
-      console.error('Erro inesperado ao entrar:', err)
-      setError('Não foi possível entrar. Tente novamente.')
+      console.error('Erro ao redefinir senha:', err)
+      setError('Não foi possível redefinir a senha. Tente novamente.')
     } finally {
       setSubmitting(false)
     }
@@ -34,35 +43,17 @@ export function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <form onSubmit={handleSubmit} className="w-full max-w-sm bg-white p-6 sm:p-8 rounded-lg shadow space-y-4">
-        <h1 className="text-xl font-semibold text-gray-900">Entrar</h1>
+        <h1 className="text-xl font-semibold text-gray-900">Criar nova senha</h1>
 
         <div>
-          <label className="block text-sm text-gray-600 mb-1" htmlFor="email">E-mail</label>
-          <input
-            id="email"
-            type="email"
-            required
-            autoComplete="email"
-            inputMode="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full border border-gray-300 rounded px-3 py-3 text-base"
-          />
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="block text-sm text-gray-600" htmlFor="password">Senha</label>
-            <Link to="/esqueci-senha" className="text-sm text-gray-500 underline">
-              Esqueci minha senha
-            </Link>
-          </div>
+          <label className="block text-sm text-gray-600 mb-1" htmlFor="password">Nova senha</label>
           <div className="relative">
             <input
               id="password"
               type={showPassword ? 'text' : 'password'}
               required
-              autoComplete="current-password"
+              minLength={6}
+              autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full border border-gray-300 rounded px-3 py-3 pr-11 text-base"
@@ -78,6 +69,20 @@ export function LoginPage() {
           </div>
         </div>
 
+        <div>
+          <label className="block text-sm text-gray-600 mb-1" htmlFor="confirmPassword">Confirmar nova senha</label>
+          <input
+            id="confirmPassword"
+            type={showPassword ? 'text' : 'password'}
+            required
+            minLength={6}
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className="w-full border border-gray-300 rounded px-3 py-3 text-base"
+          />
+        </div>
+
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         <button
@@ -85,7 +90,7 @@ export function LoginPage() {
           disabled={submitting}
           className="w-full bg-gray-900 text-white rounded px-3 py-3 text-sm font-medium disabled:opacity-50"
         >
-          {submitting ? 'Entrando...' : 'Entrar'}
+          {submitting ? 'Salvando...' : 'Salvar nova senha'}
         </button>
       </form>
     </div>

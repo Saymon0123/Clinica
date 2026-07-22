@@ -9,6 +9,7 @@ import { AgendaPage } from './features/agenda/AgendaPage'
 import { ClientesPage } from './features/clientes/ClientesPage'
 import { FinanceiroPage } from './features/financeiro/FinanceiroPage'
 import { ConexaoPage } from './features/conexao/ConexaoPage'
+import { CatalogoPage } from './features/catalogo/CatalogoPage'
 import { WhatsAppWebPage } from './features/whatsappWeb/WhatsAppWebPage'
 import { NovaBarbeariaPage } from './features/adminTool/NovaBarbeariaPage'
 
@@ -38,6 +39,7 @@ function App() {
           <Route path="/" element={<AgendaPage />} />
           <Route path="/clientes" element={<ClientesPage />} />
           <Route path="/financeiro" element={<FinanceiroPage />} />
+          <Route path="/catalogo" element={<CatalogoPage />} />
           <Route path="/conexao" element={<ConexaoPage />} />
         </Route>
       </Routes>

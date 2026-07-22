@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Calendar, Users, Wallet, Link2, LogOut, Globe } from 'lucide-react'
+import { Calendar, Users, Wallet, Link2, LogOut, Globe, Tag } from 'lucide-react'
 import { useAuth } from '../features/auth/AuthContext'
 import { useSalon } from '../features/auth/useSalon'
 import { useAppointmentAlerts } from '../features/agenda/useAppointmentAlerts'
@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { to: '/', label: 'Agenda', icon: Calendar },
   { to: '/clientes', label: 'Clientes', icon: Users },
   { to: '/financeiro', label: 'Financeiro', icon: Wallet },
+  { to: '/catalogo', label: 'Catálogo', icon: Tag },
   { to: '/conexao', label: 'Conexão', icon: Link2 },
 ]
 

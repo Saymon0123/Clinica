@@ -5,6 +5,7 @@ export type Conversation = {
   last_message_at: string | null
   last_opened_at: string | null
   needs_human: boolean
+  agent_paused: boolean
 }
 
 export type Message = {

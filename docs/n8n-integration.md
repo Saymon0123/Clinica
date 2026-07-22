@@ -41,6 +41,7 @@ fluxo.
 | `contact_phone` | text | sim | telefone completo com DDI, ex: `5511999990000` (só dígitos, sem `+`, sem espaço/traço) |
 | `contact_name` | text | não | nome do contato no WhatsApp, se disponível |
 | `needs_human` | boolean | não (default `false`) | `true` quando o cliente pedir para falar com o dono/barbeiro |
+| `agent_paused` | boolean | **somente leitura para o n8n** (default `false`) | `true` quando o dono assumiu a conversa manualmente pelo CRM. Controlado só pelo CRM — o n8n **nunca** deve gravar este campo, só ler e respeitar. |
 
 Existe uma constraint `unique (salon_id, contact_phone)` — **use upsert**
 (`on_conflict=salon_id,contact_phone`), nunca insert puro, senão dá erro de
@@ -60,6 +61,34 @@ header `Prefer: resolution=merge-duplicates` e query `?on_conflict=salon_id,cont
 
 O CRM já toca som e acende o botão "WEB" sozinho quando `needs_human` virar
 `true` — não precisa fazer mais nada além de gravar esse campo.
+
+### ⚠️ Handoff dono ↔ agente (`agent_paused`) — leia antes de montar a resposta automática
+
+Quando o dono responde uma conversa pelo CRM, o sistema grava
+`agent_paused = true` automaticamente naquela conversa e só volta para
+`false` quando o **próprio dono** clica em "Devolver ao agente" na aba WEB.
+Isso existe para evitar que o agente e o dono respondam ao mesmo cliente ao
+mesmo tempo, gerando confusão.
+
+**Regra obrigatória do fluxo:** depois de fazer o upsert de
+`whatsapp_conversations` e o insert da mensagem recebida, **antes de gerar
+qualquer resposta automática**, consulte o campo `agent_paused` dessa
+conversa:
+
+```
+GET /rest/v1/whatsapp_conversations?id=eq.<conversation_id>&select=agent_paused
+```
+
+- Se `agent_paused = true` → **não gere nem envie nenhuma resposta**. A
+  mensagem do cliente já foi salva no histórico (passo 3 do fluxo) e vai
+  aparecer no CRM normalmente para o dono ver e responder manualmente. O
+  fluxo do n8n termina aqui para essa mensagem.
+- Se `agent_paused = false` → segue normalmente com a geração da resposta
+  do agente.
+
+Nunca tente "reverter" esse campo pelo n8n (nem para `true` nem para
+`false`) — quem decide quando o agente volta a responder é o dono, pelo
+próprio CRM.
 
 ### `whatsapp_messages` — uma linha por mensagem trocada
 
@@ -150,7 +179,9 @@ fluxo do n8n precisa checar disponibilidade antes de criar (consultar
 1. Webhook da Evolution API chega no n8n → extrai `instance` → deriva `salon_id`
 2. Upsert em `whatsapp_conversations` (salon_id + contact_phone) → pega `conversation_id`
 3. Insert da mensagem recebida em `whatsapp_messages` (`direction: 'in'`, `sender: 'cliente'`)
-4. Agente de IA decide a resposta / ação:
+4. **Checa `agent_paused` da conversa** (ver seção acima) — se `true`, para o
+   fluxo por aqui, sem responder
+5. Agente de IA decide a resposta / ação:
    - Só conversa → insert em `whatsapp_messages` (`direction: 'out'`, `sender: 'agente'`) **e** chama a Evolution API pra enviar de verdade pro WhatsApp do cliente
    - Cliente pede pra falar com o dono → `update` em `whatsapp_conversations` setando `needs_human: true`
    - Cliente quer agendar → busca/cria `clients`, consulta `professionals`/`services`, cria `appointments`, confirma pro cliente via Evolution API e registra a mensagem de confirmação
@@ -162,3 +193,5 @@ fluxo do n8n precisa checar disponibilidade antes de criar (consultar
 - Mandar `status`/`direction`/`sender` fora dos valores aceitos → erro de constraint do Postgres
 - Mandar `data_hora_inicio` sem timezone → o horário pode aparecer errado no CRM (sempre incluir o offset, ex. `-03:00`)
 - Criar um `client` novo a cada mensagem em vez de buscar pelo telefone antes → duplica clientes na aba Clientes
+- Responder automaticamente mesmo com `agent_paused = true` → o dono já assumiu a conversa manualmente; o agente respondendo por cima gera duplicidade e confusão pro cliente
+- Escrever em `agent_paused` pelo n8n → esse campo é gerenciado só pelo CRM (dono assume/devolve), o agente só deve lê-lo

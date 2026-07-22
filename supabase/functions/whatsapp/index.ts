@@ -183,10 +183,34 @@ Deno.serve(async (req: Request) => {
 
       await supabase
         .from('whatsapp_conversations')
-        .update({ needs_human: false })
+        .update({ needs_human: false, agent_paused: true })
         .eq('id', conversationId)
 
       return json({ message })
+    }
+
+    if (body.action === 'resume_agent') {
+      const { conversationId } = body
+      if (!conversationId) {
+        return json({ error: 'Conversa é obrigatória.' }, 400)
+      }
+
+      const { data: conversation, error: convError } = await supabase
+        .from('whatsapp_conversations')
+        .select('id, salon_id')
+        .eq('id', conversationId)
+        .maybeSingle()
+
+      if (convError || !conversation || conversation.salon_id !== salonId) {
+        return json({ error: 'Conversa não encontrada.' }, 404)
+      }
+
+      await supabase
+        .from('whatsapp_conversations')
+        .update({ agent_paused: false })
+        .eq('id', conversationId)
+
+      return json({ ok: true })
     }
 
     return json({ error: 'Ação inválida.' }, 400)

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { AlertCircle, MessageCircle, Send } from 'lucide-react'
+import { AlertCircle, Bot, MessageCircle, Send } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
 import { useConversations } from './useConversations'
@@ -33,6 +33,7 @@ export function WhatsAppWebPage() {
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
+  const [resuming, setResuming] = useState(false)
 
   const selectedConversation = conversations.find((c) => c.id === selectedId) ?? null
 
@@ -71,6 +72,20 @@ export function WhatsAppWebPage() {
       setSendError('Não foi possível enviar a mensagem.')
     } finally {
       setSending(false)
+    }
+  }
+
+  async function handleResumeAgent() {
+    if (!selectedId || resuming) return
+    setResuming(true)
+    try {
+      await supabase.functions.invoke('whatsapp', {
+        body: { action: 'resume_agent', conversationId: selectedId },
+      })
+    } catch (err) {
+      console.error('Erro ao devolver conversa ao agente:', err)
+    } finally {
+      setResuming(false)
     }
   }
 
@@ -167,11 +182,29 @@ export function WhatsAppWebPage() {
             </div>
           ) : (
             <>
-              <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 py-3">
-                <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {selectedConversation.contact_name ?? formatPhone(selectedConversation.contact_phone)}
+              <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 py-3 flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {selectedConversation.contact_name ?? formatPhone(selectedConversation.contact_phone)}
+                  </div>
+                  <div className="text-xs text-gray-400 dark:text-gray-500">{formatPhone(selectedConversation.contact_phone)}</div>
                 </div>
-                <div className="text-xs text-gray-400 dark:text-gray-500">{formatPhone(selectedConversation.contact_phone)}</div>
+
+                {selectedConversation.agent_paused ? (
+                  <button
+                    onClick={handleResumeAgent}
+                    disabled={resuming}
+                    className="flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-800 rounded-full px-3 py-1.5 shrink-0 disabled:opacity-50"
+                  >
+                    <Bot size={14} />
+                    {resuming ? 'Devolvendo...' : 'Devolver ao agente'}
+                  </button>
+                ) : (
+                  <span className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 shrink-0">
+                    <Bot size={14} />
+                    Agente ativo
+                  </span>
+                )}
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 space-y-2">

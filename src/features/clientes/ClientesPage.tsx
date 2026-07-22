@@ -41,7 +41,7 @@ export function ClientesPage() {
         <h1 className="text-lg font-semibold text-gray-900">Clientes</h1>
         <button
           onClick={() => setShowNewClient(true)}
-          className="flex items-center gap-2 bg-green-700 text-white rounded px-4 py-2 text-sm font-medium hover:bg-green-800"
+          className="flex items-center gap-2 bg-gray-900 text-white rounded px-4 py-2 text-sm font-medium hover:bg-gray-800"
         >
           <Plus size={16} />
           Adicionar
@@ -59,7 +59,7 @@ export function ClientesPage() {
           </p>
           <button
             onClick={() => setShowNewClient(true)}
-            className="flex items-center gap-2 bg-green-700 text-white rounded px-4 py-2 text-sm font-medium hover:bg-green-800"
+            className="flex items-center gap-2 bg-gray-900 text-white rounded px-4 py-2 text-sm font-medium hover:bg-gray-800"
           >
             <Plus size={16} />
             Adicionar

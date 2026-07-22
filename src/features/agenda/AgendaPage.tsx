@@ -56,15 +56,15 @@ function AppointmentBlock({
         onDragStart()
       }}
       onDragEnd={onDragEnd}
-      className={`absolute inset-x-1 rounded bg-blue-100 border border-blue-300 px-2 py-1 overflow-hidden cursor-grab active:cursor-grabbing select-none ${
+      className={`absolute inset-x-1 rounded bg-gray-100 border border-gray-300 px-2 py-1 overflow-hidden cursor-grab active:cursor-grabbing select-none ${
         dragging ? 'opacity-40' : ''
       }`}
       style={{ top, height }}
     >
-      <div className="text-xs font-medium text-blue-900 truncate">
+      <div className="text-xs font-medium text-gray-900 truncate">
         {formatTime(appt.data_hora_inicio)} · {appt.client_nome ?? 'Cliente'}
       </div>
-      {appt.service_nome && <div className="text-[11px] text-blue-700 truncate">{appt.service_nome}</div>}
+      {appt.service_nome && <div className="text-[11px] text-gray-600 truncate">{appt.service_nome}</div>}
     </div>
   )
 }
@@ -181,7 +181,7 @@ export function AgendaPage() {
 
           <button
             onClick={() => setModalState({})}
-            className="flex items-center gap-2 bg-green-700 text-white rounded px-4 py-2 text-sm font-medium hover:bg-green-800"
+            className="flex items-center gap-2 bg-gray-900 text-white rounded px-4 py-2 text-sm font-medium hover:bg-gray-800"
           >
             <Plus size={16} />
             Nova reserva

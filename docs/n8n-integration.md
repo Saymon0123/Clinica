@@ -62,6 +62,12 @@ header `Prefer: resolution=merge-duplicates` e query `?on_conflict=salon_id,cont
 O CRM já toca som e acende o botão "WEB" sozinho quando `needs_human` virar
 `true` — não precisa fazer mais nada além de gravar esse campo.
 
+**Importante:** uma vez que o agente marcou `needs_human = true`, o n8n
+**nunca** deve voltar a marcar `false` sozinho. Esse campo só volta a
+`false` quando o dono clica em "Devolver ao agente" no CRM — mesmo que o
+dono já tenha respondido manualmente, a conversa continua aparecendo na
+aba "Solicitou falar com o dono" até ele resolver explicitamente por lá.
+
 ### ⚠️ Handoff dono ↔ agente (`agent_paused`) — leia antes de montar a resposta automática
 
 Quando o dono responde uma conversa pelo CRM, o sistema grava

@@ -190,7 +190,7 @@ export function WhatsAppWebPage() {
                   <div className="text-xs text-gray-400 dark:text-gray-500">{formatPhone(selectedConversation.contact_phone)}</div>
                 </div>
 
-                {selectedConversation.agent_paused ? (
+                {tab === 'precisa_dono' && selectedConversation.needs_human && (
                   <button
                     onClick={handleResumeAgent}
                     disabled={resuming}
@@ -199,11 +199,6 @@ export function WhatsAppWebPage() {
                     <Bot size={14} />
                     {resuming ? 'Devolvendo...' : 'Devolver ao agente'}
                   </button>
-                ) : (
-                  <span className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 shrink-0">
-                    <Bot size={14} />
-                    Agente ativo
-                  </span>
                 )}
               </div>
 

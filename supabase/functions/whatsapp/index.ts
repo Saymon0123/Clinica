@@ -181,9 +181,11 @@ Deno.serve(async (req: Request) => {
         return json({ error: 'Mensagem enviada, mas não foi possível salvar no histórico.' }, 500)
       }
 
+      // Não mexe em needs_human aqui: a conversa continua marcada como
+      // "precisa do dono" até ele explicitamente devolver ao agente.
       await supabase
         .from('whatsapp_conversations')
-        .update({ needs_human: false, agent_paused: true })
+        .update({ agent_paused: true })
         .eq('id', conversationId)
 
       return json({ message })
@@ -205,9 +207,11 @@ Deno.serve(async (req: Request) => {
         return json({ error: 'Conversa não encontrada.' }, 404)
       }
 
+      // Devolver ao agente resolve o pedido por completo: sai da lista de
+      // "precisa do dono" e o agente volta a responder normalmente.
       await supabase
         .from('whatsapp_conversations')
-        .update({ agent_paused: false })
+        .update({ agent_paused: false, needs_human: false })
         .eq('id', conversationId)
 
       return json({ ok: true })

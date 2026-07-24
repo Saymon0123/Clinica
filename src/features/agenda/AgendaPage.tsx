@@ -78,6 +78,7 @@ export function AgendaPage() {
   const [modalState, setModalState] = useState<{ professionalId?: string; time?: string } | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [rescheduling, setRescheduling] = useState(false)
+  const [rescheduleError, setRescheduleError] = useState<string | null>(null)
 
   const hours = useMemo(
     () => Array.from({ length: HOUR_END - HOUR_START + 1 }, (_, i) => HOUR_START + i),
@@ -121,6 +122,7 @@ export function AgendaPage() {
     const newEnd = new Date(newStart.getTime() + durationMs)
 
     setRescheduling(true)
+    setRescheduleError(null)
     try {
       const { error: updateError } = await supabase
         .from('appointments')
@@ -134,6 +136,7 @@ export function AgendaPage() {
       await reload()
     } catch (err) {
       console.error('Erro ao reagendar:', err)
+      setRescheduleError('Não foi possível reagendar. Verifique sua conexão e tente novamente.')
     } finally {
       setRescheduling(false)
     }
@@ -256,6 +259,14 @@ export function AgendaPage() {
           </div>
         )}
         {rescheduling && <p className="text-xs text-muted-foreground mt-2">Reagendando...</p>}
+        {rescheduleError && (
+          <p className="text-xs text-danger mt-2 flex items-center gap-2">
+            {rescheduleError}
+            <button onClick={() => setRescheduleError(null)} className="underline">
+              fechar
+            </button>
+          </p>
+        )}
       </div>
 
       <div className="w-full lg:w-72 shrink-0 space-y-4">

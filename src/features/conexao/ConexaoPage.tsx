@@ -20,10 +20,13 @@ export function ConexaoPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const failuresRef = useRef(0)
 
   const checkStatus = useCallback(async () => {
     try {
       const result = await callWhatsapp('status')
+      failuresRef.current = 0
+      setError(null)
       setStatus(result.status)
       if (result.status === 'open') {
         setQrCode(null)
@@ -34,6 +37,17 @@ export function ConexaoPage() {
       }
     } catch (err) {
       console.error('Erro ao checar status do WhatsApp:', err)
+      failuresRef.current += 1
+      // Após 3 falhas seguidas, para de tentar e avisa (evita ficar preso em "Aguardando").
+      if (failuresRef.current >= 3) {
+        if (pollRef.current) {
+          clearInterval(pollRef.current)
+          pollRef.current = null
+        }
+        setError(
+          'Não foi possível verificar o status da conexão. Verifique sua internet e tente gerar o QR code novamente.',
+        )
+      }
     }
   }, [])
 
@@ -56,6 +70,7 @@ export function ConexaoPage() {
       setStatus(result.status)
       setQrCode(result.qrCode ?? null)
 
+      failuresRef.current = 0
       if (pollRef.current) clearInterval(pollRef.current)
       pollRef.current = setInterval(checkStatus, 3000)
     } catch (err) {

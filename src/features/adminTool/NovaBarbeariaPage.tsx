@@ -35,7 +35,7 @@ function AccessGate({ onUnlock }: { onUnlock: (secret: string) => void }) {
           autoFocus
           className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
         />
-        <button type="submit" className="w-full bg-gray-900 text-white rounded px-3 py-2 text-sm font-medium">
+        <button type="submit" className="w-full bg-primary text-primary-foreground rounded px-3 py-2 text-sm font-medium">
           Entrar
         </button>
       </form>

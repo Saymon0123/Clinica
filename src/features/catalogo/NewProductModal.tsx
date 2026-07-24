@@ -67,49 +67,49 @@ export function NewProductModal({ salonId, product, onClose, onSaved }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-      <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-lg shadow-lg">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+      <div className="w-full max-w-md bg-surface rounded-xl border border-border-lg">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h2 className="text-lg font-semibold text-foreground">
             {product ? 'Editar produto' : 'Novo produto'}
           </h2>
-          <button onClick={onClose} aria-label="Fechar" className="text-gray-500 dark:text-gray-400 p-1">
+          <button onClick={onClose} aria-label="Fechar" className="text-muted-foreground p-1">
             <X size={20} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div>
-            <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1" htmlFor="nome">Nome do produto</label>
+            <label className="block text-sm text-muted-foreground mb-1" htmlFor="nome">Nome do produto</label>
             <input
               id="nome"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               required
-              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded px-3 py-2 text-sm"
+              className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
               placeholder="Pomada modeladora"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1" htmlFor="precoVenda">Preço de venda (R$)</label>
+              <label className="block text-sm text-muted-foreground mb-1" htmlFor="precoVenda">Preço de venda (R$)</label>
               <input
                 id="precoVenda"
                 inputMode="decimal"
                 value={precoVenda}
                 onChange={(e) => setPrecoVenda(e.target.value)}
-                className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded px-3 py-2 text-sm"
+                className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
                 placeholder="35,00"
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1" htmlFor="precoCusto">Preço de custo (opcional)</label>
+              <label className="block text-sm text-muted-foreground mb-1" htmlFor="precoCusto">Preço de custo (opcional)</label>
               <input
                 id="precoCusto"
                 inputMode="decimal"
                 value={precoCusto}
                 onChange={(e) => setPrecoCusto(e.target.value)}
-                className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded px-3 py-2 text-sm"
+                className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
                 placeholder="18,00"
               />
             </div>
@@ -117,43 +117,43 @@ export function NewProductModal({ salonId, product, onClose, onSaved }: Props) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1" htmlFor="estoqueAtual">Estoque atual</label>
+              <label className="block text-sm text-muted-foreground mb-1" htmlFor="estoqueAtual">Estoque atual</label>
               <input
                 id="estoqueAtual"
                 type="number"
                 min={0}
                 value={estoqueAtual}
                 onChange={(e) => setEstoqueAtual(e.target.value)}
-                className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded px-3 py-2 text-sm"
+                className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1" htmlFor="estoqueMinimo">Estoque mínimo</label>
+              <label className="block text-sm text-muted-foreground mb-1" htmlFor="estoqueMinimo">Estoque mínimo</label>
               <input
                 id="estoqueMinimo"
                 type="number"
                 min={0}
                 value={estoqueMinimo}
                 onChange={(e) => setEstoqueMinimo(e.target.value)}
-                className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded px-3 py-2 text-sm"
+                className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
               />
             </div>
           </div>
 
-          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+          {error && <p className="text-sm text-danger">{error}</p>}
 
           <div className="flex gap-2 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300"
+              className="flex-1 border border-border-strong rounded px-3 py-2 text-sm font-medium text-foreground"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+              className="flex-1 bg-primary text-primary-foreground rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
               {submitting ? 'Salvando...' : 'Salvar'}
             </button>

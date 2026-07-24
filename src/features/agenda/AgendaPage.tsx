@@ -56,15 +56,15 @@ function AppointmentBlock({
         onDragStart()
       }}
       onDragEnd={onDragEnd}
-      className={`absolute inset-x-1 rounded bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 px-2 py-1 overflow-hidden cursor-grab active:cursor-grabbing select-none ${
+      className={`absolute inset-x-1 rounded-lg bg-primary-soft border-l-2 border-primary px-2 py-1 overflow-hidden cursor-grab active:cursor-grabbing select-none ${
         dragging ? 'opacity-40' : ''
       }`}
       style={{ top, height }}
     >
-      <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">
+      <div className="text-xs font-medium text-primary-soft-foreground truncate">
         {formatTime(appt.data_hora_inicio)} · {appt.client_nome ?? 'Cliente'}
       </div>
-      {appt.service_nome && <div className="text-[11px] text-gray-600 dark:text-gray-400 truncate">{appt.service_nome}</div>}
+      {appt.service_nome && <div className="text-[11px] text-primary-soft-foreground/70 truncate">{appt.service_nome}</div>}
     </div>
   )
 }
@@ -140,12 +140,12 @@ export function AgendaPage() {
   }
 
   if (salonLoading) {
-    return <p className="text-sm text-gray-500 dark:text-gray-400">Carregando...</p>
+    return <p className="text-sm text-muted-foreground">Carregando...</p>
   }
 
   if (!salonId) {
     return (
-      <p className="text-sm text-gray-500 dark:text-gray-400">
+      <p className="text-sm text-muted-foreground">
         Sua conta ainda não está vinculada a um salão. Fale com o administrador do sistema.
       </p>
     )
@@ -159,20 +159,20 @@ export function AgendaPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => handleSelectDate(addDays(selectedDate, -1))}
-              className="p-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+              className="p-2 border border-border-strong rounded hover:bg-surface-2 text-foreground"
               aria-label="Dia anterior"
             >
               <ChevronLeft size={18} />
             </button>
             <div>
-              <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              <div className="text-sm font-semibold text-foreground">
                 {selectedDate.getDate()} de {MONTH_SHORT[selectedDate.getMonth()]}
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 capitalize">{WEEKDAY_FULL[selectedDate.getDay()]}</div>
+              <div className="text-xs text-muted-foreground capitalize">{WEEKDAY_FULL[selectedDate.getDay()]}</div>
             </div>
             <button
               onClick={() => handleSelectDate(addDays(selectedDate, 1))}
-              className="p-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+              className="p-2 border border-border-strong rounded hover:bg-surface-2 text-foreground"
               aria-label="Próximo dia"
             >
               <ChevronRight size={18} />
@@ -181,29 +181,29 @@ export function AgendaPage() {
 
           <button
             onClick={() => setModalState({})}
-            className="flex items-center gap-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded px-4 py-2 text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-300"
+            className="flex items-center gap-2 bg-primary text-primary-foreground rounded px-4 py-2 text-sm font-medium hover:bg-primary-hover"
           >
             <Plus size={16} />
             Nova reserva
           </button>
         </div>
 
-        {error && <p className="text-sm text-red-600 dark:text-red-400 mb-3">{error}</p>}
+        {error && <p className="text-sm text-danger mb-3">{error}</p>}
 
         {!loading && professionals.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-muted-foreground">
             Nenhum profissional cadastrado ainda. Cadastre um profissional para começar a usar a agenda.
           </p>
         ) : (
           <div
-            className="bg-white dark:bg-gray-900 rounded-lg shadow overflow-auto"
+            className="bg-surface rounded-xl border border-border overflow-auto"
             style={{ maxHeight: 'calc(100vh - 260px)' }}
           >
             {/* Header com nomes dos profissionais */}
-            <div className="flex border-b border-gray-200 dark:border-gray-800 sticky top-0 bg-white dark:bg-gray-900 z-10 min-w-fit">
+            <div className="flex border-b border-border sticky top-0 bg-surface z-10 min-w-fit">
               <div className="w-14 shrink-0" />
               {professionals.map((p) => (
-                <div key={p.id} className="flex-1 min-w-[160px] px-3 py-2 text-sm font-medium text-gray-900 dark:text-gray-100 border-l border-gray-100 dark:border-gray-800">
+                <div key={p.id} className="flex-1 min-w-[160px] px-3 py-2 text-sm font-medium text-foreground border-l border-border">
                   {p.nome}
                 </div>
               ))}
@@ -215,7 +215,7 @@ export function AgendaPage() {
                 {hours.map((h) => (
                   <div
                     key={h}
-                    className="absolute right-2 -translate-y-1/2 text-xs text-gray-400 dark:text-gray-500"
+                    className="absolute right-2 -translate-y-1/2 text-xs text-muted-foreground"
                     style={{ top: (h - HOUR_START) * ROW_HEIGHT }}
                   >
                     {String(h).padStart(2, '0')}:00
@@ -226,7 +226,7 @@ export function AgendaPage() {
               {professionals.map((p) => (
                 <div
                   key={p.id}
-                  className="flex-1 min-w-[160px] relative border-l border-gray-100 dark:border-gray-800"
+                  className="flex-1 min-w-[160px] relative border-l border-border"
                   style={{ height: gridHeight }}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => handleDrop(e, p.id)}
@@ -235,7 +235,7 @@ export function AgendaPage() {
                     <button
                       key={h}
                       onClick={() => handleSlotClick(p.id, h)}
-                      className="absolute inset-x-0 border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 text-left"
+                      className="absolute inset-x-0 border-t border-border hover:bg-surface-2 text-left"
                       style={{ top: (h - HOUR_START) * ROW_HEIGHT, height: ROW_HEIGHT }}
                       aria-label={`Adicionar horário às ${h}:00 com ${p.nome}`}
                     />
@@ -255,14 +255,14 @@ export function AgendaPage() {
             </div>
           </div>
         )}
-        {rescheduling && <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">Reagendando...</p>}
+        {rescheduling && <p className="text-xs text-muted-foreground mt-2">Reagendando...</p>}
       </div>
 
       <div className="w-full lg:w-72 shrink-0 space-y-4">
-        <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Reservas</div>
-          <div className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{appointments.length}</div>
-          <div className="text-xs text-gray-400 dark:text-gray-500">
+        <div className="bg-surface rounded-xl border border-border p-4">
+          <div className="text-sm text-muted-foreground">Reservas</div>
+          <div className="text-2xl font-semibold text-foreground">{appointments.length}</div>
+          <div className="text-xs text-muted-foreground">
             {selectedDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
           </div>
         </div>

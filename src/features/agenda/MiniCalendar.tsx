@@ -36,22 +36,22 @@ export function MiniCalendar({ selectedDate, visibleMonth, onSelectDate, onChang
   const today = new Date()
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-4">
+    <div className="bg-surface rounded-xl border border-border p-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+        <h3 className="text-sm font-semibold text-foreground">
           {MONTH_LABELS[visibleMonth.getMonth()]} de {visibleMonth.getFullYear()}
         </h3>
         <div className="flex gap-1">
           <button
             onClick={() => onChangeMonth(new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() - 1, 1))}
-            className="p-1 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+            className="p-1 text-muted-foreground hover:bg-surface-2 rounded"
             aria-label="Mês anterior"
           >
             <ChevronLeft size={16} />
           </button>
           <button
             onClick={() => onChangeMonth(new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 1))}
-            className="p-1 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+            className="p-1 text-muted-foreground hover:bg-surface-2 rounded"
             aria-label="Próximo mês"
           >
             <ChevronRight size={16} />
@@ -59,7 +59,7 @@ export function MiniCalendar({ selectedDate, visibleMonth, onSelectDate, onChang
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-400 dark:text-gray-500 mb-1">
+      <div className="grid grid-cols-7 gap-1 text-center text-xs text-muted-foreground mb-1">
         {WEEKDAY_LABELS.map((d) => (
           <div key={d}>{d}</div>
         ))}
@@ -75,7 +75,7 @@ export function MiniCalendar({ selectedDate, visibleMonth, onSelectDate, onChang
               key={d.toISOString()}
               onClick={() => onSelectDate(d)}
               className={`aspect-square rounded text-xs flex items-center justify-center
-                ${isSelected ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900' : inMonth ? 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800' : 'text-gray-300 dark:text-gray-600'}
+                ${isSelected ? 'bg-primary text-primary-foreground' : inMonth ? 'text-foreground hover:bg-surface-2' : 'text-muted-foreground/40'}
                 ${isToday && !isSelected ? 'ring-1 ring-gray-400 dark:ring-gray-500' : ''}
               `}
             >

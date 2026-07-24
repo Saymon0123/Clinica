@@ -24,12 +24,12 @@ export function ClientesPage() {
   }, [clients, search])
 
   if (salonLoading) {
-    return <p className="text-sm text-gray-500 dark:text-gray-400">Carregando...</p>
+    return <p className="text-sm text-muted-foreground">Carregando...</p>
   }
 
   if (!salonId) {
     return (
-      <p className="text-sm text-gray-500 dark:text-gray-400">
+      <p className="text-sm text-muted-foreground">
         Sua conta ainda não está vinculada a um salão. Fale com o administrador do sistema.
       </p>
     )
@@ -38,43 +38,43 @@ export function ClientesPage() {
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Clientes</h1>
+        <h1 className="text-lg font-semibold text-foreground">Clientes</h1>
         <button
           onClick={() => setShowNewClient(true)}
-          className="flex items-center gap-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded px-4 py-2 text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-300"
+          className="flex items-center gap-2 bg-primary text-primary-foreground rounded px-4 py-2 text-sm font-medium hover:bg-primary-hover"
         >
           <Plus size={16} />
           Adicionar
         </button>
       </div>
 
-      {error && <p className="text-sm text-red-600 dark:text-red-400 mb-3">{error}</p>}
+      {error && <p className="text-sm text-danger mb-3">{error}</p>}
 
       {!loading && clients.length === 0 ? (
-        <div className="bg-white dark:bg-gray-900 rounded-lg shadow flex flex-col items-center justify-center text-center py-16 px-4">
-          <Inbox size={40} className="text-gray-300 dark:text-gray-600 mb-4" />
-          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">Comece a adicionar clientes</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-5 max-w-sm">
+        <div className="bg-surface rounded-xl border border-border flex flex-col items-center justify-center text-center py-16 px-4">
+          <Inbox size={40} className="text-muted-foreground/40 mb-4" />
+          <h2 className="text-base font-semibold text-foreground mb-1">Comece a adicionar clientes</h2>
+          <p className="text-sm text-muted-foreground mb-5 max-w-sm">
             Cadastre os dados dos seus clientes para agilizar agendamentos e manter o histórico de atendimentos.
           </p>
           <button
             onClick={() => setShowNewClient(true)}
-            className="flex items-center gap-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded px-4 py-2 text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-300"
+            className="flex items-center gap-2 bg-primary text-primary-foreground rounded px-4 py-2 text-sm font-medium hover:bg-primary-hover"
           >
             <Plus size={16} />
             Adicionar
           </button>
         </div>
       ) : (
-        <div className="bg-white dark:bg-gray-900 rounded-lg shadow">
-          <div className="p-3 border-b border-gray-200 dark:border-gray-800">
+        <div className="bg-surface rounded-xl border border-border">
+          <div className="p-3 border-b border-border">
             <div className="relative max-w-xs">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Buscar por nome ou telefone"
-                className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded pl-9 pr-3 py-2 text-sm"
+                className="w-full border border-border-strong bg-surface text-foreground rounded pl-9 pr-3 py-2 text-sm"
               />
             </div>
           </div>
@@ -82,7 +82,7 @@ export function ClientesPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
+                <tr className="text-left text-muted-foreground border-b border-border">
                   <th className="px-4 py-2 font-medium">Nome</th>
                   <th className="px-4 py-2 font-medium">Telefone</th>
                   <th className="px-4 py-2 font-medium">Aniversário</th>
@@ -91,18 +91,18 @@ export function ClientesPage() {
               </thead>
               <tbody>
                 {filteredClients.map((client) => (
-                  <tr key={client.id} className="border-b border-gray-50 dark:border-gray-800 last:border-0">
-                    <td className="px-4 py-3 text-gray-900 dark:text-gray-100 font-medium">{client.nome}</td>
-                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{client.telefone ?? '—'}</td>
-                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{formatDate(client.aniversario)}</td>
-                    <td className="px-4 py-3 text-gray-500 dark:text-gray-400 max-w-xs truncate">{client.observacao ?? '—'}</td>
+                  <tr key={client.id} className="border-b border-border last:border-0">
+                    <td className="px-4 py-3 text-foreground font-medium">{client.nome}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{client.telefone ?? '—'}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{formatDate(client.aniversario)}</td>
+                    <td className="px-4 py-3 text-muted-foreground max-w-xs truncate">{client.observacao ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
 
             {filteredClients.length === 0 && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">Nenhum cliente encontrado.</p>
+              <p className="text-sm text-muted-foreground text-center py-8">Nenhum cliente encontrado.</p>
             )}
           </div>
         </div>

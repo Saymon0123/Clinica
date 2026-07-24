@@ -36,12 +36,12 @@ export function CatalogoPage() {
   }
 
   if (salonLoading) {
-    return <p className="text-sm text-gray-500 dark:text-gray-400">Carregando...</p>
+    return <p className="text-sm text-muted-foreground">Carregando...</p>
   }
 
   if (!salonId) {
     return (
-      <p className="text-sm text-gray-500 dark:text-gray-400">
+      <p className="text-sm text-muted-foreground">
         Sua conta ainda não está vinculada a um salão. Fale com o administrador do sistema.
       </p>
     )
@@ -50,18 +50,18 @@ export function CatalogoPage() {
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Catálogo</h1>
+        <h1 className="text-lg font-semibold text-foreground">Catálogo</h1>
 
-        <div className="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden text-sm">
+        <div className="inline-flex rounded-lg border border-border-strong overflow-hidden text-sm">
           <button
             onClick={() => setTab('servicos')}
-            className={`px-4 py-2 font-medium ${tab === 'servicos' ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+            className={`px-4 py-2 font-medium ${tab === 'servicos' ? 'bg-primary text-primary-foreground' : 'bg-surface text-foreground hover:bg-surface-2'}`}
           >
             Serviços
           </button>
           <button
             onClick={() => setTab('produtos')}
-            className={`px-4 py-2 font-medium border-l border-gray-300 dark:border-gray-600 ${tab === 'produtos' ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+            className={`px-4 py-2 font-medium border-l border-border-strong ${tab === 'produtos' ? 'bg-primary text-primary-foreground' : 'bg-surface text-foreground hover:bg-surface-2'}`}
           >
             Produtos
           </button>
@@ -73,19 +73,19 @@ export function CatalogoPage() {
           <div className="flex justify-end mb-3">
             <button
               onClick={() => setEditingService('new')}
-              className="flex items-center gap-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded px-4 py-2 text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-300"
+              className="flex items-center gap-2 bg-primary text-primary-foreground rounded px-4 py-2 text-sm font-medium hover:bg-primary-hover"
             >
               <Plus size={16} />
               Novo serviço
             </button>
           </div>
 
-          {servicesError && <p className="text-sm text-red-600 dark:text-red-400 mb-3">{servicesError}</p>}
+          {servicesError && <p className="text-sm text-danger mb-3">{servicesError}</p>}
 
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow overflow-x-auto">
+          <div className="bg-surface rounded-xl border border-border overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
+                <tr className="text-left text-muted-foreground border-b border-border">
                   <th className="px-4 py-2 font-medium">Serviço</th>
                   <th className="px-4 py-2 font-medium">Duração</th>
                   <th className="px-4 py-2 font-medium">Preço</th>
@@ -95,25 +95,25 @@ export function CatalogoPage() {
               </thead>
               <tbody>
                 {services.map((s) => (
-                  <tr key={s.id} className="border-b border-gray-50 dark:border-gray-800 last:border-0">
-                    <td className="px-4 py-3 text-gray-900 dark:text-gray-100 font-medium">{s.nome}</td>
-                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{s.duracao_minutos} min</td>
-                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{formatCurrency(s.preco)}</td>
+                  <tr key={s.id} className="border-b border-border last:border-0">
+                    <td className="px-4 py-3 text-foreground font-medium">{s.nome}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{s.duracao_minutos} min</td>
+                    <td className="px-4 py-3 text-muted-foreground">{formatCurrency(s.preco)}</td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${s.ativo ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'}`}>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${s.ativo ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-400' : 'bg-surface-2 text-muted-foreground'}`}>
                         {s.ativo ? 'Ativo' : 'Inativo'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right space-x-2">
                       <button
                         onClick={() => setEditingService(s)}
-                        className="text-xs text-gray-600 dark:text-gray-300 underline"
+                        className="text-xs text-muted-foreground underline"
                       >
                         Editar
                       </button>
                       <button
                         onClick={() => toggleServiceActive(s)}
-                        className="text-xs text-gray-500 dark:text-gray-400 underline inline-flex items-center gap-1"
+                        className="text-xs text-muted-foreground underline inline-flex items-center gap-1"
                       >
                         <Power size={12} />
                         {s.ativo ? 'Desativar' : 'Ativar'}
@@ -125,7 +125,7 @@ export function CatalogoPage() {
             </table>
 
             {!loadingServices && services.length === 0 && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
+              <p className="text-sm text-muted-foreground text-center py-8">
                 Nenhum serviço cadastrado ainda.
               </p>
             )}
@@ -136,19 +136,19 @@ export function CatalogoPage() {
           <div className="flex justify-end mb-3">
             <button
               onClick={() => setEditingProduct('new')}
-              className="flex items-center gap-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded px-4 py-2 text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-300"
+              className="flex items-center gap-2 bg-primary text-primary-foreground rounded px-4 py-2 text-sm font-medium hover:bg-primary-hover"
             >
               <Plus size={16} />
               Novo produto
             </button>
           </div>
 
-          {productsError && <p className="text-sm text-red-600 dark:text-red-400 mb-3">{productsError}</p>}
+          {productsError && <p className="text-sm text-danger mb-3">{productsError}</p>}
 
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow overflow-x-auto">
+          <div className="bg-surface rounded-xl border border-border overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
+                <tr className="text-left text-muted-foreground border-b border-border">
                   <th className="px-4 py-2 font-medium">Produto</th>
                   <th className="px-4 py-2 font-medium">Preço de venda</th>
                   <th className="px-4 py-2 font-medium">Estoque</th>
@@ -158,30 +158,30 @@ export function CatalogoPage() {
               </thead>
               <tbody>
                 {products.map((p) => (
-                  <tr key={p.id} className="border-b border-gray-50 dark:border-gray-800 last:border-0">
-                    <td className="px-4 py-3 text-gray-900 dark:text-gray-100 font-medium">{p.nome}</td>
-                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{formatCurrency(p.preco_venda)}</td>
-                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                  <tr key={p.id} className="border-b border-border last:border-0">
+                    <td className="px-4 py-3 text-foreground font-medium">{p.nome}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{formatCurrency(p.preco_venda)}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
                       {p.estoque_atual}
                       {p.estoque_atual <= p.estoque_minimo && (
                         <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">baixo</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${p.ativo ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'}`}>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${p.ativo ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-400' : 'bg-surface-2 text-muted-foreground'}`}>
                         {p.ativo ? 'Ativo' : 'Inativo'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right space-x-2">
                       <button
                         onClick={() => setEditingProduct(p)}
-                        className="text-xs text-gray-600 dark:text-gray-300 underline"
+                        className="text-xs text-muted-foreground underline"
                       >
                         Editar
                       </button>
                       <button
                         onClick={() => toggleProductActive(p)}
-                        className="text-xs text-gray-500 dark:text-gray-400 underline inline-flex items-center gap-1"
+                        className="text-xs text-muted-foreground underline inline-flex items-center gap-1"
                       >
                         <Power size={12} />
                         {p.ativo ? 'Desativar' : 'Ativar'}
@@ -193,7 +193,7 @@ export function CatalogoPage() {
             </table>
 
             {!loadingProducts && products.length === 0 && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
+              <p className="text-sm text-muted-foreground text-center py-8">
                 Nenhum produto cadastrado ainda.
               </p>
             )}

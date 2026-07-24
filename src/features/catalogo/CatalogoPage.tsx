@@ -55,13 +55,13 @@ export function CatalogoPage() {
         <div className="inline-flex rounded-lg border border-border-strong overflow-hidden text-sm">
           <button
             onClick={() => setTab('servicos')}
-            className={`px-4 py-2 font-medium ${tab === 'servicos' ? 'bg-primary text-primary-foreground' : 'bg-surface text-foreground hover:bg-surface-2'}`}
+            className={`px-4 py-2 font-medium ${tab === 'servicos' ? 'btn-primary' : 'bg-surface text-foreground hover:bg-surface-2'}`}
           >
             Serviços
           </button>
           <button
             onClick={() => setTab('produtos')}
-            className={`px-4 py-2 font-medium border-l border-border-strong ${tab === 'produtos' ? 'bg-primary text-primary-foreground' : 'bg-surface text-foreground hover:bg-surface-2'}`}
+            className={`px-4 py-2 font-medium border-l border-border-strong ${tab === 'produtos' ? 'btn-primary' : 'bg-surface text-foreground hover:bg-surface-2'}`}
           >
             Produtos
           </button>
@@ -73,7 +73,7 @@ export function CatalogoPage() {
           <div className="flex justify-end mb-3">
             <button
               onClick={() => setEditingService('new')}
-              className="flex items-center gap-2 bg-primary text-primary-foreground rounded px-4 py-2 text-sm font-medium hover:bg-primary-hover"
+              className="flex items-center gap-2 btn-primary rounded px-4 py-2 text-sm font-medium"
             >
               <Plus size={16} />
               Novo serviço
@@ -136,7 +136,7 @@ export function CatalogoPage() {
           <div className="flex justify-end mb-3">
             <button
               onClick={() => setEditingProduct('new')}
-              className="flex items-center gap-2 bg-primary text-primary-foreground rounded px-4 py-2 text-sm font-medium hover:bg-primary-hover"
+              className="flex items-center gap-2 btn-primary rounded px-4 py-2 text-sm font-medium"
             >
               <Plus size={16} />
               Novo produto

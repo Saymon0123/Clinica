@@ -7,20 +7,11 @@ import {
   TrendingUp,
   TrendingDown,
 } from 'lucide-react'
-import {
-  Area,
-  AreaChart,
-  Cell,
-  Line,
-  LineChart,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-} from 'recharts'
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
 import { useSalon } from '../auth/useSalon'
 import { useFinanceiroData, type MetricKey, type PeriodFilter } from './useFinanceiroData'
+import { StatsCard } from '../../components/StatsCard'
+import { RadialGoal } from '../../components/RadialGoal'
 
 function formatCurrency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -67,10 +58,6 @@ export function FinanceiroPage() {
   }
 
   const goalPct = data.revenueGoal > 0 ? Math.min((data.revenueCurrent / data.revenueGoal) * 100, 100) : 0
-  const donutData = [
-    { name: 'Alcançado', value: Math.max(data.revenueCurrent, 0) },
-    { name: 'Restante', value: Math.max(data.revenueGoal - data.revenueCurrent, 0) },
-  ]
 
   return (
     <div className="space-y-5">
@@ -102,46 +89,28 @@ export function FinanceiroPage() {
 
       {error && <p className="text-sm text-danger">{error}</p>}
 
-      {/* Cards de métrica com sparkline */}
+      {/* Cards de métrica com mini-gráfico animado */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {CARD_CONFIG.map(({ key, label, icon: Icon, format }) => {
           const metric = data.metrics[key]
           const invert = key === 'cancelamentos'
-          const sparkColor = key === 'cancelamentos' ? 'var(--danger)' : 'var(--chart-line)'
+          const bars = metric.spark.map((p, i) => ({
+            label: String(p.x ?? i),
+            value: p.y,
+            highlight: i === metric.spark.length - 1,
+          }))
           return (
-            <div key={key} className="bg-surface border border-border rounded-xl p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary-soft text-primary-soft-foreground">
-                    <Icon size={15} />
-                  </span>
-                  <span className="text-sm">{label}</span>
-                </div>
-                <ChangeBadge pct={metric.changePct} invert={invert} />
-              </div>
-
-              <div className="flex items-end justify-between gap-2">
-                <div className="text-2xl font-semibold text-foreground">
-                  {loading ? '—' : format === 'currency' ? formatCurrency(metric.value) : metric.value}
-                </div>
-                <div className="w-20 h-9 shrink-0">
-                  {metric.spark.length > 1 && (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={metric.spark} margin={{ top: 4, bottom: 4, left: 0, right: 0 }}>
-                        <Line
-                          type="monotone"
-                          dataKey="y"
-                          stroke={sparkColor}
-                          strokeWidth={2}
-                          dot={false}
-                          isAnimationActive={false}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  )}
-                </div>
-              </div>
-            </div>
+            <StatsCard
+              key={key}
+              icon={<Icon size={15} />}
+              label={label}
+              value={loading ? 0 : metric.value}
+              formattedValue={(n) => (format === 'currency' ? formatCurrency(n) : Math.round(n).toString())}
+              badge={<ChangeBadge pct={metric.changePct} invert={invert} />}
+              bars={bars}
+              barColor={key === 'cancelamentos' ? 'bg-danger/25' : 'bg-primary/25'}
+              barHighlightColor={key === 'cancelamentos' ? 'bg-danger' : 'bg-primary'}
+            />
           )
         })}
       </div>
@@ -197,28 +166,8 @@ export function FinanceiroPage() {
             <h2 className="text-sm font-semibold text-foreground">Meta de faturamento</h2>
             <p className="text-xs text-muted-foreground">Mês atual</p>
           </div>
-          <div className="relative flex-1 min-h-52">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={donutData}
-                  dataKey="value"
-                  innerRadius="70%"
-                  outerRadius="100%"
-                  startAngle={90}
-                  endAngle={-270}
-                  stroke="none"
-                  isAnimationActive={false}
-                >
-                  <Cell fill="var(--chart-line)" />
-                  <Cell fill="var(--chart-track)" />
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-2xl font-semibold text-foreground">{goalPct.toFixed(0)}%</span>
-              <span className="text-xs text-muted-foreground">da meta</span>
-            </div>
+          <div className="relative flex-1 min-h-52 flex items-center justify-center">
+            <RadialGoal percent={goalPct} size={176} />
           </div>
           <div className="mt-3 text-center">
             <p className="text-sm font-medium text-foreground">

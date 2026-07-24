@@ -184,7 +184,7 @@ export function AgendaPage() {
 
           <button
             onClick={() => setModalState({})}
-            className="flex items-center gap-2 bg-primary text-primary-foreground rounded px-4 py-2 text-sm font-medium hover:bg-primary-hover"
+            className="flex items-center gap-2 btn-primary rounded px-4 py-2 text-sm font-medium"
           >
             <Plus size={16} />
             Nova reserva

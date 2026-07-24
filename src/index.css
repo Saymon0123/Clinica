@@ -80,3 +80,22 @@ body {
   background-color: var(--background);
   color: var(--foreground);
 }
+
+/* Botão primário com micro-interação premium (glow + leve elevação) */
+.btn-primary {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  transition: transform 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px -8px color-mix(in srgb, var(--primary) 55%, transparent);
+}
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 4px 10px -4px color-mix(in srgb, var(--primary) 45%, transparent);
+}
+.btn-primary:disabled {
+  cursor: not-allowed;
+}

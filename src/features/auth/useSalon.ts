@@ -5,11 +5,13 @@ import { useAuth } from './AuthContext'
 export function useSalon() {
   const { user } = useAuth()
   const [salonId, setSalonId] = useState<string | null>(null)
+  const [salonName, setSalonName] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!user) {
       setSalonId(null)
+      setSalonName(null)
       setLoading(false)
       return
     }
@@ -19,7 +21,7 @@ export function useSalon() {
 
     supabase
       .from('profiles')
-      .select('salon_id')
+      .select('salon_id, salons ( nome )')
       .eq('id', user.id)
       .maybeSingle()
       .then(({ data, error }) => {
@@ -28,6 +30,9 @@ export function useSalon() {
           console.error('Erro ao carregar perfil do salão:', error)
         }
         setSalonId(data?.salon_id ?? null)
+        const salonRelation = data?.salons as { nome?: string } | { nome?: string }[] | null | undefined
+        const nome = Array.isArray(salonRelation) ? salonRelation[0]?.nome : salonRelation?.nome
+        setSalonName(nome ?? null)
         setLoading(false)
       })
 
@@ -36,5 +41,5 @@ export function useSalon() {
     }
   }, [user])
 
-  return { salonId, loading }
+  return { salonId, salonName, loading }
 }

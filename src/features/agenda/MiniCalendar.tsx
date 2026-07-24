@@ -75,7 +75,7 @@ export function MiniCalendar({ selectedDate, visibleMonth, onSelectDate, onChang
               key={d.toISOString()}
               onClick={() => onSelectDate(d)}
               className={`aspect-square rounded text-xs flex items-center justify-center
-                ${isSelected ? 'bg-primary text-primary-foreground' : inMonth ? 'text-foreground hover:bg-surface-2' : 'text-muted-foreground/40'}
+                ${isSelected ? 'btn-primary' : inMonth ? 'text-foreground hover:bg-surface-2' : 'text-muted-foreground/40'}
                 ${isToday && !isSelected ? 'ring-1 ring-gray-400 dark:ring-gray-500' : ''}
               `}
             >

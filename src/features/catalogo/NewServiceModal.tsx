@@ -142,7 +142,7 @@ export function NewServiceModal({ salonId, service, onClose, onSaved }: Props) {
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 bg-primary text-primary-foreground rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+              className="flex-1 btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
               {submitting ? 'Salvando...' : 'Salvar'}
             </button>

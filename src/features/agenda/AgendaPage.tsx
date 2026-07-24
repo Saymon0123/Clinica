@@ -5,6 +5,7 @@ import { useSalon } from '../auth/useSalon'
 import { useAgendaData } from './useAgendaData'
 import { MiniCalendar } from './MiniCalendar'
 import { NewAppointmentModal } from './NewAppointmentModal'
+import { AppointmentDetailModal } from './AppointmentDetailModal'
 import type { Appointment } from './types'
 
 const HOUR_START = 6
@@ -31,21 +32,42 @@ function formatTime(iso: string) {
   return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
 
+const BLOCK_STYLES: Record<string, { container: string; text: string; subtext: string }> = {
+  default: {
+    container: 'bg-primary-soft border-primary',
+    text: 'text-primary-soft-foreground',
+    subtext: 'text-primary-soft-foreground/70',
+  },
+  concluido: {
+    container: 'bg-success-soft border-success',
+    text: 'text-success',
+    subtext: 'text-success/70',
+  },
+  cancelado: {
+    container: 'bg-surface-2 border-border-strong opacity-60',
+    text: 'text-muted-foreground line-through',
+    subtext: 'text-muted-foreground/70',
+  },
+}
+
 function AppointmentBlock({
   appt,
   dragging,
   onDragStart,
   onDragEnd,
+  onClick,
 }: {
   appt: Appointment
   dragging: boolean
   onDragStart: () => void
   onDragEnd: () => void
+  onClick: () => void
 }) {
   const top = (minutesSinceStart(appt.data_hora_inicio) / 60) * ROW_HEIGHT
   const durationMin =
     (new Date(appt.data_hora_fim).getTime() - new Date(appt.data_hora_inicio).getTime()) / 60000
   const height = Math.max((durationMin / 60) * ROW_HEIGHT, 24)
+  const style = BLOCK_STYLES[appt.status] ?? BLOCK_STYLES.default
 
   return (
     <div
@@ -56,15 +78,16 @@ function AppointmentBlock({
         onDragStart()
       }}
       onDragEnd={onDragEnd}
-      className={`absolute inset-x-1 rounded-lg bg-primary-soft border-l-2 border-primary px-2 py-1 overflow-hidden cursor-grab active:cursor-grabbing select-none ${
+      onClick={onClick}
+      className={`absolute inset-x-1 rounded-lg border-l-2 px-2 py-1 overflow-hidden cursor-pointer select-none ${style.container} ${
         dragging ? 'opacity-40' : ''
       }`}
       style={{ top, height }}
     >
-      <div className="text-xs font-medium text-primary-soft-foreground truncate">
+      <div className={`text-xs font-medium truncate ${style.text}`}>
         {formatTime(appt.data_hora_inicio)} · {appt.client_nome ?? 'Cliente'}
       </div>
-      {appt.service_nome && <div className="text-[11px] text-primary-soft-foreground/70 truncate">{appt.service_nome}</div>}
+      {appt.service_nome && <div className={`text-[11px] truncate ${style.subtext}`}>{appt.service_nome}</div>}
     </div>
   )
 }
@@ -76,6 +99,7 @@ export function AgendaPage() {
   const { professionals, services, appointments, loading, error, reload } = useAgendaData(salonId, selectedDate)
 
   const [modalState, setModalState] = useState<{ professionalId?: string; time?: string } | null>(null)
+  const [detailAppt, setDetailAppt] = useState<Appointment | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [rescheduling, setRescheduling] = useState(false)
   const [rescheduleError, setRescheduleError] = useState<string | null>(null)
@@ -251,6 +275,7 @@ export function AgendaPage() {
                       dragging={draggingId === appt.id}
                       onDragStart={() => setDraggingId(appt.id)}
                       onDragEnd={() => setDraggingId(null)}
+                      onClick={() => setDetailAppt(appt)}
                     />
                   ))}
                 </div>
@@ -296,6 +321,14 @@ export function AgendaPage() {
           defaultTime={modalState.time}
           onClose={() => setModalState(null)}
           onCreated={reload}
+        />
+      )}
+
+      {detailAppt && (
+        <AppointmentDetailModal
+          appointment={detailAppt}
+          onClose={() => setDetailAppt(null)}
+          onChanged={reload}
         />
       )}
     </div>

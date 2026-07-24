@@ -211,6 +211,39 @@ export function FinanceiroPage() {
         )}
       </div>
 
+      {/* Comissões do período */}
+      <div className="bg-surface border border-border rounded-xl p-5">
+        <div className="mb-4">
+          <h2 className="text-sm font-semibold text-foreground">Comissões</h2>
+          <p className="text-xs text-muted-foreground">
+            {filter === 'dia' ? 'Hoje' : 'Este mês'} · sobre serviços vendidos
+          </p>
+        </div>
+
+        {data.commissions.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">
+            Nenhuma comissão no período (defina o percentual de comissão do profissional para calcular).
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {data.commissions.map((c) => (
+              <div
+                key={c.professionalNome}
+                className="flex items-center justify-between gap-3 bg-surface-2 rounded-lg px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-foreground truncate">{c.professionalNome}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {c.percentual.toFixed(0)}% sobre {formatCurrency(c.base)} em serviços
+                  </div>
+                </div>
+                <span className="text-sm font-semibold text-foreground shrink-0">{formatCurrency(c.valor)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <p className="text-xs text-muted-foreground">
         Faturamento considera comandas fechadas; clientes atendidos considera agendamentos concluídos. As
         variações comparam com {filter === 'dia' ? 'ontem' : 'o mês anterior'}.

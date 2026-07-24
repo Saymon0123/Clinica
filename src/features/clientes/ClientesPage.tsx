@@ -3,6 +3,8 @@ import { Inbox, Plus, Search } from 'lucide-react'
 import { useSalon } from '../auth/useSalon'
 import { useClientsData } from './useClientsData'
 import { NewClientModal } from './NewClientModal'
+import { ClientDetailModal } from './ClientDetailModal'
+import type { Client } from './types'
 
 function formatDate(iso: string | null) {
   if (!iso) return '—'
@@ -14,6 +16,8 @@ export function ClientesPage() {
   const { clients, loading, error, reload } = useClientsData(salonId)
   const [search, setSearch] = useState('')
   const [showNewClient, setShowNewClient] = useState(false)
+  const [detailClient, setDetailClient] = useState<Client | null>(null)
+  const [editClient, setEditClient] = useState<Client | null>(null)
 
   const filteredClients = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -91,7 +95,11 @@ export function ClientesPage() {
               </thead>
               <tbody>
                 {filteredClients.map((client) => (
-                  <tr key={client.id} className="border-b border-border last:border-0">
+                  <tr
+                    key={client.id}
+                    onClick={() => setDetailClient(client)}
+                    className="border-b border-border last:border-0 cursor-pointer hover:bg-surface-2 transition-colors"
+                  >
                     <td className="px-4 py-3 text-foreground font-medium">{client.nome}</td>
                     <td className="px-4 py-3 text-muted-foreground">{client.telefone ?? '—'}</td>
                     <td className="px-4 py-3 text-muted-foreground">{formatDate(client.aniversario)}</td>
@@ -110,6 +118,26 @@ export function ClientesPage() {
 
       {showNewClient && (
         <NewClientModal salonId={salonId} onClose={() => setShowNewClient(false)} onCreated={reload} />
+      )}
+
+      {detailClient && !editClient && (
+        <ClientDetailModal
+          client={detailClient}
+          onClose={() => setDetailClient(null)}
+          onEdit={() => setEditClient(detailClient)}
+        />
+      )}
+
+      {editClient && (
+        <NewClientModal
+          salonId={salonId}
+          initial={editClient}
+          onClose={() => {
+            setEditClient(null)
+            setDetailClient(null)
+          }}
+          onCreated={reload}
+        />
       )}
     </div>
   )

@@ -1,18 +1,21 @@
 import { useState, type FormEvent } from 'react'
 import { X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import type { Client } from './types'
 
 type Props = {
   salonId: string
+  initial?: Client
   onClose: () => void
   onCreated: () => void
 }
 
-export function NewClientModal({ salonId, onClose, onCreated }: Props) {
-  const [nome, setNome] = useState('')
-  const [telefone, setTelefone] = useState('')
-  const [aniversario, setAniversario] = useState('')
-  const [observacao, setObservacao] = useState('')
+export function NewClientModal({ salonId, initial, onClose, onCreated }: Props) {
+  const isEditing = Boolean(initial)
+  const [nome, setNome] = useState(initial?.nome ?? '')
+  const [telefone, setTelefone] = useState(initial?.telefone ?? '')
+  const [aniversario, setAniversario] = useState(initial?.aniversario ?? '')
+  const [observacao, setObservacao] = useState(initial?.observacao ?? '')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -26,19 +29,27 @@ export function NewClientModal({ salonId, onClose, onCreated }: Props) {
     setSubmitting(true)
     setError(null)
     try {
-      const { error: insertError } = await supabase.from('clients').insert({
-        salon_id: salonId,
+      const payload = {
         nome: nome.trim(),
         telefone: telefone.trim() || null,
         aniversario: aniversario || null,
         observacao: observacao.trim() || null,
-      })
-      if (insertError) throw insertError
+      }
+
+      if (isEditing && initial) {
+        const { error: updateError } = await supabase.from('clients').update(payload).eq('id', initial.id)
+        if (updateError) throw updateError
+      } else {
+        const { error: insertError } = await supabase
+          .from('clients')
+          .insert({ salon_id: salonId, ...payload })
+        if (insertError) throw insertError
+      }
 
       onCreated()
       onClose()
     } catch (err) {
-      console.error('Erro ao adicionar cliente:', err)
+      console.error('Erro ao salvar cliente:', err)
       setError('Não foi possível salvar o cliente. Tente novamente.')
     } finally {
       setSubmitting(false)
@@ -49,7 +60,9 @@ export function NewClientModal({ salonId, onClose, onCreated }: Props) {
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
       <div className="w-full max-w-md bg-surface rounded-xl border border-border-lg">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h2 className="text-lg font-semibold text-foreground">Adicionar cliente</h2>
+          <h2 className="text-lg font-semibold text-foreground">
+            {isEditing ? 'Editar cliente' : 'Adicionar cliente'}
+          </h2>
           <button onClick={onClose} aria-label="Fechar" className="text-muted-foreground p-1">
             <X size={20} />
           </button>
@@ -116,7 +129,7 @@ export function NewClientModal({ salonId, onClose, onCreated }: Props) {
               disabled={submitting}
               className="flex-1 btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
-              {submitting ? 'Salvando...' : 'Salvar cliente'}
+              {submitting ? 'Salvando...' : isEditing ? 'Salvar alterações' : 'Salvar cliente'}
             </button>
           </div>
         </form>

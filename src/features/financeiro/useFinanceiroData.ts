@@ -21,12 +21,20 @@ export type ServiceShare = {
   share: number
 }
 
+export type CommissionRow = {
+  professionalNome: string
+  percentual: number
+  base: number
+  valor: number
+}
+
 export type FinanceiroData = {
   metrics: Record<MetricKey, MetricData>
   clientsGrowth: { month: string; total: number }[]
   revenueCurrent: number
   revenueGoal: number
   topServices: ServiceShare[]
+  commissions: CommissionRow[]
 }
 
 const EMPTY_METRIC: MetricData = { value: 0, previous: 0, changePct: null, spark: [] }
@@ -42,6 +50,7 @@ const EMPTY_DATA: FinanceiroData = {
   revenueCurrent: 0,
   revenueGoal: META_FATURAMENTO_MENSAL,
   topServices: [],
+  commissions: [],
 }
 
 function dayKey(d: Date) {
@@ -105,7 +114,13 @@ type ApptRow = { client_id: string | null; status: string; data_hora_inicio: str
 type OrderRow = {
   closed_at: string | null
   payments: { valor: number }[]
-  order_items: { tipo: string; service_id: string | null; quantidade: number; preco_unitario: number }[]
+  order_items: {
+    tipo: string
+    service_id: string | null
+    professional_id: string | null
+    quantidade: number
+    preco_unitario: number
+  }[]
 }
 
 export function useFinanceiroData(salonId: string | null, filter: PeriodFilter) {
@@ -122,7 +137,7 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter) 
     const windowStartISO = p.windowStart.toISOString()
     const currentEndISO = p.currentEnd.toISOString()
 
-    const [apptResult, ordersResult, clientsResult, servicesResult] = await Promise.all([
+    const [apptResult, ordersResult, clientsResult, servicesResult, professionalsResult] = await Promise.all([
       supabase
         .from('appointments')
         .select('client_id, status, data_hora_inicio')
@@ -132,13 +147,19 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter) 
         .neq('status', 'bloqueio'),
       supabase
         .from('orders')
-        .select('closed_at, payments(valor), order_items(tipo, service_id, quantidade, preco_unitario)')
+        .select(
+          'closed_at, payments(valor), order_items(tipo, service_id, professional_id, quantidade, preco_unitario)',
+        )
         .eq('salon_id', salonId)
         .eq('status', 'fechada')
         .gte('closed_at', windowStartISO)
         .lte('closed_at', currentEndISO),
       supabase.from('clients').select('created_at').eq('salon_id', salonId),
       supabase.from('services').select('id, nome').eq('salon_id', salonId),
+      supabase
+        .from('professionals')
+        .select('id, nome, comissao_percentual')
+        .eq('salon_id', salonId),
     ])
 
     if (apptResult.error || ordersResult.error || clientsResult.error || servicesResult.error) {
@@ -155,6 +176,12 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter) 
     const clients = (clientsResult.data ?? []) as { created_at: string }[]
     const serviceNames = new Map(
       (servicesResult.data ?? []).map((s) => [s.id as string, s.nome as string]),
+    )
+    const professionalsInfo = new Map(
+      (professionalsResult.data ?? []).map((pr) => [
+        pr.id as string,
+        { nome: pr.nome as string, pct: pr.comissao_percentual != null ? Number(pr.comissao_percentual) : 0 },
+      ]),
     )
 
     // Helpers de filtro por intervalo
@@ -244,12 +271,38 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter) 
       share: maxRevenue ? (revenue / maxRevenue) * 100 : 0,
     }))
 
+    // Comissões do período: serviços vendidos × percentual de cada profissional
+    const commissionByProf = new Map<string, { base: number }>()
+    for (const o of curOrders) {
+      for (const item of o.order_items ?? []) {
+        if (item.tipo !== 'servico' || !item.professional_id) continue
+        const base = Number(item.preco_unitario) * (item.quantidade ?? 1)
+        const acc = commissionByProf.get(item.professional_id) ?? { base: 0 }
+        acc.base += base
+        commissionByProf.set(item.professional_id, acc)
+      }
+    }
+    const commissions: CommissionRow[] = [...commissionByProf.entries()]
+      .map(([profId, { base }]) => {
+        const info = professionalsInfo.get(profId)
+        const pct = info?.pct ?? 0
+        return {
+          professionalNome: info?.nome ?? 'Profissional',
+          percentual: pct,
+          base,
+          valor: (base * pct) / 100,
+        }
+      })
+      .filter((c) => c.percentual > 0)
+      .sort((a, b) => b.valor - a.valor)
+
     setData({
       metrics,
       clientsGrowth,
       revenueCurrent,
       revenueGoal: META_FATURAMENTO_MENSAL,
       topServices,
+      commissions,
     })
     setLoading(false)
   }, [salonId, filter])

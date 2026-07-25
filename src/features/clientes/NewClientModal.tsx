@@ -50,7 +50,12 @@ export function NewClientModal({ salonId, initial, onClose, onCreated }: Props) 
       onClose()
     } catch (err) {
       console.error('Erro ao salvar cliente:', err)
-      setError('Não foi possível salvar o cliente. Tente novamente.')
+      const code = (err as { code?: string } | null)?.code
+      setError(
+        code === '23505'
+          ? 'Já existe um cliente cadastrado com esse telefone.'
+          : 'Não foi possível salvar o cliente. Tente novamente.',
+      )
     } finally {
       setSubmitting(false)
     }

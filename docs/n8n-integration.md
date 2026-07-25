@@ -121,16 +121,32 @@ cada mensagem inserida — não precisa (nem deve) atualizar isso manualmente.
 
 ### `clients` — cadastro do cliente (para vincular ao agendamento)
 
-| coluna | tipo | obrigatório |
-|---|---|---|
-| `salon_id` | uuid | sim |
-| `nome` | text | sim |
-| `telefone` | text | não, mas recomendado sempre preencher |
+| coluna | tipo | obrigatório | observação |
+|---|---|---|---|
+| `salon_id` | uuid | sim | |
+| `nome` | text | sim | |
+| `telefone` | text | não, mas recomendado sempre preencher | grave como veio do WhatsApp |
+| `telefone_norm` | text | **nunca escreva** | calculado pelo banco: os últimos 8 dígitos do telefone |
 
-**Não existe unique constraint em telefone hoje.** Antes de criar, faça um
-`GET` filtrando `salon_id=eq.<uuid>&telefone=eq.<telefone>` — se retornar
-algo, reuse o `id`; se vazio, crie um novo. Isso evita duplicar o mesmo
-cliente a cada agendamento.
+### ⚠️ Sempre busque o cliente por `telefone_norm`, nunca por `telefone`
+
+O WhatsApp entrega o número como `554187275895` (com DDI `55` e, em números
+antigos, **sem o 9**), enquanto o barbeiro cadastra no CRM como
+`(41) 98727-5895` ou `41987275895`. Comparar `telefone` por igualdade
+**nunca casa** — o fluxo acha que o cliente não existe e cria um duplicado.
+
+Os últimos 8 dígitos são idênticos em todos esses formatos, então o banco
+mantém uma coluna gerada `telefone_norm` com exatamente isso. Para buscar:
+
+```
+GET /rest/v1/clients?salon_id=eq.<uuid>&telefone_norm=eq.<ultimos8>&select=id,nome
+```
+
+Onde `<ultimos8>` é `contact_phone.replace(/\D/g,'').slice(-8)`.
+
+Existe um índice único `(salon_id, telefone_norm)`: tentar cadastrar o mesmo
+telefone duas vezes no mesmo salão retorna erro `23505`. Busque antes de
+criar.
 
 ### `professionals` e `services` — apenas leitura
 

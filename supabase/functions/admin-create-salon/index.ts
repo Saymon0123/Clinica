@@ -42,6 +42,7 @@ Deno.serve(async (req: Request) => {
   }
 
   let body: {
+    action?: string
     salonName?: string
     ownerName?: string
     ownerEmail?: string
@@ -52,6 +53,11 @@ Deno.serve(async (req: Request) => {
     body = await req.json()
   } catch {
     return json({ error: 'Corpo da requisição inválido.' }, 400)
+  }
+
+  // Apenas valida a senha administrativa (usado pela tela de acesso).
+  if (body.action === 'verify') {
+    return json({ ok: true })
   }
 
   const salonName = body.salonName?.trim()

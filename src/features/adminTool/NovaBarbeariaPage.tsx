@@ -12,12 +12,36 @@ type Result = {
 
 function AccessGate({ onUnlock }: { onUnlock: (secret: string) => void }) {
   const [value, setValue] = useState('')
+  const [checking, setChecking] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!value.trim()) return
-    sessionStorage.setItem(SECRET_STORAGE_KEY, value.trim())
-    onUnlock(value.trim())
+    const secret = value.trim()
+    if (!secret || checking) return
+
+    setChecking(true)
+    setError(null)
+    try {
+      // Valida a senha no servidor ANTES de liberar o formulário.
+      const { data, error: invokeError } = await supabase.functions.invoke('admin-create-salon', {
+        headers: { 'x-admin-secret': secret },
+        body: { action: 'verify' },
+      })
+
+      if (invokeError || data?.error || !data?.ok) {
+        setError('Senha incorreta. Verifique e tente novamente.')
+        return
+      }
+
+      sessionStorage.setItem(SECRET_STORAGE_KEY, secret)
+      onUnlock(secret)
+    } catch (err) {
+      console.error('Erro ao validar senha administrativa:', err)
+      setError('Não foi possível validar a senha agora. Verifique sua conexão e tente novamente.')
+    } finally {
+      setChecking(false)
+    }
   }
 
   return (
@@ -30,13 +54,23 @@ function AccessGate({ onUnlock }: { onUnlock: (secret: string) => void }) {
         <input
           type="password"
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => {
+            setValue(e.target.value)
+            setError(null)
+          }}
           placeholder="Senha de acesso"
           autoFocus
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+          className={`w-full border rounded px-3 py-2 text-sm ${
+            error ? 'border-red-400 focus:outline-red-400' : 'border-gray-300'
+          }`}
         />
-        <button type="submit" className="w-full btn-primary rounded px-3 py-2 text-sm font-medium">
-          Entrar
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <button
+          type="submit"
+          disabled={checking || !value.trim()}
+          className="w-full btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+        >
+          {checking ? 'Verificando...' : 'Entrar'}
         </button>
       </form>
     </div>

@@ -1,0 +1,218 @@
+import { useCallback, useEffect, useState } from 'react'
+import { Building2, Check, MessageCircle, Pencil, Power, RefreshCw, X } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
+
+type SalonRow = {
+  id: string
+  nome: string
+  endereco: string | null
+  telefone: string | null
+  ativo: boolean
+  created_at: string
+  rede: string | null
+  whatsapp: string
+  equipe: number
+  agendamentos30d: number
+}
+
+export function SalonList({ secret, refreshKey }: { secret: string; refreshKey: number }) {
+  const [salons, setSalons] = useState<SalonRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [erro, setErro] = useState<string | null>(null)
+  const [editando, setEditando] = useState<SalonRow | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const carregar = useCallback(async () => {
+    setLoading(true)
+    setErro(null)
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-create-salon', {
+        headers: { 'x-admin-secret': secret },
+        body: { action: 'list' },
+      })
+      if (error || data?.error) {
+        setErro(data?.error ?? 'Não foi possível carregar as barbearias.')
+        return
+      }
+      setSalons((data.salons ?? []) as SalonRow[])
+    } catch (err) {
+      console.error('Erro ao listar:', err)
+      setErro('Não foi possível carregar as barbearias.')
+    } finally {
+      setLoading(false)
+    }
+  }, [secret])
+
+  useEffect(() => {
+    carregar()
+  }, [carregar, refreshKey])
+
+  async function alternarAtivo(salon: SalonRow) {
+    setBusy(true)
+    await supabase.functions.invoke('admin-create-salon', {
+      headers: { 'x-admin-secret': secret },
+      body: { action: 'toggle_salon', salonId: salon.id, ativo: !salon.ativo },
+    })
+    setBusy(false)
+    carregar()
+  }
+
+  async function salvarEdicao() {
+    if (!editando) return
+    setBusy(true)
+    const { data, error } = await supabase.functions.invoke('admin-create-salon', {
+      headers: { 'x-admin-secret': secret },
+      body: {
+        action: 'update_salon',
+        salonId: editando.id,
+        nome: editando.nome,
+        endereco: editando.endereco ?? '',
+        telefone: editando.telefone ?? '',
+      },
+    })
+    setBusy(false)
+    if (error || data?.error) {
+      setErro(data?.error ?? 'Não foi possível salvar.')
+      return
+    }
+    setEditando(null)
+    carregar()
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          {loading ? 'Carregando...' : `${salons.length} barbearia${salons.length === 1 ? '' : 's'}`}
+        </p>
+        <button
+          onClick={carregar}
+          className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+        >
+          <RefreshCw size={14} />
+          Atualizar
+        </button>
+      </div>
+
+      {erro && <p className="text-sm text-danger">{erro}</p>}
+
+      {salons.map((s) => (
+        <div
+          key={s.id}
+          className={`bg-surface border rounded-xl p-4 ${
+            s.ativo ? 'border-border' : 'border-border opacity-60'
+          }`}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-medium text-foreground">{s.nome}</span>
+                {s.rede && (
+                  <span className="inline-flex items-center gap-1 text-[11px] rounded-full bg-primary-soft text-primary-soft-foreground px-2 py-0.5">
+                    <Building2 size={10} />
+                    {s.rede}
+                  </span>
+                )}
+                {!s.ativo && (
+                  <span className="text-[11px] rounded-full bg-danger-soft text-danger px-2 py-0.5">
+                    Desativada
+                  </span>
+                )}
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                {s.endereco ?? 'Sem endereço'}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={() => setEditando(s)}
+                aria-label={`Editar ${s.nome}`}
+                className="p-1.5 text-muted-foreground hover:text-foreground rounded hover:bg-surface-2"
+              >
+                <Pencil size={15} />
+              </button>
+              <button
+                onClick={() => alternarAtivo(s)}
+                disabled={busy}
+                aria-label={s.ativo ? `Desativar ${s.nome}` : `Reativar ${s.nome}`}
+                className={`p-1.5 rounded hover:bg-surface-2 ${
+                  s.ativo ? 'text-muted-foreground hover:text-danger' : 'text-success'
+                }`}
+              >
+                <Power size={15} />
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <MessageCircle size={12} className={s.whatsapp === 'open' ? 'text-success' : ''} />
+              WhatsApp {s.whatsapp === 'open' ? 'conectado' : 'não conectado'}
+            </span>
+            <span>{s.equipe} na equipe</span>
+            <span>{s.agendamentos30d} agendamentos (30d)</span>
+          </div>
+        </div>
+      ))}
+
+      {!loading && salons.length === 0 && (
+        <p className="text-sm text-muted-foreground text-center py-8">
+          Nenhuma barbearia cadastrada ainda.
+        </p>
+      )}
+
+      {/* Edição */}
+      {editando && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setEditando(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-surface rounded-xl border border-border w-full max-w-sm p-5 space-y-3"
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-foreground">Editar barbearia</h2>
+              <button
+                onClick={() => setEditando(null)}
+                aria-label="Fechar"
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <input
+              value={editando.nome}
+              onChange={(e) => setEditando({ ...editando, nome: e.target.value })}
+              placeholder="Nome"
+              className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+            />
+            <input
+              value={editando.endereco ?? ''}
+              onChange={(e) => setEditando({ ...editando, endereco: e.target.value })}
+              placeholder="Endereço"
+              className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+            />
+            <input
+              value={editando.telefone ?? ''}
+              onChange={(e) => setEditando({ ...editando, telefone: e.target.value })}
+              placeholder="Telefone"
+              className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+            />
+
+            <button
+              onClick={salvarEdicao}
+              disabled={busy}
+              className="w-full flex items-center justify-center gap-1.5 btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+            >
+              <Check size={15} />
+              {busy ? 'Salvando...' : 'Salvar'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

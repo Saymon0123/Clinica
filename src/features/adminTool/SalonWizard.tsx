@@ -1,0 +1,549 @@
+import { useState } from 'react'
+import { Building2, Check, ChevronLeft, ChevronRight, Copy, Plus, Store, Trash2 } from 'lucide-react'
+import { invokeFunction } from '../../lib/invokeFunction'
+import {
+  HORARIO_PADRAO,
+  SERVICOS_PADRAO,
+  serializarHorario,
+  type DiaSemana,
+  type ServicoPadrao,
+} from './servicosPadrao'
+
+type Unidade = { nome: string; endereco: string; telefone: string }
+type ServicoEscolhido = ServicoPadrao & { escolhido: boolean }
+
+type Resultado = {
+  email: string
+  tempPassword: string
+  loginUrl: string
+  rede: string | null
+  salons: { id: string; nome: string }[]
+}
+
+const PASSOS = ['Tipo', 'Unidades', 'Dono', 'Funcionamento', 'Serviços']
+
+function CopyField({ label, value }: { label: string; value: string }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <div>
+      <div className="text-xs text-muted-foreground mb-1">{label}</div>
+      <div className="flex items-center gap-2">
+        <code className="flex-1 bg-surface-2 rounded px-3 py-2 text-sm break-all">{value}</code>
+        <button
+          type="button"
+          onClick={async () => {
+            await navigator.clipboard.writeText(value)
+            setCopied(true)
+            setTimeout(() => setCopied(false), 1500)
+          }}
+          aria-label={`Copiar ${label}`}
+          className="p-2 border border-border-strong rounded text-muted-foreground hover:bg-surface-2 shrink-0"
+        >
+          {copied ? <Check size={16} className="text-success" /> : <Copy size={16} />}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: () => void }) {
+  const [passo, setPasso] = useState(0)
+  const [tipo, setTipo] = useState<'unica' | 'rede'>('unica')
+  const [redeNome, setRedeNome] = useState('')
+  const [redeCnpj, setRedeCnpj] = useState('')
+  const [unidades, setUnidades] = useState<Unidade[]>([{ nome: '', endereco: '', telefone: '' }])
+  const [donoNome, setDonoNome] = useState('')
+  const [donoEmail, setDonoEmail] = useState('')
+  const [donoTelefone, setDonoTelefone] = useState('')
+  const [horario, setHorario] = useState<DiaSemana[]>(HORARIO_PADRAO)
+  const [servicos, setServicos] = useState<ServicoEscolhido[]>(
+    SERVICOS_PADRAO.map((s) => ({ ...s, escolhido: s.padrao })),
+  )
+
+  const [salvando, setSalvando] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+  const [resultado, setResultado] = useState<Resultado | null>(null)
+
+  function validarPasso(): string | null {
+    if (passo === 0 && tipo === 'rede' && !redeNome.trim()) return 'Informe o nome da rede.'
+    if (passo === 1) {
+      if (unidades.some((u) => !u.nome.trim())) return 'Toda unidade precisa de um nome.'
+      if (unidades.some((u) => !u.endereco.trim())) return 'O endereço é obrigatório.'
+    }
+    if (passo === 2) {
+      if (!donoNome.trim()) return 'Informe o nome do dono.'
+      if (!donoEmail.trim()) return 'Informe o e-mail de acesso.'
+      if (!/^\S+@\S+\.\S+$/.test(donoEmail.trim())) return 'E-mail inválido.'
+    }
+    if (passo === 4 && !servicos.some((s) => s.escolhido)) {
+      return 'Selecione ao menos um serviço.'
+    }
+    return null
+  }
+
+  function avancar() {
+    const problema = validarPasso()
+    if (problema) {
+      setErro(problema)
+      return
+    }
+    setErro(null)
+    setPasso((p) => Math.min(p + 1, PASSOS.length - 1))
+  }
+
+  async function criar() {
+    const problema = validarPasso()
+    if (problema) {
+      setErro(problema)
+      return
+    }
+
+    setSalvando(true)
+    setErro(null)
+    try {
+      const { data, error } = await invokeFunction<Resultado>('admin-create-salon', {
+        headers: { 'x-admin-secret': secret },
+        body: {
+          action: 'create',
+          tipo,
+          organizacao: tipo === 'rede' ? { nome: redeNome, cnpj: redeCnpj } : undefined,
+          dono: { nome: donoNome, email: donoEmail, telefone: donoTelefone },
+          unidades: unidades.map((u) => ({
+            nome: u.nome,
+            endereco: u.endereco,
+            telefone: u.telefone,
+            horario_funcionamento: serializarHorario(horario),
+          })),
+          servicos: servicos
+            .filter((s) => s.escolhido)
+            .map((s) => ({ nome: s.nome, preco: s.preco, duracao_minutos: s.duracao_minutos })),
+        },
+      })
+
+      if (error || !data) {
+        setErro(error ?? 'Não foi possível cadastrar. Tente novamente.')
+        return
+      }
+      setResultado(data)
+      onCreated()
+    } catch (err) {
+      console.error('Erro ao cadastrar:', err)
+      setErro('Não foi possível cadastrar. Tente novamente.')
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  // ---------- Tela de sucesso ----------
+  if (resultado) {
+    return (
+      <div className="bg-surface rounded-xl border border-success/40 p-6 space-y-4">
+        <div className="flex items-center gap-2 text-success">
+          <Check size={20} />
+          <h2 className="text-base font-semibold">
+            {resultado.salons.length > 1
+              ? `Rede cadastrada com ${resultado.salons.length} unidades!`
+              : 'Barbearia cadastrada!'}
+          </h2>
+        </div>
+
+        <p className="text-sm text-muted-foreground">
+          Mande estes dados para o dono. Recomende trocar a senha no primeiro acesso.
+        </p>
+
+        <CopyField label="Link de acesso" value={resultado.loginUrl} />
+        <CopyField label="E-mail" value={resultado.email} />
+        <CopyField label="Senha temporária" value={resultado.tempPassword} />
+
+        <CopyField
+          label="Mensagem pronta para WhatsApp"
+          value={`Olá! Seu acesso ao Salão CRM está pronto.\n\nLink: ${resultado.loginUrl}\nE-mail: ${resultado.email}\nSenha: ${resultado.tempPassword}\n\nRecomendo trocar a senha assim que entrar.`}
+        />
+
+        <div className="pt-2 border-t border-border">
+          <div className="text-xs text-muted-foreground mb-1">Unidades criadas</div>
+          <ul className="text-sm text-foreground space-y-0.5">
+            {resultado.salons.map((s) => (
+              <li key={s.id}>· {s.nome}</li>
+            ))}
+          </ul>
+        </div>
+
+        <button
+          onClick={() => {
+            setResultado(null)
+            setPasso(0)
+            setUnidades([{ nome: '', endereco: '', telefone: '' }])
+            setDonoNome('')
+            setDonoEmail('')
+            setDonoTelefone('')
+            setRedeNome('')
+            setRedeCnpj('')
+          }}
+          className="w-full btn-primary rounded px-3 py-2 text-sm font-medium"
+        >
+          Cadastrar outra
+        </button>
+      </div>
+    )
+  }
+
+  const grupos = [...new Set(servicos.map((s) => s.grupo))]
+
+  return (
+    <div className="bg-surface rounded-xl border border-border p-6">
+      {/* Progresso */}
+      <div className="flex items-center gap-1 mb-6">
+        {PASSOS.map((nome, i) => (
+          <div key={nome} className="flex-1">
+            <div
+              className={`h-1 rounded-full transition-colors ${
+                i <= passo ? 'bg-primary' : 'bg-surface-2'
+              }`}
+            />
+            <span
+              className={`text-[11px] mt-1 block ${
+                i === passo ? 'text-foreground font-medium' : 'text-muted-foreground'
+              }`}
+            >
+              {nome}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Passo 1 — tipo */}
+      {passo === 0 && (
+        <div className="space-y-4">
+          <h2 className="text-base font-semibold text-foreground">É uma barbearia ou uma rede?</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              onClick={() => {
+                setTipo('unica')
+                setUnidades((u) => u.slice(0, 1))
+              }}
+              className={`flex flex-col items-start gap-1 rounded-lg border p-4 text-left transition-colors ${
+                tipo === 'unica'
+                  ? 'border-primary bg-primary-soft'
+                  : 'border-border-strong hover:bg-surface-2'
+              }`}
+            >
+              <Store size={20} className={tipo === 'unica' ? 'text-primary' : 'text-muted-foreground'} />
+              <span className="text-sm font-medium text-foreground">Barbearia única</span>
+              <span className="text-xs text-muted-foreground">Um endereço só</span>
+            </button>
+            <button
+              onClick={() => setTipo('rede')}
+              className={`flex flex-col items-start gap-1 rounded-lg border p-4 text-left transition-colors ${
+                tipo === 'rede'
+                  ? 'border-primary bg-primary-soft'
+                  : 'border-border-strong hover:bg-surface-2'
+              }`}
+            >
+              <Building2 size={20} className={tipo === 'rede' ? 'text-primary' : 'text-muted-foreground'} />
+              <span className="text-sm font-medium text-foreground">Rede</span>
+              <span className="text-xs text-muted-foreground">Várias unidades</span>
+            </button>
+          </div>
+
+          {tipo === 'rede' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+              <label className="block">
+                <span className="text-xs font-medium text-muted-foreground">Nome da rede</span>
+                <input
+                  value={redeNome}
+                  onChange={(e) => setRedeNome(e.target.value)}
+                  placeholder="Ex.: Barbearia do Zé"
+                  className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-muted-foreground">CNPJ (opcional)</span>
+                <input
+                  value={redeCnpj}
+                  onChange={(e) => setRedeCnpj(e.target.value)}
+                  className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                />
+              </label>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Passo 2 — unidades */}
+      {passo === 1 && (
+        <div className="space-y-3">
+          <h2 className="text-base font-semibold text-foreground">
+            {tipo === 'rede' ? 'Unidades da rede' : 'Dados da barbearia'}
+          </h2>
+
+          {unidades.map((u, i) => (
+            <div key={i} className="rounded-lg border border-border p-3 space-y-2">
+              {tipo === 'rede' && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">Unidade {i + 1}</span>
+                  {unidades.length > 1 && (
+                    <button
+                      onClick={() => setUnidades((prev) => prev.filter((_, idx) => idx !== i))}
+                      aria-label={`Remover unidade ${i + 1}`}
+                      className="text-muted-foreground hover:text-danger"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+              )}
+              <input
+                value={u.nome}
+                onChange={(e) =>
+                  setUnidades((prev) => prev.map((x, idx) => (idx === i ? { ...x, nome: e.target.value } : x)))
+                }
+                placeholder="Nome da barbearia"
+                className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              />
+              <input
+                value={u.endereco}
+                onChange={(e) =>
+                  setUnidades((prev) =>
+                    prev.map((x, idx) => (idx === i ? { ...x, endereco: e.target.value } : x)),
+                  )
+                }
+                placeholder="Endereço completo"
+                className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              />
+              <input
+                value={u.telefone}
+                onChange={(e) =>
+                  setUnidades((prev) =>
+                    prev.map((x, idx) => (idx === i ? { ...x, telefone: e.target.value } : x)),
+                  )
+                }
+                placeholder="Telefone da unidade (opcional)"
+                className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              />
+            </div>
+          ))}
+
+          {tipo === 'rede' && (
+            <button
+              onClick={() => setUnidades((prev) => [...prev, { nome: '', endereco: '', telefone: '' }])}
+              className="flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+            >
+              <Plus size={15} />
+              Adicionar unidade
+            </button>
+          )}
+
+          {tipo === 'rede' && unidades.length > 1 && (
+            <p className="text-xs text-muted-foreground">
+              O catálogo de serviços e o horário serão aplicados em todas as unidades.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Passo 3 — dono */}
+      {passo === 2 && (
+        <div className="space-y-3">
+          <h2 className="text-base font-semibold text-foreground">Dono</h2>
+          <p className="text-xs text-muted-foreground">
+            É quem vai receber o acesso{tipo === 'rede' ? ' a todas as unidades' : ''}.
+          </p>
+          <input
+            value={donoNome}
+            onChange={(e) => setDonoNome(e.target.value)}
+            placeholder="Nome completo"
+            className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+          />
+          <input
+            type="email"
+            value={donoEmail}
+            onChange={(e) => setDonoEmail(e.target.value)}
+            placeholder="E-mail de acesso"
+            className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+          />
+          <input
+            value={donoTelefone}
+            onChange={(e) => setDonoTelefone(e.target.value)}
+            placeholder="Telefone (opcional)"
+            className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+          />
+        </div>
+      )}
+
+      {/* Passo 4 — funcionamento */}
+      {passo === 3 && (
+        <div className="space-y-3">
+          <h2 className="text-base font-semibold text-foreground">Horário de funcionamento</h2>
+          <p className="text-xs text-muted-foreground">
+            Usado na agenda e para o atendimento automático não oferecer horário com a
+            barbearia fechada.
+          </p>
+          <div className="space-y-1.5">
+            {horario.map((d, i) => (
+              <div key={d.chave} className="flex items-center gap-2">
+                <label className="flex items-center gap-2 w-28 shrink-0 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={d.aberto}
+                    onChange={(e) =>
+                      setHorario((prev) =>
+                        prev.map((x, idx) => (idx === i ? { ...x, aberto: e.target.checked } : x)),
+                      )
+                    }
+                    className="accent-primary"
+                  />
+                  <span className="text-sm text-foreground">{d.label}</span>
+                </label>
+                {d.aberto ? (
+                  <>
+                    <input
+                      type="time"
+                      value={d.abre}
+                      onChange={(e) =>
+                        setHorario((prev) =>
+                          prev.map((x, idx) => (idx === i ? { ...x, abre: e.target.value } : x)),
+                        )
+                      }
+                      className="border border-border-strong bg-surface text-foreground rounded px-2 py-1.5 text-sm"
+                    />
+                    <span className="text-xs text-muted-foreground">às</span>
+                    <input
+                      type="time"
+                      value={d.fecha}
+                      onChange={(e) =>
+                        setHorario((prev) =>
+                          prev.map((x, idx) => (idx === i ? { ...x, fecha: e.target.value } : x)),
+                        )
+                      }
+                      className="border border-border-strong bg-surface text-foreground rounded px-2 py-1.5 text-sm"
+                    />
+                  </>
+                ) : (
+                  <span className="text-sm text-muted-foreground">Fechado</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Passo 5 — serviços */}
+      {passo === 4 && (
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">Serviços iniciais</h2>
+            <p className="text-xs text-muted-foreground">
+              Já vêm marcados os mais comuns. Desmarque o que não serve e ajuste os preços —
+              o dono pode mudar tudo depois.
+            </p>
+          </div>
+
+          {grupos.map((grupo) => (
+            <div key={grupo}>
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                {grupo}
+              </div>
+              <div className="space-y-1">
+                {servicos.map((s, i) =>
+                  s.grupo !== grupo ? null : (
+                    <div
+                      key={s.nome}
+                      className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${
+                        s.escolhido ? 'border-primary/40 bg-primary-soft/40' : 'border-border'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={s.escolhido}
+                        onChange={(e) =>
+                          setServicos((prev) =>
+                            prev.map((x, idx) => (idx === i ? { ...x, escolhido: e.target.checked } : x)),
+                          )
+                        }
+                        aria-label={s.nome}
+                        className="accent-primary shrink-0"
+                      />
+                      <span className="flex-1 text-sm text-foreground truncate">{s.nome}</span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className="text-xs text-muted-foreground">R$</span>
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={s.preco}
+                          onChange={(e) =>
+                            setServicos((prev) =>
+                              prev.map((x, idx) =>
+                                idx === i ? { ...x, preco: Number(e.target.value) } : x,
+                              ),
+                            )
+                          }
+                          aria-label={`Preço de ${s.nome}`}
+                          className="w-20 border border-border-strong bg-surface text-foreground rounded px-2 py-1 text-sm"
+                        />
+                        <input
+                          type="number"
+                          min={5}
+                          step="5"
+                          value={s.duracao_minutos}
+                          onChange={(e) =>
+                            setServicos((prev) =>
+                              prev.map((x, idx) =>
+                                idx === i ? { ...x, duracao_minutos: Number(e.target.value) } : x,
+                              ),
+                            )
+                          }
+                          aria-label={`Duração de ${s.nome}`}
+                          className="w-16 border border-border-strong bg-surface text-foreground rounded px-2 py-1 text-sm"
+                        />
+                        <span className="text-xs text-muted-foreground">min</span>
+                      </div>
+                    </div>
+                  ),
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {erro && <p className="text-sm text-danger mt-4">{erro}</p>}
+
+      {/* Navegação */}
+      <div className="flex gap-2 mt-6 pt-4 border-t border-border">
+        <button
+          onClick={() => {
+            setErro(null)
+            setPasso((p) => Math.max(p - 1, 0))
+          }}
+          disabled={passo === 0}
+          className="flex items-center gap-1 border border-border-strong rounded px-3 py-2 text-sm font-medium text-foreground hover:bg-surface-2 disabled:opacity-40"
+        >
+          <ChevronLeft size={16} />
+          Voltar
+        </button>
+
+        {passo < PASSOS.length - 1 ? (
+          <button
+            onClick={avancar}
+            className="flex-1 flex items-center justify-center gap-1 btn-primary rounded px-3 py-2 text-sm font-medium"
+          >
+            Continuar
+            <ChevronRight size={16} />
+          </button>
+        ) : (
+          <button
+            onClick={criar}
+            disabled={salvando}
+            className="flex-1 btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+          >
+            {salvando
+              ? 'Cadastrando...'
+              : `Cadastrar ${unidades.length > 1 ? `${unidades.length} unidades` : 'barbearia'}`}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}

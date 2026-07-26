@@ -1,0 +1,119 @@
+import { useState } from 'react'
+import { Bot, CalendarCheck, CalendarX, Hand, MessageSquare, Timer } from 'lucide-react'
+import { useAgentStats, type AgentPeriod } from './useAgentStats'
+
+function formatResponseTime(seconds: number | null) {
+  if (seconds === null) return '—'
+  if (seconds < 60) return `${Math.round(seconds)}s`
+  const min = Math.floor(seconds / 60)
+  const rest = Math.round(seconds % 60)
+  return rest ? `${min}min ${rest}s` : `${min}min`
+}
+
+function StatCard({
+  icon,
+  label,
+  value,
+  hint,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: string | number
+  hint?: string
+}) {
+  return (
+    <div className="bg-surface border border-border rounded-xl p-4">
+      <div className="flex items-center gap-2 text-muted-foreground mb-2">
+        <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary-soft text-primary-soft-foreground">
+          {icon}
+        </span>
+        <span className="text-sm">{label}</span>
+      </div>
+      <div className="text-2xl font-semibold text-foreground">{value}</div>
+      {hint && <div className="text-xs text-muted-foreground mt-0.5">{hint}</div>}
+    </div>
+  )
+}
+
+export function AgentDashboard({ salonId }: { salonId: string }) {
+  const [period, setPeriod] = useState<AgentPeriod>('mes')
+  const { stats, loading, error } = useAgentStats(salonId, period)
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-foreground">Desempenho do atendimento automático</h2>
+          <p className="text-xs text-muted-foreground">
+            O que o agente de IA resolveu {period === 'semana' ? 'nesta semana' : 'neste mês'}
+          </p>
+        </div>
+
+        <div className="inline-flex rounded-lg bg-surface-2 border border-border p-1 text-sm">
+          <button
+            onClick={() => setPeriod('semana')}
+            className={`px-3 py-1 rounded-md font-medium transition-colors ${
+              period === 'semana' ? 'bg-surface text-foreground shadow-sm' : 'text-muted-foreground'
+            }`}
+          >
+            Semana
+          </button>
+          <button
+            onClick={() => setPeriod('mes')}
+            className={`px-3 py-1 rounded-md font-medium transition-colors ${
+              period === 'mes' ? 'bg-surface text-foreground shadow-sm' : 'text-muted-foreground'
+            }`}
+          >
+            Mês
+          </button>
+        </div>
+      </div>
+
+      {error && <p className="text-sm text-danger">{error}</p>}
+
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+        <StatCard
+          icon={<Bot size={15} />}
+          label="Conversas atendidas"
+          value={loading ? '—' : stats.conversas}
+          hint="clientes que o agente respondeu"
+        />
+        <StatCard
+          icon={<Timer size={15} />}
+          label="Tempo de resposta"
+          value={loading ? '—' : formatResponseTime(stats.tempoRespostaMedioSeg)}
+          hint="média do agente"
+        />
+        <StatCard
+          icon={<MessageSquare size={15} />}
+          label="Mensagens enviadas"
+          value={loading ? '—' : stats.mensagensAgente}
+          hint="pelo agente"
+        />
+        <StatCard
+          icon={<CalendarCheck size={15} />}
+          label="Agendamentos"
+          value={loading ? '—' : stats.agendamentos}
+          hint="feitos pelo agente"
+        />
+        <StatCard
+          icon={<CalendarX size={15} />}
+          label="Cancelamentos"
+          value={loading ? '—' : stats.cancelamentos}
+          hint="pelo agente"
+        />
+        <StatCard
+          icon={<Hand size={15} />}
+          label="Pediram o dono"
+          value={loading ? '—' : stats.pedidosDono}
+          hint="aguardando você na aba WEB"
+        />
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        Agendamentos e cancelamentos contam apenas os que passaram pelo agente no WhatsApp — o que você
+        faz direto na agenda não entra aqui.
+      </p>
+    </div>
+  )
+}

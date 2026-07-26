@@ -28,7 +28,11 @@ export function RedePage() {
   const gerenciadas = unidades.filter((u) => u.role === 'owner' || u.role === 'gerente')
   const { resumos, serieDiaria, loading, erro, recarregar } = useRedeData(gerenciadas, periodo)
 
-  if (!isNetwork && gerenciadas.length <= 1 && !organizationId) {
+  // Sem barbearia escolhida o contexto não tem organizationId; nesse caso a
+  // rede é a das unidades que ele administra.
+  const redeId = organizationId ?? gerenciadas.find((u) => u.organizationId)?.organizationId ?? null
+
+  if (!isNetwork && gerenciadas.length <= 1 && !redeId) {
     return (
       <p className="text-sm text-muted-foreground">
         Esta página é para barbearias em rede. Sua conta administra apenas uma unidade.
@@ -72,7 +76,7 @@ export function RedePage() {
               </button>
             ))}
           </div>
-          {organizationId && (
+          {redeId && (
             <button
               onClick={() => setModalAberto(true)}
               className="flex items-center gap-2 btn-primary rounded px-3 py-2 text-sm font-medium"
@@ -253,9 +257,9 @@ export function RedePage() {
         )}
       </div>
 
-      {modalAberto && organizationId && (
+      {modalAberto && redeId && (
         <NovaUnidadeModal
-          organizationId={organizationId}
+          organizationId={redeId}
           catalogoDe={salonId}
           onClose={() => setModalAberto(false)}
           onCriada={async () => {

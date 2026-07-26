@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { Calendar, Users, Wallet, Link2, Globe, Tag, Scissors, UsersRound, Building2 } from 'lucide-react'
 import { ProfileMenu } from './ProfileMenu'
 import { useSalon } from '../features/auth/useSalon'
@@ -13,6 +13,8 @@ type NavItem = {
   icon: typeof Calendar
   somenteGestor?: boolean
   somenteDono?: boolean
+  /** Continua acessível mesmo sem barbearia escolhida. */
+  semUnidade?: boolean
 }
 
 const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
@@ -29,7 +31,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { to: '/clientes', label: 'Clientes', icon: Users, somenteGestor: true },
       { to: '/catalogo', label: 'Catálogo', icon: Tag },
       { to: '/equipe', label: 'Equipe', icon: UsersRound, somenteGestor: true },
-      { to: '/rede', label: 'Rede', icon: Building2, somenteDono: true },
+      { to: '/rede', label: 'Rede', icon: Building2, somenteDono: true, semUnidade: true },
     ],
   },
   {
@@ -47,20 +49,31 @@ function navLinkClass({ isActive }: { isActive: boolean }) {
 }
 
 export function AppLayout() {
-  const { salonId, salonName, isManager, isOwner, isNetwork } = useSalon()
+  const { salonId, salonName, isManager, isOwner, isNetwork, loading } = useSalon()
+  const location = useLocation()
   const { alerts, dismiss } = useAppointmentAlerts(salonId)
   const { hasPending } = usePendingConversations(isManager ? salonId : null)
 
   // Barbeiro fica só com Agenda, Financeiro e Catálogo (o banco também
   // bloqueia o resto). "Rede" é do dono, e só faz sentido com mais de uma
-  // unidade.
+  // unidade. Enquanto o dono não escolher uma barbearia, o menu mostra
+  // apenas "Rede" — as outras telas não teriam salon_id para consultar.
   const gruposVisiveis = NAV_GROUPS.map((g) => ({
     ...g,
     items: g.items.filter(
-      (i) => (!i.somenteGestor || isManager) && (!i.somenteDono || (isOwner && isNetwork)),
+      (i) =>
+        (!i.somenteGestor || isManager) &&
+        (!i.somenteDono || (isOwner && isNetwork)) &&
+        (i.semUnidade || !!salonId),
     ),
   })).filter((g) => g.items.length > 0)
   const itensVisiveis = gruposVisiveis.flatMap((g) => g.items)
+
+  // Dono de rede entra pelo painel: sem barbearia escolhida, as demais telas
+  // não teriam o que carregar.
+  if (!loading && !salonId && isOwner && isNetwork && location.pathname !== '/rede') {
+    return <Navigate to="/rede" replace />
+  }
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-background">
@@ -70,7 +83,7 @@ export function AppLayout() {
           <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary text-primary-foreground shrink-0">
             <Scissors size={16} />
           </span>
-          <span className="font-semibold text-foreground truncate">{salonName ?? 'Salão CRM'}</span>
+          <span className="font-semibold text-foreground truncate">{salonName ?? 'Rede'}</span>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <ThemeToggle />

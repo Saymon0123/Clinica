@@ -160,7 +160,12 @@ export function AgendaPage() {
       await reload()
     } catch (err) {
       console.error('Erro ao reagendar:', err)
-      setRescheduleError('Não foi possível reagendar. Verifique sua conexão e tente novamente.')
+      const code = (err as { code?: string } | null)?.code
+      setRescheduleError(
+        code === '23P01'
+          ? 'Já existe um agendamento nesse horário para este profissional. Escolha outro horário.'
+          : 'Não foi possível reagendar. Verifique sua conexão e tente novamente.',
+      )
     } finally {
       setRescheduling(false)
     }

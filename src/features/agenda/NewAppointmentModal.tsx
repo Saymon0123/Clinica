@@ -101,7 +101,12 @@ export function NewAppointmentModal({
       onClose()
     } catch (err) {
       console.error('Erro ao criar reserva:', err)
-      setError('Não foi possível criar a reserva. Tente novamente.')
+      const code = (err as { code?: string } | null)?.code
+      setError(
+        code === '23P01'
+          ? 'Já existe um agendamento nesse horário para este profissional. Escolha outro horário.'
+          : 'Não foi possível criar a reserva. Tente novamente.',
+      )
     } finally {
       setSubmitting(false)
     }

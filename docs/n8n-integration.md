@@ -191,10 +191,25 @@ Assim que essa linha é criada, o CRM detecta em tempo real (Realtime) e
 mostra o aviso sonoro de "novo agendamento" pro barbeiro automaticamente —
 não precisa chamar nada além desse insert.
 
-**Cuidado com conflito de horário:** hoje o banco não impede dois
-agendamentos sobrepostos pro mesmo profissional — se isso importa, o
-fluxo do n8n precisa checar disponibilidade antes de criar (consultar
-`appointments` do profissional/dia e comparar intervalos).
+### ⚠️ Conflito de horário agora é bloqueado pelo banco
+
+O banco **impede** dois agendamentos sobrepostos para o mesmo profissional
+(restrição de exclusão `appointments_sem_sobreposicao`). Cancelados não
+contam.
+
+Se o fluxo tentar criar um agendamento em cima de outro, o Postgres
+devolve **erro `23P01`** (`conflicting key value violates exclusion
+constraint`) e nada é gravado.
+
+**Como o fluxo deve tratar:**
+1. Antes de oferecer horários, consulte `Verificar Disponibilidade do
+   Profissional` e ofereça só os livres.
+2. Ainda assim, trate o erro `23P01` no insert: significa que alguém pegou
+   o horário no meio da conversa. Responda pedindo desculpa e ofereça
+   outro horário — nunca repita a mesma tentativa, ela vai falhar de novo.
+
+Isso vale como rede de segurança: mesmo que o agente erre o cálculo, o
+cliente nunca fica com horário duplicado.
 
 ## 4. Resumo do fluxo recomendado (visão geral)
 

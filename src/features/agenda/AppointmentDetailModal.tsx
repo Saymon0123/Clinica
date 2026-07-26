@@ -90,7 +90,11 @@ export function AppointmentDetailModal({
 
     if (updateError) {
       console.error('Erro ao reagendar:', updateError)
-      setError('Não foi possível alterar a data. Tente novamente.')
+      setError(
+        updateError.code === '23P01'
+          ? 'Já existe um agendamento nesse horário para este profissional. Escolha outro horário.'
+          : 'Não foi possível alterar a data. Tente novamente.',
+      )
       return
     }
     onChanged()

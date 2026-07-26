@@ -14,7 +14,7 @@ export function useConversations(salonId: string | null, onlyNeedsHuman: boolean
 
     let query = supabase
       .from('whatsapp_conversations')
-      .select('id, contact_phone, contact_name, last_message_at, last_opened_at, needs_human, agent_paused')
+      .select('id, contact_phone, contact_name, last_message_at, last_opened_at, needs_human, agent_paused, resumo_contexto')
       .eq('salon_id', salonId)
       .order('last_message_at', { ascending: false, nullsFirst: false })
 

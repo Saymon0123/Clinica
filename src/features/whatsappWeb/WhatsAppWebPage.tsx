@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from 'react'
-import { AlertCircle, Bot, MessageCircle, Send } from 'lucide-react'
+import { AlertCircle, Bot, MessageCircle, Send, Sparkles } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
 import { useConversations } from './useConversations'
 import { useMessages } from './useMessages'
 import { ThemeToggle } from '../../components/ThemeToggle'
+import { ContextPopup } from './ContextPopup'
 
 type Tab = 'todas' | 'precisa_dono'
 
@@ -35,6 +36,8 @@ export function WhatsAppWebPage() {
   const [sendError, setSendError] = useState<string | null>(null)
   const [resuming, setResuming] = useState(false)
   const [resumeError, setResumeError] = useState<string | null>(null)
+  const [contextPopup, setContextPopup] = useState<{ nome: string; resumo: string } | null>(null)
+  const [dismissedContext, setDismissedContext] = useState<Set<string>>(new Set())
 
   const selectedConversation = conversations.find((c) => c.id === selectedId) ?? null
 
@@ -45,6 +48,16 @@ export function WhatsAppWebPage() {
 
   async function handleSelectConversation(id: string) {
     setSelectedId(id)
+
+    // Mostra o resumo da IA na primeira vez que o dono abre a conversa.
+    const conversa = conversations.find((c) => c.id === id)
+    if (conversa?.needs_human && conversa.resumo_contexto && !dismissedContext.has(id)) {
+      setContextPopup({
+        nome: conversa.contact_name ?? formatPhone(conversa.contact_phone),
+        resumo: conversa.resumo_contexto,
+      })
+    }
+
     await supabase
       .from('whatsapp_conversations')
       .update({ last_opened_at: new Date().toISOString() })
@@ -198,6 +211,23 @@ export function WhatsAppWebPage() {
                   <div className="text-xs text-muted-foreground">{formatPhone(selectedConversation.contact_phone)}</div>
                 </div>
 
+                {selectedConversation.resumo_contexto && (
+                  <button
+                    onClick={() =>
+                      setContextPopup({
+                        nome:
+                          selectedConversation.contact_name ??
+                          formatPhone(selectedConversation.contact_phone),
+                        resumo: selectedConversation.resumo_contexto!,
+                      })
+                    }
+                    className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline shrink-0"
+                  >
+                    <Sparkles size={13} />
+                    Ver resumo
+                  </button>
+                )}
+
                 {tab === 'precisa_dono' && selectedConversation.needs_human && (
                   <div className="flex flex-col items-end gap-1 shrink-0">
                     <button
@@ -268,6 +298,17 @@ export function WhatsAppWebPage() {
           )}
         </main>
       </div>
+
+      {contextPopup && (
+        <ContextPopup
+          contactName={contextPopup.nome}
+          resumo={contextPopup.resumo}
+          onClose={() => {
+            if (selectedId) setDismissedContext((prev) => new Set(prev).add(selectedId))
+            setContextPopup(null)
+          }}
+        />
+      )}
     </div>
   )
 }

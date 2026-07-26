@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CheckCircle2, Trash2, X, XCircle, Receipt } from 'lucide-react'
+import { CalendarClock, Trash2, X, XCircle, Receipt } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import type { Appointment } from './types'
 
@@ -30,6 +30,16 @@ function formatDateTime(iso: string) {
   })
 }
 
+function toDateInput(iso: string) {
+  const d = new Date(iso)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function toTimeInput(iso: string) {
+  const d = new Date(iso)
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
 export function AppointmentDetailModal({
   appointment,
   onClose,
@@ -43,6 +53,49 @@ export function AppointmentDetailModal({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+
+  const [editingDate, setEditingDate] = useState(false)
+  const [dateValue, setDateValue] = useState(() => toDateInput(appointment.data_hora_inicio))
+  const [timeValue, setTimeValue] = useState(() => toTimeInput(appointment.data_hora_inicio))
+
+  async function handleReschedule() {
+    if (!dateValue || !timeValue) {
+      setError('Informe a nova data e o novo horário.')
+      return
+    }
+
+    const [year, month, day] = dateValue.split('-').map(Number)
+    const [hour, minute] = timeValue.split(':').map(Number)
+    const newStart = new Date(year, month - 1, day, hour, minute, 0, 0)
+    if (Number.isNaN(newStart.getTime())) {
+      setError('Data ou horário inválido.')
+      return
+    }
+
+    // Mantém a mesma duração do agendamento original.
+    const durationMs =
+      new Date(appointment.data_hora_fim).getTime() - new Date(appointment.data_hora_inicio).getTime()
+    const newEnd = new Date(newStart.getTime() + durationMs)
+
+    setBusy(true)
+    setError(null)
+    const { error: updateError } = await supabase
+      .from('appointments')
+      .update({
+        data_hora_inicio: newStart.toISOString(),
+        data_hora_fim: newEnd.toISOString(),
+      })
+      .eq('id', appointment.id)
+    setBusy(false)
+
+    if (updateError) {
+      console.error('Erro ao reagendar:', updateError)
+      setError('Não foi possível alterar a data. Tente novamente.')
+      return
+    }
+    onChanged()
+    onClose()
+  }
 
   async function updateStatus(status: 'confirmado' | 'concluido' | 'cancelado') {
     setBusy(true)
@@ -125,6 +178,61 @@ export function AppointmentDetailModal({
             <span className="text-sm text-muted-foreground">Fim</span>
             <span className="text-sm font-medium text-foreground">{formatDateTime(appointment.data_hora_fim)}</span>
           </div>
+
+          {!isFinal &&
+            (editingDate ? (
+              <div className="mt-3 pt-3 border-t border-border space-y-2">
+                <span className="text-xs font-medium text-muted-foreground">Nova data e horário</span>
+                <div className="flex gap-2">
+                  <input
+                    type="date"
+                    value={dateValue}
+                    onChange={(e) => setDateValue(e.target.value)}
+                    aria-label="Nova data"
+                    className="flex-1 border border-border-strong bg-surface text-foreground rounded px-2 py-2 text-sm"
+                  />
+                  <input
+                    type="time"
+                    value={timeValue}
+                    onChange={(e) => setTimeValue(e.target.value)}
+                    step={300}
+                    aria-label="Novo horário"
+                    className="w-28 border border-border-strong bg-surface text-foreground rounded px-2 py-2 text-sm"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  A duração do serviço é mantida automaticamente.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setEditingDate(false)
+                      setDateValue(toDateInput(appointment.data_hora_inicio))
+                      setTimeValue(toTimeInput(appointment.data_hora_inicio))
+                      setError(null)
+                    }}
+                    className="flex-1 border border-border-strong rounded px-3 py-2 text-sm font-medium text-foreground hover:bg-surface-2"
+                  >
+                    Voltar
+                  </button>
+                  <button
+                    onClick={handleReschedule}
+                    disabled={busy}
+                    className="flex-1 btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+                  >
+                    {busy ? 'Salvando...' : 'Salvar nova data'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setEditingDate(true)}
+                className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline pt-1"
+              >
+                <CalendarClock size={13} />
+                Alterar data/horário
+              </button>
+            ))}
         </div>
 
         {error && <p className="text-sm text-danger mb-3">{error}</p>}
@@ -139,24 +247,14 @@ export function AppointmentDetailModal({
               <Receipt size={15} />
               Concluir e cobrar
             </button>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => updateStatus('concluido')}
-                disabled={busy}
-                className="flex items-center justify-center gap-1.5 border border-border-strong rounded px-3 py-2 text-sm font-medium text-success hover:bg-success-soft disabled:opacity-50"
-              >
-                <CheckCircle2 size={15} />
-                Só concluir
-              </button>
-              <button
-                onClick={() => updateStatus('cancelado')}
-                disabled={busy}
-                className="flex items-center justify-center gap-1.5 border border-border-strong rounded px-3 py-2 text-sm font-medium text-danger hover:bg-danger-soft disabled:opacity-50"
-              >
-                <XCircle size={15} />
-                Cancelar
-              </button>
-            </div>
+            <button
+              onClick={() => updateStatus('cancelado')}
+              disabled={busy}
+              className="w-full flex items-center justify-center gap-1.5 border border-border-strong rounded px-3 py-2 text-sm font-medium text-danger hover:bg-danger-soft disabled:opacity-50"
+            >
+              <XCircle size={15} />
+              Cancelar agendamento
+            </button>
           </div>
         )}
 

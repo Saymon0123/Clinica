@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Check, Clock, Copy, Link2, Plus, Power, UserPlus, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { urlDoConvite } from '../../lib/appUrl'
 import { useSalon } from '../auth/useSalon'
 import { HorarioBarbeiroModal } from './HorarioBarbeiroModal'
 
@@ -23,9 +24,7 @@ type Convite = {
   usado_em: string | null
 }
 
-function linkDoConvite(token: string) {
-  return `${window.location.origin}/convite/${token}`
-}
+const linkDoConvite = urlDoConvite
 
 export function EquipePage() {
   const { salonId, isManager, loading: salonLoading } = useSalon()

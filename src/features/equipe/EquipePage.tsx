@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Check, Copy, Link2, Plus, Power, UserPlus, X } from 'lucide-react'
+import { Check, Clock, Copy, Link2, Plus, Power, UserPlus, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
+import { HorarioBarbeiroModal } from './HorarioBarbeiroModal'
 
 type Membro = {
   id: string
@@ -34,6 +35,7 @@ export function EquipePage() {
   const [erro, setErro] = useState<string | null>(null)
   const [modalAberto, setModalAberto] = useState(false)
   const [copiado, setCopiado] = useState<string | null>(null)
+  const [horarioDe, setHorarioDe] = useState<Membro | null>(null)
 
   const carregar = useCallback(async () => {
     if (!salonId) return
@@ -160,15 +162,25 @@ export function EquipePage() {
               </div>
             </div>
 
-            <button
-              onClick={() => alternarAtivo(m)}
-              aria-label={m.ativo ? `Desativar ${m.nome}` : `Reativar ${m.nome}`}
-              className={`p-2 rounded hover:bg-surface-2 shrink-0 ${
-                m.ativo ? 'text-muted-foreground hover:text-danger' : 'text-success'
-              }`}
-            >
-              <Power size={16} />
-            </button>
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={() => setHorarioDe(m)}
+                aria-label={`Horário de ${m.nome}`}
+                title="Horário de trabalho"
+                className="p-2 rounded text-muted-foreground hover:text-foreground hover:bg-surface-2"
+              >
+                <Clock size={16} />
+              </button>
+              <button
+                onClick={() => alternarAtivo(m)}
+                aria-label={m.ativo ? `Desativar ${m.nome}` : `Reativar ${m.nome}`}
+                className={`p-2 rounded hover:bg-surface-2 ${
+                  m.ativo ? 'text-muted-foreground hover:text-danger' : 'text-success'
+                }`}
+              >
+                <Power size={16} />
+              </button>
+            </div>
           </div>
         ))}
 
@@ -183,6 +195,14 @@ export function EquipePage() {
         O barbeiro vê apenas os agendamentos dele, os clientes que atendeu e a própria comissão.
         Faturamento da barbearia, WhatsApp e catálogo ficam só com você.
       </p>
+
+      {horarioDe && (
+        <HorarioBarbeiroModal
+          professionalId={horarioDe.id}
+          nome={horarioDe.nome}
+          onClose={() => setHorarioDe(null)}
+        />
+      )}
 
       {modalAberto && salonId && (
         <ConviteModal

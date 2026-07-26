@@ -148,6 +148,23 @@ Existe um índice único `(salon_id, telefone_norm)`: tentar cadastrar o mesmo
 telefone duas vezes no mesmo salão retorna erro `23505`. Busque antes de
 criar.
 
+### `professional_schedules` — horário de trabalho de cada barbeiro
+
+Cada barbeiro tem os dias e horários em que atende. **Consulte antes de
+oferecer horários**, senão o agente vai marcar em dia de folga:
+
+```
+GET /rest/v1/professional_schedules?professional_id=eq.<uuid>&ativo=eq.true&select=dia_semana,hora_inicio,hora_fim
+```
+
+- `dia_semana`: 0 = domingo, 1 = segunda ... 6 = sábado
+- `hora_inicio` / `hora_fim`: hora local da barbearia (formato `HH:MM:SS`)
+- **Se o barbeiro não tiver nenhuma linha**, considere que ainda não foi
+  configurado e caia no horário de funcionamento do salão
+  (`salons.horario_funcionamento`).
+
+Nunca escreva nesta tabela pelo n8n — quem define é o dono, na aba Equipe.
+
 ### `professionals` e `services` — apenas leitura
 
 O agente precisa consultar essas tabelas para saber **quem** e **o quê**

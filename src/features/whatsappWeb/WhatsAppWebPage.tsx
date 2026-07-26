@@ -73,7 +73,7 @@ export function WhatsAppWebPage() {
     setSendError(null)
     try {
       const { data, error: sendErr } = await supabase.functions.invoke('whatsapp', {
-        body: { action: 'send', conversationId: selectedId, content },
+        body: { action: 'send', conversationId: selectedId, content, salonId },
       })
       if (sendErr || data?.error) {
         setSendError(data?.error ?? 'Não foi possível enviar a mensagem.')
@@ -95,7 +95,7 @@ export function WhatsAppWebPage() {
     setResumeError(null)
     try {
       const { data, error: resumeErr } = await supabase.functions.invoke('whatsapp', {
-        body: { action: 'resume_agent', conversationId: selectedId },
+        body: { action: 'resume_agent', conversationId: selectedId, salonId },
       })
       if (resumeErr || data?.error) {
         setResumeError(data?.error ?? 'Não foi possível devolver a conversa ao agente.')

@@ -68,17 +68,21 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'Não autenticado.' }, 401)
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('salon_id')
-    .eq('id', userData.user.id)
+  // Fonte de verdade é user_salons (profiles é legado e sai de sincronia).
+  // Só dono/gerente mexe na conexão do WhatsApp.
+  const { data: vinculo, error: vinculoError } = await supabase
+    .from('user_salons')
+    .select('salon_id, role')
+    .eq('user_id', userData.user.id)
+    .in('role', ['owner', 'gerente'])
+    .limit(1)
     .maybeSingle()
 
-  if (profileError || !profile) {
+  if (vinculoError || !vinculo) {
     return json({ error: 'Salão não encontrado para este usuário.' }, 404)
   }
 
-  const salonId = profile.salon_id as string
+  const salonId = vinculo.salon_id as string
   const instanceName = instanceNameFor(salonId)
 
   let body: { action?: string; conversationId?: string; content?: string } = {}

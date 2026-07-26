@@ -137,7 +137,8 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter) 
     const windowStartISO = p.windowStart.toISOString()
     const currentEndISO = p.currentEnd.toISOString()
 
-    const [apptResult, ordersResult, clientsResult, servicesResult, professionalsResult] = await Promise.all([
+    const [apptResult, ordersResult, clientsResult, servicesResult, professionalsResult, salonResult] =
+      await Promise.all([
       supabase
         .from('appointments')
         .select('client_id, status, data_hora_inicio')
@@ -160,6 +161,7 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter) 
         .from('professionals')
         .select('id, nome, comissao_percentual')
         .eq('salon_id', salonId),
+      supabase.from('salons').select('meta_faturamento_mensal').eq('id', salonId).maybeSingle(),
     ])
 
     if (apptResult.error || ordersResult.error || clientsResult.error || servicesResult.error) {
@@ -300,7 +302,7 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter) 
       metrics,
       clientsGrowth,
       revenueCurrent,
-      revenueGoal: META_FATURAMENTO_MENSAL,
+      revenueGoal: Number(salonResult.data?.meta_faturamento_mensal ?? META_FATURAMENTO_MENSAL),
       topServices,
       commissions,
     })

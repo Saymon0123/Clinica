@@ -7,6 +7,7 @@ import {
   CalendarCheck,
   TrendingUp,
   TrendingDown,
+  Pencil,
 } from 'lucide-react'
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
 import { useSalon } from '../auth/useSalon'
@@ -15,6 +16,7 @@ import { StatsCard } from '../../components/StatsCard'
 import { RadialGoal } from '../../components/RadialGoal'
 import { VendasSection } from '../vendas/VendasSection'
 import type { SalePrefill } from '../vendas/NewSaleModal'
+import { EditGoalModal } from './EditGoalModal'
 
 function formatCurrency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -46,7 +48,8 @@ function ChangeBadge({ pct, invert }: { pct: number | null; invert?: boolean }) 
 export function FinanceiroPage() {
   const { salonId, loading: salonLoading } = useSalon()
   const [filter, setFilter] = useState<PeriodFilter>('mes')
-  const { data, loading, error } = useFinanceiroData(salonId, filter)
+  const { data, loading, error, reload } = useFinanceiroData(salonId, filter)
+  const [editingGoal, setEditingGoal] = useState(false)
 
   const [tab, setTab] = useState<'visao' | 'vendas'>('visao')
   const [searchParams, setSearchParams] = useSearchParams()
@@ -219,9 +222,19 @@ export function FinanceiroPage() {
         </div>
 
         <div className="bg-surface border border-border rounded-xl p-5 flex flex-col">
-          <div className="mb-2">
-            <h2 className="text-sm font-semibold text-foreground">Meta de faturamento</h2>
-            <p className="text-xs text-muted-foreground">Mês atual</p>
+          <div className="mb-2 flex items-start justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Meta de faturamento</h2>
+              <p className="text-xs text-muted-foreground">Mês atual</p>
+            </div>
+            <button
+              onClick={() => setEditingGoal(true)}
+              aria-label="Alterar meta de faturamento"
+              className="flex items-center gap-1 text-xs font-medium text-primary hover:underline shrink-0"
+            >
+              <Pencil size={12} />
+              Alterar
+            </button>
           </div>
           <div className="relative flex-1 min-h-52 flex items-center justify-center">
             <RadialGoal percent={goalPct} size={176} />
@@ -306,6 +319,15 @@ export function FinanceiroPage() {
         variações comparam com {filter === 'dia' ? 'ontem' : 'o mês anterior'}.
       </p>
         </>
+      )}
+
+      {editingGoal && (
+        <EditGoalModal
+          salonId={salonId}
+          currentGoal={data.revenueGoal}
+          onClose={() => setEditingGoal(false)}
+          onSaved={reload}
+        />
       )}
     </div>
   )

@@ -88,10 +88,16 @@ export function SalonProvider({ children }: { children: ReactNode }) {
 
     setUnidades(lista)
 
-    // Mantém a escolha anterior se ela ainda existir; senão cai na primeira.
+    // Mantém a escolha anterior se ela ainda existir.
     const guardada = localStorage.getItem(chaveUnidade(user.id))
-    const valida = lista.some((u) => u.salonId === guardada)
-    setSelecionada(valida ? guardada : (lista[0]?.salonId ?? null))
+    if (lista.some((u) => u.salonId === guardada)) {
+      setSelecionada(guardada)
+    } else {
+      // Dono de rede começa sem unidade: ele entra pelo painel da rede e
+      // escolhe a barbearia. Quem tem uma só cai direto nela.
+      const gerenciadas = lista.filter((u) => u.role === 'owner' || u.role === 'gerente')
+      setSelecionada(gerenciadas.length > 1 ? null : (lista[0]?.salonId ?? null))
+    }
     setLoading(false)
   }, [user])
 

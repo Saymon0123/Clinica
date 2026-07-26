@@ -67,7 +67,10 @@ export function ProfileMenu() {
       {aberto && (
         <div
           role="menu"
-          className="absolute right-0 mt-1 w-72 z-40 bg-surface border border-border rounded-lg shadow-lg py-1 max-h-[70vh] overflow-y-auto"
+          // No celular o gatilho fica no canto direito, então o menu abre para
+          // a esquerda. Na sidebar (240px) é o contrário: ancorar à direita
+          // jogaria o menu de 288px para fora da tela.
+          className="absolute right-0 md:right-auto md:left-0 mt-1 w-72 max-w-[calc(100vw-1.5rem)] z-40 bg-surface border border-border rounded-lg shadow-lg py-1 max-h-[70vh] overflow-y-auto"
         >
           <div className="px-3 py-2 border-b border-border">
             <p className="text-[11px] text-muted-foreground truncate">{user?.email}</p>

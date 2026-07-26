@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Calendar, Users, Wallet, Link2, LogOut, Globe, Tag, Scissors, UsersRound } from 'lucide-react'
+import { Calendar, Users, Wallet, Link2, LogOut, Globe, Tag, Scissors, UsersRound, Building2 } from 'lucide-react'
+import { UnitSwitcher } from './UnitSwitcher'
 import { useAuth } from '../features/auth/AuthContext'
 import { useSalon } from '../features/auth/useSalon'
 import { useAppointmentAlerts } from '../features/agenda/useAppointmentAlerts'
@@ -7,7 +8,13 @@ import { AppointmentAlertBanner } from '../features/agenda/AppointmentAlertBanne
 import { usePendingConversations } from '../features/whatsappWeb/usePendingConversations'
 import { ThemeToggle } from './ThemeToggle'
 
-type NavItem = { to: string; label: string; icon: typeof Calendar; somenteGestor?: boolean }
+type NavItem = {
+  to: string
+  label: string
+  icon: typeof Calendar
+  somenteGestor?: boolean
+  somenteRede?: boolean
+}
 
 const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   {
@@ -23,6 +30,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { to: '/clientes', label: 'Clientes', icon: Users },
       { to: '/catalogo', label: 'Catálogo', icon: Tag },
       { to: '/equipe', label: 'Equipe', icon: UsersRound, somenteGestor: true },
+      { to: '/rede', label: 'Rede', icon: Building2, somenteGestor: true, somenteRede: true },
     ],
   },
   {
@@ -41,14 +49,17 @@ function navLinkClass({ isActive }: { isActive: boolean }) {
 
 export function AppLayout() {
   const { signOut } = useAuth()
-  const { salonId, salonName, isManager } = useSalon()
+  const { salonId, salonName, isManager, isNetwork } = useSalon()
   const { alerts, dismiss } = useAppointmentAlerts(salonId)
   const { hasPending } = usePendingConversations(isManager ? salonId : null)
 
   // Barbeiro não enxerga itens de gestão (o banco também bloqueia os dados).
+  // "Rede" só faz sentido para quem administra mais de uma unidade.
   const gruposVisiveis = NAV_GROUPS.map((g) => ({
     ...g,
-    items: g.items.filter((i) => !i.somenteGestor || isManager),
+    items: g.items.filter(
+      (i) => (!i.somenteGestor || isManager) && (!i.somenteRede || isNetwork),
+    ),
   })).filter((g) => g.items.length > 0)
   const itensVisiveis = gruposVisiveis.flatMap((g) => g.items)
 
@@ -94,6 +105,8 @@ export function AppLayout() {
             <ThemeToggle />
           </div>
         </div>
+
+        <UnitSwitcher />
 
         <nav className="flex-1 px-3 py-2 space-y-5 overflow-y-auto">
           {gruposVisiveis.map((group) => (

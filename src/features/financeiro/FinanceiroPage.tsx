@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   CalendarX,
   DollarSign,
@@ -12,6 +13,8 @@ import { useSalon } from '../auth/useSalon'
 import { useFinanceiroData, type MetricKey, type PeriodFilter } from './useFinanceiroData'
 import { StatsCard } from '../../components/StatsCard'
 import { RadialGoal } from '../../components/RadialGoal'
+import { VendasSection } from '../vendas/VendasSection'
+import type { SalePrefill } from '../vendas/NewSaleModal'
 
 function formatCurrency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -45,6 +48,27 @@ export function FinanceiroPage() {
   const [filter, setFilter] = useState<PeriodFilter>('mes')
   const { data, loading, error } = useFinanceiroData(salonId, filter)
 
+  const [tab, setTab] = useState<'visao' | 'vendas'>('visao')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [salePrefill, setSalePrefill] = useState<SalePrefill | null>(null)
+
+  // Veio do "Concluir e cobrar" da agenda: abre direto na aba de vendas.
+  useEffect(() => {
+    const appointmentId = searchParams.get('appointmentId')
+    if (appointmentId) {
+      setTab('vendas')
+      setSalePrefill({
+        appointmentId,
+        clientId: searchParams.get('clientId') ?? undefined,
+        professionalId: searchParams.get('professionalId') ?? undefined,
+        serviceId: searchParams.get('serviceId') ?? undefined,
+      })
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
+
+  const clearPrefill = useCallback(() => setSalePrefill(null), [])
+
   if (salonLoading) {
     return <p className="text-sm text-muted-foreground">Carregando...</p>
   }
@@ -63,8 +87,8 @@ export function FinanceiroPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">Visão geral</h1>
-          <p className="text-sm text-muted-foreground">Desempenho da sua barbearia</p>
+          <h1 className="text-xl font-semibold text-foreground">Financeiro</h1>
+          <p className="text-sm text-muted-foreground">Desempenho e vendas da sua barbearia</p>
         </div>
 
         <div className="inline-flex rounded-lg bg-surface-2 border border-border p-1 text-sm">
@@ -87,6 +111,39 @@ export function FinanceiroPage() {
         </div>
       </div>
 
+      {/* Abas: visão geral e vendas */}
+      <div className="flex gap-1 border-b border-border">
+        <button
+          onClick={() => setTab('visao')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            tab === 'visao'
+              ? 'border-primary text-foreground'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Visão geral
+        </button>
+        <button
+          onClick={() => setTab('vendas')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            tab === 'vendas'
+              ? 'border-primary text-foreground'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Vendas
+        </button>
+      </div>
+
+      {tab === 'vendas' ? (
+        <VendasSection
+          salonId={salonId}
+          period={filter}
+          prefill={salePrefill}
+          onPrefillConsumed={clearPrefill}
+        />
+      ) : (
+        <>
       {error && <p className="text-sm text-danger">{error}</p>}
 
       {/* Cards de métrica com mini-gráfico animado */}
@@ -248,6 +305,8 @@ export function FinanceiroPage() {
         Faturamento considera comandas fechadas; clientes atendidos considera agendamentos concluídos. As
         variações comparam com {filter === 'dia' ? 'ontem' : 'o mês anterior'}.
       </p>
+        </>
+      )}
     </div>
   )
 }

@@ -133,7 +133,7 @@ export function AppointmentDetailModal({
     if (appointment.client_id) params.set('clientId', appointment.client_id)
     if (appointment.professional_id) params.set('professionalId', appointment.professional_id)
     if (appointment.service_id) params.set('serviceId', appointment.service_id)
-    navigate(`/vendas?${params.toString()}`)
+    navigate(`/financeiro?${params.toString()}`)
   }
 
   const isFinal = appointment.status === 'concluido' || appointment.status === 'cancelado'

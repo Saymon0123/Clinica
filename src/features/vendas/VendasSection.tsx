@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
 import { Plus, Receipt } from 'lucide-react'
-import { useSalon } from '../auth/useSalon'
 import { useVendasData } from './useVendasData'
 import { NewSaleModal, type SalePrefill } from './NewSaleModal'
 import { PAYMENT_LABELS } from './types'
@@ -19,86 +17,50 @@ function formatDateTime(iso: string) {
   })
 }
 
-export function VendasPage() {
-  const { salonId, loading: salonLoading } = useSalon()
-  const [period, setPeriod] = useState<'dia' | 'mes'>('dia')
+export function VendasSection({
+  salonId,
+  period,
+  prefill,
+  onPrefillConsumed,
+}: {
+  salonId: string
+  period: 'dia' | 'mes'
+  prefill?: SalePrefill | null
+  onPrefillConsumed?: () => void
+}) {
   const { sales, loading, error, reload } = useVendasData(salonId, period)
-
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [modalPrefill, setModalPrefill] = useState<SalePrefill | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+  const [activePrefill, setActivePrefill] = useState<SalePrefill | null>(null)
 
-  // Se veio da agenda ("concluir e cobrar"), abre o modal pré-preenchido
+  // Abre a venda já preenchida quando vem do "Concluir e cobrar" da agenda.
   useEffect(() => {
-    const appointmentId = searchParams.get('appointmentId')
-    if (appointmentId) {
-      setModalPrefill({
-        appointmentId,
-        clientId: searchParams.get('clientId') ?? undefined,
-        professionalId: searchParams.get('professionalId') ?? undefined,
-        serviceId: searchParams.get('serviceId') ?? undefined,
-      })
+    if (prefill) {
+      setActivePrefill(prefill)
       setModalOpen(true)
-      setSearchParams({}, { replace: true })
+      onPrefillConsumed?.()
     }
-  }, [searchParams, setSearchParams])
-
-  if (salonLoading) {
-    return <p className="text-sm text-muted-foreground">Carregando...</p>
-  }
-
-  if (!salonId) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        Sua conta ainda não está vinculada a um salão. Fale com o administrador do sistema.
-      </p>
-    )
-  }
+  }, [prefill, onPrefillConsumed])
 
   const totalPeriod = sales.reduce((acc, s) => acc + s.total, 0)
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Vendas</h1>
-          <p className="text-sm text-muted-foreground">
-            {period === 'dia' ? 'Hoje' : 'Este mês'} · {sales.length} venda{sales.length === 1 ? '' : 's'} ·{' '}
-            {formatCurrency(totalPeriod)}
-          </p>
-        </div>
+        <p className="text-sm text-muted-foreground">
+          {period === 'dia' ? 'Hoje' : 'Este mês'} · {sales.length} venda{sales.length === 1 ? '' : 's'} ·{' '}
+          <span className="font-medium text-foreground">{formatCurrency(totalPeriod)}</span>
+        </p>
 
-        <div className="flex items-center gap-2">
-          <div className="inline-flex rounded-lg bg-surface-2 border border-border p-1 text-sm">
-            <button
-              onClick={() => setPeriod('dia')}
-              className={`px-4 py-1.5 rounded-md font-medium transition-colors ${
-                period === 'dia' ? 'bg-surface text-foreground shadow-sm' : 'text-muted-foreground'
-              }`}
-            >
-              Hoje
-            </button>
-            <button
-              onClick={() => setPeriod('mes')}
-              className={`px-4 py-1.5 rounded-md font-medium transition-colors ${
-                period === 'mes' ? 'bg-surface text-foreground shadow-sm' : 'text-muted-foreground'
-              }`}
-            >
-              Este mês
-            </button>
-          </div>
-
-          <button
-            onClick={() => {
-              setModalPrefill(null)
-              setModalOpen(true)
-            }}
-            className="flex items-center gap-2 btn-primary rounded px-4 py-2 text-sm font-medium"
-          >
-            <Plus size={16} />
-            Nova venda
-          </button>
-        </div>
+        <button
+          onClick={() => {
+            setActivePrefill(null)
+            setModalOpen(true)
+          }}
+          className="flex items-center gap-2 btn-primary rounded px-4 py-2 text-sm font-medium"
+        >
+          <Plus size={16} />
+          Nova venda
+        </button>
       </div>
 
       {error && <p className="text-sm text-danger">{error}</p>}
@@ -110,11 +72,11 @@ export function VendasPage() {
             Nenhuma venda registrada {period === 'dia' ? 'hoje' : 'neste mês'}.
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            Registre a primeira venda para o faturamento aparecer no Financeiro.
+            Registre a primeira venda para o faturamento aparecer na visão geral.
           </p>
         </div>
       ) : (
-        <div className="bg-surface border border-border rounded-xl overflow-hidden">
+        <div className="bg-surface border border-border rounded-xl overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs text-muted-foreground">
@@ -149,7 +111,7 @@ export function VendasPage() {
       {modalOpen && (
         <NewSaleModal
           salonId={salonId}
-          prefill={modalPrefill ?? undefined}
+          prefill={activePrefill ?? undefined}
           onClose={() => setModalOpen(false)}
           onSaved={() => {
             setModalOpen(false)

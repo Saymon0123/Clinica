@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Calendar, Users, Wallet, Link2, LogOut, Globe, Tag, Scissors, Receipt } from 'lucide-react'
+import { Calendar, Users, Wallet, Link2, LogOut, Globe, Tag, Scissors } from 'lucide-react'
 import { useAuth } from '../features/auth/AuthContext'
 import { useSalon } from '../features/auth/useSalon'
 import { useAppointmentAlerts } from '../features/agenda/useAppointmentAlerts'
@@ -14,7 +14,6 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     title: 'Principal',
     items: [
       { to: '/', label: 'Agenda', icon: Calendar },
-      { to: '/vendas', label: 'Vendas', icon: Receipt },
       { to: '/financeiro', label: 'Financeiro', icon: Wallet },
     ],
   },

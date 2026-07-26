@@ -12,7 +12,6 @@ import { ConexaoPage } from './features/conexao/ConexaoPage'
 import { CatalogoPage } from './features/catalogo/CatalogoPage'
 import { WhatsAppWebPage } from './features/whatsappWeb/WhatsAppWebPage'
 import { NovaBarbeariaPage } from './features/adminTool/NovaBarbeariaPage'
-import { VendasPage } from './features/vendas/VendasPage'
 
 function App() {
   return (
@@ -38,7 +37,6 @@ function App() {
           }
         >
           <Route path="/" element={<AgendaPage />} />
-          <Route path="/vendas" element={<VendasPage />} />
           <Route path="/clientes" element={<ClientesPage />} />
           <Route path="/financeiro" element={<FinanceiroPage />} />
           <Route path="/catalogo" element={<CatalogoPage />} />

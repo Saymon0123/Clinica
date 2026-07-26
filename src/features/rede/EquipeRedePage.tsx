@@ -29,7 +29,7 @@ const LABEL_PAPEL: Record<Papel, string> = {
  */
 export function EquipeRedePage() {
   const { user } = useAuth()
-  const { unidades, isOwner, selecionarUnidade } = useSalon()
+  const { unidades, isOwner, selecionarUnidade, recarregarUnidades } = useSalon()
   const [membros, setMembros] = useState<Membro[]>([])
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
@@ -95,6 +95,29 @@ export function EquipeRedePage() {
   }, [carregar])
 
   async function trocarPapel(m: Membro, novo: Papel) {
+    if (novo === m.role) return
+
+    // Uma unidade sem dono fica sem quem gerencie a equipe e a conexão, e
+    // ninguém conseguiria promover alguém de volta — é uma porta sem volta.
+    if (m.role === 'owner' && novo !== 'owner') {
+      const outrosDonos = membros.filter(
+        (x) => x.salonId === m.salonId && x.role === 'owner' && x.vinculoId !== m.vinculoId,
+      )
+      if (outrosDonos.length === 0) {
+        setErro(
+          `${m.unidade} ficaria sem dono. Promova outra pessoa a dono nessa unidade antes de mudar esta.`,
+        )
+        return
+      }
+    }
+
+    if (m.userId === user?.id) {
+      const confirmado = window.confirm(
+        `Você vai deixar de ser dono de ${m.unidade} e perderá o acesso de gestão dessa unidade. Continuar?`,
+      )
+      if (!confirmado) return
+    }
+
     setSalvando(m.vinculoId)
     setErro(null)
     const { error } = await supabase.from('user_salons').update({ role: novo }).eq('id', m.vinculoId)
@@ -104,6 +127,9 @@ export function EquipeRedePage() {
       setErro('Não foi possível alterar a função.')
       return
     }
+    // O próprio papel mudou: o contexto precisa recarregar para o menu e as
+    // permissões acompanharem sem exigir um novo login.
+    if (m.userId === user?.id) await recarregarUnidades()
     carregar()
   }
 
@@ -152,10 +178,10 @@ export function EquipeRedePage() {
               </Link>
             </div>
 
-            {lista.every((m) => m.role === 'owner') ? (
+            {lista.length === 0 ? (
               <div className="p-6 text-center space-y-1">
                 <p className="text-sm text-muted-foreground">
-                  Nesta unidade só existe você. Convide alguém para poder definir funções.
+                  Ninguém vinculado a esta unidade ainda.
                 </p>
                 <Link
                   to="/equipe"
@@ -195,22 +221,21 @@ export function EquipeRedePage() {
                         </div>
                       </div>
 
-                      {m.role === 'owner' || souEu ? (
-                        <span className="text-xs text-muted-foreground shrink-0">
-                          {souEu ? 'Não dá para mudar a própria função' : 'Dono da unidade'}
-                        </span>
-                      ) : (
-                        <select
-                          value={m.role}
-                          disabled={salvando === m.vinculoId}
-                          onChange={(e) => trocarPapel(m, e.target.value as Papel)}
-                          aria-label={`Função de ${m.nome ?? 'membro'}`}
-                          className="shrink-0 border border-border-strong bg-surface text-foreground rounded px-3 py-1.5 text-sm disabled:opacity-50"
-                        >
-                          <option value="barbeiro">Barbeiro</option>
-                          <option value="gerente">Gerente</option>
-                        </select>
-                      )}
+                      {/* O dono corrige qualquer função, inclusive a própria e
+                          a de outro dono — cadastro errado precisa de conserto.
+                          As travas ficam em trocarPapel: unidade sem dono é
+                          bloqueada, e rebaixar a si mesmo pede confirmação. */}
+                      <select
+                        value={m.role}
+                        disabled={salvando === m.vinculoId}
+                        onChange={(e) => trocarPapel(m, e.target.value as Papel)}
+                        aria-label={`Função de ${m.nome ?? 'membro'}`}
+                        className="shrink-0 border border-border-strong bg-surface text-foreground rounded px-3 py-1.5 text-sm disabled:opacity-50"
+                      >
+                        <option value="barbeiro">Barbeiro</option>
+                        <option value="gerente">Gerente</option>
+                        <option value="owner">Dono</option>
+                      </select>
                     </div>
                   )
                 })}

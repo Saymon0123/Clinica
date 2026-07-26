@@ -148,6 +148,21 @@ Existe um índice único `(salon_id, telefone_norm)`: tentar cadastrar o mesmo
 telefone duas vezes no mesmo salão retorna erro `23505`. Busque antes de
 criar.
 
+### `salons` — barbearia ativa e horário de funcionamento
+
+Antes de responder qualquer coisa, confira se a barbearia está ativa:
+
+```
+GET /rest/v1/salons?id=eq.<salon_id>&select=nome,ativo,horario_funcionamento
+```
+
+- **`ativo = false`** → a barbearia foi suspensa no painel administrativo.
+  O fluxo deve **parar sem responder nada**. Continuar atendendo por uma
+  barbearia desativada é problema comercial, não só técnico.
+- **`horario_funcionamento`** → JSON no formato
+  `{"seg":{"abre":"09:00","fecha":"19:00"}, ..., "dom":null}`.
+  `null` significa fechado naquele dia. Nunca ofereça horário fora disso.
+
 ### `professional_schedules` — horário de trabalho de cada barbeiro
 
 Cada barbeiro tem os dias e horários em que atende. **Consulte antes de

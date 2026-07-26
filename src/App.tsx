@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './features/auth/AuthContext'
 import { SalonProvider } from './features/auth/SalonContext'
 import { RequireAuth } from './features/auth/RequireAuth'
+import { RequireNetworkOwner } from './features/auth/RequireNetworkOwner'
 import { LoginPage } from './features/auth/LoginPage'
 import { AppLayout } from './components/AppLayout'
 import { AgendaPage } from './features/agenda/AgendaPage'
@@ -77,8 +78,22 @@ function App() {
               <Route path="/financeiro" element={<FinanceiroPage />} />
               <Route path="/catalogo" element={<CatalogoPage />} />
               <Route path="/equipe" element={<EquipePage />} />
-              <Route path="/rede" element={<RedePage />} />
-              <Route path="/rede/equipe" element={<EquipeRedePage />} />
+              <Route
+                path="/rede"
+                element={
+                  <RequireNetworkOwner>
+                    <RedePage />
+                  </RequireNetworkOwner>
+                }
+              />
+              <Route
+                path="/rede/equipe"
+                element={
+                  <RequireNetworkOwner>
+                    <EquipeRedePage />
+                  </RequireNetworkOwner>
+                }
+              />
               <Route path="/conexao" element={<ConexaoPage />} />
             </Route>
           </Routes>

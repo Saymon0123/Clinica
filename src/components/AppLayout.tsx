@@ -55,16 +55,19 @@ export function AppLayout() {
   const { alerts, dismiss } = useAppointmentAlerts(salonId)
   const { hasPending } = usePendingConversations(isManager ? salonId : null)
 
+  // "Rede" e "Equipe da rede" são exclusivas do dono de mais de uma unidade.
+  // Gerente e barbeiro nunca veem, mesmo administrando a unidade inteira.
+  const podeVerRede = isOwner && isNetwork
+
   // Barbeiro fica só com Agenda, Financeiro e Catálogo (o banco também
-  // bloqueia o resto). "Rede" é do dono, e só faz sentido com mais de uma
-  // unidade. Enquanto o dono não escolher uma barbearia, o menu mostra
-  // apenas "Rede" — as outras telas não teriam salon_id para consultar.
+  // bloqueia o resto). Enquanto o dono não escolher uma barbearia, o menu
+  // mostra apenas as telas da rede — as outras não teriam salon_id.
   const gruposVisiveis = NAV_GROUPS.map((g) => ({
     ...g,
     items: g.items.filter(
       (i) =>
         (!i.somenteGestor || isManager) &&
-        (!i.somenteDono || (isOwner && isNetwork)) &&
+        (!i.somenteDono || podeVerRede) &&
         (i.semUnidade || !!salonId),
     ),
   })).filter((g) => g.items.length > 0)
@@ -72,7 +75,7 @@ export function AppLayout() {
 
   // Dono de rede entra pelo painel: sem barbearia escolhida, as demais telas
   // não teriam o que carregar.
-  if (!loading && !salonId && isOwner && isNetwork && !location.pathname.startsWith('/rede')) {
+  if (!loading && !salonId && podeVerRede && !location.pathname.startsWith('/rede')) {
     return <Navigate to="/rede" replace />
   }
 

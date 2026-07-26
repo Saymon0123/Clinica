@@ -23,7 +23,7 @@ export type SalonContextValue = {
   loading: boolean
   /** Todas as unidades em que o usuário tem vínculo, na ordem de criação. */
   unidades: Unidade[]
-  /** true quando o usuário gerencia mais de uma unidade da mesma rede. */
+  /** true quando o usuário é DONO de mais de uma unidade. */
   isNetwork: boolean
   organizationId: string | null
   selecionarUnidade: (salonId: string) => void
@@ -95,8 +95,8 @@ export function SalonProvider({ children }: { children: ReactNode }) {
     } else {
       // Dono de rede começa sem unidade: ele entra pelo painel da rede e
       // escolhe a barbearia. Quem tem uma só cai direto nela.
-      const gerenciadas = lista.filter((u) => u.role === 'owner' || u.role === 'gerente')
-      setSelecionada(gerenciadas.length > 1 ? null : (lista[0]?.salonId ?? null))
+      const proprias = lista.filter((u) => u.role === 'owner')
+      setSelecionada(proprias.length > 1 ? null : (lista[0]?.salonId ?? null))
     }
     setLoading(false)
   }, [user])
@@ -117,10 +117,10 @@ export function SalonProvider({ children }: { children: ReactNode }) {
   const value = useMemo<SalonContextValue>(() => {
     const atual = unidades.find((u) => u.salonId === selecionada) ?? null
     const role = atual?.role ?? null
-    const gerenciadas = unidades.filter((u) => u.role === 'owner' || u.role === 'gerente')
-    // Dono em qualquer unidade já tem direito ao painel da rede — não depende
-    // de qual unidade está selecionada no momento.
-    const donoEmAlguma = unidades.some((u) => u.role === 'owner')
+    // A rede é do dono. Gerente administra a unidade dele e não enxerga o
+    // comparativo entre as barbearias, mesmo que gerencie mais de uma.
+    const proprias = unidades.filter((u) => u.role === 'owner')
+    const donoEmAlguma = proprias.length > 0
 
     return {
       salonId: atual?.salonId ?? null,
@@ -130,7 +130,7 @@ export function SalonProvider({ children }: { children: ReactNode }) {
       isOwner: donoEmAlguma,
       loading,
       unidades,
-      isNetwork: gerenciadas.length > 1,
+      isNetwork: proprias.length > 1,
       organizationId: atual?.organizationId ?? null,
       selecionarUnidade,
       recarregarUnidades: carregar,

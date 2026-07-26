@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Building2, ShieldCheck, Scissors, UserRound } from 'lucide-react'
+import { Building2, ShieldCheck, Scissors, UserPlus, UserRound } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
 import { useSalon, type Papel } from '../auth/useSalon'
@@ -28,7 +29,7 @@ const LABEL_PAPEL: Record<Papel, string> = {
  */
 export function EquipeRedePage() {
   const { user } = useAuth()
-  const { unidades, isOwner } = useSalon()
+  const { unidades, isOwner, selecionarUnidade } = useSalon()
   const [membros, setMembros] = useState<Membro[]>([])
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
@@ -135,18 +136,36 @@ export function EquipeRedePage() {
       ) : (
         porUnidade.map(({ unidade, membros: lista }) => (
           <div key={unidade.salonId} className="bg-surface border border-border rounded-xl overflow-hidden">
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
+            <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-border">
               <Building2 size={15} className="text-muted-foreground" />
               <h2 className="text-sm font-semibold text-foreground">{unidade.nome}</h2>
               <span className="text-xs text-muted-foreground">
                 {lista.length} pessoa{lista.length === 1 ? '' : 's'}
               </span>
+              <Link
+                to="/equipe"
+                onClick={() => selecionarUnidade(unidade.salonId)}
+                className="ml-auto flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+              >
+                <UserPlus size={13} />
+                Convidar
+              </Link>
             </div>
 
-            {lista.length === 0 ? (
-              <p className="text-sm text-muted-foreground p-6 text-center">
-                Ninguém vinculado a esta unidade ainda.
-              </p>
+            {lista.every((m) => m.role === 'owner') ? (
+              <div className="p-6 text-center space-y-1">
+                <p className="text-sm text-muted-foreground">
+                  Nesta unidade só existe você. Convide alguém para poder definir funções.
+                </p>
+                <Link
+                  to="/equipe"
+                  onClick={() => selecionarUnidade(unidade.salonId)}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+                >
+                  <UserPlus size={14} />
+                  Convidar para {unidade.nome}
+                </Link>
+              </div>
             ) : (
               <div className="divide-y divide-border">
                 {lista.map((m) => {

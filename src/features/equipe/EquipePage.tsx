@@ -99,7 +99,7 @@ export function EquipePage() {
           className="flex items-center gap-2 btn-primary rounded px-4 py-2 text-sm font-medium"
         >
           <Plus size={16} />
-          Convidar barbeiro
+          Convidar para a equipe
         </button>
       </div>
 
@@ -227,6 +227,7 @@ function ConviteModal({
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
   const [comissao, setComissao] = useState('50')
+  const [papel, setPapel] = useState<'barbeiro' | 'gerente'>('barbeiro')
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [link, setLink] = useState<string | null>(null)
@@ -251,7 +252,7 @@ function ConviteModal({
         salon_id: salonId,
         nome: nome.trim(),
         email: email.trim().toLowerCase(),
-        role: 'barbeiro',
+        role: papel,
         comissao_percentual: comissao ? Number(comissao) : null,
       })
       .select('token')
@@ -277,7 +278,7 @@ function ConviteModal({
         <div className="flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
             <UserPlus size={18} />
-            Convidar barbeiro
+            Convidar para a equipe
           </h2>
           <button onClick={onClose} aria-label="Fechar" className="text-muted-foreground hover:text-foreground">
             <X size={18} />
@@ -311,7 +312,7 @@ function ConviteModal({
         ) : (
           <form onSubmit={criar} className="space-y-3">
             <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Nome do barbeiro</span>
+              <span className="text-xs font-medium text-muted-foreground">Nome</span>
               <input
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
@@ -327,6 +328,23 @@ function ConviteModal({
                 className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
               />
             </label>
+            <label className="block">
+              <span className="text-xs font-medium text-muted-foreground">Função</span>
+              <select
+                value={papel}
+                onChange={(e) => setPapel(e.target.value as 'barbeiro' | 'gerente')}
+                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              >
+                <option value="barbeiro">Barbeiro — vê só o que é dele</option>
+                <option value="gerente">Gerente — administra esta unidade</option>
+              </select>
+              <span className="mt-1 block text-[11px] text-muted-foreground">
+                {papel === 'gerente'
+                  ? 'Enxerga e edita tudo desta barbearia, menos o painel da rede.'
+                  : 'Vê apenas os próprios agendamentos, clientes atendidos e comissão.'}
+              </span>
+            </label>
+
             <label className="block">
               <span className="text-xs font-medium text-muted-foreground">Comissão (%)</span>
               <input

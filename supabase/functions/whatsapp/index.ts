@@ -3,6 +3,8 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 const EVOLUTION_API_URL = Deno.env.get('EVOLUTION_API_URL')
 const EVOLUTION_API_KEY = Deno.env.get('EVOLUTION_API_KEY')
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
+// URL de produção do webhook do fluxo n8n de atendimento.
+const N8N_WEBHOOK_URL = Deno.env.get('N8N_WEBHOOK_URL')
 
 function instanceNameFor(salonId: string) {
   return `salon-${salonId}`
@@ -97,6 +99,29 @@ Deno.serve(async (req: Request) => {
           integration: 'WHATSAPP-BAILEYS',
         }),
       })
+
+      // Sem webhook a Evolution não entrega as mensagens ao n8n e o agente nunca responde.
+      // É idempotente: vale tanto para instância recém-criada quanto para uma que já existia.
+      // webhookBase64 é obrigatório — o fluxo lê audioMessage.base64 e imageMessage.base64.
+      if (N8N_WEBHOOK_URL) {
+        const webhookResult = await evoFetch(`/webhook/set/${instanceName}`, {
+          method: 'POST',
+          body: JSON.stringify({
+            webhook: {
+              enabled: true,
+              url: N8N_WEBHOOK_URL,
+              webhookByEvents: false,
+              webhookBase64: true,
+              events: ['MESSAGES_UPSERT'],
+            },
+          }),
+        })
+        if (!webhookResult.ok) {
+          console.error('Falha ao configurar webhook na Evolution:', webhookResult.status, webhookResult.data)
+        }
+      } else {
+        console.error('N8N_WEBHOOK_URL não configurado: o agente não vai receber mensagens.')
+      }
 
       const connectResult = await evoFetch(`/instance/connect/${instanceName}`, { method: 'GET' })
       if (!connectResult.ok) {

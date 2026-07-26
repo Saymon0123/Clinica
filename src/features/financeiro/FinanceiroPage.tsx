@@ -8,6 +8,7 @@ import {
   TrendingUp,
   TrendingDown,
   Pencil,
+  Download,
 } from 'lucide-react'
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
 import { useSalon } from '../auth/useSalon'
@@ -17,6 +18,7 @@ import { RadialGoal } from '../../components/RadialGoal'
 import { VendasSection } from '../vendas/VendasSection'
 import type { SalePrefill } from '../vendas/NewSaleModal'
 import { EditGoalModal } from './EditGoalModal'
+import { ExportReportModal } from './ExportReportModal'
 
 function formatCurrency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -50,6 +52,7 @@ export function FinanceiroPage() {
   const [filter, setFilter] = useState<PeriodFilter>('mes')
   const { data, loading, error, reload } = useFinanceiroData(salonId, filter)
   const [editingGoal, setEditingGoal] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   const [tab, setTab] = useState<'visao' | 'vendas'>('visao')
   const [searchParams, setSearchParams] = useSearchParams()
@@ -112,6 +115,14 @@ export function FinanceiroPage() {
             Este mês
           </button>
         </div>
+
+        <button
+          onClick={() => setExporting(true)}
+          className="flex items-center gap-2 border border-border-strong rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-surface-2"
+        >
+          <Download size={15} />
+          Exportar
+        </button>
       </div>
 
       {/* Abas: visão geral e vendas */}
@@ -320,6 +331,8 @@ export function FinanceiroPage() {
       </p>
         </>
       )}
+
+      {exporting && <ExportReportModal salonId={salonId} onClose={() => setExporting(false)} />}
 
       {editingGoal && (
         <EditGoalModal

@@ -13,7 +13,13 @@ async function callWhatsapp(action: 'connect' | 'status' | 'disconnect', salonId
     body: { action, salonId },
   })
   if (error) throw error
-  return data as { status: Status; qrCode?: string | null; error?: string }
+  return data as {
+    status: Status
+    qrCode?: string | null
+    error?: string
+    /** false quando a Evolution não ficou apontada para o fluxo do agente. */
+    webhookOk?: boolean
+  }
 }
 
 export function ConexaoPage() {
@@ -22,6 +28,7 @@ export function ConexaoPage() {
   const [qrCode, setQrCode] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [webhookAviso, setWebhookAviso] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const failuresRef = useRef(0)
 
@@ -74,6 +81,7 @@ export function ConexaoPage() {
       }
       setStatus(result.status)
       setQrCode(result.qrCode ?? null)
+      setWebhookAviso(result.webhookOk === false)
 
       failuresRef.current = 0
       if (pollRef.current) clearInterval(pollRef.current)
@@ -136,6 +144,19 @@ export function ConexaoPage() {
         </div>
 
         {error && <p className="text-sm text-danger mb-3">{error}</p>}
+
+        {webhookAviso && (
+          <div className="mb-3 rounded-lg border border-warning bg-warning/10 p-3">
+            <p className="text-sm font-medium text-foreground">
+              WhatsApp conecta, mas o atendimento automático não vai responder.
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Não foi possível apontar a Evolution API para o fluxo do agente. Verifique o secret
+              N8N_WEBHOOK_URL nas configurações das Edge Functions do Supabase e clique em conectar
+              de novo.
+            </p>
+          </div>
+        )}
 
         {status === 'open' ? (
           <div className="flex items-center gap-2 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/40 rounded px-3 py-2 text-sm mb-4">

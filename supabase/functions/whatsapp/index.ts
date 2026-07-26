@@ -119,6 +119,11 @@ Deno.serve(async (req: Request) => {
       // Sem webhook a Evolution não entrega as mensagens ao n8n e o agente nunca responde.
       // É idempotente: vale tanto para instância recém-criada quanto para uma que já existia.
       // webhookBase64 é obrigatório — o fluxo lê audioMessage.base64 e imageMessage.base64.
+      //
+      // O resultado volta para a tela: sem isso o dono conectaria o WhatsApp,
+      // veria "conectado" e só descobriria que o agente está mudo quando um
+      // cliente reclamasse.
+      let webhookOk = false
       if (N8N_WEBHOOK_URL) {
         const webhookResult = await evoFetch(`/webhook/set/${instanceName}`, {
           method: 'POST',
@@ -132,6 +137,7 @@ Deno.serve(async (req: Request) => {
             },
           }),
         })
+        webhookOk = webhookResult.ok
         if (!webhookResult.ok) {
           console.error('Falha ao configurar webhook na Evolution:', webhookResult.status, webhookResult.data)
         }
@@ -157,7 +163,7 @@ Deno.serve(async (req: Request) => {
         updated_at: new Date().toISOString(),
       })
 
-      return json({ status: 'connecting', qrCode })
+      return json({ status: 'connecting', qrCode, webhookOk })
     }
 
     if (body.action === 'status') {

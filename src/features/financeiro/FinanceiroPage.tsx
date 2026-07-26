@@ -9,6 +9,7 @@ import {
   TrendingDown,
   Pencil,
   Download,
+  PartyPopper,
 } from 'lucide-react'
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
 import { useSalon } from '../auth/useSalon'
@@ -19,6 +20,7 @@ import { VendasSection } from '../vendas/VendasSection'
 import type { SalePrefill } from '../vendas/NewSaleModal'
 import { EditGoalModal } from './EditGoalModal'
 import { ExportReportModal } from './ExportReportModal'
+import { GoalReachedModal } from './GoalReachedModal'
 
 function formatCurrency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -53,6 +55,7 @@ export function FinanceiroPage() {
   const { data, loading, error, reload } = useFinanceiroData(salonId, filter)
   const [editingGoal, setEditingGoal] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [showCelebration, setShowCelebration] = useState(false)
 
   const [tab, setTab] = useState<'visao' | 'vendas'>('visao')
   const [searchParams, setSearchParams] = useSearchParams()
@@ -72,6 +75,18 @@ export function FinanceiroPage() {
       setSearchParams({}, { replace: true })
     }
   }, [searchParams, setSearchParams])
+
+  const metaAtingida = data.revenueGoal > 0 && data.revenueCurrent >= data.revenueGoal
+
+  // Comemora uma única vez por mês, assim que a meta é batida.
+  useEffect(() => {
+    if (loading || !metaAtingida || !salonId) return
+    const mesAtual = new Date().toISOString().slice(0, 7)
+    const chave = `crm_meta_celebrada_${salonId}_${mesAtual}`
+    if (localStorage.getItem(chave)) return
+    localStorage.setItem(chave, '1')
+    setShowCelebration(true)
+  }, [loading, metaAtingida, salonId])
 
   const clearPrefill = useCallback(() => setSalePrefill(null), [])
 
@@ -250,11 +265,20 @@ export function FinanceiroPage() {
           <div className="relative flex-1 min-h-52 flex items-center justify-center">
             <RadialGoal percent={goalPct} size={176} />
           </div>
-          <div className="mt-3 text-center">
+          <div className="mt-3 text-center space-y-2">
             <p className="text-sm font-medium text-foreground">
               {formatCurrency(data.revenueCurrent)}
               <span className="text-muted-foreground font-normal"> / {formatCurrency(data.revenueGoal)}</span>
             </p>
+            {metaAtingida && (
+              <button
+                onClick={() => setShowCelebration(true)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-success-soft px-3 py-1 text-xs font-medium text-success"
+              >
+                <PartyPopper size={13} />
+                Meta atingida!
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -330,6 +354,14 @@ export function FinanceiroPage() {
         variações comparam com {filter === 'dia' ? 'ontem' : 'o mês anterior'}.
       </p>
         </>
+      )}
+
+      {showCelebration && (
+        <GoalReachedModal
+          revenue={data.revenueCurrent}
+          goal={data.revenueGoal}
+          onClose={() => setShowCelebration(false)}
+        />
       )}
 
       {exporting && <ExportReportModal salonId={salonId} onClose={() => setExporting(false)} />}

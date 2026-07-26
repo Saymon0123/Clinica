@@ -53,3 +53,13 @@ export function playMessageSound() {
     console.error('Erro ao tocar som de mensagem:', err)
   }
 }
+
+/** Arpejo ascendente de comemoração (meta de faturamento atingida). */
+export function playCelebrationSound() {
+  try {
+    const notas = [523.25, 659.25, 783.99, 1046.5] // dó, mi, sol, dó
+    notas.forEach((freq, i) => beep(freq, i * 0.12, 0.35, 0.18))
+  } catch (err) {
+    console.error('Erro ao tocar som de comemoração:', err)
+  }
+}

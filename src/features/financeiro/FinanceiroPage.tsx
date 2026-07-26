@@ -10,6 +10,7 @@ import {
   Pencil,
   Download,
   PartyPopper,
+  HandCoins,
 } from 'lucide-react'
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
 import { useSalon } from '../auth/useSalon'
@@ -17,6 +18,8 @@ import { useFinanceiroData, type MetricKey, type PeriodFilter } from './useFinan
 import { StatsCard } from '../../components/StatsCard'
 import { RadialGoal } from '../../components/RadialGoal'
 import { VendasSection } from '../vendas/VendasSection'
+import { FechamentoComissaoModal } from './FechamentoComissaoModal'
+import { CaixaSection } from './CaixaSection'
 import type { SalePrefill } from '../vendas/NewSaleModal'
 import { EditGoalModal } from './EditGoalModal'
 import { ExportReportModal } from './ExportReportModal'
@@ -56,6 +59,7 @@ export function FinanceiroPage() {
   const [editingGoal, setEditingGoal] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [showCelebration, setShowCelebration] = useState(false)
+  const [fechamentoAberto, setFechamentoAberto] = useState(false)
 
   const [tab, setTab] = useState<'visao' | 'vendas'>('visao')
   const [searchParams, setSearchParams] = useSearchParams()
@@ -322,13 +326,26 @@ export function FinanceiroPage() {
         )}
       </div>
 
+      {isManager && <CaixaSection salonId={salonId} />}
+
       {/* Comissões do período */}
       <div className="bg-surface border border-border rounded-xl p-5">
-        <div className="mb-4">
-          <h2 className="text-sm font-semibold text-foreground">Comissões</h2>
-          <p className="text-xs text-muted-foreground">
-            {filter === 'dia' ? 'Hoje' : 'Este mês'} · sobre serviços vendidos
-          </p>
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Comissões</h2>
+            <p className="text-xs text-muted-foreground">
+              {filter === 'dia' ? 'Hoje' : 'Este mês'} · sobre serviços vendidos
+            </p>
+          </div>
+          {isManager && (
+            <button
+              onClick={() => setFechamentoAberto(true)}
+              className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+            >
+              <HandCoins size={14} />
+              Fechar comissões
+            </button>
+          )}
         </div>
 
         {data.commissions.length === 0 ? (
@@ -371,6 +388,10 @@ export function FinanceiroPage() {
       )}
 
       {exporting && <ExportReportModal salonId={salonId} onClose={() => setExporting(false)} />}
+
+      {fechamentoAberto && salonId && (
+        <FechamentoComissaoModal salonId={salonId} onClose={() => setFechamentoAberto(false)} />
+      )}
 
       {editingGoal && (
         <EditGoalModal

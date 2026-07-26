@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Calendar, Users, Wallet, Link2, LogOut, Globe, Tag, Scissors } from 'lucide-react'
+import { Calendar, Users, Wallet, Link2, LogOut, Globe, Tag, Scissors, UsersRound } from 'lucide-react'
 import { useAuth } from '../features/auth/AuthContext'
 import { useSalon } from '../features/auth/useSalon'
 import { useAppointmentAlerts } from '../features/agenda/useAppointmentAlerts'
@@ -7,7 +7,7 @@ import { AppointmentAlertBanner } from '../features/agenda/AppointmentAlertBanne
 import { usePendingConversations } from '../features/whatsappWeb/usePendingConversations'
 import { ThemeToggle } from './ThemeToggle'
 
-type NavItem = { to: string; label: string; icon: typeof Calendar }
+type NavItem = { to: string; label: string; icon: typeof Calendar; somenteGestor?: boolean }
 
 const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   {
@@ -22,15 +22,14 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     items: [
       { to: '/clientes', label: 'Clientes', icon: Users },
       { to: '/catalogo', label: 'Catálogo', icon: Tag },
+      { to: '/equipe', label: 'Equipe', icon: UsersRound, somenteGestor: true },
     ],
   },
   {
     title: 'WhatsApp',
-    items: [{ to: '/conexao', label: 'Conexão', icon: Link2 }],
+    items: [{ to: '/conexao', label: 'Conexão', icon: Link2, somenteGestor: true }],
   },
 ]
-
-const ALL_ITEMS = NAV_GROUPS.flatMap((g) => g.items)
 
 function navLinkClass({ isActive }: { isActive: boolean }) {
   return `group flex items-center gap-2.5 px-2.5 py-[7px] rounded-md text-[13px] font-medium tracking-wide transition-all duration-200 ${
@@ -42,9 +41,16 @@ function navLinkClass({ isActive }: { isActive: boolean }) {
 
 export function AppLayout() {
   const { signOut } = useAuth()
-  const { salonId, salonName } = useSalon()
+  const { salonId, salonName, isManager } = useSalon()
   const { alerts, dismiss } = useAppointmentAlerts(salonId)
-  const { hasPending } = usePendingConversations(salonId)
+  const { hasPending } = usePendingConversations(isManager ? salonId : null)
+
+  // Barbeiro não enxerga itens de gestão (o banco também bloqueia os dados).
+  const gruposVisiveis = NAV_GROUPS.map((g) => ({
+    ...g,
+    items: g.items.filter((i) => !i.somenteGestor || isManager),
+  })).filter((g) => g.items.length > 0)
+  const itensVisiveis = gruposVisiveis.flatMap((g) => g.items)
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-background">
@@ -54,7 +60,7 @@ export function AppLayout() {
           <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary text-primary-foreground">
             <Scissors size={16} />
           </span>
-          <span className="font-semibold text-foreground">Salão CRM</span>
+          <span className="font-semibold text-foreground">{salonName ?? 'Salão CRM'}</span>
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
@@ -80,7 +86,9 @@ export function AppLayout() {
                 <span className="text-[13px] font-medium leading-none mb-1 text-foreground truncate">
                   {salonName ?? 'Salão CRM'}
                 </span>
-                <span className="text-[11px] text-muted-foreground leading-none">Painel do dono</span>
+                <span className="text-[11px] text-muted-foreground leading-none">
+                  {isManager ? 'Painel do dono' : 'Barbeiro'}
+                </span>
               </div>
             </div>
             <ThemeToggle />
@@ -88,7 +96,7 @@ export function AppLayout() {
         </div>
 
         <nav className="flex-1 px-3 py-2 space-y-5 overflow-y-auto">
-          {NAV_GROUPS.map((group) => (
+          {gruposVisiveis.map((group) => (
             <div key={group.title}>
               <p className="px-2.5 mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/50">
                 {group.title}
@@ -124,7 +132,7 @@ export function AppLayout() {
         className="md:hidden fixed bottom-0 inset-x-0 bg-sidebar border-t border-sidebar-border flex z-10"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        {ALL_ITEMS.map((item) => (
+        {itensVisiveis.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
@@ -141,7 +149,8 @@ export function AppLayout() {
         ))}
       </nav>
 
-      {/* Botão flutuante: abre o espelho do WhatsApp em nova aba (só desktop) */}
+      {/* Botão flutuante: abre o espelho do WhatsApp em nova aba (só desktop, só gestor) */}
+      {isManager && (
       <button
         onClick={() => window.open('/web', '_blank', 'noopener,noreferrer')}
         className={`hidden md:flex fixed bottom-6 right-4 z-20 items-center gap-2 text-white rounded-full pl-3 pr-4 py-3 shadow-lg transition-colors ${
@@ -151,6 +160,7 @@ export function AppLayout() {
         <Globe size={18} />
         <span className="text-sm font-semibold">WEB</span>
       </button>
+      )}
 
       <AppointmentAlertBanner alerts={alerts} onDismiss={dismiss} />
     </div>

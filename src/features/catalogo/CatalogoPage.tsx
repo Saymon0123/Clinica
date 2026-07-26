@@ -16,7 +16,7 @@ function formatCurrency(value: number | null) {
 }
 
 export function CatalogoPage() {
-  const { salonId, loading: salonLoading } = useSalon()
+  const { salonId, isManager, loading: salonLoading } = useSalon()
   const [tab, setTab] = useState<Tab>('servicos')
 
   const { services, loading: loadingServices, error: servicesError, reload: reloadServices } = useServicesData(salonId)
@@ -70,15 +70,17 @@ export function CatalogoPage() {
 
       {tab === 'servicos' ? (
         <div>
-          <div className="flex justify-end mb-3">
-            <button
-              onClick={() => setEditingService('new')}
-              className="flex items-center gap-2 btn-primary rounded px-4 py-2 text-sm font-medium"
-            >
-              <Plus size={16} />
-              Novo serviço
-            </button>
-          </div>
+          {isManager && (
+            <div className="flex justify-end mb-3">
+              <button
+                onClick={() => setEditingService('new')}
+                className="flex items-center gap-2 btn-primary rounded px-4 py-2 text-sm font-medium"
+              >
+                <Plus size={16} />
+                Novo serviço
+              </button>
+            </div>
+          )}
 
           {servicesError && <p className="text-sm text-danger mb-3">{servicesError}</p>}
 
@@ -133,15 +135,17 @@ export function CatalogoPage() {
         </div>
       ) : (
         <div>
-          <div className="flex justify-end mb-3">
-            <button
-              onClick={() => setEditingProduct('new')}
-              className="flex items-center gap-2 btn-primary rounded px-4 py-2 text-sm font-medium"
-            >
-              <Plus size={16} />
-              Novo produto
-            </button>
-          </div>
+          {isManager && (
+            <div className="flex justify-end mb-3">
+              <button
+                onClick={() => setEditingProduct('new')}
+                className="flex items-center gap-2 btn-primary rounded px-4 py-2 text-sm font-medium"
+              >
+                <Plus size={16} />
+                Novo produto
+              </button>
+            </div>
+          )}
 
           {productsError && <p className="text-sm text-danger mb-3">{productsError}</p>}
 

@@ -50,7 +50,7 @@ function ChangeBadge({ pct, invert }: { pct: number | null; invert?: boolean }) 
 }
 
 export function FinanceiroPage() {
-  const { salonId, loading: salonLoading } = useSalon()
+  const { salonId, isManager, loading: salonLoading } = useSalon()
   const [filter, setFilter] = useState<PeriodFilter>('mes')
   const { data, loading, error, reload } = useFinanceiroData(salonId, filter)
   const [editingGoal, setEditingGoal] = useState(false)
@@ -80,13 +80,13 @@ export function FinanceiroPage() {
 
   // Comemora uma única vez por mês, assim que a meta é batida.
   useEffect(() => {
-    if (loading || !metaAtingida || !salonId) return
+    if (loading || !metaAtingida || !salonId || !isManager) return
     const mesAtual = new Date().toISOString().slice(0, 7)
     const chave = `crm_meta_celebrada_${salonId}_${mesAtual}`
     if (localStorage.getItem(chave)) return
     localStorage.setItem(chave, '1')
     setShowCelebration(true)
-  }, [loading, metaAtingida, salonId])
+  }, [loading, metaAtingida, salonId, isManager])
 
   const clearPrefill = useCallback(() => setSalePrefill(null), [])
 
@@ -109,7 +109,9 @@ export function FinanceiroPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-foreground">Financeiro</h1>
-          <p className="text-sm text-muted-foreground">Desempenho e vendas da sua barbearia</p>
+          <p className="text-sm text-muted-foreground">
+            {isManager ? 'Desempenho e vendas da sua barbearia' : 'Seus atendimentos e sua comissão'}
+          </p>
         </div>
 
         <div className="inline-flex rounded-lg bg-surface-2 border border-border p-1 text-sm">
@@ -131,13 +133,15 @@ export function FinanceiroPage() {
           </button>
         </div>
 
-        <button
-          onClick={() => setExporting(true)}
-          className="flex items-center gap-2 border border-border-strong rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-surface-2"
-        >
-          <Download size={15} />
-          Exportar
-        </button>
+        {isManager && (
+          <button
+            onClick={() => setExporting(true)}
+            className="flex items-center gap-2 border border-border-strong rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-surface-2"
+          >
+            <Download size={15} />
+            Exportar
+          </button>
+        )}
       </div>
 
       {/* Abas: visão geral e vendas */}
@@ -203,7 +207,7 @@ export function FinanceiroPage() {
 
       {/* Gráfico de clientes + donut da meta */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 bg-surface border border-border rounded-xl p-5">
+        <div className={`${isManager ? 'lg:col-span-2' : 'lg:col-span-3'} bg-surface border border-border rounded-xl p-5`}>
           <div className="mb-4">
             <h2 className="text-sm font-semibold text-foreground">Total de clientes</h2>
             <p className="text-xs text-muted-foreground">Crescimento acumulado nos últimos 12 meses</p>
@@ -247,6 +251,7 @@ export function FinanceiroPage() {
           </div>
         </div>
 
+        {isManager && (
         <div className="bg-surface border border-border rounded-xl p-5 flex flex-col">
           <div className="mb-2 flex items-start justify-between gap-2">
             <div>
@@ -281,6 +286,7 @@ export function FinanceiroPage() {
             )}
           </div>
         </div>
+        )}
       </div>
 
       {/* Serviços mais vendidos */}

@@ -12,6 +12,8 @@ import { ConexaoPage } from './features/conexao/ConexaoPage'
 import { CatalogoPage } from './features/catalogo/CatalogoPage'
 import { WhatsAppWebPage } from './features/whatsappWeb/WhatsAppWebPage'
 import { NovaBarbeariaPage } from './features/adminTool/NovaBarbeariaPage'
+import { EquipePage } from './features/equipe/EquipePage'
+import { AceitarConvitePage } from './features/equipe/AceitarConvitePage'
 
 function App() {
   return (
@@ -21,6 +23,7 @@ function App() {
         <Route path="/esqueci-senha" element={<ForgotPasswordPage />} />
         <Route path="/redefinir-senha" element={<ResetPasswordPage />} />
         <Route path="/admin/nova-barbearia" element={<NovaBarbeariaPage />} />
+        <Route path="/convite/:token" element={<AceitarConvitePage />} />
         <Route
           path="/web"
           element={
@@ -40,6 +43,7 @@ function App() {
           <Route path="/clientes" element={<ClientesPage />} />
           <Route path="/financeiro" element={<FinanceiroPage />} />
           <Route path="/catalogo" element={<CatalogoPage />} />
+          <Route path="/equipe" element={<EquipePage />} />
           <Route path="/conexao" element={<ConexaoPage />} />
         </Route>
       </Routes>

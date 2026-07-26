@@ -14,7 +14,7 @@ function formatDate(iso: string | null) {
 }
 
 export function ClientesPage() {
-  const { salonId, loading: salonLoading } = useSalon()
+  const { salonId, isManager, loading: salonLoading } = useSalon()
   const { clients, loading, error, reload } = useClientsData(salonId)
   const [search, setSearch] = useState('')
   const [showNewClient, setShowNewClient] = useState(false)
@@ -77,13 +77,15 @@ export function ClientesPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <h1 className="text-lg font-semibold text-foreground">Clientes</h1>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => setImporting(true)}
-            className="flex items-center gap-2 border border-border-strong rounded px-3 py-2 text-sm font-medium text-foreground hover:bg-surface-2"
-          >
-            <Upload size={15} />
-            Importar
-          </button>
+          {isManager && (
+            <button
+              onClick={() => setImporting(true)}
+              className="flex items-center gap-2 border border-border-strong rounded px-3 py-2 text-sm font-medium text-foreground hover:bg-surface-2"
+            >
+              <Upload size={15} />
+              Importar
+            </button>
+          )}
           <button
             onClick={handleExport}
             disabled={clients.length === 0}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { CheckCircle2, MessageCircle, RefreshCw } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
+import { AgentDashboard } from './AgentDashboard'
 
 type Status = 'close' | 'connecting' | 'open'
 
@@ -169,6 +170,10 @@ export function ConexaoPage() {
             </button>
           )}
         </div>
+      </div>
+
+      <div className="mt-8">
+        <AgentDashboard salonId={salonId} />
       </div>
     </div>
   )

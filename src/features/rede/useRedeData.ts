@@ -10,7 +10,13 @@ export type ResumoUnidade = {
   vendas: number
   agendamentos: number
   clientesNovos: number
+  cancelamentos: number
+  /** Faturamento ÷ vendas: quanto o cliente gasta em média na unidade. */
+  ticketMedio: number
 }
+
+/** Faturamento da rede por dia, para o gráfico de evolução. */
+export type PontoDiario = { dia: string; total: number }
 
 export type Periodo = 'mes' | 'semana'
 
@@ -32,6 +38,7 @@ function inicioDoPeriodo(periodo: Periodo) {
  */
 export function useRedeData(unidades: Unidade[], periodo: Periodo) {
   const [resumos, setResumos] = useState<ResumoUnidade[]>([])
+  const [serieDiaria, setSerieDiaria] = useState<PontoDiario[]>([])
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
 
@@ -52,15 +59,14 @@ export function useRedeData(unidades: Unidade[], periodo: Periodo) {
     const [vendasRes, agendaRes, clientesRes] = await Promise.all([
       supabase
         .from('orders')
-        .select('salon_id, payments(valor)')
+        .select('salon_id, closed_at, payments(valor)')
         .in('salon_id', salonIds)
         .eq('status', 'fechada')
         .gte('closed_at', desde),
       supabase
         .from('appointments')
-        .select('salon_id')
+        .select('salon_id, status')
         .in('salon_id', salonIds)
-        .neq('status', 'cancelado')
         .gte('data_hora_inicio', desde),
       supabase.from('clients').select('salon_id').in('salon_id', salonIds).gte('created_at', desde),
     ])
@@ -72,7 +78,11 @@ export function useRedeData(unidades: Unidade[], periodo: Periodo) {
       return
     }
 
-    type LinhaVenda = { salon_id: string; payments: { valor: number | string }[] | null }
+    type LinhaVenda = {
+      salon_id: string
+      closed_at: string | null
+      payments: { valor: number | string }[] | null
+    }
 
     const porUnidade = new Map<string, ResumoUnidade>(
       unidades.map((u) => [
@@ -85,26 +95,47 @@ export function useRedeData(unidades: Unidade[], periodo: Periodo) {
           vendas: 0,
           agendamentos: 0,
           clientesNovos: 0,
+          cancelamentos: 0,
+          ticketMedio: 0,
         },
       ]),
     )
+
+    const porDia = new Map<string, number>()
 
     for (const linha of (vendasRes.data ?? []) as LinhaVenda[]) {
       const alvo = porUnidade.get(linha.salon_id)
       if (!alvo) continue
       alvo.vendas += 1
-      for (const p of linha.payments ?? []) alvo.faturamento += Number(p.valor) || 0
+      const valor = (linha.payments ?? []).reduce((s, p) => s + (Number(p.valor) || 0), 0)
+      alvo.faturamento += valor
+      if (linha.closed_at) {
+        const dia = linha.closed_at.slice(0, 10)
+        porDia.set(dia, (porDia.get(dia) ?? 0) + valor)
+      }
     }
-    for (const linha of (agendaRes.data ?? []) as { salon_id: string }[]) {
+    for (const linha of (agendaRes.data ?? []) as { salon_id: string; status: string }[]) {
       const alvo = porUnidade.get(linha.salon_id)
-      if (alvo) alvo.agendamentos += 1
+      if (!alvo) continue
+      if (linha.status === 'cancelado') alvo.cancelamentos += 1
+      else alvo.agendamentos += 1
     }
     for (const linha of (clientesRes.data ?? []) as { salon_id: string }[]) {
       const alvo = porUnidade.get(linha.salon_id)
       if (alvo) alvo.clientesNovos += 1
     }
 
-    setResumos([...porUnidade.values()].sort((a, b) => b.faturamento - a.faturamento))
+    const lista = [...porUnidade.values()].map((r) => ({
+      ...r,
+      ticketMedio: r.vendas > 0 ? r.faturamento / r.vendas : 0,
+    }))
+
+    setResumos(lista.sort((a, b) => b.faturamento - a.faturamento))
+    setSerieDiaria(
+      [...porDia.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([dia, total]) => ({ dia: dia.slice(8) + '/' + dia.slice(5, 7), total })),
+    )
     setLoading(false)
     // `ids` entra na lista para reagir quando as unidades mudam de fato.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -114,5 +145,5 @@ export function useRedeData(unidades: Unidade[], periodo: Periodo) {
     carregar()
   }, [carregar])
 
-  return { resumos, loading, erro, recarregar: carregar }
+  return { resumos, serieDiaria, loading, erro, recarregar: carregar }
 }

@@ -16,7 +16,10 @@ export type SalonContextValue = {
   salonId: string | null
   salonName: string | null
   role: Papel | null
+  /** Dono ou gerente: enxerga e edita tudo da unidade. */
   isManager: boolean
+  /** Dono da rede: além da unidade, tem o painel analítico consolidado. */
+  isOwner: boolean
   loading: boolean
   /** Todas as unidades em que o usuário tem vínculo, na ordem de criação. */
   unidades: Unidade[]
@@ -109,12 +112,16 @@ export function SalonProvider({ children }: { children: ReactNode }) {
     const atual = unidades.find((u) => u.salonId === selecionada) ?? null
     const role = atual?.role ?? null
     const gerenciadas = unidades.filter((u) => u.role === 'owner' || u.role === 'gerente')
+    // Dono em qualquer unidade já tem direito ao painel da rede — não depende
+    // de qual unidade está selecionada no momento.
+    const donoEmAlguma = unidades.some((u) => u.role === 'owner')
 
     return {
       salonId: atual?.salonId ?? null,
       salonName: atual?.nome ?? null,
       role,
       isManager: role === 'owner' || role === 'gerente',
+      isOwner: donoEmAlguma,
       loading,
       unidades,
       isNetwork: gerenciadas.length > 1,

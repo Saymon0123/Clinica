@@ -1,7 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Calendar, Users, Wallet, Link2, LogOut, Globe, Tag, Scissors, UsersRound, Building2 } from 'lucide-react'
-import { UnitSwitcher } from './UnitSwitcher'
-import { useAuth } from '../features/auth/AuthContext'
+import { Calendar, Users, Wallet, Link2, Globe, Tag, Scissors, UsersRound, Building2 } from 'lucide-react'
+import { ProfileMenu } from './ProfileMenu'
 import { useSalon } from '../features/auth/useSalon'
 import { useAppointmentAlerts } from '../features/agenda/useAppointmentAlerts'
 import { AppointmentAlertBanner } from '../features/agenda/AppointmentAlertBanner'
@@ -13,7 +12,7 @@ type NavItem = {
   label: string
   icon: typeof Calendar
   somenteGestor?: boolean
-  somenteRede?: boolean
+  somenteDono?: boolean
 }
 
 const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
@@ -27,10 +26,10 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: 'Gestão',
     items: [
-      { to: '/clientes', label: 'Clientes', icon: Users },
+      { to: '/clientes', label: 'Clientes', icon: Users, somenteGestor: true },
       { to: '/catalogo', label: 'Catálogo', icon: Tag },
       { to: '/equipe', label: 'Equipe', icon: UsersRound, somenteGestor: true },
-      { to: '/rede', label: 'Rede', icon: Building2, somenteGestor: true, somenteRede: true },
+      { to: '/rede', label: 'Rede', icon: Building2, somenteDono: true },
     ],
   },
   {
@@ -48,17 +47,17 @@ function navLinkClass({ isActive }: { isActive: boolean }) {
 }
 
 export function AppLayout() {
-  const { signOut } = useAuth()
-  const { salonId, salonName, isManager, isNetwork } = useSalon()
+  const { salonId, salonName, isManager, isOwner, isNetwork } = useSalon()
   const { alerts, dismiss } = useAppointmentAlerts(salonId)
   const { hasPending } = usePendingConversations(isManager ? salonId : null)
 
-  // Barbeiro não enxerga itens de gestão (o banco também bloqueia os dados).
-  // "Rede" só faz sentido para quem administra mais de uma unidade.
+  // Barbeiro fica só com Agenda, Financeiro e Catálogo (o banco também
+  // bloqueia o resto). "Rede" é do dono, e só faz sentido com mais de uma
+  // unidade.
   const gruposVisiveis = NAV_GROUPS.map((g) => ({
     ...g,
     items: g.items.filter(
-      (i) => (!i.somenteGestor || isManager) && (!i.somenteRede || isNetwork),
+      (i) => (!i.somenteGestor || isManager) && (!i.somenteDono || (isOwner && isNetwork)),
     ),
   })).filter((g) => g.items.length > 0)
   const itensVisiveis = gruposVisiveis.flatMap((g) => g.items)
@@ -66,47 +65,27 @@ export function AppLayout() {
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-background">
       {/* Topbar (mobile only) */}
-      <header className="md:hidden flex items-center justify-between px-4 h-14 bg-sidebar border-b border-sidebar-border sticky top-0 z-10">
-        <div className="flex items-center gap-2">
-          <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary text-primary-foreground">
+      <header className="md:hidden flex items-center justify-between px-4 h-14 bg-sidebar border-b border-sidebar-border sticky top-0 z-20">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary text-primary-foreground shrink-0">
             <Scissors size={16} />
           </span>
-          <span className="font-semibold text-foreground">{salonName ?? 'Salão CRM'}</span>
+          <span className="font-semibold text-foreground truncate">{salonName ?? 'Salão CRM'}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 shrink-0">
           <ThemeToggle />
-          <button
-            onClick={() => signOut()}
-            aria-label="Sair"
-            className="p-2 -mr-2 text-muted-foreground active:text-foreground"
-          >
-            <LogOut size={20} />
-          </button>
+          <ProfileMenu />
         </div>
       </header>
 
       {/* Sidebar (desktop only) */}
       <aside className="hidden md:flex w-60 border-r border-sidebar-border bg-sidebar flex-col shrink-0">
         <div className="px-3 py-4">
-          <div className="flex items-center justify-between px-2 py-2 rounded-lg select-none">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="flex items-center justify-center w-8 h-8 rounded-[6px] bg-primary text-primary-foreground font-semibold text-[13px] shrink-0 shadow-sm">
-                {salonName ? salonName.charAt(0).toUpperCase() : <Scissors size={16} />}
-              </span>
-              <div className="flex flex-col overflow-hidden">
-                <span className="text-[13px] font-medium leading-none mb-1 text-foreground truncate">
-                  {salonName ?? 'Salão CRM'}
-                </span>
-                <span className="text-[11px] text-muted-foreground leading-none">
-                  {isManager ? 'Painel do dono' : 'Barbeiro'}
-                </span>
-              </div>
-            </div>
+          <div className="flex items-center justify-between gap-2">
+            <ProfileMenu />
             <ThemeToggle />
           </div>
         </div>
-
-        <UnitSwitcher />
 
         <nav className="flex-1 px-3 py-2 space-y-5 overflow-y-auto">
           {gruposVisiveis.map((group) => (
@@ -126,13 +105,6 @@ export function AppLayout() {
           ))}
         </nav>
 
-        <button
-          onClick={() => signOut()}
-          className="flex items-center gap-3 mx-3 mb-3 px-3 py-2 rounded-lg text-sm font-medium text-left text-muted-foreground hover:bg-surface-2 hover:text-foreground transition-colors"
-        >
-          <LogOut size={18} />
-          Sair
-        </button>
       </aside>
 
       {/* Content */}

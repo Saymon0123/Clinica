@@ -1,5 +1,17 @@
 import { useState, type FormEvent } from 'react'
-import { Building2, Plus, TrendingUp, Users, CalendarDays, X } from 'lucide-react'
+import { Building2, Plus, TrendingUp, Users, CalendarDays, Receipt, CalendarX, X } from 'lucide-react'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import { useSalon } from '../auth/useSalon'
 import { invokeFunction } from '../../lib/invokeFunction'
 import { useRedeData, type Periodo } from './useRedeData'
@@ -14,7 +26,7 @@ export function RedePage() {
   const [modalAberto, setModalAberto] = useState(false)
 
   const gerenciadas = unidades.filter((u) => u.role === 'owner' || u.role === 'gerente')
-  const { resumos, loading, erro, recarregar } = useRedeData(gerenciadas, periodo)
+  const { resumos, serieDiaria, loading, erro, recarregar } = useRedeData(gerenciadas, periodo)
 
   if (!isNetwork && gerenciadas.length <= 1 && !organizationId) {
     return (
@@ -27,7 +39,15 @@ export function RedePage() {
   const totalFaturamento = resumos.reduce((s, r) => s + r.faturamento, 0)
   const totalAgendamentos = resumos.reduce((s, r) => s + r.agendamentos, 0)
   const totalClientes = resumos.reduce((s, r) => s + r.clientesNovos, 0)
+  const totalVendas = resumos.reduce((s, r) => s + r.vendas, 0)
+  const totalCancelamentos = resumos.reduce((s, r) => s + r.cancelamentos, 0)
+  const ticketRede = totalVendas > 0 ? totalFaturamento / totalVendas : 0
+  const taxaCancelamento =
+    totalAgendamentos + totalCancelamentos > 0
+      ? (totalCancelamentos / (totalAgendamentos + totalCancelamentos)) * 100
+      : 0
   const melhor = resumos[0]
+  const CORES = ['#7c3aed', '#a78bfa', '#c4b5fd', '#8b5cf6', '#ddd6fe']
 
   return (
     <div className="space-y-4">
@@ -67,27 +87,107 @@ export function RedePage() {
       {erro && <p className="text-sm text-danger">{erro}</p>}
 
       {/* Totais da rede */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <div className="bg-surface border border-border rounded-xl p-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <TrendingUp size={15} />
-            Faturamento da rede
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <TrendingUp size={14} />
+            Faturamento
           </div>
-          <div className="text-2xl font-semibold text-foreground mt-1">{moeda(totalFaturamento)}</div>
+          <div className="text-xl font-semibold text-foreground mt-1">{moeda(totalFaturamento)}</div>
         </div>
         <div className="bg-surface border border-border rounded-xl p-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <CalendarDays size={15} />
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Receipt size={14} />
+            Ticket médio
+          </div>
+          <div className="text-xl font-semibold text-foreground mt-1">{moeda(ticketRede)}</div>
+        </div>
+        <div className="bg-surface border border-border rounded-xl p-4">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <CalendarDays size={14} />
             Agendamentos
           </div>
-          <div className="text-2xl font-semibold text-foreground mt-1">{totalAgendamentos}</div>
+          <div className="text-xl font-semibold text-foreground mt-1">{totalAgendamentos}</div>
         </div>
         <div className="bg-surface border border-border rounded-xl p-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Users size={15} />
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Users size={14} />
             Clientes novos
           </div>
-          <div className="text-2xl font-semibold text-foreground mt-1">{totalClientes}</div>
+          <div className="text-xl font-semibold text-foreground mt-1">{totalClientes}</div>
+        </div>
+        <div className="bg-surface border border-border rounded-xl p-4">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <CalendarX size={14} />
+            Cancelamento
+          </div>
+          <div className="text-xl font-semibold text-foreground mt-1">
+            {taxaCancelamento.toFixed(1)}%
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        {/* Evolução do faturamento da rede */}
+        <div className="bg-surface border border-border rounded-xl p-5">
+          <h2 className="text-sm font-semibold text-foreground mb-1">Faturamento por dia</h2>
+          <p className="text-xs text-muted-foreground mb-3">Rede inteira somada</p>
+          {serieDiaria.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-10 text-center">Sem vendas no período.</p>
+          ) : (
+            <div style={{ height: 220 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={serieDiaria} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                  <XAxis dataKey="dia" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
+                  <YAxis tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
+                  <Tooltip
+                    formatter={(v) => moeda(Number(v) || 0)}
+                    contentStyle={{
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 8,
+                      fontSize: 12,
+                    }}
+                  />
+                  <Line type="monotone" dataKey="total" stroke="#7c3aed" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+
+        {/* Faturamento por unidade */}
+        <div className="bg-surface border border-border rounded-xl p-5">
+          <h2 className="text-sm font-semibold text-foreground mb-1">Faturamento por unidade</h2>
+          <p className="text-xs text-muted-foreground mb-3">Quem puxa o resultado da rede</p>
+          {resumos.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-10 text-center">Sem dados no período.</p>
+          ) : (
+            <div style={{ height: 220 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={resumos} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                  <XAxis dataKey="nome" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
+                  <YAxis tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
+                  <Tooltip
+                    formatter={(v) => moeda(Number(v) || 0)}
+                    contentStyle={{
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 8,
+                      fontSize: 12,
+                    }}
+                  />
+                  <Bar dataKey="faturamento" radius={[6, 6, 0, 0]}>
+                    {resumos.map((r, i) => (
+                      <Cell key={r.salonId} fill={CORES[i % CORES.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
       </div>
 
@@ -131,9 +231,11 @@ export function RedePage() {
 
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span>
-                      {r.vendas} venda{r.vendas === 1 ? '' : 's'} · {r.agendamentos} agendamento
-                      {r.agendamentos === 1 ? '' : 's'} · {r.clientesNovos} cliente
-                      {r.clientesNovos === 1 ? '' : 's'} novo{r.clientesNovos === 1 ? '' : 's'}
+                      {r.vendas} venda{r.vendas === 1 ? '' : 's'} · ticket {moeda(r.ticketMedio)} ·{' '}
+                      {r.agendamentos} agendamento{r.agendamentos === 1 ? '' : 's'} ·{' '}
+                      {r.cancelamentos} cancelado{r.cancelamentos === 1 ? '' : 's'} ·{' '}
+                      {r.clientesNovos} cliente{r.clientesNovos === 1 ? '' : 's'} novo
+                      {r.clientesNovos === 1 ? '' : 's'}
                     </span>
                     {r.salonId !== salonId && (
                       <button

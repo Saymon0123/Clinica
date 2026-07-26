@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Plus, Power } from 'lucide-react'
+import { Lock, Plus, Power } from 'lucide-react'
 import { useSalon } from '../auth/useSalon'
+import { useAuth } from '../auth/AuthContext'
 import { useServicesData } from './useServicesData'
 import { useProductsData } from './useProductsData'
 import { NewServiceModal } from './NewServiceModal'
@@ -17,6 +18,7 @@ function formatCurrency(value: number | null) {
 
 export function CatalogoPage() {
   const { salonId, isManager, loading: salonLoading } = useSalon()
+  const { user } = useAuth()
   const [tab, setTab] = useState<Tab>('servicos')
 
   const { services, loading: loadingServices, error: servicesError, reload: reloadServices } = useServicesData(salonId)
@@ -24,6 +26,11 @@ export function CatalogoPage() {
 
   const [editingService, setEditingService] = useState<ServiceItem | 'new' | null>(null)
   const [editingProduct, setEditingProduct] = useState<ProductItem | 'new' | null>(null)
+
+  // Gestor mexe em tudo; barbeiro só no que ele mesmo cadastrou.
+  function podeMexer(service: ServiceItem) {
+    return isManager || (!!service.created_by && service.created_by === user?.id)
+  }
 
   async function toggleServiceActive(service: ServiceItem) {
     await supabase.from('services').update({ ativo: !service.ativo }).eq('id', service.id)
@@ -70,17 +77,16 @@ export function CatalogoPage() {
 
       {tab === 'servicos' ? (
         <div>
-          {isManager && (
-            <div className="flex justify-end mb-3">
-              <button
-                onClick={() => setEditingService('new')}
-                className="flex items-center gap-2 btn-primary rounded px-4 py-2 text-sm font-medium"
-              >
-                <Plus size={16} />
-                Novo serviço
-              </button>
-            </div>
-          )}
+          {/* Barbeiro também acrescenta serviço; só não mexe no que não é dele. */}
+          <div className="flex justify-end mb-3">
+            <button
+              onClick={() => setEditingService('new')}
+              className="flex items-center gap-2 btn-primary rounded px-4 py-2 text-sm font-medium"
+            >
+              <Plus size={16} />
+              Novo serviço
+            </button>
+          </div>
 
           {servicesError && <p className="text-sm text-danger mb-3">{servicesError}</p>}
 
@@ -107,19 +113,28 @@ export function CatalogoPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right space-x-2">
-                      <button
-                        onClick={() => setEditingService(s)}
-                        className="text-xs text-muted-foreground underline"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => toggleServiceActive(s)}
-                        className="text-xs text-muted-foreground underline inline-flex items-center gap-1"
-                      >
-                        <Power size={12} />
-                        {s.ativo ? 'Desativar' : 'Ativar'}
-                      </button>
+                      {podeMexer(s) ? (
+                        <>
+                          <button
+                            onClick={() => setEditingService(s)}
+                            className="text-xs text-muted-foreground underline"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => toggleServiceActive(s)}
+                            className="text-xs text-muted-foreground underline inline-flex items-center gap-1"
+                          >
+                            <Power size={12} />
+                            {s.ativo ? 'Desativar' : 'Ativar'}
+                          </button>
+                        </>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                          <Lock size={11} />
+                          Da gestão
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}

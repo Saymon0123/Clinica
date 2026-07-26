@@ -14,7 +14,7 @@ export function useServicesData(salonId: string | null) {
 
     const { data, error: fetchError } = await supabase
       .from('services')
-      .select('id, nome, duracao_minutos, preco, ativo')
+      .select('id, nome, duracao_minutos, preco, ativo, created_by')
       .eq('salon_id', salonId)
       .order('nome')
 

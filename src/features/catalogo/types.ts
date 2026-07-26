@@ -4,6 +4,7 @@ export type ServiceItem = {
   duracao_minutos: number
   preco: number
   ativo: boolean
+  created_by: string | null
 }
 
 export type ProductItem = {

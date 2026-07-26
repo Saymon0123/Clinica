@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { urlDeRedefinicaoDeSenha } from '../../lib/appUrl'
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -14,7 +15,7 @@ export function ForgotPasswordPage() {
     setError(null)
     try {
       await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/redefinir-senha`,
+        redirectTo: urlDeRedefinicaoDeSenha(),
       })
       // Mesma mensagem de sucesso independente do e-mail existir ou não,
       // para não revelar quais e-mails têm cadastro no sistema.

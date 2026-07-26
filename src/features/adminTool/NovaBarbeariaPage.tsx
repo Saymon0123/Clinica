@@ -1,14 +1,10 @@
 import { useState, type FormEvent } from 'react'
-import { Check, Copy, Lock } from 'lucide-react'
+import { Lock, Plus, Store } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { SalonWizard } from './SalonWizard'
+import { SalonList } from './SalonList'
 
 const SECRET_STORAGE_KEY = 'admin_tool_secret'
-
-type Result = {
-  email: string
-  tempPassword: string
-  salonId: string
-}
 
 function AccessGate({ onUnlock }: { onUnlock: (secret: string) => void }) {
   const [value, setValue] = useState('')
@@ -23,7 +19,7 @@ function AccessGate({ onUnlock }: { onUnlock: (secret: string) => void }) {
     setChecking(true)
     setError(null)
     try {
-      // Valida a senha no servidor ANTES de liberar o formulário.
+      // Valida a senha no servidor ANTES de liberar o painel.
       const { data, error: invokeError } = await supabase.functions.invoke('admin-create-salon', {
         headers: { 'x-admin-secret': secret },
         body: { action: 'verify' },
@@ -45,9 +41,9 @@ function AccessGate({ onUnlock }: { onUnlock: (secret: string) => void }) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm bg-white p-6 rounded-lg shadow space-y-4">
-        <div className="flex items-center gap-2 text-gray-900">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      <form onSubmit={handleSubmit} className="w-full max-w-sm bg-surface border border-border p-6 rounded-xl space-y-4">
+        <div className="flex items-center gap-2 text-foreground">
           <Lock size={18} />
           <h1 className="text-lg font-semibold">Acesso restrito</h1>
         </div>
@@ -60,11 +56,11 @@ function AccessGate({ onUnlock }: { onUnlock: (secret: string) => void }) {
           }}
           placeholder="Senha de acesso"
           autoFocus
-          className={`w-full border rounded px-3 py-2 text-sm ${
-            error ? 'border-red-400 focus:outline-red-400' : 'border-gray-300'
+          className={`w-full border rounded px-3 py-2 text-sm bg-surface text-foreground ${
+            error ? 'border-danger' : 'border-border-strong'
           }`}
         />
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-danger">{error}</p>}
         <button
           type="submit"
           disabled={checking || !value.trim()}
@@ -77,159 +73,52 @@ function AccessGate({ onUnlock }: { onUnlock: (secret: string) => void }) {
   )
 }
 
-function CopyField({ label, value }: { label: string; value: string }) {
-  const [copied, setCopied] = useState(false)
-
-  async function handleCopy() {
-    await navigator.clipboard.writeText(value)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
-
-  return (
-    <div>
-      <div className="text-xs text-gray-500 mb-1">{label}</div>
-      <div className="flex items-center gap-2">
-        <code className="flex-1 bg-gray-100 rounded px-3 py-2 text-sm break-all">{value}</code>
-        <button
-          type="button"
-          onClick={handleCopy}
-          aria-label={`Copiar ${label}`}
-          className="p-2 border border-gray-300 rounded text-gray-600 hover:bg-gray-50 shrink-0"
-        >
-          {copied ? <Check size={16} className="text-green-600" /> : <Copy size={16} />}
-        </button>
-      </div>
-    </div>
-  )
-}
-
 export function NovaBarbeariaPage() {
   const [secret, setSecret] = useState<string | null>(() => sessionStorage.getItem(SECRET_STORAGE_KEY))
-
-  const [salonName, setSalonName] = useState('')
-  const [ownerName, setOwnerName] = useState('')
-  const [ownerEmail, setOwnerEmail] = useState('')
-  const [ownerPhone, setOwnerPhone] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [result, setResult] = useState<Result | null>(null)
+  const [aba, setAba] = useState<'lista' | 'nova'>('lista')
+  const [refreshKey, setRefreshKey] = useState(0)
 
   if (!secret) {
     return <AccessGate onUnlock={setSecret} />
   }
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault()
-    setSubmitting(true)
-    setError(null)
-    setResult(null)
-    try {
-      const { data, error: invokeError } = await supabase.functions.invoke('admin-create-salon', {
-        headers: { 'x-admin-secret': secret! },
-        body: {
-          salonName,
-          ownerName,
-          ownerEmail,
-          ownerPhone,
-        },
-      })
-
-      if (invokeError || data?.error) {
-        if (data?.error === 'Não autorizado.') {
-          sessionStorage.removeItem(SECRET_STORAGE_KEY)
-          setSecret(null)
-          return
-        }
-        setError(data?.error ?? 'Não foi possível cadastrar a barbearia.')
-        return
-      }
-
-      setResult(data as Result)
-      setSalonName('')
-      setOwnerName('')
-      setOwnerEmail('')
-      setOwnerPhone('')
-    } catch (err) {
-      console.error('Erro ao cadastrar barbearia:', err)
-      setError('Não foi possível cadastrar a barbearia. Tente novamente.')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md space-y-4">
-        <h1 className="text-lg font-semibold text-gray-900">Cadastrar nova barbearia</h1>
+    <div className="min-h-screen bg-background px-4 py-8">
+      <div className="w-full max-w-2xl mx-auto space-y-4">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Painel administrativo</h1>
+          <p className="text-sm text-muted-foreground">Barbearias e redes cadastradas no sistema</p>
+        </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 space-y-4">
-          <div>
-            <label className="block text-sm text-gray-600 mb-1" htmlFor="salonName">Nome da barbearia</label>
-            <input
-              id="salonName"
-              value={salonName}
-              onChange={(e) => setSalonName(e.target.value)}
-              required
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm text-gray-600 mb-1" htmlFor="ownerName">Nome do barbeiro/dono</label>
-            <input
-              id="ownerName"
-              value={ownerName}
-              onChange={(e) => setOwnerName(e.target.value)}
-              required
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm text-gray-600 mb-1" htmlFor="ownerEmail">E-mail de login</label>
-            <input
-              id="ownerEmail"
-              type="email"
-              value={ownerEmail}
-              onChange={(e) => setOwnerEmail(e.target.value)}
-              required
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm text-gray-600 mb-1" htmlFor="ownerPhone">Telefone (opcional)</label>
-            <input
-              id="ownerPhone"
-              value={ownerPhone}
-              onChange={(e) => setOwnerPhone(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-              placeholder="(11) 90000-0000"
-            />
-          </div>
-
-          {error && <p className="text-sm text-red-600">{error}</p>}
-
+        <div className="flex gap-1 border-b border-border">
           <button
-            type="submit"
-            disabled={submitting}
-            className="w-full bg-green-700 text-white rounded px-3 py-2 text-sm font-medium hover:bg-green-800 disabled:opacity-50"
+            onClick={() => setAba('lista')}
+            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              aba === 'lista'
+                ? 'border-primary text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
           >
-            {submitting ? 'Cadastrando...' : 'Cadastrar barbearia'}
+            <Store size={15} />
+            Barbearias
           </button>
-        </form>
+          <button
+            onClick={() => setAba('nova')}
+            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              aba === 'nova'
+                ? 'border-primary text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Plus size={15} />
+            Nova barbearia
+          </button>
+        </div>
 
-        {result && (
-          <div className="bg-white rounded-lg shadow p-6 space-y-4 border border-green-200">
-            <p className="text-sm text-green-700 font-medium">Barbearia cadastrada com sucesso!</p>
-            <p className="text-xs text-gray-500">
-              Envie esses dados para o barbeiro. Recomende trocar a senha assim que entrar.
-            </p>
-            <CopyField label="E-mail" value={result.email} />
-            <CopyField label="Senha temporária" value={result.tempPassword} />
-            <CopyField label="Link de acesso" value="https://clinica-crm-kappa.vercel.app" />
-          </div>
+        {aba === 'lista' ? (
+          <SalonList secret={secret} refreshKey={refreshKey} />
+        ) : (
+          <SalonWizard secret={secret} onCreated={() => setRefreshKey((k) => k + 1)} />
         )}
       </div>
     </div>

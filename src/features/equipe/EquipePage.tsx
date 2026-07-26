@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Check, Clock, Copy, Link2, Plus, Power, UserPlus, X } from 'lucide-react'
+import { Check, Clock, Copy, Link2, Pencil, Plus, Power, Trash2, UserPlus, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { urlDoConvite } from '../../lib/appUrl'
 import { useSalon } from '../auth/useSalon'
@@ -34,6 +34,9 @@ export function EquipePage() {
   const [erro, setErro] = useState<string | null>(null)
   const [modalAberto, setModalAberto] = useState(false)
   const [copiado, setCopiado] = useState<string | null>(null)
+  const [editandoEmail, setEditandoEmail] = useState<string | null>(null)
+  const [emailRascunho, setEmailRascunho] = useState('')
+  const [salvandoConvite, setSalvandoConvite] = useState<string | null>(null)
   const [horarioDe, setHorarioDe] = useState<Membro | null>(null)
 
   const carregar = useCallback(async () => {
@@ -65,6 +68,47 @@ export function EquipePage() {
     const { error } = await supabase.from('professionals').update({ ativo: !m.ativo }).eq('id', m.id)
     if (error) {
       setErro('Não foi possível alterar o status.')
+      return
+    }
+    carregar()
+  }
+
+  async function salvarEmail(c: Convite) {
+    const novo = emailRascunho.trim().toLowerCase()
+    if (!/^\S+@\S+\.\S+$/.test(novo)) {
+      setErro('E-mail inválido.')
+      return
+    }
+    if (novo === c.email) {
+      setEditandoEmail(null)
+      return
+    }
+
+    setSalvandoConvite(c.id)
+    setErro(null)
+    const { error } = await supabase.from('salon_invites').update({ email: novo }).eq('id', c.id)
+    setSalvandoConvite(null)
+
+    if (error) {
+      console.error('Erro ao trocar o e-mail do convite:', error)
+      setErro('Não foi possível trocar o e-mail do convite.')
+      return
+    }
+    setEditandoEmail(null)
+    carregar()
+  }
+
+  async function cancelarConvite(c: Convite) {
+    if (!window.confirm(`Cancelar o convite de ${c.nome}? O link enviado deixa de funcionar.`)) return
+
+    setSalvandoConvite(c.id)
+    setErro(null)
+    const { error } = await supabase.from('salon_invites').delete().eq('id', c.id)
+    setSalvandoConvite(null)
+
+    if (error) {
+      console.error('Erro ao cancelar o convite:', error)
+      setErro('Não foi possível cancelar o convite.')
       return
     }
     carregar()
@@ -108,23 +152,76 @@ export function EquipePage() {
       {convites.length > 0 && (
         <div className="bg-surface border border-border rounded-xl p-4">
           <h2 className="text-sm font-semibold text-foreground mb-2">Convites aguardando</h2>
-          <div className="space-y-2">
+          <div className="divide-y divide-border">
             {convites.map((c) => (
-              <div key={c.id} className="flex flex-wrap items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="text-sm text-foreground">{c.nome}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {c.email} · expira em{' '}
-                    {new Date(c.expira_em).toLocaleDateString('pt-BR')}
+              <div key={c.id} className="py-2 first:pt-0 last:pb-0">
+                {editandoEmail === c.id ? (
+                  // O erro de "e-mail já cadastrado" só aparece quando o
+                  // convidado abre o link, então o dono precisa poder corrigir
+                  // o endereço depois de o convite já existir.
+                  <div className="space-y-2">
+                    <div className="text-sm text-foreground">{c.nome}</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input
+                        type="email"
+                        value={emailRascunho}
+                        onChange={(e) => setEmailRascunho(e.target.value)}
+                        aria-label={`Novo e-mail do convite de ${c.nome}`}
+                        className="flex-1 min-w-[12rem] border border-border-strong bg-surface text-foreground rounded px-3 py-1.5 text-sm"
+                      />
+                      <button
+                        onClick={() => salvarEmail(c)}
+                        disabled={salvandoConvite === c.id}
+                        className="btn-primary rounded px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+                      >
+                        {salvandoConvite === c.id ? 'Salvando...' : 'Salvar'}
+                      </button>
+                      <button
+                        onClick={() => setEditandoEmail(null)}
+                        className="text-xs font-medium text-muted-foreground hover:text-foreground"
+                      >
+                        Voltar
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <button
-                  onClick={() => copiar(c.token)}
-                  className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline shrink-0"
-                >
-                  {copiado === c.token ? <Check size={13} /> : <Copy size={13} />}
-                  {copiado === c.token ? 'Link copiado!' : 'Copiar link'}
-                </button>
+                ) : (
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-sm text-foreground">{c.nome}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {c.email} · expira em {new Date(c.expira_em).toLocaleDateString('pt-BR')}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <button
+                        onClick={() => copiar(c.token)}
+                        className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                      >
+                        {copiado === c.token ? <Check size={13} /> : <Copy size={13} />}
+                        {copiado === c.token ? 'Link copiado!' : 'Copiar link'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditandoEmail(c.id)
+                          setEmailRascunho(c.email)
+                          setErro(null)
+                        }}
+                        className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+                      >
+                        <Pencil size={12} />
+                        Trocar e-mail
+                      </button>
+                      <button
+                        onClick={() => cancelarConvite(c)}
+                        disabled={salvandoConvite === c.id}
+                        className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-danger disabled:opacity-50"
+                      >
+                        <Trash2 size={12} />
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>

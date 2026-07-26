@@ -76,7 +76,13 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'Não foi possível concluir o cadastro.' }, 500)
   }
   if (existingUsers.users.some((u) => u.email?.toLowerCase() === convite.email.toLowerCase())) {
-    return json({ error: 'Já existe uma conta com esse e-mail.' }, 409)
+    return json(
+      {
+        error:
+          'Já existe uma conta com esse e-mail. Peça ao dono para trocar o e-mail deste convite na aba Equipe.',
+      },
+      409,
+    )
   }
 
   let userId: string | null = null

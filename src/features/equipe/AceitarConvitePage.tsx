@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Check, Eye, EyeOff, Scissors } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
+import { invokeFunction } from '../../lib/invokeFunction'
 
 type ConviteInfo = { nome: string; email: string; salao: string; role: string }
 
@@ -24,21 +24,17 @@ export function AceitarConvitePage() {
         setCarregando(false)
         return
       }
-      try {
-        const { data, error } = await supabase.functions.invoke('accept-invite', {
-          body: { action: 'check', token },
-        })
-        if (error || data?.error) {
-          setErro(data?.error ?? 'Convite inválido ou expirado.')
-          return
-        }
-        setInfo(data as ConviteInfo)
-      } catch (err) {
-        console.error('Erro ao checar convite:', err)
-        setErro('Não foi possível carregar o convite. Verifique sua conexão.')
-      } finally {
-        setCarregando(false)
+      const { data, error } = await invokeFunction<ConviteInfo>(
+        'accept-invite',
+        { body: { action: 'check', token } },
+        'Não foi possível carregar o convite. Verifique sua conexão.',
+      )
+      if (error || !data) {
+        setErro(error ?? 'Convite inválido ou expirado.')
+      } else {
+        setInfo(data)
       }
+      setCarregando(false)
     }
     checar()
   }, [token])
@@ -56,21 +52,17 @@ export function AceitarConvitePage() {
 
     setSalvando(true)
     setErro(null)
-    try {
-      const { data, error } = await supabase.functions.invoke('accept-invite', {
-        body: { token, senha },
-      })
-      if (error || data?.error) {
-        setErro(data?.error ?? 'Não foi possível concluir o cadastro.')
-        return
-      }
-      setPronto(true)
-    } catch (err) {
-      console.error('Erro ao aceitar convite:', err)
-      setErro('Não foi possível concluir o cadastro. Tente novamente.')
-    } finally {
-      setSalvando(false)
+    const { error } = await invokeFunction(
+      'accept-invite',
+      { body: { token, senha } },
+      'Não foi possível concluir o cadastro. Tente novamente.',
+    )
+    setSalvando(false)
+    if (error) {
+      setErro(error)
+      return
     }
+    setPronto(true)
   }
 
   return (

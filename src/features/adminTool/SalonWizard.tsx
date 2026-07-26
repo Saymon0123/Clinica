@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Building2, Check, ChevronLeft, ChevronRight, Copy, Plus, Store, Trash2 } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
+import { invokeFunction } from '../../lib/invokeFunction'
 import {
   HORARIO_PADRAO,
   SERVICOS_PADRAO,
@@ -101,7 +101,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
     setSalvando(true)
     setErro(null)
     try {
-      const { data, error } = await supabase.functions.invoke('admin-create-salon', {
+      const { data, error } = await invokeFunction<Resultado>('admin-create-salon', {
         headers: { 'x-admin-secret': secret },
         body: {
           action: 'create',
@@ -120,11 +120,11 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
         },
       })
 
-      if (error || data?.error) {
-        setErro(data?.error ?? 'Não foi possível cadastrar. Tente novamente.')
+      if (error || !data) {
+        setErro(error ?? 'Não foi possível cadastrar. Tente novamente.')
         return
       }
-      setResultado(data as Resultado)
+      setResultado(data)
       onCreated()
     } catch (err) {
       console.error('Erro ao cadastrar:', err)

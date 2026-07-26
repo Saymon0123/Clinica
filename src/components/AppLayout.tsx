@@ -1,5 +1,16 @@
 import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom'
-import { Calendar, Users, Wallet, Link2, Globe, Tag, Scissors, UsersRound, Building2 } from 'lucide-react'
+import {
+  Calendar,
+  Users,
+  Wallet,
+  Link2,
+  Globe,
+  Tag,
+  Scissors,
+  UsersRound,
+  Building2,
+  CreditCard,
+} from 'lucide-react'
 import { ProfileMenu } from './ProfileMenu'
 import { useSalon } from '../features/auth/useSalon'
 import { useAppointmentAlerts } from '../features/agenda/useAppointmentAlerts'
@@ -13,6 +24,8 @@ type NavItem = {
   icon: typeof Calendar
   somenteGestor?: boolean
   somenteDono?: boolean
+  /** Visível para dono, mesmo sem rede (barbearia avulsa também assina). */
+  donoDeQualquerUnidade?: boolean
   /** Continua acessível mesmo sem barbearia escolhida. */
   semUnidade?: boolean
 }
@@ -33,6 +46,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { to: '/equipe', label: 'Equipe', icon: UsersRound, somenteGestor: true },
       { to: '/rede', label: 'Rede', icon: Building2, somenteDono: true, semUnidade: true },
       { to: '/rede/equipe', label: 'Equipe da rede', icon: UsersRound, somenteDono: true, semUnidade: true },
+      { to: '/assinatura', label: 'Assinatura', icon: CreditCard, donoDeQualquerUnidade: true },
     ],
   },
   {
@@ -68,6 +82,7 @@ export function AppLayout() {
       (i) =>
         (!i.somenteGestor || isManager) &&
         (!i.somenteDono || podeVerRede) &&
+        (!i.donoDeQualquerUnidade || isOwner) &&
         (i.semUnidade || !!salonId),
     ),
   })).filter((g) => g.items.length > 0)

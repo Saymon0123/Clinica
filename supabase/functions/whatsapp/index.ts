@@ -68,15 +68,34 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'Não autenticado.' }, 401)
   }
 
+  let body: {
+    action?: string
+    conversationId?: string
+    content?: string
+    salonId?: string
+  } = {}
+  try {
+    body = await req.json()
+  } catch {
+    // sem corpo
+  }
+
   // Fonte de verdade é user_salons (profiles é legado e sai de sincronia).
   // Só dono/gerente mexe na conexão do WhatsApp.
-  const { data: vinculo, error: vinculoError } = await supabase
+  //
+  // Cada unidade tem a própria instância na Evolution (`salon-<id>`), com
+  // número e conversas próprios. Numa rede, portanto, o salão precisa vir do
+  // que está selecionado na tela — pegar o primeiro vínculo faria o dono
+  // conectar a unidade errada.
+  const consulta = supabase
     .from('user_salons')
     .select('salon_id, role')
     .eq('user_id', userData.user.id)
     .in('role', ['owner', 'gerente'])
-    .limit(1)
-    .maybeSingle()
+
+  const { data: vinculo, error: vinculoError } = body.salonId
+    ? await consulta.eq('salon_id', body.salonId).maybeSingle()
+    : await consulta.limit(1).maybeSingle()
 
   if (vinculoError || !vinculo) {
     return json({ error: 'Salão não encontrado para este usuário.' }, 404)
@@ -84,13 +103,6 @@ Deno.serve(async (req: Request) => {
 
   const salonId = vinculo.salon_id as string
   const instanceName = instanceNameFor(salonId)
-
-  let body: { action?: string; conversationId?: string; content?: string } = {}
-  try {
-    body = await req.json()
-  } catch {
-    // sem corpo
-  }
 
   try {
     if (body.action === 'connect') {

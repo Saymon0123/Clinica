@@ -6,9 +6,11 @@ import { AgentDashboard } from './AgentDashboard'
 
 type Status = 'close' | 'connecting' | 'open'
 
-async function callWhatsapp(action: 'connect' | 'status' | 'disconnect') {
+async function callWhatsapp(action: 'connect' | 'status' | 'disconnect', salonId: string) {
+  // salonId é obrigatório: numa rede, sem ele a função cairia na primeira
+  // unidade do usuário em vez da que está selecionada na tela.
   const { data, error } = await supabase.functions.invoke('whatsapp', {
-    body: { action },
+    body: { action, salonId },
   })
   if (error) throw error
   return data as { status: Status; qrCode?: string | null; error?: string }
@@ -24,8 +26,9 @@ export function ConexaoPage() {
   const failuresRef = useRef(0)
 
   const checkStatus = useCallback(async () => {
+    if (!salonId) return
     try {
-      const result = await callWhatsapp('status')
+      const result = await callWhatsapp('status', salonId)
       failuresRef.current = 0
       setError(null)
       setStatus(result.status)
@@ -50,7 +53,7 @@ export function ConexaoPage() {
         )
       }
     }
-  }, [])
+  }, [salonId])
 
   useEffect(() => {
     if (salonId) checkStatus()
@@ -60,10 +63,11 @@ export function ConexaoPage() {
   }, [salonId, checkStatus])
 
   async function handleConnect() {
+    if (!salonId) return
     setLoading(true)
     setError(null)
     try {
-      const result = await callWhatsapp('connect')
+      const result = await callWhatsapp('connect', salonId)
       if (result.error) {
         setError(result.error)
         return
@@ -83,10 +87,11 @@ export function ConexaoPage() {
   }
 
   async function handleDisconnect() {
+    if (!salonId) return
     setLoading(true)
     setError(null)
     try {
-      const result = await callWhatsapp('disconnect')
+      const result = await callWhatsapp('disconnect', salonId)
       setStatus(result.status)
       setQrCode(null)
       if (pollRef.current) {

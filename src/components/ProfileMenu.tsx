@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { Building2, Check, ChevronsUpDown, LayoutDashboard, LogOut, Store } from 'lucide-react'
 import { useAuth } from '../features/auth/AuthContext'
 import { useSalon } from '../features/auth/useSalon'
@@ -21,7 +21,12 @@ export function ProfileMenu() {
   const { unidades, salonId, salonName, role, isOwner, selecionarUnidade } = useSalon()
   const [aberto, setAberto] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
-  const navigate = useNavigate()
+  const location = useLocation()
+
+  // Fecha ao mudar de rota: sem isso o menu fica aberto por cima da tela nova.
+  useEffect(() => {
+    setAberto(false)
+  }, [location.pathname])
 
   useEffect(() => {
     if (!aberto) return
@@ -78,16 +83,17 @@ export function ProfileMenu() {
 
           {isOwner && (
             <>
-              <button
-                onClick={() => {
-                  navigate('/rede')
-                  setAberto(false)
-                }}
+              {/* Link de verdade (âncora) em vez de navigate() no onClick:
+                  funciona mesmo se algum handler engolir o clique, e permite
+                  abrir em nova aba. */}
+              <Link
+                to="/rede"
+                onClick={() => setAberto(false)}
                 className="w-full flex items-center gap-2 px-3 py-2 text-left text-[13px] text-foreground hover:bg-surface-2"
               >
                 <LayoutDashboard size={15} className="text-muted-foreground" />
                 Painel da rede
-              </button>
+              </Link>
               <div className="border-t border-border my-1" />
             </>
           )}

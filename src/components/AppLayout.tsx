@@ -32,6 +32,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { to: '/catalogo', label: 'Catálogo', icon: Tag },
       { to: '/equipe', label: 'Equipe', icon: UsersRound, somenteGestor: true },
       { to: '/rede', label: 'Rede', icon: Building2, somenteDono: true, semUnidade: true },
+      { to: '/rede/equipe', label: 'Equipe da rede', icon: UsersRound, somenteDono: true, semUnidade: true },
     ],
   },
   {
@@ -71,7 +72,7 @@ export function AppLayout() {
 
   // Dono de rede entra pelo painel: sem barbearia escolhida, as demais telas
   // não teriam o que carregar.
-  if (!loading && !salonId && isOwner && isNetwork && location.pathname !== '/rede') {
+  if (!loading && !salonId && isOwner && isNetwork && !location.pathname.startsWith('/rede')) {
     return <Navigate to="/rede" replace />
   }
 

@@ -13,6 +13,7 @@ import {
   YAxis,
 } from 'recharts'
 import { useSalon } from '../auth/useSalon'
+import { useProducaoBarbeiros } from './useProducaoBarbeiros'
 import { invokeFunction } from '../../lib/invokeFunction'
 import { useRedeData, type Periodo } from './useRedeData'
 
@@ -20,17 +21,38 @@ function moeda(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
+/** Mesma janela usada pelo comparativo, para os números baterem entre si. */
+function inicioDoPeriodoISO(periodo: Periodo) {
+  const d = new Date()
+  if (periodo === 'semana') d.setDate(d.getDate() - d.getDay())
+  else d.setDate(1)
+  d.setHours(0, 0, 0, 0)
+  return d.toISOString()
+}
+
 export function RedePage() {
-  const { unidades, organizationId, salonId, isNetwork, recarregarUnidades, selecionarUnidade } = useSalon()
+  const { unidades, organizationId, salonId, isOwner, isNetwork, recarregarUnidades, selecionarUnidade } =
+    useSalon()
   const [periodo, setPeriodo] = useState<Periodo>('mes')
   const [modalAberto, setModalAberto] = useState(false)
 
-  const gerenciadas = unidades.filter((u) => u.role === 'owner' || u.role === 'gerente')
+  // A rede é do dono: unidades onde ele é só gerente não entram no comparativo.
+  const gerenciadas = unidades.filter((u) => u.role === 'owner')
   const { resumos, serieDiaria, loading, erro, recarregar } = useRedeData(gerenciadas, periodo)
+  const desdeISO = inicioDoPeriodoISO(periodo)
+  const { producao, erro: erroProducao } = useProducaoBarbeiros(gerenciadas, desdeISO)
 
   // Sem barbearia escolhida o contexto não tem organizationId; nesse caso a
   // rede é a das unidades que ele administra.
   const redeId = organizationId ?? gerenciadas.find((u) => u.organizationId)?.organizationId ?? null
+
+  if (!isOwner) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        O painel da rede é do dono. Sua conta administra uma unidade específica.
+      </p>
+    )
+  }
 
   if (!isNetwork && gerenciadas.length <= 1 && !redeId) {
     return (
@@ -88,7 +110,7 @@ export function RedePage() {
         </div>
       </div>
 
-      {erro && <p className="text-sm text-danger">{erro}</p>}
+      {(erro || erroProducao) && <p className="text-sm text-danger">{erro ?? erroProducao}</p>}
 
       {/* Totais da rede */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
@@ -249,6 +271,46 @@ export function RedePage() {
                         Abrir
                       </button>
                     )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Produção por barbeiro, somando a rede inteira */}
+      <div className="bg-surface border border-border rounded-xl overflow-hidden">
+        <div className="px-4 py-3 border-b border-border">
+          <h2 className="text-sm font-semibold text-foreground">Produção por barbeiro</h2>
+          <p className="text-xs text-muted-foreground">Quem mais produz na rede, em todas as unidades</p>
+        </div>
+
+        {producao.length === 0 ? (
+          <p className="text-sm text-muted-foreground p-6 text-center">
+            Nenhum barbeiro com venda no período.
+          </p>
+        ) : (
+          <div className="divide-y divide-border">
+            {producao.map((b) => {
+              const topo = producao[0].faturamento
+              const proporcao = topo > 0 ? (b.faturamento / topo) * 100 : 0
+              return (
+                <div key={b.professionalId} className="p-4 space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <span className="text-sm font-medium text-foreground truncate">{b.nome}</span>
+                      <span className="ml-2 text-[11px] text-muted-foreground">{b.unidade}</span>
+                    </div>
+                    <span className="text-sm font-semibold text-foreground">{moeda(b.faturamento)}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
+                    <div className="h-full bg-primary rounded-full" style={{ width: `${proporcao}%` }} />
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {b.atendimentos} item{b.atendimentos === 1 ? '' : 's'} vendido
+                    {b.atendimentos === 1 ? '' : 's'} · ticket {moeda(b.ticketMedio)} · comissão{' '}
+                    {moeda(b.comissao)}
                   </div>
                 </div>
               )

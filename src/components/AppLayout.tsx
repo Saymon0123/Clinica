@@ -12,6 +12,7 @@ import {
   CreditCard,
 } from 'lucide-react'
 import { ProfileMenu } from './ProfileMenu'
+import { BottomNav } from './BottomNav'
 import { useSalon } from '../features/auth/useSalon'
 import { useAppointmentAlerts } from '../features/agenda/useAppointmentAlerts'
 import { AppointmentAlertBanner } from '../features/agenda/AppointmentAlertBanner'
@@ -144,27 +145,7 @@ export function AppLayout() {
         <Outlet />
       </main>
 
-      {/* Bottom nav (mobile only) */}
-      <nav
-        className="md:hidden fixed bottom-0 inset-x-0 bg-sidebar border-t border-sidebar-border flex z-10"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-      >
-        {itensVisiveis.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.to === '/'}
-            className={({ isActive }) =>
-              `flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] ${
-                isActive ? 'text-primary' : 'text-muted-foreground'
-              }`
-            }
-          >
-            <item.icon size={20} />
-            {item.label}
-          </NavLink>
-        ))}
-      </nav>
+      <BottomNav itens={itensVisiveis} />
 
       {/* Botão flutuante: abre o espelho do WhatsApp em nova aba (só desktop, só gestor) */}
       {isManager && (

@@ -54,13 +54,13 @@ export function CaixaSection({ salonId }: { salonId: string }) {
     setCaixa(data as Caixa | null)
 
     if (data) {
-      // payments não tem data própria; a referência é o fechamento da comanda.
+      // Soma pelas comandas amarradas a ESTE caixa, e não por data: com dois
+      // caixas no mesmo dia, filtrar por horário misturaria os dois.
       const { data: pagamentos } = await supabase
         .from('payments')
-        .select('valor, orders!inner(salon_id, closed_at)')
-        .eq('orders.salon_id', salonId)
+        .select('valor, orders!inner(cash_register_id)')
+        .eq('orders.cash_register_id', data.id)
         .eq('forma_pagamento', 'dinheiro')
-        .gte('orders.closed_at', data.aberto_em)
 
       const soma = (pagamentos ?? []).reduce(
         (s: number, p: { valor: number | string }) => s + (Number(p.valor) || 0),

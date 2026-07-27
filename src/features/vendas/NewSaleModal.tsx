@@ -153,11 +153,23 @@ export function NewSaleModal({
     setSaving(true)
     setError(null)
 
+    // Caixa aberto no momento da venda: sem esse vínculo a conferência de
+    // fechamento erraria quando houvesse mais de um caixa no mesmo dia.
+    const { data: caixaAberto } = await supabase
+      .from('cash_registers')
+      .select('id')
+      .eq('salon_id', salonId)
+      .eq('status', 'aberto')
+      .order('aberto_em', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
     // 1. Cria a comanda já fechada
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
         salon_id: salonId,
+        cash_register_id: caixaAberto?.id ?? null,
         client_id: clientId || null,
         professional_id: professionalId,
         appointment_id: prefill?.appointmentId ?? null,

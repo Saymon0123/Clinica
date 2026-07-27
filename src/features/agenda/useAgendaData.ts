@@ -14,6 +14,8 @@ export function useAgendaData(salonId: string | null, date: Date) {
   const [professionals, setProfessionals] = useState<Professional[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [appointments, setAppointments] = useState<Appointment[]>([])
+  /** service_id -> profissionais que executam esse serviço. */
+  const [executantes, setExecutantes] = useState<Map<string, string[]>>(new Map())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -24,7 +26,7 @@ export function useAgendaData(salonId: string | null, date: Date) {
 
     const { start, end } = dayBounds(date)
 
-    const [profResult, servResult, apptResult] = await Promise.all([
+    const [profResult, servResult, apptResult, vinculoResult] = await Promise.all([
       supabase.from('professionals').select('id, nome, ativo').eq('salon_id', salonId).eq('ativo', true).order('nome'),
       supabase.from('services').select('id, nome, duracao_minutos, preco').eq('salon_id', salonId).eq('ativo', true).order('nome'),
       supabase
@@ -35,10 +37,16 @@ export function useAgendaData(salonId: string | null, date: Date) {
         .lte('data_hora_inicio', end)
         .neq('status', 'cancelado')
         .order('data_hora_inicio'),
+      // Quem executa cada serviço. Sem isso a agenda ofereceria qualquer
+      // barbeiro para qualquer serviço.
+      supabase
+        .from('professional_services')
+        .select('professional_id, service_id, professionals!inner(salon_id)')
+        .eq('professionals.salon_id', salonId),
     ])
 
-    if (profResult.error || servResult.error || apptResult.error) {
-      console.error(profResult.error || servResult.error || apptResult.error)
+    if (profResult.error || servResult.error || apptResult.error || vinculoResult.error) {
+      console.error(profResult.error || servResult.error || apptResult.error || vinculoResult.error)
       setError('Não foi possível carregar a agenda.')
       setLoading(false)
       return
@@ -46,6 +54,14 @@ export function useAgendaData(salonId: string | null, date: Date) {
 
     setProfessionals(profResult.data ?? [])
     setServices(servResult.data ?? [])
+
+    const porServico = new Map<string, string[]>()
+    for (const v of (vinculoResult.data ?? []) as { professional_id: string; service_id: string }[]) {
+      const lista = porServico.get(v.service_id) ?? []
+      lista.push(v.professional_id)
+      porServico.set(v.service_id, lista)
+    }
+    setExecutantes(porServico)
     setAppointments(
       (apptResult.data ?? []).map((row) => {
         const r = row as unknown as Appointment & { clients: { nome: string } | null; services: { nome: string } | null }
@@ -69,5 +85,22 @@ export function useAgendaData(salonId: string | null, date: Date) {
     reload()
   }, [reload])
 
-  return { professionals, services, appointments, loading, error, reload }
+  /**
+   * Quem pode atender um serviço.
+   *
+   * Serviço sem nenhum vínculo cadastrado devolve todo mundo: barbearia
+   * antiga (ou serviço criado antes deste controle) não pode ficar sem
+   * ninguém disponível para agendar.
+   */
+  const profissionaisDoServico = useCallback(
+    (serviceId: string | null | undefined) => {
+      if (!serviceId) return professionals
+      const ids = executantes.get(serviceId)
+      if (!ids || ids.length === 0) return professionals
+      return professionals.filter((p) => ids.includes(p.id))
+    },
+    [professionals, executantes],
+  )
+
+  return { professionals, services, appointments, profissionaisDoServico, loading, error, reload }
 }

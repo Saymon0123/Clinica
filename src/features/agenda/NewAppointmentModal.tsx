@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import type { Professional, Service } from './types'
@@ -6,10 +6,11 @@ import type { Professional, Service } from './types'
 type Props = {
   salonId: string
   date: Date
-  professionals: Professional[]
   services: Service[]
   defaultProfessionalId?: string
   defaultTime?: string
+  /** Filtra os profissionais pelo serviço escolhido. */
+  profissionaisDoServico: (serviceId: string | null | undefined) => Professional[]
   onClose: () => void
   onCreated: () => void
 }
@@ -24,17 +25,28 @@ function toDateTimeLocal(date: Date, time: string) {
 export function NewAppointmentModal({
   salonId,
   date,
-  professionals,
   services,
   defaultProfessionalId,
   defaultTime,
+  profissionaisDoServico,
   onClose,
   onCreated,
 }: Props) {
   const [clientName, setClientName] = useState('')
   const [clientPhone, setClientPhone] = useState('')
-  const [professionalId, setProfessionalId] = useState(defaultProfessionalId ?? professionals[0]?.id ?? '')
   const [serviceId, setServiceId] = useState(services[0]?.id ?? '')
+  // Só quem executa o serviço escolhido entra na lista.
+  const disponiveis = profissionaisDoServico(serviceId)
+  const [professionalId, setProfessionalId] = useState(
+    defaultProfessionalId ?? disponiveis[0]?.id ?? '',
+  )
+
+  // Trocar de serviço pode tirar o profissional escolhido da lista.
+  useEffect(() => {
+    if (professionalId && !disponiveis.some((p) => p.id === professionalId)) {
+      setProfessionalId(disponiveis[0]?.id ?? '')
+    }
+  }, [disponiveis, professionalId])
   const [time, setTime] = useState(defaultTime ?? '09:00')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -155,7 +167,7 @@ export function NewAppointmentModal({
               required
               className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
             >
-              {professionals.map((p) => (
+              {disponiveis.map((p) => (
                 <option key={p.id} value={p.id}>{p.nome}</option>
               ))}
             </select>
@@ -202,7 +214,7 @@ export function NewAppointmentModal({
             </button>
             <button
               type="submit"
-              disabled={submitting || professionals.length === 0 || services.length === 0}
+              disabled={submitting || disponiveis.length === 0 || services.length === 0}
               className="flex-1 btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
               {submitting ? 'Salvando...' : 'Salvar reserva'}

@@ -96,7 +96,8 @@ export function AgendaPage() {
   const { salonId, loading: salonLoading } = useSalon()
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [visibleMonth, setVisibleMonth] = useState(new Date())
-  const { professionals, services, appointments, loading, error, reload } = useAgendaData(salonId, selectedDate)
+  const { professionals, services, appointments, profissionaisDoServico, loading, error, reload } =
+    useAgendaData(salonId, selectedDate)
 
   const [modalState, setModalState] = useState<{ professionalId?: string; time?: string } | null>(null)
   const [detailAppt, setDetailAppt] = useState<Appointment | null>(null)
@@ -320,10 +321,10 @@ export function AgendaPage() {
         <NewAppointmentModal
           salonId={salonId}
           date={selectedDate}
-          professionals={professionals}
           services={services}
           defaultProfessionalId={modalState.professionalId}
           defaultTime={modalState.time}
+          profissionaisDoServico={profissionaisDoServico}
           onClose={() => setModalState(null)}
           onCreated={reload}
         />

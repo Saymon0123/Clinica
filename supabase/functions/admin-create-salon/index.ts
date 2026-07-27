@@ -236,15 +236,6 @@ Deno.serve(async (req: Request) => {
         .insert({ user_id: userId, salon_id: salon.id, role: 'owner' })
       if (vinculoError) throw vinculoError
 
-      // Mantém profiles preenchido: o app ainda usa essa tabela para
-      // descobrir o salão atual do usuário.
-      if (salonIds.length === 1) {
-        const { error: profileError } = await admin
-          .from('profiles')
-          .insert({ id: userId, salon_id: salon.id, role: 'owner' })
-        if (profileError) throw profileError
-      }
-
       const { error: profissionalError } = await admin.from('professionals').insert({
         salon_id: salon.id,
         user_id: userId,

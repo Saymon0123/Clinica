@@ -141,7 +141,9 @@ export function AppLayout() {
       </aside>
 
       {/* Content */}
-      <main className="flex-1 p-4 md:p-6 pb-20 md:pb-6 w-full">
+      {/* pb-28: a barra do celular flutua, então precisa de folga maior que
+          a altura dela para o último item da tela não ficar por baixo. */}
+      <main className="flex-1 p-4 md:p-6 pb-28 md:pb-6 w-full">
         <Outlet />
       </main>
 

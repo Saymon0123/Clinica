@@ -8,8 +8,11 @@ import { NewServiceModal } from './NewServiceModal'
 import { NewProductModal } from './NewProductModal'
 import { supabase } from '../../lib/supabase'
 import type { ServiceItem, ProductItem } from './types'
+import { usePackagesData, type Pacote } from '../pacotes/usePackagesData'
+import { PacoteModal } from '../pacotes/PacoteModal'
+import { PacotesTab } from '../pacotes/PacotesTab'
 
-type Tab = 'servicos' | 'produtos'
+type Tab = 'servicos' | 'produtos' | 'pacotes'
 
 function formatCurrency(value: number | null) {
   if (value === null) return '—'
@@ -26,6 +29,8 @@ export function CatalogoPage() {
 
   const [editingService, setEditingService] = useState<ServiceItem | 'new' | null>(null)
   const [editingProduct, setEditingProduct] = useState<ProductItem | 'new' | null>(null)
+  const { pacotes, erro: pacotesErro, recarregar: recarregarPacotes } = usePackagesData(salonId)
+  const [editingPacote, setEditingPacote] = useState<Pacote | 'new' | null>(null)
 
   // Gestor mexe em tudo; barbeiro só no que ele mesmo cadastrou.
   function podeMexer(service: ServiceItem) {
@@ -72,10 +77,26 @@ export function CatalogoPage() {
           >
             Produtos
           </button>
+          <button
+            onClick={() => setTab('pacotes')}
+            className={`px-4 py-2 font-medium border-l border-border-strong ${tab === 'pacotes' ? 'btn-primary' : 'bg-surface text-foreground hover:bg-surface-2'}`}
+          >
+            Pacotes
+          </button>
         </div>
       </div>
 
-      {tab === 'servicos' ? (
+      {tab === 'pacotes' ? (
+        <PacotesTab
+          pacotes={pacotes}
+          servicos={services}
+          erro={pacotesErro}
+          isManager={isManager}
+          onNovo={() => setEditingPacote('new')}
+          onEditar={(p) => setEditingPacote(p)}
+          onAlterado={recarregarPacotes}
+        />
+      ) : tab === 'servicos' ? (
         <div>
           {/* Barbeiro também acrescenta serviço; só não mexe no que não é dele. */}
           <div className="flex justify-end mb-3">
@@ -226,6 +247,16 @@ export function CatalogoPage() {
           service={editingService === 'new' ? undefined : editingService}
           onClose={() => setEditingService(null)}
           onSaved={reloadServices}
+        />
+      )}
+
+      {editingPacote && salonId && (
+        <PacoteModal
+          salonId={salonId}
+          servicos={services}
+          pacote={editingPacote === 'new' ? null : editingPacote}
+          onClose={() => setEditingPacote(null)}
+          onSalvo={recarregarPacotes}
         />
       )}
 

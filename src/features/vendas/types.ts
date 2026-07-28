@@ -1,9 +1,14 @@
 export type SaleItemDraft = {
-  tipo: 'servico' | 'produto'
+  tipo: 'servico' | 'produto' | 'pacote'
   refId: string
   nome: string
   quantidade: number
   preco_unitario: number
+  /**
+   * Pacote do cliente que cobre este item. Quando presente, o item entra com
+   * preço zero e um crédito é baixado.
+   */
+  clientPackageId?: string
 }
 
 export type Sale = {

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Plus, Trash2, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import type { SaleItemDraft } from './types'
+import { useSaldoDoCliente } from '../pacotes/usePackagesData'
 import { PAYMENT_LABELS } from './types'
 
 type Option = { id: string; nome: string; preco: number }
@@ -35,13 +36,14 @@ export function NewSaleModal({
   const [professionals, setProfessionals] = useState<ProfessionalOption[]>([])
   const [services, setServices] = useState<Option[]>([])
   const [products, setProducts] = useState<ProductOption[]>([])
+  const [packages, setPackages] = useState<Option[]>([])
 
   const [clientId, setClientId] = useState<string>(prefill?.clientId ?? '')
   const [professionalId, setProfessionalId] = useState<string>(prefill?.professionalId ?? '')
   const [items, setItems] = useState<SaleItemDraft[]>([])
   const [payment, setPayment] = useState<string>('pix')
 
-  const [itemType, setItemType] = useState<'servico' | 'produto'>('servico')
+  const [itemType, setItemType] = useState<'servico' | 'produto' | 'pacote'>('servico')
   const [itemRef, setItemRef] = useState('')
   const [itemQty, setItemQty] = useState(1)
 
@@ -50,7 +52,7 @@ export function NewSaleModal({
 
   useEffect(() => {
     async function load() {
-      const [c, p, s, pr] = await Promise.all([
+      const [c, p, s, pr, pk] = await Promise.all([
         supabase.from('clients').select('id, nome').eq('salon_id', salonId).order('nome'),
         supabase
           .from('professionals')
@@ -70,6 +72,12 @@ export function NewSaleModal({
           .eq('salon_id', salonId)
           .eq('ativo', true)
           .order('nome'),
+        supabase
+          .from('packages')
+          .select('id, nome, preco')
+          .eq('salon_id', salonId)
+          .eq('ativo', true)
+          .order('nome'),
       ])
       setClients(c.data ?? [])
       setProfessionals((p.data ?? []) as ProfessionalOption[])
@@ -82,6 +90,8 @@ export function NewSaleModal({
           estoque_atual: x.estoque_atual,
         })),
       )
+
+      setPackages((pk.data ?? []).map((x) => ({ id: x.id, nome: x.nome, preco: Number(x.preco) })))
 
       if (!prefill?.professionalId && p.data && p.data.length > 0) {
         setProfessionalId(p.data[0].id)
@@ -105,6 +115,20 @@ export function NewSaleModal({
     load()
   }, [salonId, prefill])
 
+  const { saldos } = useSaldoDoCliente(clientId || null)
+
+  /**
+   * Créditos ainda livres: o saldo do banco menos o que já foi posto nesta
+   * comanda. Sem isso o barbeiro conseguiria usar o mesmo crédito duas vezes
+   * na mesma venda.
+   */
+  function saldoDisponivel(serviceId: string) {
+    const doServico = saldos.filter((s) => s.serviceId === serviceId)
+    const jaNaComanda = items.filter((i) => i.clientPackageId && i.refId === serviceId).length
+    const total = doServico.reduce((s, x) => s + x.saldo, 0)
+    return { total: total - jaNaComanda, pacote: doServico[0] ?? null }
+  }
+
   const total = useMemo(
     () => items.reduce((acc, i) => acc + i.quantidade * i.preco_unitario, 0),
     [items],
@@ -112,7 +136,8 @@ export function NewSaleModal({
 
   function addItem() {
     if (!itemRef) return
-    const source = itemType === 'servico' ? services : products
+    const source =
+      itemType === 'servico' ? services : itemType === 'produto' ? products : packages
     const opt = source.find((o) => o.id === itemRef)
     if (!opt) return
 
@@ -128,6 +153,37 @@ export function NewSaleModal({
     }
 
     setError(null)
+
+    // Serviço coberto por pacote entra zerado e baixa um crédito.
+    if (itemType === 'servico') {
+      const { total: livres, pacote } = saldoDisponivel(opt.id)
+      if (livres > 0 && pacote) {
+        const usar = Math.min(itemQty, livres)
+        const novos: SaleItemDraft[] = Array.from({ length: usar }, () => ({
+          tipo: 'servico' as const,
+          refId: opt.id,
+          nome: opt.nome,
+          quantidade: 1,
+          preco_unitario: 0,
+          clientPackageId: pacote.clientPackageId,
+        }))
+        // O que passar do saldo entra como avulso, no preço normal.
+        if (itemQty > usar) {
+          novos.push({
+            tipo: 'servico',
+            refId: opt.id,
+            nome: opt.nome,
+            quantidade: itemQty - usar,
+            preco_unitario: opt.preco,
+          })
+        }
+        setItems((prev) => [...prev, ...novos])
+        setItemRef('')
+        setItemQty(1)
+        return
+      }
+    }
+
     setItems((prev) => [
       ...prev,
       { tipo: itemType, refId: opt.id, nome: opt.nome, quantidade: itemQty, preco_unitario: opt.preco },
@@ -196,12 +252,14 @@ export function NewSaleModal({
             tipo: i.tipo,
             service_id: i.tipo === 'servico' ? i.refId : null,
             product_id: i.tipo === 'produto' ? i.refId : null,
+            package_id: i.tipo === 'pacote' ? i.refId : null,
+            client_package_id: i.clientPackageId ?? null,
             professional_id: professionalId,
             quantidade: i.quantidade,
             preco_unitario: i.preco_unitario,
           })),
         )
-        .select('id, tipo, service_id, quantidade, preco_unitario')
+        .select('id, tipo, service_id, client_package_id, quantidade, preco_unitario')
       if (itemsError || !insertedItems) throw itemsError ?? new Error('Falha nos itens')
 
       // 3. Pagamento
@@ -229,19 +287,98 @@ export function NewSaleModal({
         }
       }
 
-      // 5. Comissão sobre serviços (se o profissional tiver percentual)
+      // 5. Pacotes vendidos: cria o pacote do cliente com os créditos.
+      const pacotesVendidos = items.filter((i) => i.tipo === 'pacote')
+      if (pacotesVendidos.length > 0) {
+        if (!clientId) throw new Error('Pacote precisa de cliente.')
+
+        for (const item of pacotesVendidos) {
+          const { data: modelo } = await supabase
+            .from('packages')
+            .select('id, preco, validade_dias, package_items(service_id, quantidade)')
+            .eq('id', item.refId)
+            .single()
+          if (!modelo) continue
+
+          const creditos = (modelo.package_items ?? []) as { service_id: string; quantidade: number }[]
+          const totalCreditos = creditos.reduce((soma, c) => soma + c.quantidade, 0)
+          if (totalCreditos === 0) continue
+
+          const valorPago = Number(modelo.preco) || 0
+          const expiraEm = modelo.validade_dias
+            ? new Date(Date.now() + modelo.validade_dias * 86400000).toISOString().slice(0, 10)
+            : null
+
+          const { data: comprado, error: pacoteError } = await supabase
+            .from('client_packages')
+            .insert({
+              salon_id: salonId,
+              client_id: clientId,
+              package_id: modelo.id,
+              order_id: order.id,
+              expira_em: expiraEm,
+              valor_pago: valorPago,
+              // Congelado agora: mudar o preço do pacote depois não pode
+              // alterar a comissão de atendimentos já feitos.
+              valor_por_credito: valorPago / totalCreditos,
+            })
+            .select('id')
+            .single()
+          if (pacoteError || !comprado) throw pacoteError ?? new Error('Falha ao criar o pacote.')
+
+          // Snapshot das quantidades: editar o pacote depois não muda o que
+          // este cliente comprou.
+          const { error: creditosError } = await supabase.from('client_package_credits').insert(
+            creditos.map((c) => ({
+              client_package_id: comprado.id,
+              service_id: c.service_id,
+              quantidade: c.quantidade,
+            })),
+          )
+          if (creditosError) throw creditosError
+        }
+      }
+
+      // 6. Baixa dos créditos usados nesta comanda.
+      const cobertos = insertedItems.filter(
+        (i) => (i as { client_package_id?: string | null }).client_package_id,
+      )
+      if (cobertos.length > 0) {
+        const { error: usoError } = await supabase.from('package_usages').insert(
+          cobertos.map((i) => ({
+            client_package_id: (i as { client_package_id: string }).client_package_id,
+            service_id: i.service_id,
+            order_item_id: i.id,
+            professional_id: professionalId,
+          })),
+        )
+        if (usoError) throw usoError
+      }
+
+      // 7. Comissão sobre serviços (se o profissional tiver percentual)
       const prof = professionals.find((p) => p.id === professionalId)
       const pct = prof?.comissao_percentual != null ? Number(prof.comissao_percentual) : null
       if (pct && pct > 0) {
         const serviceItems = insertedItems.filter((i) => i.tipo === 'servico')
         if (serviceItems.length > 0) {
+          // Item coberto por pacote sai com preço zero, mas o barbeiro
+          // trabalhou. A base da comissão é o valor_por_credito congelado na
+          // compra do pacote — sem isso ele veria R$ 0,00 no fechamento.
+          const porCredito = new Map(saldos.map((s) => [s.clientPackageId, s.valorPorCredito]))
+
           await supabase.from('commissions').insert(
-            serviceItems.map((i) => ({
-              professional_id: professionalId,
-              order_item_id: i.id,
-              percentual_aplicado: pct,
-              valor_calculado: (Number(i.preco_unitario) * i.quantidade * pct) / 100,
-            })),
+            serviceItems.map((i) => {
+              const pacoteId = (i as { client_package_id?: string | null }).client_package_id
+              const base = pacoteId
+                ? (porCredito.get(pacoteId) ?? 0)
+                : Number(i.preco_unitario)
+              return {
+                professional_id: professionalId,
+                order_item_id: i.id,
+                percentual_aplicado: pct,
+                valor_calculado: (base * i.quantidade * pct) / 100,
+              }
+            }),
           )
         }
       }
@@ -264,7 +401,8 @@ export function NewSaleModal({
     }
   }
 
-  const currentOptions = itemType === 'servico' ? services : products
+  const currentOptions =
+    itemType === 'servico' ? services : itemType === 'produto' ? products : packages
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
@@ -313,6 +451,22 @@ export function NewSaleModal({
             </label>
           </div>
 
+          {/* Saldo de pacote: o barbeiro precisa saber antes de cobrar. */}
+          {saldos.length > 0 && (
+            <div className="rounded-lg border border-success bg-success-soft px-3 py-2">
+              <p className="text-sm font-medium text-foreground">Este cliente tem pacote ativo</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {saldos
+                  .map((s) => {
+                    const nome = services.find((x) => x.id === s.serviceId)?.nome ?? 'Serviço'
+                    return `${s.saldo} ${nome}`
+                  })
+                  .join(' · ')}
+                . O serviço coberto entra sem cobrar.
+              </p>
+            </div>
+          )}
+
           {/* Adição de itens */}
           <div className="border border-border rounded-lg p-3 space-y-2">
             <span className="text-xs font-medium text-muted-foreground">Adicionar item</span>
@@ -320,13 +474,14 @@ export function NewSaleModal({
               <select
                 value={itemType}
                 onChange={(e) => {
-                  setItemType(e.target.value as 'servico' | 'produto')
+                  setItemType(e.target.value as 'servico' | 'produto' | 'pacote')
                   setItemRef('')
                 }}
                 className="border border-border-strong bg-surface text-foreground rounded px-2 py-2 text-sm"
               >
                 <option value="servico">Serviço</option>
                 <option value="produto">Produto</option>
+                {packages.length > 0 && <option value="pacote">Pacote</option>}
               </select>
 
               <select
@@ -373,7 +528,15 @@ export function NewSaleModal({
                 >
                   <span className="text-foreground truncate">
                     {i.quantidade}× {i.nome}
-                    <span className="text-muted-foreground"> · {i.tipo === 'servico' ? 'Serviço' : 'Produto'}</span>
+                    <span className="text-muted-foreground">
+                      {' · '}
+                      {i.tipo === 'servico' ? 'Serviço' : i.tipo === 'produto' ? 'Produto' : 'Pacote'}
+                    </span>
+                    {i.clientPackageId && (
+                      <span className="ml-2 text-[11px] rounded-full bg-success-soft text-success px-2 py-0.5">
+                        pago pelo pacote
+                      </span>
+                    )}
                   </span>
                   <span className="flex items-center gap-2 shrink-0">
                     <span className="font-medium text-foreground">

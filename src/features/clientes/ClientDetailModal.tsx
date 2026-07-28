@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { CalendarCheck, Pencil, Receipt, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import type { Client } from './types'
+import { SaldoPacotes } from '../pacotes/SaldoPacotes'
 
 type HistoryAppointment = {
   id: string
@@ -117,6 +118,8 @@ export function ClientDetailModal({
             <div className="text-lg font-semibold text-foreground">{completedCount}</div>
           </div>
         </div>
+
+        <SaldoPacotes clientId={client.id} />
 
         {loading ? (
           <p className="text-sm text-muted-foreground py-4 text-center">Carregando histórico...</p>

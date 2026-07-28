@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { CalendarClock, Trash2, X, XCircle, Receipt } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import type { Appointment } from './types'
+import { SaldoPacotes } from '../pacotes/SaldoPacotes'
 
 const STATUS_LABELS: Record<string, string> = {
   agendado: 'Agendado',
@@ -170,6 +171,12 @@ export function AppointmentDetailModal({
             <span className="text-sm text-muted-foreground">Cliente</span>
             <span className="text-sm font-medium text-foreground">{appointment.client_nome ?? '—'}</span>
           </div>
+          {/* O barbeiro precisa saber do crédito antes de cobrar. */}
+          {appointment.client_id && (
+            <div className="flex justify-end">
+              <SaldoPacotes clientId={appointment.client_id} compacto />
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Serviço</span>
             <span className="text-sm font-medium text-foreground">{appointment.service_nome ?? '—'}</span>

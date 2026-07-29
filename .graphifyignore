@@ -1,0 +1,4 @@
+# Tooling de agente, não faz parte da aplicação. Sem isto, `graphify update .`
+# reescaneia ~125 arquivos de skills/configs e afoga o grafo do projeto real.
+.claude/
+graphify-out/

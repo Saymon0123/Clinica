@@ -1,0 +1,15 @@
+{
+  "_comentario": "Fonte única da configuração aplicada a toda instância da Evolution API (v2.3.7). Consumido pela edge function whatsapp (na criação/conexão) e pelo script scripts/evolution-aplicar-config.mjs (backfill nas instâncias existentes). Alterar aqui muda os dois.",
+
+  "webhookEvents": ["MESSAGES_UPSERT", "SEND_MESSAGE"],
+
+  "settings": {
+    "groupsIgnore": true,
+    "rejectCall": false,
+    "msgCall": "",
+    "alwaysOnline": false,
+    "readMessages": false,
+    "readStatus": false,
+    "syncFullHistory": false
+  }
+}

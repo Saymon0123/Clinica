@@ -5,6 +5,30 @@ dados diretamente das tabelas abaixo — se o n8n escrever certo aqui, aparece
 automaticamente no CRM (Agenda, Clientes, aba WEB), sem precisar de nenhuma
 integração adicional.
 
+## 0. Configuração das instâncias na Evolution (automática)
+
+Não é mais preciso abrir o painel da Evolution a cada instância criada. A edge
+function `whatsapp` aplica a configuração padrão sozinha ao conectar, e
+reaplica a cada nova conexão — então uma instância alterada à mão volta ao
+padrão. A fonte única é
+[`supabase/functions/_shared/evolutionConfig.json`](../supabase/functions/_shared/evolutionConfig.json):
+
+- **`groupsIgnore: true`** — sem isso toda mensagem de grupo entra no fluxo e o
+  agente responde dentro de grupos de clientes
+- **eventos do webhook**: `MESSAGES_UPSERT` (recebidas) e `SEND_MESSAGE`
+  (enviadas)
+- `readMessages`, `alwaysOnline`, `syncFullHistory`, `rejectCall` desligados
+
+Para reaplicar nas instâncias que já existiam (ou criadas direto no painel):
+
+```bash
+EVOLUTION_API_URL=... EVOLUTION_API_KEY=... N8N_WEBHOOK_URL=... \
+  node scripts/evolution-aplicar-config.mjs --dry-run
+```
+
+Tire o `--dry-run` para aplicar de verdade. Servidor validado: Evolution API
+v2.3.7 (settings em `POST /settings/set/{instance}`, corpo plano).
+
 ## 1. Credenciais necessárias no n8n
 
 - **Supabase URL:** `https://bukhpvvybeltmhtwamox.supabase.co`
@@ -30,6 +54,35 @@ Evolution API manda pro n8n inclui o nome da instância no payload
 `salon-` do nome da instância recebida no webhook. Esse UUID é o `salon_id`
 usado em todas as gravações abaixo — nunca hardcode um salon_id fixo no
 fluxo.
+
+### Como o fluxo em produção resolve isso (não é string parsing)
+
+O fluxo `CRM Salão - Atendimento WhatsApp (Supabase Nativo)` **não** deriva o
+`salon_id` fatiando o nome. Ele faz a resolução pelo banco, que é mais seguro:
+
+1. `Normalizar Payload` — pega `instance` do payload do webhook
+2. `Buscar Instância Conectada` — `getAll` em `whatsapp_connections` filtrando
+   `instance_name = instance`
+3. `Instância Configurada?` — se não achou `salon_id`, desvia para
+   `Fim - Instância Não Encontrada` e o fluxo termina
+4. `Extrair Salon ID` — fixa o `salon_id` vindo da linha encontrada
+
+Prefira esse caminho a qualquer `replace('salon-', '')`: a tabela é a fonte de
+verdade, e uma instância desconhecida para o fluxo em vez de virar um UUID
+inventado.
+
+Se algum fluxo novo precisar mesmo montar ou ler o nome da instância, use
+[`supabase/functions/_shared/instanceName.ts`](../supabase/functions/_shared/instanceName.ts)
+como especificação — `instanceNameFor` e `salonIdFromInstanceName` são a regra
+canônica, com teste cobrindo prefixo trocado, UUID truncado, prefixo duplicado
+e valor ausente. `salonIdFromInstanceName` devolve `null` em vez de chutar.
+
+> ⚠️ **`whatsapp_connections.instance_name` não tem constraint de unicidade**
+> (a PK é `salon_id`). Como o passo 2 usa `limit 1`, duas linhas com o mesmo
+> `instance_name` fariam o fluxo escolher um salão arbitrário — e, com
+> `service_role`, gravar lá sem erro. Enquanto não houver
+> `unique (instance_name)`, essa é a única coisa entre o webhook e uma escrita
+> cross-tenant.
 
 ## 3. Tabelas e contrato de dados
 

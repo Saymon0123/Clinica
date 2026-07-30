@@ -129,6 +129,30 @@ percentual.
 
 ## Funcionalidade ausente
 
+### ~~Dono não consegue editar dados da barbearia~~ — CORRIGIDO
+Descoberto e corrigido em 2026-07-30. `nome`, `endereco`, `telefone` e
+`horario_funcionamento` eram gravados **apenas** pelo wizard do painel
+administrativo (`SalonWizard.tsx:115`) e nunca mais podiam ser alterados. Dos
+campos de `salons`, o único editável era `meta_faturamento_mensal`.
+
+Gravidade: o agente de IA só oferece horários dentro de `horario_funcionamento`.
+Uma barbearia que mudasse o horário — feriado, passar a abrir sábado — teria de
+pedir para alguém editar o banco. Com 50 clientes isso não escala.
+
+Correção: nova tela `/configuracoes` (`ConfiguracoesPage`), sob `RequireManager`,
+com item no menu de Gestão. O RLS já permitia (`salons: gestor altera` com
+`private.is_manager(id)`), então não houve migration. Adicionado
+`desserializarHorario` ao lado do `serializarHorario` que o wizard já usava, para
+os dois lados compartilharem o formato.
+
+Verificado: carrega o que o wizard gravou, salva alteração de horário e telefone,
+fecha e reabre dia, e recusa dia com fechamento antes da abertura sem gravar.
+
+Durante a verificação apareceu um defeito próprio: `recarregarUnidades()` põe o
+`SalonProvider` em `loading`, o `RequireManager` desmonta a tela e ela volta com
+o estado zerado — o aviso de "Salvo" desaparecia. Passou a recarregar só quando
+o **nome** muda, que é o único campo que outra tela exibe.
+
 ### Wizard de criação não pede comissão nem jornada
 `SalonWizard` cria salão, dono, profissional e serviços, mas não popula
 `professional_schedules` nem `comissao_percentual`. A jornada tem fallback

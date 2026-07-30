@@ -39,6 +39,9 @@ const EquipePage = lazy(() => import('./features/equipe/EquipePage').then((m) =>
 const AceitarConvitePage = lazy(() =>
   import('./features/equipe/AceitarConvitePage').then((m) => ({ default: m.AceitarConvitePage })),
 )
+const ConfiguracoesPage = lazy(() =>
+  import('./features/configuracoes/ConfiguracoesPage').then((m) => ({ default: m.ConfiguracoesPage })),
+)
 const RedePage = lazy(() => import('./features/rede/RedePage').then((m) => ({ default: m.RedePage })))
 const EquipeRedePage = lazy(() =>
   import('./features/rede/EquipeRedePage').then((m) => ({ default: m.EquipeRedePage })),
@@ -102,6 +105,14 @@ function App() {
                 element={
                   <RequireManager>
                     <ConexaoPage />
+                  </RequireManager>
+                }
+              />
+              <Route
+                path="/configuracoes"
+                element={
+                  <RequireManager>
+                    <ConfiguracoesPage />
                   </RequireManager>
                 }
               />

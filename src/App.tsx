@@ -4,6 +4,7 @@ import { AuthProvider } from './features/auth/AuthContext'
 import { SalonProvider } from './features/auth/SalonContext'
 import { RequireAuth } from './features/auth/RequireAuth'
 import { RequireNetworkOwner } from './features/auth/RequireNetworkOwner'
+import { RequireManager } from './features/auth/RequireManager'
 import { LoginPage } from './features/auth/LoginPage'
 import { AppLayout } from './components/AppLayout'
 import { AgendaPage } from './features/agenda/AgendaPage'
@@ -62,7 +63,9 @@ function App() {
               path="/web"
               element={
                 <RequireAuth>
-                  <WhatsAppWebPage />
+                  <RequireManager>
+                    <WhatsAppWebPage />
+                  </RequireManager>
                 </RequireAuth>
               }
             />
@@ -94,7 +97,14 @@ function App() {
                   </RequireNetworkOwner>
                 }
               />
-              <Route path="/conexao" element={<ConexaoPage />} />
+              <Route
+                path="/conexao"
+                element={
+                  <RequireManager>
+                    <ConexaoPage />
+                  </RequireManager>
+                }
+              />
             </Route>
           </Routes>
         </Suspense>

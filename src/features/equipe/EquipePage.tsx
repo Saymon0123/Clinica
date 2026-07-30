@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Check, Clock, Copy, Link2, Pencil, Plus, Power, Trash2, UserPlus, X } from 'lucide-react'
+import { Check, Clock, Copy, Link2, Pencil, Percent, Plus, Power, Trash2, UserPlus, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { urlDoConvite } from '../../lib/appUrl'
 import { useSalon } from '../auth/useSalon'
@@ -38,6 +38,9 @@ export function EquipePage() {
   const [emailRascunho, setEmailRascunho] = useState('')
   const [salvandoConvite, setSalvandoConvite] = useState<string | null>(null)
   const [horarioDe, setHorarioDe] = useState<Membro | null>(null)
+  const [editandoComissao, setEditandoComissao] = useState<string | null>(null)
+  const [comissaoRascunho, setComissaoRascunho] = useState('')
+  const [salvandoMembro, setSalvandoMembro] = useState<string | null>(null)
 
   const carregar = useCallback(async () => {
     if (!salonId) return
@@ -70,6 +73,39 @@ export function EquipePage() {
       setErro('Não foi possível alterar o status.')
       return
     }
+    carregar()
+  }
+
+  /**
+   * A comissão só era definida no convite, então o dono criado pelo wizard
+   * ficava sem percentual para sempre e renegociar com um barbeiro era
+   * impossível pela tela. Pior: o financeiro trata `null` como 0 e mostra
+   * comissão zerada sem avisar.
+   */
+  async function salvarComissao(m: Membro) {
+    const texto = comissaoRascunho.trim().replace(',', '.')
+    // Vazio = sem comissão (o dono que não tira percentual de si mesmo).
+    const valor = texto === '' ? null : Number(texto)
+
+    if (valor !== null && (!Number.isFinite(valor) || valor < 0 || valor > 100)) {
+      setErro('A comissão deve ser um número entre 0 e 100.')
+      return
+    }
+
+    setSalvandoMembro(m.id)
+    setErro(null)
+    const { error } = await supabase
+      .from('professionals')
+      .update({ comissao_percentual: valor })
+      .eq('id', m.id)
+    setSalvandoMembro(null)
+
+    if (error) {
+      console.error('Erro ao salvar comissão:', error)
+      setErro('Não foi possível salvar a comissão.')
+      return
+    }
+    setEditandoComissao(null)
     carregar()
   }
 
@@ -252,13 +288,60 @@ export function EquipePage() {
                     </span>
                   )}
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  {m.comissao_percentual ? `Comissão ${Number(m.comissao_percentual).toFixed(0)}%` : 'Sem comissão definida'}
-                </div>
+                {editandoComissao === m.id ? (
+                  <div className="flex items-center gap-1 mt-1">
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      autoFocus
+                      value={comissaoRascunho}
+                      onChange={(e) => setComissaoRascunho(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') salvarComissao(m)
+                        if (e.key === 'Escape') setEditandoComissao(null)
+                      }}
+                      placeholder="sem comissão"
+                      aria-label={`Comissão de ${m.nome} em porcentagem`}
+                      className="w-28 border border-border-strong bg-surface text-foreground rounded px-2 py-1 text-xs"
+                    />
+                    <span className="text-xs text-muted-foreground">%</span>
+                    <button
+                      onClick={() => salvarComissao(m)}
+                      disabled={salvandoMembro === m.id}
+                      aria-label="Salvar comissão"
+                      className="p-1 rounded text-success hover:bg-surface-2 disabled:opacity-50"
+                    >
+                      <Check size={14} />
+                    </button>
+                    <button
+                      onClick={() => setEditandoComissao(null)}
+                      aria-label="Cancelar"
+                      className="p-1 rounded text-muted-foreground hover:bg-surface-2"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-xs text-muted-foreground">
+                    {m.comissao_percentual ? `Comissão ${Number(m.comissao_percentual).toFixed(0)}%` : 'Sem comissão definida'}
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={() => {
+                  setEditandoComissao(m.id)
+                  setComissaoRascunho(m.comissao_percentual != null ? String(Number(m.comissao_percentual)) : '')
+                }}
+                aria-label={`Comissão de ${m.nome}`}
+                title="Comissão"
+                className="p-2 rounded text-muted-foreground hover:text-foreground hover:bg-surface-2"
+              >
+                <Percent size={16} />
+              </button>
               <button
                 onClick={() => setHorarioDe(m)}
                 aria-label={`Horário de ${m.nome}`}

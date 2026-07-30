@@ -58,35 +58,49 @@ usuário tem exatamente um vínculo.
 
 ---
 
-### `/web` e `/conexao` são alcançáveis pelo barbeiro
-Verificado em 2026-07-29 logando como barbeiro (Giova). Em `App.tsx`, `/web`
-está sob `RequireAuth` sem guard de papel, e `/conexao` está no grupo comum do
-`AppLayout`. O barbeiro chega nas duas telas — vê a casca da aba WEB e até o
-botão "Conectar WhatsApp".
+### ~~`/web` e `/conexao` são alcançáveis pelo barbeiro~~ — CORRIGIDO
+Verificado em 2026-07-29 logando como barbeiro (Giova), corrigido em 2026-07-30.
+`/web` estava sob `RequireAuth` sem guard de papel e `/conexao` no grupo comum
+do `AppLayout`, então o barbeiro chegava nas duas telas digitando a URL.
 
-**Não é vazamento de dados.** As duas camadas de baixo barram:
-`whatsapp_conversations: gestor` exige `private.is_manager(salon_id)`, então o
-barbeiro recebe zero linhas; e a edge function `whatsapp` filtra
-`.in('role', ['owner','gerente'])`, devolvendo 404. Severidade baixa — mas
-contradiz o escopo declarado na `0015` ("sem acesso a WhatsApp") e parece
-defeito para o usuário.
+Nunca foi vazamento de dados — `whatsapp_conversations: gestor` exige
+`private.is_manager(salon_id)` e a edge function filtra por papel. Era falha de
+interface: casca vazia com botão que sempre falharia.
 
-Caminho: guard de papel nas duas rotas, como já existe em `/equipe` (que
-bloqueia com mensagem clara) e `/rede` (`RequireNetworkOwner`).
+Correção: novo `RequireManager` (espelhando `RequireNetworkOwner`), usando o
+`isManager` que já existia no `SalonContext`. Verificado que o dono continua
+acessando as duas rotas.
 
-### Cliente órfão quando o agendamento falha por sobreposição
-Reproduzido em 2026-07-29. Em `NewAppointmentModal`, o cliente é criado antes
-do insert do agendamento. Quando a constraint
-`appointments_sem_sobreposicao` recusa (erro `23P01`), o cliente **permanece
-gravado sem nenhum agendamento** — não há transação nem rollback.
+### ~~Editar comissão de membro existente~~ — CORRIGIDO
+Corrigido em 2026-07-30. Edição inline na lista da aba Equipe (ícone de
+porcentagem), seguindo o padrão que já existia para editar e-mail de convite.
+Aceita vazio como "sem comissão" (o dono que não tira percentual de si mesmo),
+valida a faixa 0–100, e salva com Enter. Verificado definindo 45% num
+profissional que estava sem percentual.
 
-A mensagem de erro fala apenas do horário, então o usuário não percebe que
-criou um cliente. Cada nova tentativa com um nome digitado suja a base: três
-tentativas em horário ocupado = três clientes fantasma na aba Clientes.
+### ~~Cliente órfão quando o agendamento falha por sobreposição~~ — CORRIGIDO
+Reproduzido em 2026-07-29 e corrigido em 2026-07-30. Em `NewAppointmentModal`,
+o cliente era criado antes do insert do agendamento; quando a constraint
+`appointments_sem_sobreposicao` recusava (`23P01`), o cliente permanecia gravado
+sem nenhum agendamento.
 
-Caminho: criar o agendamento primeiro e o cliente só depois, ou envolver os
-dois numa função no banco (RPC) que faça o rollback junto. A segunda opção é
-mais robusta, porque a mesma ordem errada existiria em qualquer outro chamador.
+Correção aplicada: compensação no `catch` — o cliente criado **naquela
+tentativa** é apagado quando a reserva falha. Um cliente que já existia não é
+tocado. Verificado reproduzindo o cenário: reserva recusada, zero cliente órfão,
+e o caminho felizsegue criando cliente + agendamento juntos.
+
+Também corrigido no mesmo trecho: a busca por nome usava `.maybeSingle()`, que
+estouraria com dois clientes homônimos no salão e mostraria "não foi possível
+criar a reserva" sem explicar. Passou a usar `.limit(1)`.
+
+**Pendência menor:** a compensação não é atômica — se o `delete` também falhar
+(rede caindo no meio), o órfão volta a existir. A solução robusta é uma RPC no
+banco que faça os dois inserts numa transação. Vale quando houver outro chamador
+além desta tela.
+
+**Também vale rever:** o cliente é casado por **nome** (`ilike`), não por
+telefone. `telefone_norm` é a chave confiável — casar por nome junta dois
+clientes homônimos e separa o mesmo cliente que digitou o nome diferente.
 
 ### Mensagem de comissão engana quando não há vendas
 No Financeiro, com zero vendas no período, aparece: *"Nenhuma comissão no
@@ -99,19 +113,6 @@ Caminho: separar as duas causas — sem venda no período vs. profissional sem
 percentual.
 
 ## Funcionalidade ausente
-
-### Editar comissão de membro existente
-`comissao_percentual` só é definida no convite (`EquipePage.tsx:352`). Depois
-de aceito, não há tela que edite. Consequências:
-- o dono criado pelo wizard fica sempre sem comissão (o wizard não pede)
-- renegociar percentual de um barbeiro é impossível pela interface
-
-Pior: `useFinanceiroData.ts:185` trata `null` como **0**, então o financeiro
-mostra comissão zerada sem erro nem aviso — um teste passa escondendo o
-problema.
-
-Caminho: botão de editar na lista de equipe atualizando
-`professionals.comissao_percentual`, sob a policy de gestor que já existe.
 
 ### Wizard de criação não pede comissão nem jornada
 `SalonWizard` cria salão, dono, profissional e serviços, mas não popula
@@ -176,6 +177,51 @@ multi-tenant (pgTAP, ainda não executado). Sem cobertura: componentes, hooks
 de dados, e todo o fluxo financeiro (caixa, comanda, comissão, meta).
 
 ---
+
+## Derivado da visão do produto
+
+Itens que vêm de [`visao.md`](visao.md) e **não existem em nenhuma forma** no
+código. Não são defeitos — é escopo declarado ainda não construído.
+
+### Nada aplica os planos (gating por Básico/Pro)
+Preço, trial de 7 dias e diferença de funcionalidade entre Básico (R$ 197) e Pro
+(R$ 299) estão definidos, e o schema (`plans`, `subscriptions`, campos do Asaas)
+reflete isso. Falta tudo: checkout, criação de assinatura no onboarding,
+verificação de plano ativo, e bloqueio das funções Pro para quem está no Básico.
+
+Também `[ABERTO]`: o que acontece na inadimplência.
+
+### Tom de voz do agente configurável pelo dono
+O dono deve escolher no cadastro como o agente fala com o cliente. Nenhuma
+tabela guarda essa preferência, e o prompt do agente no n8n é fixo.
+
+### Aviso ao dono sobre o estado emocional do cliente
+Quando o agente escala uma conversa, deve informar ao dono em que estado o
+cliente está (irritado, normal…). Hoje só existe o booleano `needs_human`.
+
+### Permissões configuráveis por salão
+A visão pede que o dono ajuste: poder do gerente, e quem pode criar/modificar
+agendamento (todos, ou só ele). Hoje isso é fixo nas policies de RLS — tornar
+configurável exige mover parte da decisão para dados.
+
+### Ciclo de no-show e avaliação no Google
+Sequência descrita na visão, quase toda ausente:
+- 1h antes: lembrete *(Pro)* — parcialmente coberto pelo workflow inativo
+- 10 min antes: pedir confirmação de chegada *(Pro)* — **não existe**
+- 1h depois do horário: se a comanda está aberta, cancelar, com opção de o
+  barbeiro reverter — **não existe**
+- após fechar a comanda: pedir avaliação no Google com link — **não existe**
+
+### Recuperação de clientes antigos (Pro)
+Reativar cliente que parou de frequentar. Não existe.
+
+### Site institucional ligado ao Google (Pro)
+Site com botão direto para o WhatsApp, vinculado ao perfil do Google onde as
+pessoas localizam o salão. Não existe.
+
+### Fronteira do agente: o que ele nunca deve fazer
+`[ABERTO]` na visão, e é a definição mais importante que falta. Sem ela não há
+como testar o agente contra abuso, nem limitar o que ele promete ao cliente.
 
 ## Dívida de qualidade
 

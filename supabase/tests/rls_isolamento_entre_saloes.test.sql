@@ -6,10 +6,17 @@
 --
 -- Rodar com: supabase test db
 
+-- A extensão precisa existir ANTES de qualquer chamada a plan(), que é função
+-- do próprio pgTAP. Fora da transação de propósito: o rollback no fim
+-- descartaria a extensão junto, e o banco do CI é descartável mesmo.
+create extension if not exists pgtap with schema extensions;
+
+-- pgtap fica no schema `extensions`; sem isto, plan()/is()/throws_ok() não
+-- resolvem.
+set search_path = public, extensions;
+
 begin;
 select plan(14);
-
-create extension if not exists pgtap with schema extensions;
 
 -- ---------------------------------------------------------------------------
 -- Fixture: dois salões independentes, três usuários.
@@ -20,11 +27,18 @@ create extension if not exists pgtap with schema extensions;
 \set barb_a  'aaaaaaaa-0000-0000-0000-000000000002'
 \set dono_b  'bbbbbbbb-0000-0000-0000-000000000001'
 
-insert into auth.users (id, email, instance_id, aud, role)
+-- Colunas preenchidas com folga: versões diferentes do GoTrue variam no que
+-- exigem, e um NOT NULL faltando aqui derruba o arquivo inteiro.
+insert into auth.users
+  (id, instance_id, aud, role, email, encrypted_password,
+   email_confirmed_at, created_at, updated_at)
 values
-  (:'dono_a', 'dono.a@teste.local', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated'),
-  (:'barb_a', 'barbeiro.a@teste.local', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated'),
-  (:'dono_b', 'dono.b@teste.local', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated');
+  (:'dono_a', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+   'dono.a@teste.local', '', now(), now(), now()),
+  (:'barb_a', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+   'barbeiro.a@teste.local', '', now(), now(), now()),
+  (:'dono_b', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+   'dono.b@teste.local', '', now(), now(), now());
 
 insert into salons (id, nome) values (:'salao_a', 'Barbearia A'), (:'salao_b', 'Barbearia B');
 

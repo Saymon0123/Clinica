@@ -33,18 +33,33 @@ Aviso de nível WARN no advisor.
 
 ## Correção de comportamento
 
-### Fluxo n8n de lembretes ignora `agent_paused`
-O workflow `CRM Salão - Lembretes de Agendamento` (hoje inativo) envia o
-lembrete sem consultar `agent_paused`, e registra a mensagem como
-`sender: 'agente'`. Se o dono assumiu a conversa, o agente responde por cima —
-exatamente o que `n8n-integration.md` proíbe. Falta um nó de consulta + IF
-antes do envio.
+### ~~Fluxo n8n de lembretes ignora `agent_paused`~~ — CORRIGIDO
+Corrigido em 2026-07-30 no workflow `CRM Salão - Lembretes de Agendamento`
+(id `DW0nq1Jyp9xeOJwm`), que segue **inativo** — ativar é decisão do dono.
 
-Também nesse fluxo:
-- `Marcar lembrete_enviado` roda **depois** do envio; se o update falhar, o
-  cliente recebe o lembrete a cada 10 minutos
-- o telefone é montado como `'55' + digitos.replace(/^55/,'')`, que não casa
-  com números antigos sem o 9 — o problema que motivou `telefone_norm`
+As três correções:
+
+1. **Handoff respeitado.** A busca da conversa foi movida para antes do envio, e
+   um IF novo (`Agente Pausado? (Lembrete)`) consulta `agent_paused`. Se o dono
+   assumiu, o lembrete é suprimido e `lembrete_enviado` **não** é marcado — se
+   ele devolver ao agente ainda dentro da janela de 55–65min, o próximo ciclo
+   tenta de novo.
+2. **Ordem invertida.** `Marcar lembrete_enviado` passou a rodar **antes** do
+   envio. Trade-off explícito: se o envio falhar, o cliente perde um lembrete;
+   na ordem anterior, se o update falhasse ele receberia o lembrete a cada 10
+   minutos. Perder um é muito menos grave que bombardear.
+3. **Telefone confiável.** O envio usa o `contact_phone` da conversa — o número
+   real que o WhatsApp usa — caindo no número montado (`'55' + dígitos`) só
+   quando o cliente nunca conversou. Resolve o caso do número antigo sem o 9.
+
+Como a busca da conversa mudou de posição, as referências a `$json` nos nós
+seguintes foram trocadas por `$('Buscar Conversa (para log)')`, senão leriam a
+saída do nó errado.
+
+**Não verificado em execução:** o fluxo nunca rodou. A primeira execução real é
+a validação. O nó `Buscar Conversa (para log)` casa por
+`contact_phone like '%<últimos 8>'`, escopado por `salon_id` — dois contatos do
+mesmo salão terminando nos mesmos 8 dígitos casariam com o primeiro.
 
 ### `whatsapp/index.ts` escolhe salão arbitrário sem `salonId`
 Em `supabase/functions/whatsapp/index.ts`, quando `body.salonId` não vem, a

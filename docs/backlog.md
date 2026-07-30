@@ -186,14 +186,28 @@ Caminho: renomear para o formato de timestamp, casar com o histórico remoto via
 `supabase migration repair --status applied`, e passar a usar
 `supabase migration new`.
 
-### Divergência inversa: `profiles` existe no repositório, não em produção
-`0002_profiles_and_rls.sql` cria a tabela `profiles`, removida em produção pela
-migration `remove_profiles`. As funções `auth_salon_id()` e afins também não
-existem mais (sobraram as quatro em `private`). Um banco limpo construído do
-repositório sai diferente de produção.
+### ~~Divergência inversa: `profiles` existe no repositório, não em produção~~ — CORRIGIDO
+`0002_profiles_and_rls.sql` cria `profiles`, removida em produção pela migration
+`remove_profiles`. Corrigido em 2026-07-30 pela `0024_remove_profiles.sql`, que
+derruba a tabela e a função `auth_salon_id()` — substituída pelas funções do
+schema `private` na `0015`.
 
-Falta uma `0023` que remova `profiles`, senão o CI testa um schema que
-produção não tem.
+### ~~Permissões de tabela ausentes das migrations~~ — CORRIGIDO
+Descoberto em 2026-07-30 lendo o log do CI. Produção tem GRANT completo para
+`anon`, `authenticated` e `service_role` nas 28 tabelas de `public` — padrão do
+Supabase — e isso **nunca entrou nas migrations**. Um banco criado do
+repositório nascia sem as permissões.
+
+O sintoma engana: em vez de "zero linhas" pelo RLS, o Postgres devolve
+`permission denied for table clients`. Foi onde os testes de pgTAP pararam.
+
+Corrigido pela `0023_permissoes_de_tabela.sql`, que concede os privilégios e
+define `alter default privileges` para tabelas futuras não repetirem o problema.
+
+**Padrão a observar:** esta é a terceira forma de divergência entre repositório
+e produção (tabelas ausentes → `0022`, tabela a mais → `0024`, permissões
+ausentes → `0023`). Todas nasceram de mudanças aplicadas direto no banco. O
+conserto de raiz continua sendo alinhar o fluxo de migrations com o CLI.
 
 ### Sem Docker na máquina de desenvolvimento
 Bloqueia `supabase db start`, `supabase test db` (os testes de RLS em pgTAP) e

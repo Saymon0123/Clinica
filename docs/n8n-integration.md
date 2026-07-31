@@ -29,6 +29,34 @@ EVOLUTION_API_URL=... EVOLUTION_API_KEY=... N8N_WEBHOOK_URL=... \
 Tire o `--dry-run` para aplicar de verdade. Servidor validado: Evolution API
 v2.3.7 (settings em `POST /settings/set/{instance}`, corpo plano).
 
+## 0.1. Regras de comportamento do agente (v1)
+
+Fixadas no `systemMessage` do nó `Agente de Atendimento` em 2026-07-31, depois
+de o agente ter marcado um corte sem perguntar qual serviço o cliente queria.
+
+**Serviço — nunca deduzir.** Mesmo com "quero marcar" ou "tem horário amanhã?",
+o agente pergunta qual serviço e **confirma pelo nome** antes de criar o
+agendamento. Não é preciosismo: `duracao_minutos` define o `data_hora_fim`, e
+supor "Corte" (30min) quando o cliente queria "Corte + Barba" (50min) estoura
+20 minutos na agenda e combina o preço errado.
+
+**Duração nunca é dita ao cliente.** Serve só para o agente calcular o término.
+Preço pode ser informado quando perguntado.
+
+**Barbeiro — perguntar preferência.** Com mais de um barbeiro ativo, o agente
+pergunta se há preferência, deixando claro que pode ser qualquer um. Se o
+cliente não tiver, **o agente decide** (não devolve a pergunta): primeiro
+horário livre no dia pedido, desempate por quem tem menos agendamentos naquele
+dia.
+
+**Decisões adiadas para a v2:**
+- tornar a política de atribuição configurável por salão (hoje é fixa)
+- propor automaticamente o barbeiro do último atendimento, lendo o histórico de
+  `appointments` — exige uma ferramenta nova no fluxo
+- respeitar `professional_services`: hoje o agente ignora quais serviços cada
+  barbeiro faz. Barbeiro **sem** serviços cadastrados é tratado como fazendo
+  todos; a intenção é que todo barbeiro registrado tenha a própria lista
+
 ## 1. Credenciais necessárias no n8n
 
 - **Supabase URL:** `https://bukhpvvybeltmhtwamox.supabase.co`

@@ -13,6 +13,9 @@ export type Assinatura = {
   /** Dias inteiros até o vencimento. Negativo quando já venceu. `null` sem prazo. */
   diasRestantes: number | null
   expirada: boolean
+  cpfCnpj: string | null
+  /** Até quando o WhatsApp segue atendendo depois do vencimento. */
+  atendimentoAte: string | null
 }
 
 /**
@@ -44,7 +47,7 @@ export function useAssinatura(salonId: string | null) {
 
     const { data, error } = await supabase
       .from('subscriptions')
-      .select('status, plan_codigo, valor, acesso_ate, plans(nome)')
+      .select('status, plan_codigo, valor, acesso_ate, cpf_cnpj, atendimento_ate, plans(nome)')
       .eq('salon_id', salonId)
       .maybeSingle()
 
@@ -69,6 +72,8 @@ export function useAssinatura(salonId: string | null) {
       acessoAte: data.acesso_ate,
       diasRestantes: dias,
       expirada: dias !== null && dias < 0,
+      cpfCnpj: data.cpf_cnpj,
+      atendimentoAte: data.atendimento_ate,
     })
     setLoading(false)
   }, [salonId])

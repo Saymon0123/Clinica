@@ -19,6 +19,7 @@ import { AppointmentAlertBanner } from '../features/agenda/AppointmentAlertBanne
 import { usePendingConversations } from '../features/whatsappWeb/usePendingConversations'
 import { useAssinatura } from '../features/assinatura/useAssinatura'
 import { AvisoAssinatura } from '../features/assinatura/AvisoAssinatura'
+import { AcessoBloqueado } from '../features/assinatura/AcessoBloqueado'
 import { ThemeToggle } from './ThemeToggle'
 
 type NavItem = {
@@ -74,9 +75,11 @@ export function AppLayout() {
   const location = useLocation()
   const { alerts, dismiss } = useAppointmentAlerts(salonId)
   const { hasPending } = usePendingConversations(isManager ? salonId : null)
-  // Só o gestor: o barbeiro não decide sobre a assinatura, e avisá-lo de uma
-  // cobrança que não é dele só gera preocupação sem ação possível.
-  const { assinatura } = useAssinatura(isManager ? salonId : null)
+  // Carregado para todos, porque o **bloqueio** vale para todos: se o acesso
+  // venceu, o barbeiro também não usa o CRM. O que é só do gestor é o **aviso**
+  // de vencimento — avisar o barbeiro de uma cobrança que não é dele geraria
+  // preocupação sem ação possível.
+  const { assinatura } = useAssinatura(salonId)
 
   // "Rede" e "Equipe da rede" são exclusivas do dono de mais de uma unidade.
   // Gerente e barbeiro nunca veem, mesmo administrando a unidade inteira.
@@ -100,6 +103,16 @@ export function AppLayout() {
   // não teriam o que carregar.
   if (!loading && !salonId && podeVerRede && !location.pathname.startsWith('/rede')) {
     return <Navigate to="/rede" replace />
+  }
+
+  // Acesso vencido bloqueia o CRM inteiro, menos a própria tela de assinatura —
+  // trancar o caminho de regularizar seria beco sem saída.
+  //
+  // Barbearia cadastrada antes do controle de assinatura tem `assinatura` nula
+  // e **não é bloqueada**: quem já usava não pode ser trancado do lado de fora
+  // por uma funcionalidade que chegou depois.
+  if (assinatura?.expirada && location.pathname !== '/assinatura') {
+    return <AcessoBloqueado assinatura={assinatura} />
   }
 
   return (
@@ -149,7 +162,7 @@ export function AppLayout() {
 
       {/* Content */}
       <main className="flex-1 pb-20 md:pb-6 w-full">
-        <AvisoAssinatura assinatura={assinatura} />
+        <AvisoAssinatura assinatura={isManager ? assinatura : null} />
         <div className="p-4 md:p-6">
           <Outlet />
         </div>

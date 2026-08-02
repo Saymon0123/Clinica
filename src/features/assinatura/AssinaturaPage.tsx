@@ -1,6 +1,7 @@
 import { CreditCard, CheckCircle2, AlertTriangle } from 'lucide-react'
 import { useSalon } from '../auth/useSalon'
 import { useAssinatura, type Assinatura } from './useAssinatura'
+import { DadosDeCobranca } from './DadosDeCobranca'
 
 function moeda(valor: number) {
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -60,10 +61,20 @@ function Situacao({ assinatura }: { assinatura: Assinatura }) {
 
 export function AssinaturaPage() {
   const { salonId, salonName, loading: salonLoading } = useSalon()
-  const { assinatura, loading } = useAssinatura(salonId)
+  const { assinatura, loading, reload } = useAssinatura(salonId)
 
   if (salonLoading || loading) {
     return <p className="text-sm text-muted-foreground">Carregando...</p>
+  }
+
+  // Dono de rede sem unidade escolhida: a assinatura é por unidade, então não
+  // há o que mostrar até ele escolher qual.
+  if (!salonId) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Escolha uma barbearia para ver a assinatura dela.
+      </p>
+    )
   }
 
   return (
@@ -103,19 +114,11 @@ export function AssinaturaPage() {
             </div>
           </div>
 
-          {/*
-            O pagamento pelo próprio CRM (Asaas) é a etapa 2 desta funcionalidade.
-            Enquanto não existe, a tela precisa dizer com todas as letras como
-            pagar — senão o dono chega aqui, não encontra botão e conclui que o
-            sistema está quebrado.
-          */}
-          <div className="bg-surface-2 border border-border rounded-lg p-4">
-            <p className="text-sm font-medium text-foreground">Como pagar</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Por enquanto a cobrança é combinada direto com o suporte, e o pagamento pelo próprio
-              CRM está a caminho. Assim que estiver disponível, o botão aparece aqui.
-            </p>
-          </div>
+          <DadosDeCobranca
+            salonId={salonId}
+            documentoAtual={assinatura.cpfCnpj}
+            onSalvo={reload}
+          />
         </>
       )}
     </div>

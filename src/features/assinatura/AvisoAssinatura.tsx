@@ -26,13 +26,17 @@ export function AvisoAssinatura({ assinatura }: { assinatura: Assinatura | null 
 
   const grave = expirada || diasRestantes <= 1
 
+  // O texto muda com o estado: dizer "seu teste termina" para quem cancelou uma
+  // assinatura paga soa como erro do sistema, e faz o dono desconfiar do resto.
+  const oQueTermina = status === 'cancelada' ? 'Seu acesso' : 'Seu teste'
+
   const texto = expirada
-    ? 'Seu período de teste terminou. O atendimento pelo WhatsApp continua funcionando, mas o acesso ao CRM precisa ser regularizado.'
+    ? `${status === 'cancelada' ? 'Sua assinatura terminou' : 'Seu período de teste terminou'}. O atendimento pelo WhatsApp continua funcionando, mas o acesso ao CRM precisa ser regularizado.`
     : diasRestantes === 0
-      ? 'Seu teste termina hoje.'
+      ? `${oQueTermina} termina hoje.`
       : diasRestantes === 1
-        ? 'Seu teste termina amanhã.'
-        : `Seu teste termina em ${diasRestantes} dias.`
+        ? `${oQueTermina} termina amanhã.`
+        : `${oQueTermina} termina em ${diasRestantes} dias.`
 
   return (
     <div

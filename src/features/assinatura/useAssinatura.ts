@@ -16,6 +16,15 @@ export type Assinatura = {
   cpfCnpj: string | null
   /** Até quando o WhatsApp segue atendendo depois do vencimento. */
   atendimentoAte: string | null
+  /**
+   * Já existe recorrência criada no Asaas.
+   *
+   * Não dá para usar o `status` para isso: entre assinar e o pagamento cair, a
+   * assinatura segue como `trial` — não existe estado "aguardando pagamento" na
+   * constraint do banco, e marcar como `atrasada` diria ao dono que ele está
+   * devendo no minuto seguinte a ter assinado.
+   */
+  temRecorrencia: boolean
 }
 
 /**
@@ -47,7 +56,7 @@ export function useAssinatura(salonId: string | null) {
 
     const { data, error } = await supabase
       .from('subscriptions')
-      .select('status, plan_codigo, valor, acesso_ate, cpf_cnpj, atendimento_ate, plans(nome)')
+      .select('status, plan_codigo, valor, acesso_ate, cpf_cnpj, atendimento_ate, asaas_subscription_id, plans(nome)')
       .eq('salon_id', salonId)
       .maybeSingle()
 
@@ -74,6 +83,7 @@ export function useAssinatura(salonId: string | null) {
       expirada: dias !== null && dias < 0,
       cpfCnpj: data.cpf_cnpj,
       atendimentoAte: data.atendimento_ate,
+      temRecorrencia: Boolean(data.asaas_subscription_id),
     })
     setLoading(false)
   }, [salonId])

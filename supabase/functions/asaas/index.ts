@@ -61,6 +61,8 @@ Deno.serve(async (req: Request) => {
   const salonId = body.salonId as string | undefined
   if (!salonId) return json({ error: 'Unidade nao informada.' }, 400)
 
+  const acao = (body.acao as string) === 'cancelar' ? 'cancelar' : 'assinar'
+
   // ------------------------------------------------------------------
   // Autorização.
   //
@@ -102,6 +104,43 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'Esta barbearia ainda nao tem um plano registrado.' }, 404)
   }
 
+  // ------------------------------------------------------------------
+  // Cancelamento.
+  //
+  // Cancelar interrompe as **cobranças futuras** e nada mais: `acesso_ate` fica
+  // como está, então quem pagou até o dia 20 usa até o dia 20. Foi decidido
+  // assim em 2026-08-02 — cortar no ato o que já foi pago seria cobrar por um
+  // serviço não entregue.
+  //
+  // `asaas_subscription_id` é limpo para que reassinar crie uma recorrência
+  // nova; o `asaas_customer_id` permanece, porque o cadastro do pagante
+  // continua valendo e recriá-lo geraria cliente duplicado no Asaas.
+  // ------------------------------------------------------------------
+  if (acao === 'cancelar') {
+    if (assinatura.asaas_subscription_id) {
+      const r = await asaas(`/subscriptions/${assinatura.asaas_subscription_id}`, {
+        method: 'DELETE',
+      })
+      // 404 significa que já não existe lá — o efeito desejado, não um erro.
+      if (!r.ok && r.status !== 404) {
+        console.error('Asaas recusou o cancelamento:', r.status, r.data)
+        return json({ error: erroDoAsaas(r.data) ?? 'Nao foi possivel cancelar agora.' }, 502)
+      }
+    }
+
+    const { error: erroUpdate } = await admin
+      .from('subscriptions')
+      .update({ status: 'cancelada', asaas_subscription_id: null })
+      .eq('id', assinatura.id)
+
+    if (erroUpdate) {
+      console.error('Erro ao marcar a assinatura como cancelada:', erroUpdate)
+      return json({ error: 'Cancelamos no financeiro, mas houve erro ao registrar. Avise o suporte.' }, 500)
+    }
+
+    return json({ cancelada: true })
+  }
+
   if (!assinatura.cpf_cnpj) {
     return json({ error: 'Informe o CPF ou CNPJ antes de assinar.' }, 400)
   }
@@ -137,6 +176,12 @@ Deno.serve(async (req: Request) => {
     }
 
     // 2. Assinatura mensal. Idem: só cria se ainda não existir.
+    //
+    // O status **não** muda aqui. Entre assinar e o pagamento cair a assinatura
+    // segue como está: não existe estado "aguardando pagamento" na constraint, e
+    // marcar como `atrasada` diria ao dono que ele está devendo no minuto
+    // seguinte a ter assinado. Quem muda o status é o webhook, na confirmação.
+    // A tela detecta "já assinou" pela existência da recorrência.
     let subscriptionId = assinatura.asaas_subscription_id
     if (!subscriptionId) {
       const vencimento = new Date()

@@ -1,7 +1,8 @@
-import { CreditCard, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { CreditCard, CheckCircle2, AlertTriangle, CalendarClock } from 'lucide-react'
 import { useSalon } from '../auth/useSalon'
 import { useAssinatura, type Assinatura } from './useAssinatura'
 import { DadosDeCobranca } from './DadosDeCobranca'
+import { AcoesDaAssinatura } from './AcoesDaAssinatura'
 
 function moeda(valor: number) {
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -20,7 +21,10 @@ function Situacao({ assinatura }: { assinatura: Assinatura }) {
       <div className="flex items-start gap-2 text-danger">
         <AlertTriangle size={18} className="shrink-0 mt-0.5" />
         <div>
-          <p className="font-medium">Teste encerrado em {formatarData(acessoAte!)}</p>
+          <p className="font-medium">
+            {status === 'cancelada' ? 'Assinatura encerrada' : 'Teste encerrado'} em{' '}
+            {formatarData(acessoAte!)}
+          </p>
           <p className="text-sm text-muted-foreground">
             O agente continua atendendo seus clientes no WhatsApp. Para seguir usando o CRM, fale
             com o suporte para regularizar.
@@ -46,13 +50,51 @@ function Situacao({ assinatura }: { assinatura: Assinatura }) {
     )
   }
 
+  // Cancelada mas ainda dentro do prazo: as cobranças pararam, o acesso não.
+  // É a regra decidida em 2026-08-02, e precisa ficar explícita — senão o dono
+  // cancela e fica sem saber se ainda pode usar.
+  if (status === 'cancelada') {
+    return (
+      <div className="flex items-start gap-2">
+        <CalendarClock size={18} className="shrink-0 mt-0.5 text-warning" />
+        <div>
+          <p className="font-medium text-foreground">Assinatura cancelada</p>
+          <p className="text-sm text-muted-foreground">
+            Não haverá novas cobranças
+            {acessoAte
+              ? `, e você segue com acesso até ${formatarData(acessoAte)}.`
+              : '. O acesso permanece liberado.'}
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  if (status === 'atrasada') {
+    return (
+      <div className="flex items-start gap-2">
+        <AlertTriangle size={18} className="shrink-0 mt-0.5 text-warning" />
+        <div>
+          <p className="font-medium text-foreground">Pagamento em atraso</p>
+          <p className="text-sm text-muted-foreground">
+            {acessoAte
+              ? `Seu acesso vai até ${formatarData(acessoAte)}. Pague a fatura em aberto para continuar.`
+              : 'Pague a fatura em aberto para continuar.'}
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex items-start gap-2">
       <CheckCircle2 size={18} className="shrink-0 mt-0.5 text-success" />
       <div>
         <p className="font-medium text-foreground">Assinatura ativa</p>
         <p className="text-sm text-muted-foreground">
-          {acessoAte ? `Acesso liberado até ${formatarData(acessoAte)}.` : 'Sem data de vencimento.'}
+          {acessoAte
+            ? `Próxima cobrança em ${formatarData(acessoAte)}.`
+            : 'Sem data de vencimento.'}
         </p>
       </div>
     </div>
@@ -119,6 +161,12 @@ export function AssinaturaPage() {
             documentoAtual={assinatura.cpfCnpj}
             onSalvo={reload}
           />
+
+          {/* Só faz sentido depois do documento: o Asaas exige CPF/CNPJ para
+              criar o cliente, e o botão só devolveria erro. */}
+          {assinatura.cpfCnpj && (
+            <AcoesDaAssinatura salonId={salonId} assinatura={assinatura} onMudou={reload} />
+          )}
         </>
       )}
     </div>

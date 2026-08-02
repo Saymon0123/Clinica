@@ -210,8 +210,13 @@ export function WhatsAppWebPage() {
             <button
               key={c.id}
               onClick={() => handleSelectConversation(c.id)}
-              className={`w-full text-left px-4 py-3 border-b border-border flex items-start gap-3 hover:bg-surface-2 ${
-                selectedId === c.id ? 'bg-surface-2' : ''
+              /* A conversa aberta ganha barra à esquerda, e não só um fundo:
+                 o fundo sozinho era igual ao do hover, então passar o mouse
+                 fazia parecer que a seleção tinha mudado. */
+              className={`w-full text-left pr-4 py-3 border-b border-border flex items-start gap-3 border-l-2 transition-colors ${
+                selectedId === c.id
+                  ? 'bg-surface-2 border-l-primary pl-[14px]'
+                  : 'border-l-transparent pl-[14px] hover:bg-surface-2'
               }`}
             >
               {/* Iniciais identificam a pessoa de relance; o balãozinho
@@ -220,30 +225,62 @@ export function WhatsAppWebPage() {
                 {iniciais(c.contact_name)}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-2">
-                  <span className={`text-sm truncate ${naoLida(c) ? 'font-semibold text-foreground' : 'font-medium text-foreground'}`}>
+                {/*
+                  Três níveis claros de peso, em vez de tudo com a mesma
+                  importância: o nome guia o olho, a prévia decide se vale
+                  abrir, e o horário é referência. Quando não lida, o nome
+                  escurece e a prévia sai do cinza — é o contraste que faz a
+                  linha "pular", não só o pontinho.
+                */}
+                <div className="flex items-baseline justify-between gap-2">
+                  <span
+                    className={`text-sm truncate ${
+                      naoLida(c) ? 'font-semibold text-foreground' : 'font-normal text-foreground'
+                    }`}
+                  >
                     {c.contact_name ?? formatarTelefone(c.contact_phone)}
                   </span>
                   <span className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-[11px] text-muted-foreground">{formatTime(c.last_message_at)}</span>
-                    {naoLida(c) && (
-                      <span className="w-2 h-2 rounded-full bg-danger" title="Não lida" />
-                    )}
+                    <span
+                      className={`text-[11px] tabular-nums ${
+                        naoLida(c) ? 'text-danger font-medium' : 'text-muted-foreground'
+                      }`}
+                    >
+                      {formatTime(c.last_message_at)}
+                    </span>
+                    {naoLida(c) && <span className="w-2 h-2 rounded-full bg-danger" title="Não lida" />}
                   </span>
                 </div>
 
                 {/* A prévia é o que decide qual conversa abrir primeiro. Sem
                     ela, o dono precisava abrir uma por uma para saber do quê
                     se tratava. Cai no telefone quando ainda não há mensagem. */}
-                <div className="text-xs text-muted-foreground truncate">
+                <div
+                  className={`text-xs truncate mt-0.5 ${
+                    naoLida(c) ? 'text-foreground/80' : 'text-muted-foreground'
+                  }`}
+                >
                   {c.last_message_preview ?? formatarTelefone(c.contact_phone)}
                 </div>
 
-                {c.agent_paused && (
-                  <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 dark:text-amber-400">
-                    <Bot size={11} />
-                    Agente pausado
-                  </span>
+                {/* Etiquetas de estado. "Pediu você" existe porque na aba
+                    "Todas" não havia como distinguir quem está esperando —
+                    só trocando de aba, o que esconde justamente o urgente. */}
+                {(c.needs_human || c.agent_paused) && (
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                    {c.needs_human && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-danger-soft text-danger px-1.5 py-0.5 text-[10px] font-semibold">
+                        <AlertCircle size={10} />
+                        Pediu você
+                      </span>
+                    )}
+                    {c.agent_paused && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 border border-border text-muted-foreground px-1.5 py-0.5 text-[10px] font-medium">
+                        <Bot size={10} />
+                        Agente pausado
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
             </button>

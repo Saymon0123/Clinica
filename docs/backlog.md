@@ -127,6 +127,61 @@ o usuário mexer numa tela que não tem esse ajuste (ver item da comissão).
 Caminho: separar as duas causas — sem venda no período vs. profissional sem
 percentual.
 
+### ~~Sessão expirada aparecia como "conta sem vínculo"~~ — CORRIGIDO
+Reproduzido e corrigido em 2026-07-30. O `SalonProvider` engolia qualquer erro
+da consulta e assumia "usuário sem unidades", então um JWT vencido levava o dono
+a ler *"Sua conta ainda não está vinculada a um salão. Fale com o administrador
+do sistema"* — sendo ele o administrador. Parecia perda de dados.
+
+Correção: `sessaoExpirou()` reconhece `PGRST303`; o provider renova a sessão e
+repete a consulta, e só desloga se o refresh token também venceu. 6 testes
+cobrem o que **não** pode ser confundido com sessão expirada (`42501`, `23505`,
+`PGRST301` — este não se resolve renovando).
+
+### ~~Link de redefinição de senha caía no login~~ — CORRIGIDO
+O Supabase descarta o `redirectTo` quando a URL não está na lista de permitidas
+do projeto e manda para a Site URL, sem avisar. O usuário clicava no e-mail e
+via a tela de entrar.
+
+Corrigido em 2026-08-01 em três camadas:
+- desvio automático para `/redefinir-senha` quando o retorno traz `type=recovery`
+- link vencido (`otp_expired`) leva para pedir outro, **com explicação**
+- **fluxo por código de 6 dígitos**, que não depende de redirecionamento nenhum —
+  é o caminho principal agora, e o único confiável no celular, onde o link abre
+  num navegador diferente do que a pessoa estava usando
+
+A primeira versão do desvio falhou: lia `window.location.hash` dentro do
+componente, mas o supabase-js consome o fragmento de forma assíncrona e o
+React Router descarta o resto. Passou a capturar no carregamento do módulo.
+
+**Ainda depende de configuração:** o template "Reset Password" precisa incluir
+`{{ .Token }}`, e a lista de URLs permitidas deve ter o domínio de produção e o
+localhost.
+
+### ~~Barbeiro não tinha caminho para a tela de Clientes~~ — CORRIGIDO
+A rota `/clientes` respondia, mas o item não aparecia no menu (`somenteGestor`).
+O banco sempre permitiu: a policy chama-se `clients: membros cadastram` e libera
+`INSERT` a qualquer membro do salão, e a leitura devolve os que ele criou ou
+atendeu.
+
+Corrigido em 2026-08-01 removendo o `somenteGestor` do item. Decisão de produto
+confirmada: o barbeiro cadastra cliente novo na cadeira, e é para isso que existe
+`clients.created_by`.
+
+## Serviço de e-mail não serve para produção
+O projeto usa o SMTP embutido do Supabase (`noreply@mail.app.supabase.io`), que
+é limitado a poucas mensagens por hora e não é destinado a produção. Com 200
+barbearias, recuperação de senha e convite de equipe não funcionam.
+
+Além do volume, há um intervalo mínimo entre envios para o mesmo endereço
+(observado em 2026-08-01: `429 over_email_send_rate_limit`, "you can only request
+this after 29 seconds") — independente do limite por hora, que é ajustável em
+**Authentication → Rate Limits**.
+
+**Bloqueador de lançamento.** Antes da primeira barbearia pagante: configurar
+SMTP próprio (Resend, Brevo) e, junto, domínio próprio — hoje o e-mail sai de um
+endereço pessoal e o CRM vive num subdomínio da Vercel.
+
 ## Funcionalidade ausente
 
 ### ~~Dono não consegue editar dados da barbearia~~ — CORRIGIDO

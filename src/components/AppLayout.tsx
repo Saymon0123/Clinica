@@ -39,7 +39,11 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: 'Gestão',
     items: [
-      { to: '/clientes', label: 'Clientes', icon: Users, somenteGestor: true },
+      // Sem `somenteGestor`: o barbeiro cadastra cliente novo na cadeira, e a
+      // policy `clients: membros cadastram` já permite isso. O que ele enxerga
+      // depois é limitado pelo RLS aos que ele criou ou atendeu — o item ficava
+      // escondido, mas a rota respondia, então quem soubesse a URL entrava.
+      { to: '/clientes', label: 'Clientes', icon: Users },
       { to: '/catalogo', label: 'Catálogo', icon: Tag },
       { to: '/equipe', label: 'Equipe', icon: UsersRound, somenteGestor: true },
       { to: '/rede', label: 'Rede', icon: Building2, somenteDono: true, semUnidade: true },

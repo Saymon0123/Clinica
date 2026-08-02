@@ -389,34 +389,34 @@ Sequência descrita na visão, quase toda ausente:
   barbeiro reverter — **não existe**
 - após fechar a comanda: pedir avaliação no Google com link — **não existe**
 
-### Recuperação de clientes antigos (Pro)
-Reativar cliente que parou de frequentar. Não existe. Desenhado como parte da
-aba Marketing — ver [`docs/marketing.md`](marketing.md).
+### Recuperação de clientes antigos (Pro) — v3
+Reativar cliente que parou de frequentar. Foi projetado e construído (fase 1) em
+2026-08-02 e **removido na `0026`** para alinhar o projeto ao roteiro. O desenho
+completo, as decisões e o que se aprendeu testando com dado real estão
+preservados em [`docs/marketing.md`](marketing.md); o código está no histórico do
+git. Reentra na v3.
 
-### `orders` não tem coluna de desconto
-Nem `orders` nem `order_items` guardam desconto. Hoje isso não aparece porque
-nenhuma tela concede desconto, mas bloqueia o cupom de campanha da aba
-Marketing, que precisa amarrar o desconto concedido à venda para medir o
-faturamento gerado. Decisão pendente junto: com desconto na comanda, o barbeiro
-perde comissão proporcional ou a barbearia absorve? `commissions` é calculada
-sobre o item.
+Duas dependências que só apareceram construindo, e que precisam entrar no plano
+quando isso voltar:
 
-### Fuso horário do salão está fixo no código
+- **`orders` não tem coluna de desconto.** Nem `orders` nem `order_items`
+  guardam desconto, então não há como amarrar o desconto concedido à venda e
+  medir o faturamento gerado. Decisão de negócio pendente junto: com desconto na
+  comanda, o barbeiro perde comissão proporcional ou a barbearia absorve?
+  `commissions` é calculada sobre o item.
+- **O opt-out depende do fluxo n8n.** Reconhecer que o cliente quer sair da
+  lista é do agente, não do CRM, e não basta casar a palavra "SAIR" ("para de
+  mandar promoção"). É requisito de LGPD — sem isso, não se envia campanha
+  nenhuma.
+
+### Não existe fuso horário do salão no schema
 `professional_schedules.hora_inicio` é hora local da barbearia (`time`), mas
 `appointments.data_hora_inicio` é `timestamptz`. Cruzar os dois exige um fuso, e
 o schema não tem nenhum — sem isso o Postgres usa o da sessão (UTC no Supabase)
-e as faixas de horário saem 3 horas deslocadas. A migration `0025` resolveu com
-`private.fuso_do_salao()` devolvendo `America/Sao_Paulo` fixo. Vira coluna em
-`salons` quando existir salão em outro fuso. Afeta o segmento de horário ocioso
-da aba Marketing e qualquer relatório futuro por faixa de hora.
-
-### Opt-out de campanha depende do fluxo n8n
-A aba Marketing ([`docs/marketing.md`](marketing.md)) exige que o cliente
-consiga sair da lista respondendo no WhatsApp. Reconhecer essa intenção e gravar
-`client_marketing.opt_out` é do agente no n8n, não do CRM — e não basta casar a
-palavra "SAIR" ("não quero mais receber isso", "para de mandar promoção").
-Enquanto não existir, a trava é só documental e o descadastro é manual pelo
-dono. É requisito de LGPD, não conforto.
+e qualquer agrupamento por faixa de hora sai 3 horas deslocado. A `0025` tinha
+contornado com `private.fuso_do_salao()` fixo em `America/Sao_Paulo`, removida
+junto com o Marketing na `0026`. Volta a importar assim que existir relatório
+por horário — ou salão fora do horário de Brasília.
 
 ### Site institucional ligado ao Google (Pro)
 Site com botão direto para o WhatsApp, vinculado ao perfil do Google onde as

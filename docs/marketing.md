@@ -1,5 +1,25 @@
 # Aba Marketing — campanhas de desconto por WhatsApp
 
+> ## ⚠️ Fora do escopo atual — reentra na v3
+>
+> Projetado, construído (fase 1) e **removido do produto em 2026-08-02**, para
+> alinhar o projeto ao roteiro: "Recuperação de clientes antigos" é o item 3 da
+> **v3**, e tinha sido antecipado. Nada disso existe hoje no CRM nem no banco —
+> a migration `0026_reduz_escopo_v1.sql` removeu as funções e a tabela
+> `client_marketing`.
+>
+> **Este documento é mantido de propósito.** O desenho, as decisões tomadas e o
+> raciocínio do ponto de equilíbrio custaram trabalho e continuam válidos; jogar
+> fora significaria recomeçar do zero na v3. Para recuperar o código, ver as
+> migrations `0025`/`0026` e o diretório `src/features/marketing/` no histórico
+> do git (último commit com ele: `f5dbc03`).
+>
+> O que foi aprendido testando com dado real, e que vale carregar para a v3:
+> o ponto de equilíbrio precisa cobrir o **vazamento** (desconto dado a quem
+> voltaria sozinho), não o desconto inteiro; e o segmento de horário ocioso, do
+> jeito que ficou, **dava prejuízo** — porque convida cliente ativo em vez de
+> convidar para a faixa vazia.
+
 Desenho da aba de marketing, decidido em 2026-08-02. Dono e gerente lançam
 campanhas de desconto para os clientes da barbearia, enviadas pelo WhatsApp do
 próprio salão.

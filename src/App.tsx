@@ -43,9 +43,6 @@ const AceitarConvitePage = lazy(() =>
 const ConfiguracoesPage = lazy(() =>
   import('./features/configuracoes/ConfiguracoesPage').then((m) => ({ default: m.ConfiguracoesPage })),
 )
-const MarketingPage = lazy(() =>
-  import('./features/marketing/MarketingPage').then((m) => ({ default: m.MarketingPage })),
-)
 const RedePage = lazy(() => import('./features/rede/RedePage').then((m) => ({ default: m.RedePage })))
 const EquipeRedePage = lazy(() =>
   import('./features/rede/EquipeRedePage').then((m) => ({ default: m.EquipeRedePage })),
@@ -127,14 +124,6 @@ function App() {
                   <RequireNetworkOwner>
                     <EquipeRedePage />
                   </RequireNetworkOwner>
-                }
-              />
-              <Route
-                path="/marketing"
-                element={
-                  <RequireManager>
-                    <MarketingPage />
-                  </RequireManager>
                 }
               />
               <Route

@@ -11,31 +11,34 @@ trabalho combinadas. Complementa [`visao.md`](visao.md) (o que queremos),
 
 ## 0. Onde paramos (2026-08-02)
 
-**Aba Marketing, fase 1 de 4, no ar e validada com dado real.** Desenho completo
-e decisões em [`marketing.md`](marketing.md).
+**O projeto foi reduzido ao escopo da v1.** Ele tinha passado da v1 em largura
+sem fechá-la — Marketing (v3) construído inteiro, Pacotes (v3) como schema sem
+tela — e a `0026_reduz_escopo_v1.sql` removeu o que não é v1. A intenção é
+terminar a v1 e entrar na v2 alinhado com [`mercado-e-roadmap.md`](mercado-e-roadmap.md).
 
-Entregue: `0025_marketing_segmentos.sql` aplicada em produção (quatro segmentos
-com as travas no banco), `src/features/marketing/` com simulador testado, rota
-`/marketing` sob `RequireManager`. As quatro travas foram verificadas com
-coortes marcadas na barbearia de teste e **todas barraram quem deviam**.
+**Falta para fechar a v1: ativar o fluxo de lembretes no n8n.** Os três defeitos
+do teste de 29/07 estão corrigidos, o `agent_paused` do fluxo de lembretes já
+foi consertado, mas o workflow "CRM Salão - Lembretes de Agendamento" está
+`active: false`. É o item com a melhor relação impacto/esforço do backlog
+(reduz no-show em até 70%) e é o único da v1 ainda aberto. **O trabalho está no
+n8n, não no repositório.**
 
-Falta no Marketing, por ordem de prioridade decidida:
-1. **Opt-out com tela** — bloqueante por LGPD. Hoje `client_marketing` existe no
-   banco e **não é referenciada em lugar nenhum do front**: ninguém consegue sair
-   da lista, nem o cliente nem o dono
-2. Mostrar na tela quem ficou de fora do segmento e por quê
-3. Ligar o segmento de horário ocioso à faixa vazia (hoje convida qualquer
-   cliente ativo, e o simulador já mostra que assim dá prejuízo)
-4. Fases 2, 3 e 4 inteiras: envio, cupom na venda, taxa de retorno medida
+Mantidos apesar de não serem v1: `plans` e `subscriptions` (a integração com o
+Asaas está sendo estudada) e a rede multi-unidade (virou a fundação do RLS —
+remover seria reescrever o modelo de permissão inteiro).
 
 **Pendente e não iniciado:** confrontar a jornada do cliente (mensagem no
 WhatsApp → sair com o corte pronto) com o que existe hoje, marcando cada ponto
 como pronto/parcial/ausente. A pesquisa de mercado já foi feita e aponta dois
-gargalos: confirmação antes da visita e reagendamento no caixa.
+gargalos: confirmação antes da visita e reagendamento no caixa — o primeiro é
+exatamente o item da v1 que falta.
 
-**Em discussão:** renomear o projeto para abarcar barbearias **e salões de
-beleza** — hoje tudo é nomeado como barbearia, e o repositório se chama
-`Clinica`, que não descreve nem uma coisa nem outra.
+**Em discussão, sem decisão:** renomear o projeto para abarcar barbearias **e
+salões de beleza**. Levantado que a diferença real não está no vocabulário nem
+no fluxo do n8n, e sim no modelo de dados: serviço de salão tem **tempo de
+pausa** (a profissional fica livre enquanto a tinta age), e `appointments` só
+tem início e fim, com restrição de exclusão por profissional. Nome sugerido:
+**Cadeira** — a única unidade que barbearia e salão compartilham.
 
 ### Correções de ambiente feitas neste dia
 

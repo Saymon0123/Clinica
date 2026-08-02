@@ -267,6 +267,22 @@ para o dev local reproduzir), então não há efeito funcional; o problema é o
 ledger não descrever o repositório. Some junto com o item abaixo, no `migration
 repair`.
 
+### `VITE_SUPABASE_ANON_KEY` da Vercel está vencida — login quebrado em produção
+Achado em 2026-08-02, investigando "não consigo entrar com meus logins de teste".
+O site publicado (`clinica-crm-kappa.vercel.app`) carrega uma anon key antiga: o
+Supabase responde `401 Invalid API key` e **ninguém consegue entrar**. A chave do
+`.env.local` é a atual e funciona (200), então em desenvolvimento tudo parece
+bem — o problema só existe no ambiente publicado.
+
+Conserto (só o dono da conta Vercel pode fazer): Project Settings → Environment
+Variables → trocar `VITE_SUPABASE_ANON_KEY` pela chave atual do projeto
+(Supabase → Project Settings → API → `anon public`) e **refazer o deploy**, já
+que a variável é embutida no bundle em build time.
+
+Fica registrado porque a causa raiz é operacional e vai se repetir: a chave foi
+rotacionada e só um dos dois ambientes foi atualizado. Vale considerar a
+publishable key (`sb_publishable_...`), que rotaciona de forma independente.
+
 ### Vercel MCP não enxerga o projeto
 O deploy funciona pelo GitHub App (`vercel[bot]`, Production a cada push na
 `main`), mas o conector MCP da Vercel devolve `list_projects` vazio e 404 no

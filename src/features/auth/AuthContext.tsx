@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import { hashDeEntrada, hashIndicaRecuperacao } from '../../lib/recuperacaoSenha'
+import { mensagemDeErroDeLogin } from '../../lib/authErrors'
 
 type AuthContextValue = {
   user: User | null
@@ -53,7 +54,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signIn(email: string, password: string) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) return { error: 'E-mail ou senha inválidos.' }
+    if (error) {
+      // O console guarda o erro cru: a mensagem da tela é para o usuário, o
+      // log é para quem vai depurar.
+      console.error('Falha ao entrar:', error)
+      return { error: mensagemDeErroDeLogin(error) }
+    }
     setSession(data.session)
     return { error: null }
   }

@@ -34,6 +34,45 @@ Aviso de nível WARN no advisor.
 
 ## Correção de comportamento
 
+### ~~Laço infinito de render remontava as telas sem parar~~ — CORRIGIDO
+Achado em 2026-08-02, perseguindo por que a aba WEB não abria a conversa
+clicada. O `AuthContext` recriava o objeto `value` e as funções `signIn` /
+`signOut` a cada render. O `SalonProvider` usa `signOut` nas dependências do
+`carregar`, então cada render gerava um `carregar` novo → o efeito disparava →
+`setUnidades` com array novo → render → repete, sem parar.
+
+**Medido em produção: 93 buscas de `whatsapp_conversations` numa única visita.**
+Depois da correção: 9.
+
+O pior era colateral. Como o `loading` do salão oscilava junto, o
+`RequireManager` alternava entre "Carregando..." e a tela, **desmontando a
+página a cada volta**. Em telas sem estado local isso só queimava rede em
+silêncio; na aba WEB zerava a conversa selecionada antes de aparecer — dava
+para ver a requisição das mensagens saindo com o `conversation_id` certo e a
+tela insistindo em "Selecione uma conversa".
+
+`useCallback` e `useMemo` em provider **não são otimização, são correção**:
+qualquer consumidor que use a função em lista de dependências entra em laço.
+
+Lição de método junto: eu clicava e lia a tela na mesma chamada, antes de o
+React renderizar, e concluí "não seleciona". Um `MutationObserver` mostrou que
+estava selecionando o tempo todo. Para verificar efeito de clique em SPA,
+observar a mutação — não ler logo depois.
+
+### ~~Aba WEB: agente pausado sem caminho de volta~~ — CORRIGIDO
+O botão "Devolver ao agente" só era renderizado com
+`tab === 'precisa_dono' && needs_human`. Mas `agent_paused` vira `true` quando o
+dono responde por **qualquer** conversa — então responder pela aba "Todas"
+silenciava o agente para aquele cliente **sem deixar caminho de volta**. O
+cliente mandava mensagem, ninguém respondia, e o dono não ficava sabendo. Pior:
+`agent_paused` já vinha do banco e a tela não o usava em lugar nenhum, então o
+estado era invisível e irreversível ao mesmo tempo.
+
+Corrigido em 2026-08-02 (fase 1 dos ajustes da aba WEB), junto com a prévia da
+última mensagem na lista e o contador de quem aguarda o dono. Verificado em
+produção no cenário exato: conversa com `agent_paused = true` e
+`needs_human = false`, devolvida ao agente pela aba "Todas".
+
 ### ~~Fluxo de lembretes quebrava no primeiro nó, sempre~~ — CORRIGIDO
 Descoberto em 2026-08-02, na **primeira execução real**. O filtro
 `client_id neq null` do nó Supabase manda a string literal `"null"` para o

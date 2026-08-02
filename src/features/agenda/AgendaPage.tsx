@@ -7,6 +7,7 @@ import { MiniCalendar } from './MiniCalendar'
 import { NewAppointmentModal } from './NewAppointmentModal'
 import { AppointmentDetailModal } from './AppointmentDetailModal'
 import type { Appointment } from './types'
+import { CardAtivacao } from '../ativacao/CardAtivacao'
 
 const HOUR_START = 6
 const HOUR_END = 22
@@ -186,6 +187,8 @@ export function AgendaPage() {
   return (
     <div className="flex flex-col lg:flex-row gap-4">
       <div className="flex-1 min-w-0">
+        <CardAtivacao />
+
         {/* Toolbar */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-3">

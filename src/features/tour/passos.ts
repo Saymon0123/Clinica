@@ -4,29 +4,29 @@ import type { PassoDoTour } from './Tour'
  * Textos do tour, separados do JSX de propósito: dá para revisar a redação
  * sem abrir componente, e a lista de âncoras fica visível num lugar só.
  *
- * Regra de escrita: dizer **o que a pessoa ganha**, não o que o botão faz.
- * "Conectar WhatsApp" ela já lê na tela; o que ela não sabe é que sem isso o
- * agente não atende ninguém.
+ * Regras de escrita:
  *
- * Três a quatro passos por tela. Acima disso vira aula, e aula se pula.
+ * - Dizer **o que a pessoa ganha ou arrisca**, não o que o botão faz. O rótulo
+ *   do botão ela já lê na tela.
+ * - **Uma frase.** Duas no máximo, e curtas. Balão comprido não é lido; é
+ *   pulado, e aí o passo seguinte também.
+ * - Três a quatro passos por tela. Acima disso vira aula, e aula se pula.
  */
 export const PASSOS_CONEXAO: PassoDoTour[] = [
   {
     ancora: 'conexao-status',
-    titulo: 'É aqui que tudo começa',
-    texto:
-      'Enquanto o WhatsApp não estiver conectado, o agente não recebe nem responde nenhuma mensagem. Esta é a única tela que precisa ser resolvida antes de qualquer outra.',
+    titulo: 'Comece por aqui',
+    texto: 'Sem o WhatsApp conectado, o agente não responde ninguém.',
   },
   {
     ancora: 'conexao-acao',
-    titulo: 'Use o número do salão',
+    titulo: 'Use o celular do salão',
     texto:
-      'Ao gerar o QR code, leia com o celular da barbearia — não com o seu pessoal. É desse número que seus clientes vão receber as respostas, os lembretes e a confirmação de horário.',
+      'É desse número que o cliente recebe resposta, lembrete e confirmação. Não use o seu pessoal.',
   },
   {
     ancora: 'conexao-agente',
-    titulo: 'Acompanhe o que o agente resolveu',
-    texto:
-      'Aqui aparece quantas conversas ele atendeu sozinho e em quanto tempo respondeu. É a medida do tempo que você deixou de gastar no celular.',
+    titulo: 'O que o agente resolveu',
+    texto: 'Conversas atendidas sozinho e tempo de resposta — o tempo que você não gastou no celular.',
   },
 ]

@@ -246,6 +246,18 @@ documentado (cai no horário do salão); a comissão não tem.
 `subscriptions`) e **zero** referências em `src/`. Não podem ser testados pelo
 CRM.
 
+### Preço dos planos: `visao.md` e banco discordam
+Achado em 2026-08-02. A [`visao.md`](visao.md) diz **Básico R$ 197** e **Pro
+R$ 299**. A tabela `plans` em produção tem **Básico R$ 97** e **Pro R$ 197** (e
+`preco_unidade_rede` de R$ 77 e R$ 157).
+
+Não é detalhe: a tela de Assinatura mostra ao dono o valor que está no banco, e
+a edge function grava esse valor em `subscriptions.valor` no cadastro. Ou seja,
+**o preço do banco é o que vale hoje** — se o certo for o da visão, cada
+barbearia cadastrada até a correção fica com o valor errado gravado.
+
+Decidir qual é a fonte de verdade e alinhar os dois.
+
 ### Integração de cobrança (Asaas) não existe
 `subscriptions` tem `asaas_customer_id` e `asaas_subscription_id`, mas nenhuma
 linha de código menciona Asaas — nem no front, nem nas edge functions. Schema

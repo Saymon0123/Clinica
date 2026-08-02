@@ -6,17 +6,9 @@ import { useConversations } from './useConversations'
 import { useMessages } from './useMessages'
 import { ThemeToggle } from '../../components/ThemeToggle'
 import { ContextPopup } from './ContextPopup'
+import { formatarTelefone } from '../../lib/telefone'
 
 type Tab = 'todas' | 'precisa_dono'
-
-function formatPhone(phone: string) {
-  const digits = phone.replace(/\D/g, '')
-  if (digits.length < 10) return phone
-  const country = digits.slice(0, digits.length - 11)
-  const ddd = digits.slice(-11, -9)
-  const rest = digits.slice(-9)
-  return `${country ? `+${country} ` : ''}(${ddd}) ${rest.slice(0, 5)}-${rest.slice(5)}`
-}
 
 function formatTime(iso: string | null) {
   if (!iso) return ''
@@ -53,7 +45,7 @@ export function WhatsAppWebPage() {
     const conversa = conversations.find((c) => c.id === id)
     if (conversa?.needs_human && conversa.resumo_contexto && !dismissedContext.has(id)) {
       setContextPopup({
-        nome: conversa.contact_name ?? formatPhone(conversa.contact_phone),
+        nome: conversa.contact_name ?? formatarTelefone(conversa.contact_phone),
         resumo: conversa.resumo_contexto,
       })
     }
@@ -182,13 +174,13 @@ export function WhatsAppWebPage() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <span className={`text-sm truncate ${isUnread(c) ? 'font-semibold text-foreground' : 'font-medium text-foreground'}`}>
-                    {c.contact_name ?? formatPhone(c.contact_phone)}
+                    {c.contact_name ?? formatarTelefone(c.contact_phone)}
                   </span>
                   {isUnread(c) && (
                     <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" title="Não lida" />
                   )}
                 </div>
-                <div className="text-xs text-muted-foreground truncate">{formatPhone(c.contact_phone)}</div>
+                <div className="text-xs text-muted-foreground truncate">{formatarTelefone(c.contact_phone)}</div>
                 <div className="text-xs text-muted-foreground">{formatTime(c.last_message_at)}</div>
               </div>
             </button>
@@ -206,9 +198,9 @@ export function WhatsAppWebPage() {
               <div className="bg-surface border-b border-border px-4 py-3 flex items-center justify-between gap-3">
                 <div>
                   <div className="text-sm font-medium text-foreground">
-                    {selectedConversation.contact_name ?? formatPhone(selectedConversation.contact_phone)}
+                    {selectedConversation.contact_name ?? formatarTelefone(selectedConversation.contact_phone)}
                   </div>
-                  <div className="text-xs text-muted-foreground">{formatPhone(selectedConversation.contact_phone)}</div>
+                  <div className="text-xs text-muted-foreground">{formatarTelefone(selectedConversation.contact_phone)}</div>
                 </div>
 
                 {selectedConversation.resumo_contexto && (
@@ -217,7 +209,7 @@ export function WhatsAppWebPage() {
                       setContextPopup({
                         nome:
                           selectedConversation.contact_name ??
-                          formatPhone(selectedConversation.contact_phone),
+                          formatarTelefone(selectedConversation.contact_phone),
                         resumo: selectedConversation.resumo_contexto!,
                       })
                     }

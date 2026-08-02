@@ -34,9 +34,38 @@ Aviso de nível WARN no advisor.
 
 ## Correção de comportamento
 
-### Confirmação de chegada (10 min antes) — implementada, não executada
-Feita em 2026-08-02, no mesmo fluxo do lembrete. São **duas mensagens
-separadas**, com perguntas diferentes:
+### ~~Fluxo de lembretes quebrava no primeiro nó, sempre~~ — CORRIGIDO
+Descoberto em 2026-08-02, na **primeira execução real**. O filtro
+`client_id neq null` do nó Supabase manda a string literal `"null"` para o
+PostgREST, que tenta converter para uuid e devolve `400 (22P02)`. A execução
+morria no primeiro nó, em toda rodada.
+
+O fluxo estava assim desde que foi criado. A nota anterior dizendo "não
+verificado em execução" escondia isto: não era falta de verificação, era um
+fluxo que nunca poderia ter funcionado. **Nenhuma revisão de código pegaria** —
+só rodar pega.
+
+Corrigido tirando o filtro da consulta e checando `client_id` dentro do nó de
+classificação, que roda em JavaScript e trata `null` corretamente.
+
+### ⚠️ Editar workflow no n8n não publica
+Pegadinha operacional, ao lado de "migration não está no pipeline". As
+alterações via API vão para o **rascunho**; o agendamento ativo continua
+rodando a **versão publicada**. Em 2026-08-02 isso custou tempo: corrigi um
+defeito, reexecutei, e o erro continuou idêntico — porque o que rodou foi a
+versão antiga. Só percebi comparando os parâmetros na saída da execução.
+
+**Depois de alterar qualquer fluxo, publicar.** E conferir o resultado pela
+execução, não pelo editor.
+
+### ~~Confirmação de chegada (10 min antes)~~ — VERIFICADA EM PRODUÇÃO
+Feita e testada em 2026-08-02, no mesmo fluxo do lembrete. O ciclo completo foi
+validado num **mesmo agendamento**: lembrete enviado a 59 minutos, **nenhuma
+resposta do cliente**, confirmação enviada a 10 minutos, e as rodadas seguintes
+não reenviaram nada. Era o caso que mais importava — quem não responde ao
+lembrete é justamente quem tem mais chance de faltar.
+
+São **duas mensagens separadas**, com perguntas diferentes:
 
 - **~1h antes** — lembra do horário e pergunta se confirma que vem
 - **~10 min antes** — pergunta se está a caminho, para o barbeiro saber do

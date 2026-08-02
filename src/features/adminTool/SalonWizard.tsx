@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Building2, Check, ChevronLeft, ChevronRight, Copy, Plus, Store, Trash2 } from 'lucide-react'
+import { Building2, Check, ChevronLeft, ChevronRight, Copy, Plus, Scissors, Store, Trash2 } from 'lucide-react'
 import { invokeFunction } from '../../lib/invokeFunction'
 import {
   HORARIO_PADRAO,
@@ -9,7 +9,21 @@ import {
   type ServicoPadrao,
 } from './servicosPadrao'
 
-type Unidade = { nome: string; endereco: string; telefone: string }
+/**
+ * `donoAtende` separa duas coisas que o sistema confundia: ser **dono** (acesso,
+ * em `user_salons`) e **atender clientes** (recurso agendável, em
+ * `professionals`). Antes, o cadastro criava o dono como barbeiro em toda
+ * unidade — então o dono de rede virava opção de agendamento nas duas, e o
+ * agente de IA passava a oferecê-lo ao cliente no WhatsApp.
+ */
+type Unidade = { nome: string; endereco: string; telefone: string; donoAtende: boolean }
+
+/** Formato do negócio. Espelha os três casos reais descritos em docs/visao.md. */
+type Tipo = 'solo' | 'unica' | 'rede'
+
+function unidadeVazia(donoAtende: boolean): Unidade {
+  return { nome: '', endereco: '', telefone: '', donoAtende }
+}
 type ServicoEscolhido = ServicoPadrao & { escolhido: boolean }
 
 type Resultado = {
@@ -48,10 +62,25 @@ function CopyField({ label, value }: { label: string; value: string }) {
 
 export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: () => void }) {
   const [passo, setPasso] = useState(0)
-  const [tipo, setTipo] = useState<'unica' | 'rede'>('unica')
+  const [tipo, setTipo] = useState<Tipo>('solo')
   const [redeNome, setRedeNome] = useState('')
   const [redeCnpj, setRedeCnpj] = useState('')
-  const [unidades, setUnidades] = useState<Unidade[]>([{ nome: '', endereco: '', telefone: '' }])
+  const [unidades, setUnidades] = useState<Unidade[]>([unidadeVazia(true)])
+
+  // No formato solo o dono É o barbeiro — perguntar seria ruído. Nos outros a
+  // pergunta aparece, para a exceção ser tratada sem mexer em código.
+  const perguntaSeDonoAtende = tipo !== 'solo'
+
+  function escolherTipo(novo: Tipo) {
+    setTipo(novo)
+    // Rede começa com o dono fora do atendimento (ele supervisiona); barbearia
+    // com equipe começa com ele dentro, que é o caso mais comum.
+    const atendePadrao = novo !== 'rede'
+    setUnidades((prev) => {
+      const base = novo === 'rede' ? prev : prev.slice(0, 1)
+      return base.map((u) => ({ ...u, donoAtende: atendePadrao }))
+    })
+  }
   const [donoNome, setDonoNome] = useState('')
   const [donoEmail, setDonoEmail] = useState('')
   const [donoTelefone, setDonoTelefone] = useState('')
@@ -113,6 +142,8 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
             endereco: u.endereco,
             telefone: u.telefone,
             horario_funcionamento: serializarHorario(horario),
+            // No formato solo o dono sempre atende, então nem mostramos a opção.
+            dono_atende: tipo === 'solo' ? true : u.donoAtende,
           })),
           servicos: servicos
             .filter((s) => s.escolhido)
@@ -173,7 +204,8 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
           onClick={() => {
             setResultado(null)
             setPasso(0)
-            setUnidades([{ nome: '', endereco: '', telefone: '' }])
+            setTipo('solo')
+            setUnidades([unidadeVazia(true)])
             setDonoNome('')
             setDonoEmail('')
             setDonoTelefone('')
@@ -215,29 +247,32 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
       {/* Passo 1 — tipo */}
       {passo === 0 && (
         <div className="space-y-4">
-          <h2 className="text-base font-semibold text-foreground">É uma barbearia ou uma rede?</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <h2 className="text-base font-semibold text-foreground">Como funciona a barbearia?</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <button
-              onClick={() => {
-                setTipo('unica')
-                setUnidades((u) => u.slice(0, 1))
-              }}
+              onClick={() => escolherTipo('solo')}
               className={`flex flex-col items-start gap-1 rounded-lg border p-4 text-left transition-colors ${
-                tipo === 'unica'
-                  ? 'border-primary bg-primary-soft'
-                  : 'border-border-strong hover:bg-surface-2'
+                tipo === 'solo' ? 'border-primary bg-primary-soft' : 'border-border-strong hover:bg-surface-2'
+              }`}
+            >
+              <Scissors size={20} className={tipo === 'solo' ? 'text-primary' : 'text-muted-foreground'} />
+              <span className="text-sm font-medium text-foreground">Só eu atendo</span>
+              <span className="text-xs text-muted-foreground">Um endereço, um barbeiro</span>
+            </button>
+            <button
+              onClick={() => escolherTipo('unica')}
+              className={`flex flex-col items-start gap-1 rounded-lg border p-4 text-left transition-colors ${
+                tipo === 'unica' ? 'border-primary bg-primary-soft' : 'border-border-strong hover:bg-surface-2'
               }`}
             >
               <Store size={20} className={tipo === 'unica' ? 'text-primary' : 'text-muted-foreground'} />
-              <span className="text-sm font-medium text-foreground">Barbearia única</span>
-              <span className="text-xs text-muted-foreground">Um endereço só</span>
+              <span className="text-sm font-medium text-foreground">Tenho equipe</span>
+              <span className="text-xs text-muted-foreground">Um endereço, mais barbeiros</span>
             </button>
             <button
-              onClick={() => setTipo('rede')}
+              onClick={() => escolherTipo('rede')}
               className={`flex flex-col items-start gap-1 rounded-lg border p-4 text-left transition-colors ${
-                tipo === 'rede'
-                  ? 'border-primary bg-primary-soft'
-                  : 'border-border-strong hover:bg-surface-2'
+                tipo === 'rede' ? 'border-primary bg-primary-soft' : 'border-border-strong hover:bg-surface-2'
               }`}
             >
               <Building2 size={20} className={tipo === 'rede' ? 'text-primary' : 'text-muted-foreground'} />
@@ -321,12 +356,34 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
                 placeholder="Telefone da unidade (opcional)"
                 className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
               />
+
+              {perguntaSeDonoAtende && (
+                <label className="flex items-start gap-2 pt-1 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={u.donoAtende}
+                    onChange={(e) =>
+                      setUnidades((prev) =>
+                        prev.map((x, idx) => (idx === i ? { ...x, donoAtende: e.target.checked } : x)),
+                      )
+                    }
+                    aria-label={`O dono atende nesta unidade${tipo === 'rede' ? ` (${i + 1})` : ''}`}
+                    className="mt-0.5 accent-primary"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    O dono também atende como barbeiro aqui
+                    <span className="block text-[11px] opacity-80">
+                      Se desmarcado, ele administra mas não aparece na agenda nem é oferecido pelo agente.
+                    </span>
+                  </span>
+                </label>
+              )}
             </div>
           ))}
 
           {tipo === 'rede' && (
             <button
-              onClick={() => setUnidades((prev) => [...prev, { nome: '', endereco: '', telefone: '' }])}
+              onClick={() => setUnidades((prev) => [...prev, unidadeVazia(false)])}
               className="flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
             >
               <Plus size={15} />

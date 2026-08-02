@@ -1,14 +1,12 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { instanceNameFor } from '../_shared/instanceName.ts'
+import evolutionConfig from '../_shared/evolutionConfig.json' with { type: 'json' }
 
 const EVOLUTION_API_URL = Deno.env.get('EVOLUTION_API_URL')
 const EVOLUTION_API_KEY = Deno.env.get('EVOLUTION_API_KEY')
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 // URL de produção do webhook do fluxo n8n de atendimento.
 const N8N_WEBHOOK_URL = Deno.env.get('N8N_WEBHOOK_URL')
-
-function instanceNameFor(salonId: string) {
-  return `salon-${salonId}`
-}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -116,6 +114,19 @@ Deno.serve(async (req: Request) => {
         }),
       })
 
+      // Settings da instância — principalmente groupsIgnore, sem o qual toda
+      // mensagem de grupo entra no fluxo do agente e ele responde em grupo.
+      // Idempotente: reaplicado a cada conexão, então uma instância que tenha
+      // sido alterada à mão no painel volta ao padrão sozinha.
+      const settingsResult = await evoFetch(`/settings/set/${instanceName}`, {
+        method: 'POST',
+        body: JSON.stringify(evolutionConfig.settings),
+      })
+      const settingsOk = settingsResult.ok
+      if (!settingsOk) {
+        console.error('Falha ao aplicar settings na Evolution:', settingsResult.status, settingsResult.data)
+      }
+
       // Sem webhook a Evolution não entrega as mensagens ao n8n e o agente nunca responde.
       // É idempotente: vale tanto para instância recém-criada quanto para uma que já existia.
       // webhookBase64 é obrigatório — o fluxo lê audioMessage.base64 e imageMessage.base64.
@@ -133,7 +144,7 @@ Deno.serve(async (req: Request) => {
               url: N8N_WEBHOOK_URL,
               webhookByEvents: false,
               webhookBase64: true,
-              events: ['MESSAGES_UPSERT'],
+              events: evolutionConfig.webhookEvents,
             },
           }),
         })
@@ -163,7 +174,7 @@ Deno.serve(async (req: Request) => {
         updated_at: new Date().toISOString(),
       })
 
-      return json({ status: 'connecting', qrCode, webhookOk })
+      return json({ status: 'connecting', qrCode, webhookOk, settingsOk })
     }
 
     if (body.action === 'status') {

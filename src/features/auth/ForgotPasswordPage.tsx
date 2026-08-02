@@ -1,52 +1,131 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { Eye, EyeOff } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { urlDeRedefinicaoDeSenha } from '../../lib/appUrl'
+import {
+  codigoPareceValido,
+  hashDeEntrada,
+  mensagemDeErroDoRetorno,
+  normalizarCodigo,
+} from '../../lib/recuperacaoSenha'
+import { useAuth } from './AuthContext'
 
+/**
+ * Redefinição de senha por **código de 6 dígitos**, sem sair do site.
+ *
+ * O fluxo por link dependia de o Supabase redirecionar de volta para a
+ * aplicação, e isso quebrava de duas formas: a URL precisa estar na lista de
+ * permitidas do projeto (senão o Supabase manda para a Site URL em silêncio), e
+ * no celular o link costuma abrir num navegador diferente daquele em que a
+ * pessoa estava — a sessão nasce no lugar errado.
+ *
+ * Com código digitado não há redirecionamento nenhum: a pessoa recebe seis
+ * dígitos, digita aqui e cria a senha na mesma tela.
+ *
+ * Requer que o template "Reset Password" no painel do Supabase use
+ * `{{ .Token }}` (o código) em vez de apenas `{{ .ConfirmationURL }}`.
+ */
 export function ForgotPasswordPage() {
-  const [email, setEmail] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [sent, setSent] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const navigate = useNavigate()
+  const { concluirRecuperacao } = useAuth()
 
-  async function handleSubmit(e: FormEvent) {
+  const [etapa, setEtapa] = useState<'email' | 'codigo'>('email')
+  const [email, setEmail] = useState('')
+  const [codigo, setCodigo] = useState('')
+  const [senha, setSenha] = useState('')
+  const [confirmar, setConfirmar] = useState('')
+  const [mostrarSenha, setMostrarSenha] = useState(false)
+  const [enviando, setEnviando] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+
+  // Quem chegou aqui por um link vencido merece saber o motivo.
+  const [avisoDoLink] = useState(() => mensagemDeErroDoRetorno(hashDeEntrada()))
+
+  async function pedirCodigo(e: FormEvent) {
     e.preventDefault()
-    setSubmitting(true)
-    setError(null)
+    setEnviando(true)
+    setErro(null)
     try {
-      await supabase.auth.resetPasswordForEmail(email, {
+      // `redirectTo` continua indo: se o template ainda mandar link, ele
+      // funciona pelo caminho antigo.
+      await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: urlDeRedefinicaoDeSenha(),
       })
-      // Mesma mensagem de sucesso independente do e-mail existir ou não,
-      // para não revelar quais e-mails têm cadastro no sistema.
-      setSent(true)
+      // Avança sempre, mesmo se o e-mail não existir: dizer "esse e-mail não
+      // tem conta" revelaria quais endereços estão cadastrados.
+      setEtapa('codigo')
     } catch (err) {
       console.error('Erro ao solicitar redefinição de senha:', err)
-      setError('Não foi possível enviar o e-mail agora. Tente novamente.')
+      setErro('Não foi possível enviar o código agora. Tente novamente.')
     } finally {
-      setSubmitting(false)
+      setEnviando(false)
+    }
+  }
+
+  async function salvarNovaSenha(e: FormEvent) {
+    e.preventDefault()
+    setErro(null)
+
+    if (!codigoPareceValido(codigo)) {
+      setErro('O código tem 6 dígitos. Confira o que chegou no e-mail.')
+      return
+    }
+    if (senha.length < 6) {
+      setErro('A senha precisa ter pelo menos 6 caracteres.')
+      return
+    }
+    if (senha !== confirmar) {
+      setErro('As senhas não coincidem.')
+      return
+    }
+
+    setEnviando(true)
+    try {
+      // O código autentica a pessoa; só depois dá para trocar a senha.
+      const { error: erroCodigo } = await supabase.auth.verifyOtp({
+        email: email.trim(),
+        token: normalizarCodigo(codigo),
+        type: 'recovery',
+      })
+      if (erroCodigo) {
+        setErro('Código inválido ou expirado. Peça um novo e tente de novo.')
+        return
+      }
+
+      const { error: erroSenha } = await supabase.auth.updateUser({ password: senha })
+      if (erroSenha) {
+        setErro('Não foi possível salvar a nova senha. Tente novamente.')
+        return
+      }
+
+      concluirRecuperacao()
+      navigate('/')
+    } catch (err) {
+      console.error('Erro ao redefinir senha:', err)
+      setErro('Não foi possível redefinir a senha. Tente novamente.')
+    } finally {
+      setEnviando(false)
     }
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm bg-surface p-6 sm:p-8 rounded-xl border border-border space-y-4">
-        <h1 className="text-xl font-semibold text-foreground">Esqueci minha senha</h1>
+        <h1 className="text-xl font-semibold text-foreground">
+          {etapa === 'email' ? 'Esqueci minha senha' : 'Criar nova senha'}
+        </h1>
 
-        {sent ? (
-          <>
+        {avisoDoLink && etapa === 'email' && (
+          <p className="text-sm text-warning bg-warning/10 border border-warning/30 rounded px-3 py-2">
+            {avisoDoLink}
+          </p>
+        )}
+
+        {etapa === 'email' ? (
+          <form onSubmit={pedirCodigo} className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Se houver uma conta cadastrada com esse e-mail, enviamos um link para redefinir a senha.
-              Verifique também a caixa de spam.
-            </p>
-            <Link to="/login" className="block text-center text-sm text-muted-foreground underline">
-              Voltar para o login
-            </Link>
-          </>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Informe o e-mail da sua conta. Vamos enviar um link para você criar uma nova senha.
+              Informe o e-mail da sua conta. Vamos enviar um código de 6 dígitos.
             </p>
 
             <div>
@@ -63,19 +142,104 @@ export function ForgotPasswordPage() {
               />
             </div>
 
-            {error && <p className="text-sm text-danger">{error}</p>}
+            {erro && <p className="text-sm text-danger">{erro}</p>}
 
             <button
               type="submit"
-              disabled={submitting}
+              disabled={enviando}
               className="w-full btn-primary rounded px-3 py-3 text-sm font-medium disabled:opacity-50"
             >
-              {submitting ? 'Enviando...' : 'Enviar link de redefinição'}
+              {enviando ? 'Enviando...' : 'Enviar código'}
             </button>
 
             <Link to="/login" className="block text-center text-sm text-muted-foreground underline">
               Voltar para o login
             </Link>
+          </form>
+        ) : (
+          <form onSubmit={salvarNovaSenha} className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Se houver conta com esse e-mail, enviamos um código de 6 dígitos. Verifique também o
+              spam. Digite o código e escolha a nova senha.
+            </p>
+
+            <div>
+              <label className="block text-sm text-muted-foreground mb-1" htmlFor="codigo">Código</label>
+              <input
+                id="codigo"
+                type="text"
+                required
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={7}
+                placeholder="000000"
+                value={codigo}
+                onChange={(e) => setCodigo(e.target.value)}
+                className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-3 text-base tracking-[0.3em] text-center"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm text-muted-foreground mb-1" htmlFor="senha">Nova senha</label>
+              <div className="relative">
+                <input
+                  id="senha"
+                  type={mostrarSenha ? 'text' : 'password'}
+                  required
+                  minLength={6}
+                  autoComplete="new-password"
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-3 pr-11 text-base"
+                />
+                <button
+                  type="button"
+                  onClick={() => setMostrarSenha((v) => !v)}
+                  aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground"
+                >
+                  {mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm text-muted-foreground mb-1" htmlFor="confirmar">
+                Confirmar nova senha
+              </label>
+              <input
+                id="confirmar"
+                type={mostrarSenha ? 'text' : 'password'}
+                required
+                minLength={6}
+                autoComplete="new-password"
+                value={confirmar}
+                onChange={(e) => setConfirmar(e.target.value)}
+                className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-3 text-base"
+              />
+            </div>
+
+            {erro && <p className="text-sm text-danger">{erro}</p>}
+
+            <button
+              type="submit"
+              disabled={enviando}
+              className="w-full btn-primary rounded px-3 py-3 text-sm font-medium disabled:opacity-50"
+            >
+              {enviando ? 'Salvando...' : 'Salvar nova senha'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setEtapa('email')
+                setCodigo('')
+                setErro(null)
+              }}
+              className="w-full text-center text-sm text-muted-foreground underline"
+            >
+              Não recebi o código
+            </button>
           </form>
         )}
       </div>

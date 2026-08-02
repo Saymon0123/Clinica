@@ -16,6 +16,9 @@ dist-ssr
 .env
 .env.local
 
+# graphify (grafo gerado - artefato local, nao versionar)
+graphify-out/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

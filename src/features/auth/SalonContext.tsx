@@ -1,5 +1,6 @@
 import { createContext, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '../../lib/supabase'
+import { sessaoExpirou } from '../../lib/authErrors'
 import { useAuth } from './AuthContext'
 
 export type Papel = 'owner' | 'gerente' | 'barbeiro'
@@ -47,7 +48,7 @@ type LinhaVinculo = {
 }
 
 export function SalonProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
   const [unidades, setUnidades] = useState<Unidade[]>([])
   const [selecionada, setSelecionada] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -61,11 +62,31 @@ export function SalonProvider({ children }: { children: ReactNode }) {
     }
 
     setLoading(true)
-    const { data, error } = await supabase
-      .from('user_salons')
-      .select('salon_id, role, salons ( nome, organization_id, ativo )')
-      .eq('user_id', user.id)
-      .order('created_at')
+
+    const buscarVinculos = () =>
+      supabase
+        .from('user_salons')
+        .select('salon_id, role, salons ( nome, organization_id, ativo )')
+        .eq('user_id', user.id)
+        .order('created_at')
+
+    let { data, error } = await buscarVinculos()
+
+    // Aba parada por horas (ou em segundo plano, onde o timer de renovação do
+    // supabase-js não roda) volta com o JWT vencido. Sem tratar isso, o erro
+    // caía no mesmo caminho de "nenhuma unidade" e a tela dizia ao dono que a
+    // conta dele não estava vinculada a salão nenhum — parecendo perda de dados.
+    if (sessaoExpirou(error)) {
+      const { error: erroRenovacao } = await supabase.auth.refreshSession()
+      if (erroRenovacao) {
+        // Refresh token também venceu: só o login resolve. Deslogar leva à tela
+        // certa, em vez de deixar o usuário numa tela que mente sobre a causa.
+        console.warn('Sessão expirada e não foi possível renovar. Encerrando.', erroRenovacao)
+        await signOut()
+        return
+      }
+      ;({ data, error } = await buscarVinculos())
+    }
 
     if (error) {
       console.error('Erro ao carregar as unidades do usuário:', error)
@@ -99,7 +120,7 @@ export function SalonProvider({ children }: { children: ReactNode }) {
       setSelecionada(proprias.length > 1 ? null : (lista[0]?.salonId ?? null))
     }
     setLoading(false)
-  }, [user])
+  }, [user, signOut])
 
   useEffect(() => {
     carregar()

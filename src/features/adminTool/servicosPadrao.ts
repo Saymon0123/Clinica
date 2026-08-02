@@ -67,3 +67,28 @@ export function serializarHorario(dias: DiaSemana[]) {
     dias.map((d) => [d.chave, d.aberto ? { abre: d.abre, fecha: d.fecha } : null]),
   )
 }
+
+type HorarioGravado = Record<string, { abre?: string; fecha?: string } | null> | null
+
+/**
+ * Caminho inverso do `serializarHorario`, para a tela de configurações poder
+ * editar o que o wizard gravou.
+ *
+ * Parte sempre de `HORARIO_PADRAO` e só sobrescreve o que existe no banco:
+ * assim um dia ausente no JSON (schema antigo, gravação parcial) vira o padrão
+ * em vez de desaparecer da tela.
+ */
+export function desserializarHorario(gravado: unknown): DiaSemana[] {
+  const json = (gravado ?? null) as HorarioGravado
+  return HORARIO_PADRAO.map((padrao) => {
+    if (!json || !(padrao.chave in json)) return { ...padrao }
+    const dia = json[padrao.chave]
+    if (!dia) return { ...padrao, aberto: false }
+    return {
+      ...padrao,
+      aberto: true,
+      abre: dia.abre ?? padrao.abre,
+      fecha: dia.fecha ?? padrao.fecha,
+    }
+  })
+}

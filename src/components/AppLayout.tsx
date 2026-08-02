@@ -1,5 +1,16 @@
 import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom'
-import { Calendar, Users, Wallet, Link2, Globe, Tag, Scissors, UsersRound, Building2 } from 'lucide-react'
+import {
+  Calendar,
+  Users,
+  Wallet,
+  Link2,
+  Globe,
+  Tag,
+  Scissors,
+  Settings,
+  UsersRound,
+  Building2,
+} from 'lucide-react'
 import { ProfileMenu } from './ProfileMenu'
 import { useSalon } from '../features/auth/useSalon'
 import { useAppointmentAlerts } from '../features/agenda/useAppointmentAlerts'
@@ -28,11 +39,16 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: 'Gestão',
     items: [
-      { to: '/clientes', label: 'Clientes', icon: Users, somenteGestor: true },
+      // Sem `somenteGestor`: o barbeiro cadastra cliente novo na cadeira, e a
+      // policy `clients: membros cadastram` já permite isso. O que ele enxerga
+      // depois é limitado pelo RLS aos que ele criou ou atendeu — o item ficava
+      // escondido, mas a rota respondia, então quem soubesse a URL entrava.
+      { to: '/clientes', label: 'Clientes', icon: Users },
       { to: '/catalogo', label: 'Catálogo', icon: Tag },
       { to: '/equipe', label: 'Equipe', icon: UsersRound, somenteGestor: true },
       { to: '/rede', label: 'Rede', icon: Building2, somenteDono: true, semUnidade: true },
       { to: '/rede/equipe', label: 'Equipe da rede', icon: UsersRound, somenteDono: true, semUnidade: true },
+      { to: '/configuracoes', label: 'Configurações', icon: Settings, somenteGestor: true },
     ],
   },
   {

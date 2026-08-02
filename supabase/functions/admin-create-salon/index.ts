@@ -29,6 +29,18 @@ type Unidade = {
   endereco?: string
   telefone?: string
   horario_funcionamento?: unknown
+  /**
+   * Se o dono também atende como barbeiro nesta unidade.
+   *
+   * Ser dono (acesso, em `user_salons`) e atender (recurso agendável, em
+   * `professionals`) são coisas diferentes. Antes esta função criava o dono
+   * como profissional em toda unidade, então o dono de rede virava opção de
+   * agendamento em todas elas — e o agente de IA passava a oferecê-lo ao
+   * cliente no WhatsApp.
+   *
+   * Ausente = true, para não quebrar chamadas antigas.
+   */
+  dono_atende?: boolean
 }
 
 type Servico = { nome?: string; preco?: number; duracao_minutos?: number }
@@ -236,23 +248,21 @@ Deno.serve(async (req: Request) => {
         .insert({ user_id: userId, salon_id: salon.id, role: 'owner' })
       if (vinculoError) throw vinculoError
 
-      // Mantém profiles preenchido: o app ainda usa essa tabela para
-      // descobrir o salão atual do usuário.
-      if (salonIds.length === 1) {
-        const { error: profileError } = await admin
-          .from('profiles')
-          .insert({ id: userId, salon_id: salon.id, role: 'owner' })
-        if (profileError) throw profileError
-      }
+      // `profiles` foi removida do banco (migration remove_profiles). A fonte
+      // de verdade do vínculo usuário↔salão é `user_salons`, inserida acima.
 
-      const { error: profissionalError } = await admin.from('professionals').insert({
-        salon_id: salon.id,
-        user_id: userId,
-        nome: ownerNome,
-        telefone: ownerTelefone,
-        ativo: true,
-      })
-      if (profissionalError) throw profissionalError
+      // O dono só vira profissional quando ele de fato atende nesta unidade.
+      const donoAtende = unidade.dono_atende !== false
+      if (donoAtende) {
+        const { error: profissionalError } = await admin.from('professionals').insert({
+          salon_id: salon.id,
+          user_id: userId,
+          nome: ownerNome,
+          telefone: ownerTelefone,
+          ativo: true,
+        })
+        if (profissionalError) throw profissionalError
+      }
 
       // Catálogo inicial — é o que evita a barbearia nascer vazia.
       const validos = servicos.filter((s) => s.nome?.trim() && Number(s.preco) > 0)
@@ -271,8 +281,10 @@ Deno.serve(async (req: Request) => {
           .select('id')
         if (servicoError) throw servicoError
 
-        // Liga todos os serviços ao dono, senão ele não aparece como
-        // executante na hora de agendar.
+        // Liga os serviços ao dono quando ele atende, senão ele não apareceria
+        // como executante na hora de agendar. Quando não atende, não existe
+        // profissional aqui e o vínculo é simplesmente pulado — a unidade nasce
+        // sem agenda até a equipe ser convidada.
         const { data: prof } = await admin
           .from('professionals')
           .select('id')

@@ -2,9 +2,11 @@ import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from './AuthContext'
 
 export function ResetPasswordPage() {
   const navigate = useNavigate()
+  const { concluirRecuperacao } = useAuth()
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -31,6 +33,9 @@ export function ResetPasswordPage() {
         setError('Não foi possível redefinir a senha. O link pode ter expirado — solicite um novo.')
         return
       }
+      // Sem isto o desvio de recuperação continuaria ativo e traria a pessoa
+      // de volta para esta tela em vez de deixá-la entrar.
+      concluirRecuperacao()
       navigate('/')
     } catch (err) {
       console.error('Erro ao redefinir senha:', err)

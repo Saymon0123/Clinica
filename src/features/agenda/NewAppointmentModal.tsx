@@ -59,18 +59,25 @@ export function NewAppointmentModal({
     }
 
     setSubmitting(true)
+    // Só o cliente criado NESTA tentativa pode ser desfeito. Um cliente que já
+    // existia continua existindo, mesmo que a reserva falhe.
+    let clienteCriadoAgora: string | null = null
     try {
       let clientId: string
 
-      const { data: existingClient, error: findError } = await supabase
+      // limit(1) em vez de maybeSingle: dois clientes com o mesmo nome no salão
+      // fariam o maybeSingle estourar, e o usuário veria "não foi possível
+      // criar a reserva" sem entender por quê.
+      const { data: existingClients, error: findError } = await supabase
         .from('clients')
         .select('id')
         .eq('salon_id', salonId)
         .ilike('nome', clientName.trim())
-        .maybeSingle()
+        .limit(1)
 
       if (findError) throw findError
 
+      const existingClient = existingClients?.[0]
       if (existingClient) {
         clientId = existingClient.id
       } else {
@@ -81,6 +88,7 @@ export function NewAppointmentModal({
           .single()
         if (createError) throw createError
         clientId = newClient.id
+        clienteCriadoAgora = newClient.id
       }
 
       const start = toDateTimeLocal(date, time)
@@ -97,9 +105,22 @@ export function NewAppointmentModal({
       })
       if (apptError) throw apptError
 
+      clienteCriadoAgora = null
       onCreated()
       onClose()
     } catch (err) {
+      // Sem transação entre os dois inserts, a reserva recusada (horário
+      // ocupado, por exemplo) deixaria para trás um cliente sem nenhum
+      // agendamento. Cada nova tentativa sujaria a aba Clientes.
+      if (clienteCriadoAgora) {
+        const { error: limpezaError } = await supabase
+          .from('clients')
+          .delete()
+          .eq('id', clienteCriadoAgora)
+        if (limpezaError) {
+          console.error('Cliente criado sem reserva e não foi possível removê-lo:', limpezaError)
+        }
+      }
       console.error('Erro ao criar reserva:', err)
       const code = (err as { code?: string } | null)?.code
       setError(

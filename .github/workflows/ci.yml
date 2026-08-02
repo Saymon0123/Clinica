@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # Rápido: não precisa de banco, roda em segundos e barra a maioria das regressões.
+  estatico:
+    name: Typecheck, lint e testes de unidade
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+
+  # Sobe o Postgres do Supabase, aplica as 20 migrations e roda os testes de
+  # RLS em pgTAP. É o único ponto onde o isolamento entre salões é verificado.
+  banco:
+    name: Testes de RLS (pgTAP)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: supabase db start
+      - run: supabase test db

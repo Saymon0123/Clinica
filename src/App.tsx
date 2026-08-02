@@ -1,9 +1,11 @@
 import { Suspense, lazy } from 'react'
-import { Routes, Route } from 'react-router-dom'
-import { AuthProvider } from './features/auth/AuthContext'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { AuthProvider, useAuth } from './features/auth/AuthContext'
+import { hashDeEntrada, mensagemDeErroDoRetorno } from './lib/recuperacaoSenha'
 import { SalonProvider } from './features/auth/SalonContext'
 import { RequireAuth } from './features/auth/RequireAuth'
 import { RequireNetworkOwner } from './features/auth/RequireNetworkOwner'
+import { RequireManager } from './features/auth/RequireManager'
 import { LoginPage } from './features/auth/LoginPage'
 import { AppLayout } from './components/AppLayout'
 import { AgendaPage } from './features/agenda/AgendaPage'
@@ -38,6 +40,9 @@ const EquipePage = lazy(() => import('./features/equipe/EquipePage').then((m) =>
 const AceitarConvitePage = lazy(() =>
   import('./features/equipe/AceitarConvitePage').then((m) => ({ default: m.AceitarConvitePage })),
 )
+const ConfiguracoesPage = lazy(() =>
+  import('./features/configuracoes/ConfiguracoesPage').then((m) => ({ default: m.ConfiguracoesPage })),
+)
 const RedePage = lazy(() => import('./features/rede/RedePage').then((m) => ({ default: m.RedePage })))
 const EquipeRedePage = lazy(() =>
   import('./features/rede/EquipeRedePage').then((m) => ({ default: m.EquipeRedePage })),
@@ -47,10 +52,35 @@ function Carregando() {
   return <p className="p-6 text-sm text-muted-foreground">Carregando...</p>
 }
 
+/**
+ * Leva para a tela de nova senha quem chegou pelo link de recuperação.
+ *
+ * O Supabase descarta o `redirectTo` quando a URL não está na lista de
+ * permitidas do projeto e manda para a Site URL — o usuário clica no e-mail e
+ * cai no login, sem entender por quê. Aqui o retorno é reconhecido pelos
+ * tokens que vêm na URL, então o fluxo funciona mesmo com a configuração
+ * errada. Corrigir a lista de permitidas continua sendo o conserto de raiz.
+ */
+function DesvioDeRecuperacao() {
+  const { recuperandoSenha } = useAuth()
+  const location = useLocation()
+
+  if (recuperandoSenha && location.pathname !== '/redefinir-senha') {
+    return <Navigate to="/redefinir-senha" replace />
+  }
+  // Link vencido ou já usado: o Supabase devolve o erro no fragmento e não
+  // cria sessão. Mandar para a tela de pedir outro, que explica o motivo.
+  if (mensagemDeErroDoRetorno(hashDeEntrada()) && location.pathname !== '/esqueci-senha') {
+    return <Navigate to="/esqueci-senha" replace />
+  }
+  return null
+}
+
 function App() {
   return (
     <AuthProvider>
       <SalonProvider>
+        <DesvioDeRecuperacao />
         <Suspense fallback={<Carregando />}>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
@@ -62,7 +92,9 @@ function App() {
               path="/web"
               element={
                 <RequireAuth>
-                  <WhatsAppWebPage />
+                  <RequireManager>
+                    <WhatsAppWebPage />
+                  </RequireManager>
                 </RequireAuth>
               }
             />
@@ -94,7 +126,22 @@ function App() {
                   </RequireNetworkOwner>
                 }
               />
-              <Route path="/conexao" element={<ConexaoPage />} />
+              <Route
+                path="/conexao"
+                element={
+                  <RequireManager>
+                    <ConexaoPage />
+                  </RequireManager>
+                }
+              />
+              <Route
+                path="/configuracoes"
+                element={
+                  <RequireManager>
+                    <ConfiguracoesPage />
+                  </RequireManager>
+                }
+              />
             </Route>
           </Routes>
         </Suspense>

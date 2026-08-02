@@ -1,0 +1,32 @@
+project_id = "clinica-crm"
+
+[db]
+port = 54322
+major_version = 17
+
+[db.pooler]
+enabled = false
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+
+[studio]
+enabled = true
+port = 54323
+
+[storage]
+enabled = false
+
+[realtime]
+enabled = true
+
+[edge_runtime]
+enabled = true

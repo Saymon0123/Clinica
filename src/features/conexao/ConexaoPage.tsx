@@ -3,6 +3,8 @@ import { CheckCircle2, MessageCircle, RefreshCw } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
 import { AgentDashboard } from './AgentDashboard'
+import { Tour } from '../tour/Tour'
+import { PASSOS_CONEXAO } from '../tour/passos'
 
 type Status = 'close' | 'connecting' | 'open'
 
@@ -131,7 +133,7 @@ export function ConexaoPage() {
       <h1 className="text-lg font-semibold text-foreground mb-4">Conexão</h1>
 
       <div className="bg-surface rounded-xl border border-border p-6 max-w-md">
-        <div className="flex items-center gap-3 mb-4">
+        <div data-tour="conexao-status" className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-green-700 dark:text-green-400">
             <MessageCircle size={20} />
           </div>
@@ -176,7 +178,7 @@ export function ConexaoPage() {
           </div>
         ) : null}
 
-        <div className="flex gap-2">
+        <div data-tour="conexao-acao" className="flex gap-2">
           {status === 'open' ? (
             <button
               onClick={handleDisconnect}
@@ -198,9 +200,11 @@ export function ConexaoPage() {
         </div>
       </div>
 
-      <div className="mt-8">
+      <div data-tour="conexao-agente" className="mt-8">
         <AgentDashboard salonId={salonId} />
       </div>
+
+      <Tour chave="conexao" passos={PASSOS_CONEXAO} />
     </div>
   )
 }

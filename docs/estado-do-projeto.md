@@ -5,7 +5,56 @@ trabalho combinadas. Complementa [`visao.md`](visao.md) (o que queremos),
 [`backlog.md`](backlog.md) (o que falta) e
 [`mercado-e-roadmap.md`](mercado-e-roadmap.md) (posicionamento e versões).
 
-Última atualização: 2026-08-01.
+Última atualização: 2026-08-02.
+
+---
+
+## 0. Onde paramos (2026-08-02)
+
+**Aba Marketing, fase 1 de 4, no ar e validada com dado real.** Desenho completo
+e decisões em [`marketing.md`](marketing.md).
+
+Entregue: `0025_marketing_segmentos.sql` aplicada em produção (quatro segmentos
+com as travas no banco), `src/features/marketing/` com simulador testado, rota
+`/marketing` sob `RequireManager`. As quatro travas foram verificadas com
+coortes marcadas na barbearia de teste e **todas barraram quem deviam**.
+
+Falta no Marketing, por ordem de prioridade decidida:
+1. **Opt-out com tela** — bloqueante por LGPD. Hoje `client_marketing` existe no
+   banco e **não é referenciada em lugar nenhum do front**: ninguém consegue sair
+   da lista, nem o cliente nem o dono
+2. Mostrar na tela quem ficou de fora do segmento e por quê
+3. Ligar o segmento de horário ocioso à faixa vazia (hoje convida qualquer
+   cliente ativo, e o simulador já mostra que assim dá prejuízo)
+4. Fases 2, 3 e 4 inteiras: envio, cupom na venda, taxa de retorno medida
+
+**Pendente e não iniciado:** confrontar a jornada do cliente (mensagem no
+WhatsApp → sair com o corte pronto) com o que existe hoje, marcando cada ponto
+como pronto/parcial/ausente. A pesquisa de mercado já foi feita e aponta dois
+gargalos: confirmação antes da visita e reagendamento no caixa.
+
+**Em discussão:** renomear o projeto para abarcar barbearias **e salões de
+beleza** — hoje tudo é nomeado como barbearia, e o repositório se chama
+`Clinica`, que não descreve nem uma coisa nem outra.
+
+### Correções de ambiente feitas neste dia
+
+Três camadas de um mesmo sintoma ("não consigo logar"), nenhuma delas senha:
+
+1. `VITE_SUPABASE_ANON_KEY` vencida na Vercel → `401 Invalid API key`
+2. Na correção, a chave foi copiada do **campo mascarado** e virou `eyJhbGci` +
+   200 bolinhas (`•`) → o navegador recusava o header por não ser Latin-1
+3. O `signIn` transformava qualquer falha em "E-mail ou senha inválidos", e a
+   validação de credencial derrubava o app antes do React montar (tela branca)
+
+Hoje a Vercel usa a **publishable key** (`sb_publishable_...`, 46 caracteres em
+vez de 208), o app valida as credenciais na subida e desenha o motivo na tela.
+
+**Ainda errado na URL Configuration do Supabase** (não bloqueia login, mas
+quebra recuperação de senha e convite): Site URL está como
+`https://clinica-crm-kappa.vercel.app/login` (deveria ser só a origem) e a lista
+de Redirect URLs tem as duas URLs coladas numa entrada só
+(`.../**ehttp://localhost:5173/**`, "Total URLs: 1").
 
 ---
 
@@ -119,7 +168,16 @@ foi criado durante os testes e pode ser apagado.
 |---|---|---|---|
 | Curitiba | rede "El Guardian" | **conectado** | dono é profissional (criada antes da correção) |
 | São José dos Pinhais | rede "El Guardian" | não | idem |
-| ZZ Teste Dono Nao Atende | unidade com equipe | não | dono **não** é profissional; barbeiro com folga na quarta |
+| ZZ Teste Dono Nao Atende | unidade com equipe | não | dono **não** é profissional; **base de demonstração do Marketing** |
+
+**A ZZ Teste Dono Nao Atende foi populada em 2026-08-02** com 43 clientes, 227
+agendamentos e 213 comandas fechadas, para validar a aba Marketing com dado
+realista: dois barbeiros (comissão 62% e 50%, grades diferentes), movimento
+concentrado em sexta e sábado, concluídos, cancelados, abandonados (ficaram em
+`agendado` no passado) e futuros. Todo cliente criado tem `observacao` começando
+com **`seed-demo:`**, seguido da coorte (`sumido`, `uma_vez`, `aniversariante`,
+`ativo`, `frequente`, `trava_futuro`, `trava_optout`, `trava_sem_whats`,
+`trava_cooldown`) — é por esse prefixo que se limpa tudo depois.
 
 Contas (senhas não registradas aqui de propósito — redefinir pelo painel do
 Supabase em *Authentication → Users* é mais rápido que por e-mail):

@@ -246,17 +246,21 @@ documentado (cai no horário do salão); a comissão não tem.
 `subscriptions`) e **zero** referências em `src/`. Não podem ser testados pelo
 CRM.
 
-### Preço dos planos: `visao.md` e banco discordam
-Achado em 2026-08-02. A [`visao.md`](visao.md) diz **Básico R$ 197** e **Pro
-R$ 299**. A tabela `plans` em produção tem **Básico R$ 97** e **Pro R$ 197** (e
-`preco_unidade_rede` de R$ 77 e R$ 157).
+### ~~Preço dos planos: `visao.md` e banco discordam~~ — CORRIGIDO
+O banco tinha Básico R$ 97 e Pro R$ 197; a [`visao.md`](visao.md) dizia R$ 197 e
+R$ 299. O dono confirmou em 2026-08-02 que a visão é a fonte de verdade, e
+`plans.preco_unidade` foi corrigido.
 
-Não é detalhe: a tela de Assinatura mostra ao dono o valor que está no banco, e
-a edge function grava esse valor em `subscriptions.valor` no cadastro. Ou seja,
-**o preço do banco é o que vale hoje** — se o certo for o da visão, cada
-barbearia cadastrada até a correção fica com o valor errado gravado.
+Ficou uma ponta: **`preco_unidade_rede` continua em R$ 77 e R$ 157**, valores
+proporcionais aos preços antigos (davam ~80% do preço de unidade; agora são 39%
+e 53%). Rede é v2 e não há cliente, então não urge — mas é preço, e precisa de
+decisão antes de a rede voltar.
 
-Decidir qual é a fonte de verdade e alinhar os dois.
+Aprendizado que fica: `subscriptions.valor` é **congelado no cadastro** de
+propósito, então mudar `plans` não alcança quem já assinou. Foi preciso um
+`update` explícito nas assinaturas existentes. Com cliente real, isso é uma
+decisão comercial (respeitar o preço antigo ou reajustar), não um detalhe
+técnico.
 
 ### Integração de cobrança (Asaas) não existe
 `subscriptions` tem `asaas_customer_id` e `asaas_subscription_id`, mas nenhuma

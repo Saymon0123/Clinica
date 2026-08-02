@@ -169,19 +169,33 @@ Corrigido em 2026-08-01 removendo o `somenteGestor` do item. Decisão de produto
 confirmada: o barbeiro cadastra cliente novo na cadeira, e é para isso que existe
 `clients.created_by`.
 
-## Serviço de e-mail não serve para produção
-O projeto usa o SMTP embutido do Supabase (`noreply@mail.app.supabase.io`), que
-é limitado a poucas mensagens por hora e não é destinado a produção. Com 200
-barbearias, recuperação de senha e convite de equipe não funcionam.
+## Serviço de e-mail — SMTP próprio configurado, falta domínio
+Era o SMTP embutido do Supabase (`noreply@mail.app.supabase.io`), limitado a
+poucas mensagens por hora. **Resolvido em 2026-08-02:** o dono configurou SMTP
+próprio em *Authentication → Emails → SMTP Settings*, com endereço de remetente
+próprio. Os logs de auth registram `env GOTRUE_RATE_LIMIT_EMAIL_SENT changed` em
+02/08 00:53, e os `/recover` seguintes pararam de dar `429 email rate limit
+exceeded`.
 
-Além do volume, há um intervalo mínimo entre envios para o mesmo endereço
-(observado em 2026-08-01: `429 over_email_send_rate_limit`, "you can only request
-this after 29 seconds") — independente do limite por hora, que é ajustável em
-**Authentication → Rate Limits**.
+> ⚠️ Esta seção **não é verificável pelo MCP** — não há ferramenta que leia a
+> configuração de Auth do Supabase (conferido no catálogo e em `get_project`).
+> O estado acima veio do dono. Não reportar como defeito sem perguntar.
 
-**Bloqueador de lançamento.** Antes da primeira barbearia pagante: configurar
-SMTP próprio (Resend, Brevo) e, junto, domínio próprio — hoje o e-mail sai de um
-endereço pessoal e o CRM vive num subdomínio da Vercel.
+Continua em pé o `429: For security purposes, you can only request this after N
+seconds`: é o intervalo mínimo **por endereço**, independente do SMTP, e some só
+ajustando *Authentication → Rate Limits*.
+
+O que falta é **domínio próprio**: o remetente ainda é um endereço pessoal e o
+CRM vive num subdomínio da Vercel. Comprar o domínio resolve de uma vez o
+remetente, a URL do CRM, o `VITE_APP_URL` e o Site URL do Supabase — e é o
+momento natural de aplicar o nome novo do projeto.
+
+### ~~Lista de URLs permitidas e Site URL errados~~ — CORRIGIDO PELO DONO
+Em 2026-08-02 o Site URL estava como `https://clinica-crm-kappa.vercel.app/login`
+(com caminho) e as duas Redirect URLs apareciam coladas numa entrada só
+(`.../**ehttp://localhost:5173/**`, "Total URLs: 1"). **O dono corrigiu**: Site
+URL sem o caminho e as URLs separadas, uma por linha. Mesma ressalva do item
+acima — não dá para conferir pelo MCP.
 
 ### ~~Seletor de profissional oferecia colegas ao barbeiro~~ — CORRIGIDO
 Em `NewSaleModal`, o seletor listava todos os profissionais do salão. A policy

@@ -53,11 +53,15 @@ Três camadas de um mesmo sintoma ("não consigo logar"), nenhuma delas senha:
 Hoje a Vercel usa a **publishable key** (`sb_publishable_...`, 46 caracteres em
 vez de 208), o app valida as credenciais na subida e desenha o motivo na tela.
 
-**Ainda errado na URL Configuration do Supabase** (não bloqueia login, mas
-quebra recuperação de senha e convite): Site URL está como
-`https://clinica-crm-kappa.vercel.app/login` (deveria ser só a origem) e a lista
-de Redirect URLs tem as duas URLs coladas numa entrada só
-(`.../**ehttp://localhost:5173/**`, "Total URLs: 1").
+**URL Configuration e SMTP: corrigidos pelo dono em 2026-08-02.** Site URL sem o
+`/login` no final, Redirect URLs separadas uma por linha, e SMTP próprio
+configurado com endereço de remetente próprio.
+
+> ⚠️ **Nenhum dos dois é verificável pelas ferramentas.** O MCP do Supabase não
+> expõe a configuração de Auth — conferido no catálogo de ferramentas e em
+> `get_project`, que devolve só metadados do projeto. O dono é a fonte de
+> verdade aqui. Já houve um caso de reportar como defeito algo que ele já tinha
+> consertado; antes de afirmar que está errado, perguntar.
 
 ---
 

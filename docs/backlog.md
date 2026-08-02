@@ -241,6 +241,41 @@ onboarding.
 
 ## Infraestrutura e manutenção
 
+### Migrations estão fora do pipeline de deploy
+Levantado em 2026-08-02. A cadeia `push → GitHub → CI → Vercel` funciona e é
+automática: o CI roda typecheck, lint, vitest e pgTAP, e o `vercel[bot]` publica
+a produção sozinho a cada push na `main`. **O banco não participa disso.**
+Nenhum passo aplica migration em produção — hoje isso é feito à mão.
+
+O risco é concreto e assimétrico: o front chega em produção em ~1 minuto, a
+migration só quando alguém lembra. Um deploy pode publicar uma tela que chama
+uma função que não existe no banco — foi exatamente o caso da aba Marketing, em
+que a `0025` precisou ser aplicada manualmente antes do push valer alguma coisa.
+
+Caminho: um job no CI, após o `estatico` e o `banco` passarem, rodando
+`supabase db push` com `SUPABASE_ACCESS_TOKEN` e `SUPABASE_DB_PASSWORD` nos
+secrets do repositório. Depende de resolver antes o formato dos arquivos (item
+abaixo), senão o `db push` não reconhece as migrations existentes. Enquanto não
+existir, **aplicar a migration antes do push** é regra, não preferência.
+
+### `0023_permissoes_de_tabela` nunca entrou no histórico de produção
+Instância concreta da divergência descrita abaixo. O ledger
+`supabase_migrations.schema_migrations` vai de `0021_instance_name_unico` direto
+para as entradas de marketing de 2026-08-02 — não há linha para a `0023`. Na
+prática os GRANTs existem em produção (foi de lá que a migration foi escrita,
+para o dev local reproduzir), então não há efeito funcional; o problema é o
+ledger não descrever o repositório. Some junto com o item abaixo, no `migration
+repair`.
+
+### Vercel MCP não enxerga o projeto
+O deploy funciona pelo GitHub App (`vercel[bot]`, Production a cada push na
+`main`), mas o conector MCP da Vercel devolve `list_projects` vazio e 404 no
+`get_project`, mesmo com o time correto (`castrocollin01-6426s-projects`, o
+mesmo da URL publicada). Consequência: dá para confirmar o deploy pela API de
+deployments do GitHub, mas não para ler build log nem erro de runtime pela
+Vercel. Provável escopo/permissão do conector. Reconectar quando for preciso
+depurar um build quebrado.
+
 ### Migrations do repositório não seguem o formato do CLI
 Os arquivos são `0001_init.sql`; o Supabase CLI exige
 `<14 dígitos>_nome.sql`. O histórico real em produção tem 26 entradas com

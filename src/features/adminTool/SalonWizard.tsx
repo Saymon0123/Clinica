@@ -84,6 +84,13 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
   const [donoNome, setDonoNome] = useState('')
   const [donoEmail, setDonoEmail] = useState('')
   const [donoTelefone, setDonoTelefone] = useState('')
+
+  // A comissão não tem padrão no banco: sem este campo, o dono que atende
+  // nascia com `comissao_percentual` nulo e o Financeiro dele calculava zero.
+  // Diferente da jornada, que cai no horário do salão, aqui não há de onde
+  // inferir — é combinado comercial. 50% é o mais comum no mercado.
+  const [comissao, setComissao] = useState('50')
+  const donoAtendeEmAlguma = tipo === 'solo' || unidades.some((u) => u.donoAtende)
   const [horario, setHorario] = useState<DiaSemana[]>(HORARIO_PADRAO)
   const [servicos, setServicos] = useState<ServicoEscolhido[]>(
     SERVICOS_PADRAO.map((s) => ({ ...s, escolhido: s.padrao })),
@@ -136,7 +143,12 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
           action: 'create',
           tipo,
           organizacao: tipo === 'rede' ? { nome: redeNome, cnpj: redeCnpj } : undefined,
-          dono: { nome: donoNome, email: donoEmail, telefone: donoTelefone },
+          dono: {
+            nome: donoNome,
+            email: donoEmail,
+            telefone: donoTelefone,
+            comissao_percentual: donoAtendeEmAlguma ? Number(comissao) : null,
+          },
           unidades: unidades.map((u) => ({
             nome: u.nome,
             endereco: u.endereco,
@@ -425,6 +437,27 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
             placeholder="Telefone (opcional)"
             className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
           />
+
+          {donoAtendeEmAlguma && (
+            <label className="block pt-1">
+              <span className="text-sm text-foreground">Comissão do dono como barbeiro</span>
+              <div className="flex items-center gap-2 mt-1">
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={comissao}
+                  onChange={(e) => setComissao(e.target.value)}
+                  className="w-28 border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                />
+                <span className="text-sm text-muted-foreground">% de cada serviço que ele fizer</span>
+              </div>
+              <span className="block text-xs text-muted-foreground mt-1">
+                Dá para mudar depois na aba Equipe. Sem isto, o Financeiro dele calcula comissão
+                zero.
+              </span>
+            </label>
+          )}
         </div>
       )}
 

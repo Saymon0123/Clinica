@@ -45,6 +45,52 @@ type Unidade = {
 
 type Servico = { nome?: string; preco?: number; duracao_minutos?: number }
 
+/** Mesmas chaves usadas em `salons.horario_funcionamento`. */
+const DIA_DA_SEMANA: Record<string, number> = {
+  dom: 0,
+  seg: 1,
+  ter: 2,
+  qua: 3,
+  qui: 4,
+  sex: 5,
+  sab: 6,
+}
+
+/**
+ * Deriva a jornada do barbeiro do horário de funcionamento da unidade.
+ *
+ * O contrato do n8n diz que barbeiro **sem** linha em `professional_schedules`
+ * cai no horário do salão — então a ausência não quebrava nada enquanto a
+ * barbearia tivesse um profissional só. Mas o dono abria a aba Equipe e via a
+ * jornada em branco, sem saber que existia um padrão implícito; e ao contratar
+ * o segundo barbeiro, os dois herdavam o mesmo horário sem que ninguém tivesse
+ * escolhido isso.
+ *
+ * Gravar explicitamente torna o padrão visível e editável desde o primeiro dia.
+ * Em troca, mudar o horário do salão depois **não** arrasta a jornada de quem
+ * já existe — o que é o comportamento certo assim que houver mais de um
+ * barbeiro, já que aí eles divergem de propósito.
+ */
+function jornadaDoHorario(horario: unknown, professionalId: string) {
+  const json = (horario ?? null) as Record<string, { abre?: string; fecha?: string } | null> | null
+  if (!json) return []
+
+  return Object.entries(json)
+    .flatMap(([chave, faixa]) => {
+      const dia = DIA_DA_SEMANA[chave]
+      if (dia === undefined || !faixa?.abre || !faixa?.fecha) return []
+      return [
+        {
+          professional_id: professionalId,
+          dia_semana: dia,
+          hora_inicio: faixa.abre,
+          hora_fim: faixa.fecha,
+          ativo: true,
+        },
+      ]
+    })
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -158,13 +204,24 @@ Deno.serve(async (req: Request) => {
 
   const tipo = (body.tipo as string) === 'rede' ? 'rede' : 'unica'
   const organizacao = body.organizacao as { nome?: string; cnpj?: string } | undefined
-  const dono = body.dono as { nome?: string; email?: string; telefone?: string } | undefined
+  const dono = body.dono as
+    | { nome?: string; email?: string; telefone?: string; comissao_percentual?: number | null }
+    | undefined
   const unidades = (body.unidades as Unidade[]) ?? []
   const servicos = (body.servicos as Servico[]) ?? []
 
   const ownerNome = dono?.nome?.trim()
   const ownerEmail = dono?.email?.trim().toLowerCase()
   const ownerTelefone = dono?.telefone?.trim() || null
+
+  // Comissão nula é o padrão do banco, e era o que a barbearia herdava: o dono
+  // atendia e o Financeiro dele mostrava zero, sem pista da causa. Só grava
+  // valor válido — número fora de 0–100 vira nulo em vez de sujar o cadastro.
+  const bruta = dono?.comissao_percentual
+  const ownerComissao =
+    typeof bruta === 'number' && Number.isFinite(bruta) && bruta >= 0 && bruta <= 100
+      ? bruta
+      : null
 
   if (!ownerNome || !ownerEmail) {
     return json({ error: 'Nome e e-mail do dono são obrigatórios.' }, 400)
@@ -254,14 +311,25 @@ Deno.serve(async (req: Request) => {
       // O dono só vira profissional quando ele de fato atende nesta unidade.
       const donoAtende = unidade.dono_atende !== false
       if (donoAtende) {
-        const { error: profissionalError } = await admin.from('professionals').insert({
-          salon_id: salon.id,
-          user_id: userId,
-          nome: ownerNome,
-          telefone: ownerTelefone,
-          ativo: true,
-        })
+        const { data: profCriado, error: profissionalError } = await admin
+          .from('professionals')
+          .insert({
+            salon_id: salon.id,
+            user_id: userId,
+            nome: ownerNome,
+            telefone: ownerTelefone,
+            ativo: true,
+            comissao_percentual: ownerComissao,
+          })
+          .select('id')
+          .single()
         if (profissionalError) throw profissionalError
+
+        const jornada = jornadaDoHorario(unidade.horario_funcionamento, profCriado.id)
+        if (jornada.length) {
+          const { error: jornadaError } = await admin.from('professional_schedules').insert(jornada)
+          if (jornadaError) throw jornadaError
+        }
       }
 
       // Catálogo inicial — é o que evita a barbearia nascer vazia.

@@ -10,6 +10,7 @@ import {
   Settings,
   UsersRound,
   Building2,
+  Megaphone,
 } from 'lucide-react'
 import { ProfileMenu } from './ProfileMenu'
 import { useSalon } from '../features/auth/useSalon'
@@ -46,6 +47,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { to: '/clientes', label: 'Clientes', icon: Users },
       { to: '/catalogo', label: 'Catálogo', icon: Tag },
       { to: '/equipe', label: 'Equipe', icon: UsersRound, somenteGestor: true },
+      { to: '/marketing', label: 'Marketing', icon: Megaphone, somenteGestor: true },
       { to: '/rede', label: 'Rede', icon: Building2, somenteDono: true, semUnidade: true },
       { to: '/rede/equipe', label: 'Equipe da rede', icon: UsersRound, somenteDono: true, semUnidade: true },
       { to: '/configuracoes', label: 'Configurações', icon: Settings, somenteGestor: true },

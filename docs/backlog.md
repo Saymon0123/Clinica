@@ -333,7 +333,33 @@ Sequência descrita na visão, quase toda ausente:
 - após fechar a comanda: pedir avaliação no Google com link — **não existe**
 
 ### Recuperação de clientes antigos (Pro)
-Reativar cliente que parou de frequentar. Não existe.
+Reativar cliente que parou de frequentar. Não existe. Desenhado como parte da
+aba Marketing — ver [`docs/marketing.md`](marketing.md).
+
+### `orders` não tem coluna de desconto
+Nem `orders` nem `order_items` guardam desconto. Hoje isso não aparece porque
+nenhuma tela concede desconto, mas bloqueia o cupom de campanha da aba
+Marketing, que precisa amarrar o desconto concedido à venda para medir o
+faturamento gerado. Decisão pendente junto: com desconto na comanda, o barbeiro
+perde comissão proporcional ou a barbearia absorve? `commissions` é calculada
+sobre o item.
+
+### Fuso horário do salão está fixo no código
+`professional_schedules.hora_inicio` é hora local da barbearia (`time`), mas
+`appointments.data_hora_inicio` é `timestamptz`. Cruzar os dois exige um fuso, e
+o schema não tem nenhum — sem isso o Postgres usa o da sessão (UTC no Supabase)
+e as faixas de horário saem 3 horas deslocadas. A migration `0025` resolveu com
+`private.fuso_do_salao()` devolvendo `America/Sao_Paulo` fixo. Vira coluna em
+`salons` quando existir salão em outro fuso. Afeta o segmento de horário ocioso
+da aba Marketing e qualquer relatório futuro por faixa de hora.
+
+### Opt-out de campanha depende do fluxo n8n
+A aba Marketing ([`docs/marketing.md`](marketing.md)) exige que o cliente
+consiga sair da lista respondendo no WhatsApp. Reconhecer essa intenção e gravar
+`client_marketing.opt_out` é do agente no n8n, não do CRM — e não basta casar a
+palavra "SAIR" ("não quero mais receber isso", "para de mandar promoção").
+Enquanto não existir, a trava é só documental e o descadastro é manual pelo
+dono. É requisito de LGPD, não conforto.
 
 ### Site institucional ligado ao Google (Pro)
 Site com botão direto para o WhatsApp, vinculado ao perfil do Google onde as

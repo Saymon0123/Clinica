@@ -34,6 +34,44 @@ Aviso de nível WARN no advisor.
 
 ## Correção de comportamento
 
+### O lembrete pergunta se o cliente confirma, e ninguém registra a resposta
+Achado em 2026-08-02, revisando o fluxo. A mensagem termina com *"Você confirma
+que vai poder vir?"* — mas nada processa a resposta. O cliente responde "sim" e
+aquilo cai no fluxo principal como conversa comum; o agente não sabe que existe
+uma confirmação pendente, e **`appointments.status` nunca vira `confirmado`**.
+
+O status existe na constraint do banco e no tipo `AppointmentStatus`, e **nenhum
+código em lugar nenhum o atribui** — é um estado morto.
+
+Consequência: o lembrete reduz falta por lembrar, que já é a maior parte do
+ganho, mas o dono não consegue olhar a agenda e ver quem confirmou. E a
+"confirmação 10 min antes" da visão (v2) depende exatamente dessa peça.
+
+Caminho: o agente reconhecer a resposta como confirmação e gravar
+`status = 'confirmado'`. É trabalho no n8n, não no CRM.
+
+### ~~Fluxo de lembretes: 4 defeitos que impediam ativar~~ — CORRIGIDO
+Aplicados em 2026-08-02, com o fluxo ainda inativo:
+
+1. **Instância desconectada.** `Buscar Instância do Salão` filtrava só por
+   `salon_id` e o IF checava apenas que `instance_name` existia. Passou a exigir
+   `status = 'open'`. Sem isso, salão com WhatsApp caído marcava
+   `lembrete_enviado = true` e tentava enviar por uma instância morta — dois dos
+   três salões estavam assim.
+2. **Falha derrubava o lote.** O nó de envio não tratava erro e, como o
+   processamento é um a um em loop, um erro abortava a execução inteira: os
+   agendamentos seguintes daquele ciclo ficavam sem lembrete. Agora usa
+   `continueErrorOutput`, com a saída de erro voltando para o loop.
+3. **Barbearia suspensa continuava mandando.** O fluxo principal tem "Barbearia
+   Ativa?"; este não tinha. Adicionados `Buscar Salão (Lembrete)` e
+   `Barbearia Ativa? (Lembrete)`.
+4. **Cliente sem telefone.** Sem conversa e sem telefone, o número montado virava
+   literalmente `55`. O IF de pulo (renomeado para `Pular Lembrete?`) passou a
+   pular também nesse caso.
+
+**Ainda não executou uma vez.** A primeira execução real continua sendo a
+validação — ver o plano de ativação em [`estado-do-projeto.md`](estado-do-projeto.md).
+
 ### ~~Fluxo n8n de lembretes ignora `agent_paused`~~ — CORRIGIDO
 Corrigido em 2026-07-30 no workflow `CRM Salão - Lembretes de Agendamento`
 (id `DW0nq1Jyp9xeOJwm`), que segue **inativo** — ativar é decisão do dono.

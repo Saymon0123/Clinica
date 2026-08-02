@@ -26,9 +26,22 @@ ficou no histórico do PowerShell. É a credencial de administração do servido
 Evolution — permite criar, apagar e ler instâncias de WhatsApp de todos os
 salões. Trocar no servidor e atualizar o secret no Supabase.
 
-### Proteção contra senhas vazadas desativada
-Supabase Auth pode checar senhas contra o HaveIBeenPwned. Está desligado.
-Aviso de nível WARN no advisor.
+### Proteção contra senhas vazadas desativada — exige plano Pro
+Supabase Auth pode recusar senha que já apareceu em vazamento, comparando com o
+HaveIBeenPwned por *k-anonymity* (só os 5 primeiros caracteres do hash saem do
+servidor; a senha nunca é enviada). Está desligado, e é um WARN do advisor.
+
+**Não é "um clique":** a documentação diz que o recurso é do **plano Pro** para
+cima, e o projeto está no Free. Ligar significa assinar.
+
+Onde fica quando houver plano: *Authentication → Attack Protection*.
+
+**Reclassificado como fora da v1** em 2026-08-02. Hoje as contas são criadas
+pelo painel administrativo com senha temporária aleatória de 14 caracteres
+(`crypto.getRandomValues`) e **não existe cadastro aberto** — ninguém escolhe a
+própria senha na entrada. O risco aparece quando o dono troca para algo fraco
+depois. Revisitar quando o projeto subir para Pro, o que provavelmente vai
+acontecer por limite de banco e de e-mail antes de acontecer por isto.
 
 ---
 

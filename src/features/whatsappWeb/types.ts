@@ -7,6 +7,7 @@ export type Conversation = {
   needs_human: boolean
   agent_paused: boolean
   resumo_contexto: string | null
+  last_message_preview: string | null
 }
 
 export type Message = {

@@ -20,7 +20,10 @@ export function WhatsAppWebPage() {
   const [tab, setTab] = useState<Tab>('todas')
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  const { conversations, loading, error, reload: reloadConversations } = useConversations(salonId, tab === 'precisa_dono')
+  const { conversations: todas, loading, error, reload: reloadConversations } = useConversations(salonId)
+
+  const aguardandoDono = todas.filter((c) => c.needs_human)
+  const conversations = tab === 'precisa_dono' ? aguardandoDono : todas
   const { messages, reload: reloadMessages } = useMessages(selectedId)
 
   const [draft, setDraft] = useState('')
@@ -141,6 +144,13 @@ export function WhatsAppWebPage() {
           >
             <AlertCircle size={14} />
             Solicitou falar com o dono
+            {/* O contador transforma "tem alguém esperando" em "três pessoas
+                esperando" — e some quando não há ninguém, para não virar ruído. */}
+            {aguardandoDono.length > 0 && (
+              <span className="ml-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-danger text-white text-[11px] font-semibold flex items-center justify-center">
+                {aguardandoDono.length}
+              </span>
+            )}
           </button>
         </div>
 
@@ -176,12 +186,27 @@ export function WhatsAppWebPage() {
                   <span className={`text-sm truncate ${isUnread(c) ? 'font-semibold text-foreground' : 'font-medium text-foreground'}`}>
                     {c.contact_name ?? formatarTelefone(c.contact_phone)}
                   </span>
-                  {isUnread(c) && (
-                    <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" title="Não lida" />
-                  )}
+                  <span className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-[11px] text-muted-foreground">{formatTime(c.last_message_at)}</span>
+                    {isUnread(c) && (
+                      <span className="w-2 h-2 rounded-full bg-red-500" title="Não lida" />
+                    )}
+                  </span>
                 </div>
-                <div className="text-xs text-muted-foreground truncate">{formatarTelefone(c.contact_phone)}</div>
-                <div className="text-xs text-muted-foreground">{formatTime(c.last_message_at)}</div>
+
+                {/* A prévia é o que decide qual conversa abrir primeiro. Sem
+                    ela, o dono precisava abrir uma por uma para saber do quê
+                    se tratava. Cai no telefone quando ainda não há mensagem. */}
+                <div className="text-xs text-muted-foreground truncate">
+                  {c.last_message_preview ?? formatarTelefone(c.contact_phone)}
+                </div>
+
+                {c.agent_paused && (
+                  <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                    <Bot size={11} />
+                    Agente pausado
+                  </span>
+                )}
               </div>
             </button>
           ))}
@@ -220,7 +245,19 @@ export function WhatsAppWebPage() {
                   </button>
                 )}
 
-                {tab === 'precisa_dono' && selectedConversation.needs_human && (
+                {/*
+                  Aparece sempre que o agente está fora — pausado porque você
+                  respondeu, ou porque o cliente pediu o dono — e não só na aba
+                  "Solicitou falar com o dono".
+
+                  A condição anterior era `tab === 'precisa_dono' &&
+                  needs_human`, e isso criava uma armadilha: `agent_paused` vira
+                  true quando o dono responde por **qualquer** conversa, então
+                  responder pela aba "Todas" silenciava o agente para aquele
+                  cliente sem deixar nenhum caminho de volta. O cliente mandava
+                  mensagem e ninguém respondia.
+                */}
+                {(selectedConversation.agent_paused || selectedConversation.needs_human) && (
                   <div className="flex flex-col items-end gap-1 shrink-0">
                     <button
                       onClick={handleResumeAgent}
@@ -230,6 +267,11 @@ export function WhatsAppWebPage() {
                       <Bot size={14} />
                       {resuming ? 'Devolvendo...' : 'Devolver ao agente'}
                     </button>
+                    <span className="text-[11px] text-muted-foreground">
+                      {selectedConversation.agent_paused
+                        ? 'O agente não responde este cliente enquanto você estiver no comando.'
+                        : 'O cliente pediu para falar com você.'}
+                    </span>
                     {resumeError && <p className="text-xs text-danger">{resumeError}</p>}
                   </div>
                 )}

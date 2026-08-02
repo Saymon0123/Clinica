@@ -182,6 +182,18 @@ this after 29 seconds") — independente do limite por hora, que é ajustável e
 SMTP próprio (Resend, Brevo) e, junto, domínio próprio — hoje o e-mail sai de um
 endereço pessoal e o CRM vive num subdomínio da Vercel.
 
+### ~~Seletor de profissional oferecia colegas ao barbeiro~~ — CORRIGIDO
+Em `NewSaleModal`, o seletor listava todos os profissionais do salão. A policy
+`orders: acesso conforme papel` exige `professional_id` entre os do próprio
+usuário para quem não é gestor — então o barbeiro que escolhesse um colega
+veria *"Não foi possível completar a venda"*, sem pista da causa.
+
+Corrigido em 2026-08-01: quem não é gestor só se enxerga no seletor.
+
+**Não reproduzido no cenário real:** a barbearia de teste tem um profissional
+só, então o filtro dá o mesmo resultado com ou sem a correção. Validar quando
+houver dois barbeiros na mesma unidade.
+
 ## Funcionalidade ausente
 
 ### ~~Dono não consegue editar dados da barbearia~~ — CORRIGIDO

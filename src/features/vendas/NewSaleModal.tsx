@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Plus, Trash2, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../auth/AuthContext'
+import { useSalon } from '../auth/useSalon'
 import type { SaleItemDraft } from './types'
 import { PAYMENT_LABELS } from './types'
 
@@ -48,13 +50,16 @@ export function NewSaleModal({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const { isManager } = useSalon()
+  const { user } = useAuth()
+
   useEffect(() => {
     async function load() {
       const [c, p, s, pr] = await Promise.all([
         supabase.from('clients').select('id, nome').eq('salon_id', salonId).order('nome'),
         supabase
           .from('professionals')
-          .select('id, nome, comissao_percentual')
+          .select('id, nome, comissao_percentual, user_id')
           .eq('salon_id', salonId)
           .eq('ativo', true)
           .order('nome'),
@@ -72,7 +77,15 @@ export function NewSaleModal({
           .order('nome'),
       ])
       setClients(c.data ?? [])
-      setProfessionals((p.data ?? []) as ProfessionalOption[])
+
+      // O barbeiro só pode lançar venda no próprio nome: a policy
+      // `orders: acesso conforme papel` exige `professional_id` entre os dele
+      // para quem não é gestor. Oferecer os colegas no seletor levaria a um
+      // insert recusado e a um "não foi possível completar a venda" que não
+      // explica a causa.
+      const todos = (p.data ?? []) as (ProfessionalOption & { user_id: string | null })[]
+      const visiveis = isManager ? todos : todos.filter((x) => x.user_id === user?.id)
+      setProfessionals(visiveis)
       setServices((s.data ?? []).map((x) => ({ id: x.id, nome: x.nome, preco: Number(x.preco) })))
       setProducts(
         (pr.data ?? []).map((x) => ({
@@ -83,8 +96,8 @@ export function NewSaleModal({
         })),
       )
 
-      if (!prefill?.professionalId && p.data && p.data.length > 0) {
-        setProfessionalId(p.data[0].id)
+      if (!prefill?.professionalId && visiveis.length > 0) {
+        setProfessionalId(visiveis[0].id)
       }
       // Pré-adiciona o serviço do agendamento, se veio da agenda
       if (prefill?.serviceId && s.data) {
@@ -103,7 +116,7 @@ export function NewSaleModal({
       }
     }
     load()
-  }, [salonId, prefill])
+  }, [salonId, prefill, isManager, user?.id])
 
   const total = useMemo(
     () => items.reduce((acc, i) => acc + i.quantidade * i.preco_unitario, 0),

@@ -267,21 +267,27 @@ para o dev local reproduzir), então não há efeito funcional; o problema é o
 ledger não descrever o repositório. Some junto com o item abaixo, no `migration
 repair`.
 
-### `VITE_SUPABASE_ANON_KEY` da Vercel está vencida — login quebrado em produção
+### ~~`VITE_SUPABASE_ANON_KEY` da Vercel quebrava o login em produção~~ — DIAGNOSTICADO
 Achado em 2026-08-02, investigando "não consigo entrar com meus logins de teste".
-O site publicado (`clinica-crm-kappa.vercel.app`) carrega uma anon key antiga: o
-Supabase responde `401 Invalid API key` e **ninguém consegue entrar**. A chave do
-`.env.local` é a atual e funciona (200), então em desenvolvimento tudo parece
-bem — o problema só existe no ambiente publicado.
+Aconteceu duas vezes seguidas, por dois motivos diferentes:
 
-Conserto (só o dono da conta Vercel pode fazer): Project Settings → Environment
-Variables → trocar `VITE_SUPABASE_ANON_KEY` pela chave atual do projeto
-(Supabase → Project Settings → API → `anon public`) e **refazer o deploy**, já
-que a variável é embutida no bundle em build time.
+1. **Chave vencida** — o bundle publicado carregava uma anon key antiga e o
+   Supabase respondia `401 Invalid API key`. Nenhuma tentativa chegava a ser
+   avaliada como senha errada; nos logs de auth não havia falha de credencial
+   nenhuma vinda do domínio publicado.
+2. **Chave copiada do campo mascarado** — na correção, o valor publicado virou
+   `eyJhbGci` seguido de **200 bolinhas** (`•`, U+2022): 8 caracteres reais e o
+   resto do desenho da tela. O navegador passou a recusar a requisição com
+   *"Failed to read the 'headers' property from 'RequestInit': String contains
+   non ISO-8859-1 code point"*, porque header HTTP é Latin-1.
 
-Fica registrado porque a causa raiz é operacional e vai se repetir: a chave foi
-rotacionada e só um dos dois ambientes foi atualizado. Vale considerar a
-publishable key (`sb_publishable_...`), que rotaciona de forma independente.
+O código agora barra os dois casos na subida (`src/lib/credenciaisSupabase.ts`),
+com mensagem que nomeia a causa. Fica aqui como registro operacional: variável
+de ambiente da Vercel é embutida em build time, então **toda troca exige
+redeploy**, e a chave precisa ser revelada antes de copiar.
+
+Vale considerar migrar para a publishable key (`sb_publishable_...`), que
+rotaciona de forma independente e não é um JWT gigante mascarado na tela.
 
 ### Vercel MCP não enxerga o projeto
 O deploy funciona pelo GitHub App (`vercel[bot]`, Production a cada push na

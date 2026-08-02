@@ -38,15 +38,24 @@ export function DadosDeCobranca({
 
     setSalvando(true)
     setErro(null)
-    const { error } = await supabase
+    // O `.select()` não é enfeite: sem ele um UPDATE barrado por permissão volta
+    // 204 **sem erro**, e a tela dizia "Salvo" enquanto nada era gravado. Contar
+    // as linhas é o que separa "gravou" de "não tinha permissão".
+    const { data, error } = await supabase
       .from('subscriptions')
       .update({ cpf_cnpj: apenasDigitos(documento) })
       .eq('salon_id', salonId)
+      .select('id')
 
     setSalvando(false)
     if (error) {
       console.error('Erro ao salvar os dados de cobrança:', error)
       setErro('Não foi possível salvar agora. Tente de novo em instantes.')
+      return
+    }
+    if (!data || data.length === 0) {
+      console.error('Update sem linhas afetadas em subscriptions do salao', salonId)
+      setErro('Você não tem permissão para alterar a cobrança desta barbearia.')
       return
     }
     setSalvo(true)
@@ -95,16 +104,6 @@ export function DadosDeCobranca({
           </span>
         )}
       </div>
-
-      {/*
-        O pagamento pelo próprio CRM entra assim que a integração com o Asaas
-        estiver ligada. Enquanto isso a tela precisa dizer como pagar — senão o
-        dono chega aqui, não encontra botão e conclui que o sistema quebrou.
-      */}
-      <p className="text-xs text-muted-foreground mt-4 pt-3 border-t border-border">
-        Por enquanto a cobrança é combinada direto com o suporte. O pagamento por Pix, boleto ou
-        cartão aqui pelo CRM entra em breve.
-      </p>
     </form>
   )
 }

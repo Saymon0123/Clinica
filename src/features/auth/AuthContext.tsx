@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import { hashDeEntrada, hashIndicaRecuperacao } from '../../lib/recuperacaoSenha'
@@ -52,7 +60,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.subscription.unsubscribe()
   }, [])
 
-  async function signIn(email: string, password: string) {
+  // `useCallback` e `useMemo` aqui não são otimização, são correção.
+  //
+  // Sem eles, `value` e as funções eram recriados a cada render. O
+  // `SalonProvider` consome `signOut` na lista de dependências do `carregar`,
+  // então: render do AuthProvider → `signOut` novo → `carregar` novo → o efeito
+  // dispara → `setUnidades` com um array novo → render → `signOut` novo... um
+  // laço infinito, refazendo a consulta de vínculos sem parar.
+  //
+  // O estrago maior era colateral: o `loading` do salão oscilava, o
+  // `RequireManager` alternava entre "Carregando..." e a tela, e isso
+  // **desmontava e remontava** a página a cada volta. Em telas sem estado local
+  // passava despercebido; na aba WEB, a conversa selecionada era zerada antes
+  // de aparecer — dava para ver as mensagens sendo buscadas e a tela continuar
+  // dizendo "Selecione uma conversa".
+  const signIn = useCallback(async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       // O console guarda o erro cru: a mensagem da tela é para o usuário, o
@@ -62,27 +84,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setSession(data.session)
     return { error: null }
-  }
+  }, [])
 
-  async function signOut() {
+  const signOut = useCallback(async () => {
     await supabase.auth.signOut()
-  }
+  }, [])
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user: session?.user ?? null,
-        session,
-        loading,
-        recuperandoSenha,
-        concluirRecuperacao,
-        signIn,
-        signOut,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      user: session?.user ?? null,
+      session,
+      loading,
+      recuperandoSenha,
+      concluirRecuperacao,
+      signIn,
+      signOut,
+    }),
+    [session, loading, recuperandoSenha, concluirRecuperacao, signIn, signOut],
   )
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

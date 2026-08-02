@@ -1,12 +1,15 @@
 import { useState, type FormEvent } from 'react'
-import { AlertCircle, Bot, MessageCircle, Send, Sparkles } from 'lucide-react'
+import { AlertCircle, Bot, MessageCircle, Search, Send, Sparkles } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
 import { useConversations } from './useConversations'
 import { useMessages } from './useMessages'
 import { ThemeToggle } from '../../components/ThemeToggle'
 import { ContextPopup } from './ContextPopup'
+import { ContatoContextoBar } from './ContatoContextoBar'
+import { useContatoContexto } from './useContatoContexto'
 import { formatarTelefone } from '../../lib/telefone'
+import { filtrarEOrdenar, naoLida } from './lista'
 
 type Tab = 'todas' | 'precisa_dono'
 
@@ -20,10 +23,12 @@ export function WhatsAppWebPage() {
   const [tab, setTab] = useState<Tab>('todas')
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
+  const [busca, setBusca] = useState('')
+
   const { conversations: todas, loading, error, reload: reloadConversations } = useConversations(salonId)
 
   const aguardandoDono = todas.filter((c) => c.needs_human)
-  const conversations = tab === 'precisa_dono' ? aguardandoDono : todas
+  const conversations = filtrarEOrdenar(tab === 'precisa_dono' ? aguardandoDono : todas, busca)
   const { messages, reload: reloadMessages } = useMessages(selectedId)
 
   const [draft, setDraft] = useState('')
@@ -35,11 +40,10 @@ export function WhatsAppWebPage() {
   const [dismissedContext, setDismissedContext] = useState<Set<string>>(new Set())
 
   const selectedConversation = conversations.find((c) => c.id === selectedId) ?? null
-
-  function isUnread(c: { last_message_at: string | null; last_opened_at: string | null }) {
-    if (!c.last_message_at) return false
-    return !c.last_opened_at || c.last_message_at > c.last_opened_at
-  }
+  const { contexto, loading: carregandoContexto } = useContatoContexto(
+    salonId,
+    selectedConversation?.contact_phone ?? null,
+  )
 
   async function handleSelectConversation(id: string) {
     setSelectedId(id)
@@ -162,11 +166,33 @@ export function WhatsAppWebPage() {
       <div className="flex-1 flex min-h-0">
         {/* Lista de conversas */}
         <aside className="w-full sm:w-80 shrink-0 border-r border-border bg-surface overflow-y-auto">
+          {/* Depois de alguns meses a lista tem centenas de linhas e rolar
+              deixa de ser opção. Busca client-side porque as conversas já estão
+              todas carregadas. */}
+          <div className="sticky top-0 z-10 bg-surface border-b border-border p-2">
+            <div className="relative">
+              <Search
+                size={14}
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+              />
+              <input
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Buscar por nome ou telefone"
+                className="w-full rounded-md border border-border bg-surface-2 pl-8 pr-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground"
+              />
+            </div>
+          </div>
+
           {error && <p className="text-sm text-danger p-4">{error}</p>}
 
           {!loading && conversations.length === 0 && (
             <p className="text-sm text-muted-foreground p-6 text-center">
-              {tab === 'precisa_dono' ? 'Nenhuma conversa aguardando o dono.' : 'Nenhuma conversa ainda.'}
+              {busca.trim()
+                ? 'Nenhuma conversa encontrada para essa busca.'
+                : tab === 'precisa_dono'
+                  ? 'Nenhuma conversa aguardando o dono.'
+                  : 'Nenhuma conversa ainda.'}
             </p>
           )}
 
@@ -183,12 +209,12 @@ export function WhatsAppWebPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
-                  <span className={`text-sm truncate ${isUnread(c) ? 'font-semibold text-foreground' : 'font-medium text-foreground'}`}>
+                  <span className={`text-sm truncate ${naoLida(c) ? 'font-semibold text-foreground' : 'font-medium text-foreground'}`}>
                     {c.contact_name ?? formatarTelefone(c.contact_phone)}
                   </span>
                   <span className="flex items-center gap-1.5 shrink-0">
                     <span className="text-[11px] text-muted-foreground">{formatTime(c.last_message_at)}</span>
-                    {isUnread(c) && (
+                    {naoLida(c) && (
                       <span className="w-2 h-2 rounded-full bg-red-500" title="Não lida" />
                     )}
                   </span>
@@ -276,6 +302,8 @@ export function WhatsAppWebPage() {
                   </div>
                 )}
               </div>
+
+              <ContatoContextoBar contexto={contexto} loading={carregandoContexto} />
 
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
                 {messages.map((m) => (

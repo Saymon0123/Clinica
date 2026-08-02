@@ -10,14 +10,15 @@ Consultável pelo grafo: `graphify query "backlog"` ou `graphify explain "<item>
 
 ## Segurança
 
-### View `client_package_saldo` é SECURITY DEFINER
-Advisor do Supabase classifica como **ERROR**. A view está em `public`, logo
-exposta via PostgREST, e por ser SECURITY DEFINER ignora o RLS de quem
-consulta — qualquer usuário autenticado pode ler saldo de pacote de qualquer
-salão. Hoje não é alcançável pela interface (nenhuma tela usa), mas é
-alcançável pela API com a chave anon.
+### ~~View `client_package_saldo` é SECURITY DEFINER~~ — RESOLVIDO
+Era o único advisor de nível **ERROR** do projeto: a view estava em `public`,
+exposta via PostgREST, e por ser SECURITY DEFINER ignorava o RLS de quem
+consulta — qualquer usuário autenticado lia saldo de pacote de qualquer salão
+com a chave anon.
 
-Correção: `alter view client_package_saldo set (security_invoker = on);`
+Resolvido em 2026-08-02 pela `0026`, que removeu a view junto com as tabelas de
+pacote (fora do escopo da v1). **Quando os pacotes voltarem na v3, a view precisa
+nascer com `security_invoker = on`** — senão o mesmo furo volta com ela.
 
 ### Rotacionar `EVOLUTION_API_KEY`
 A chave foi exposta em texto puro num print durante os testes de 2026-07-29, e

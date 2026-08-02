@@ -34,6 +34,30 @@ Aviso de nível WARN no advisor.
 
 ## Correção de comportamento
 
+### Confirmação de chegada (10 min antes) — implementada, não executada
+Feita em 2026-08-02, no mesmo fluxo do lembrete. São **duas mensagens
+separadas**, com perguntas diferentes:
+
+- **~1h antes** — lembra do horário e pergunta se confirma que vem
+- **~10 min antes** — pergunta se está a caminho, para o barbeiro saber do
+  atraso antes de a cadeira ficar vazia
+
+Como foi feito, e por quê: **uma consulta só**, cobrindo de 5 a 65 minutos, e um
+nó `Classificar Envio` que decide o que cabe a cada agendamento. Duas consultas
+separadas exigiriam duplicar o fluxo inteiro, porque todo o resto referencia o nó
+de busca pelo nome. A classificação roda **antes** das consultas de
+cliente/profissional/serviço — no meio da janela (15–55 min) não há mensagem a
+enviar, e classificar depois desperdiçaria seis buscas por agendamento em cada
+rodada de 10 minutos.
+
+`appointments.confirmacao_enviada` (migration `0027`) é marcador próprio: usar
+`lembrete_enviado` faria a confirmação nunca sair, porque o lembrete de 1h marca
+o campo bem antes.
+
+**Nunca executou.** Continua valendo o plano de ativação em
+[`estado-do-projeto.md`](estado-do-projeto.md) — e agora o teste precisa cobrir
+os dois disparos, não só um.
+
 ### O lembrete pergunta se o cliente confirma, e ninguém registra a resposta
 Achado em 2026-08-02, revisando o fluxo. A mensagem termina com *"Você confirma
 que vai poder vir?"* — mas nada processa a resposta. O cliente responde "sim" e

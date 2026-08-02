@@ -43,6 +43,9 @@ const AceitarConvitePage = lazy(() =>
 const ConfiguracoesPage = lazy(() =>
   import('./features/configuracoes/ConfiguracoesPage').then((m) => ({ default: m.ConfiguracoesPage })),
 )
+const AssinaturaPage = lazy(() =>
+  import('./features/assinatura/AssinaturaPage').then((m) => ({ default: m.AssinaturaPage })),
+)
 const RedePage = lazy(() => import('./features/rede/RedePage').then((m) => ({ default: m.RedePage })))
 const EquipeRedePage = lazy(() =>
   import('./features/rede/EquipeRedePage').then((m) => ({ default: m.EquipeRedePage })),
@@ -124,6 +127,14 @@ function App() {
                   <RequireNetworkOwner>
                     <EquipeRedePage />
                   </RequireNetworkOwner>
+                }
+              />
+              <Route
+                path="/assinatura"
+                element={
+                  <RequireManager>
+                    <AssinaturaPage />
+                  </RequireManager>
                 }
               />
               <Route

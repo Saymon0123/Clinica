@@ -10,12 +10,15 @@ import {
   Settings,
   UsersRound,
   Building2,
+  CreditCard,
 } from 'lucide-react'
 import { ProfileMenu } from './ProfileMenu'
 import { useSalon } from '../features/auth/useSalon'
 import { useAppointmentAlerts } from '../features/agenda/useAppointmentAlerts'
 import { AppointmentAlertBanner } from '../features/agenda/AppointmentAlertBanner'
 import { usePendingConversations } from '../features/whatsappWeb/usePendingConversations'
+import { useAssinatura } from '../features/assinatura/useAssinatura'
+import { AvisoAssinatura } from '../features/assinatura/AvisoAssinatura'
 import { ThemeToggle } from './ThemeToggle'
 
 type NavItem = {
@@ -49,6 +52,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { to: '/rede', label: 'Rede', icon: Building2, somenteDono: true, semUnidade: true },
       { to: '/rede/equipe', label: 'Equipe da rede', icon: UsersRound, somenteDono: true, semUnidade: true },
       { to: '/configuracoes', label: 'Configurações', icon: Settings, somenteGestor: true },
+      { to: '/assinatura', label: 'Assinatura', icon: CreditCard, somenteGestor: true },
     ],
   },
   {
@@ -70,6 +74,9 @@ export function AppLayout() {
   const location = useLocation()
   const { alerts, dismiss } = useAppointmentAlerts(salonId)
   const { hasPending } = usePendingConversations(isManager ? salonId : null)
+  // Só o gestor: o barbeiro não decide sobre a assinatura, e avisá-lo de uma
+  // cobrança que não é dele só gera preocupação sem ação possível.
+  const { assinatura } = useAssinatura(isManager ? salonId : null)
 
   // "Rede" e "Equipe da rede" são exclusivas do dono de mais de uma unidade.
   // Gerente e barbeiro nunca veem, mesmo administrando a unidade inteira.
@@ -141,8 +148,11 @@ export function AppLayout() {
       </aside>
 
       {/* Content */}
-      <main className="flex-1 p-4 md:p-6 pb-20 md:pb-6 w-full">
-        <Outlet />
+      <main className="flex-1 pb-20 md:pb-6 w-full">
+        <AvisoAssinatura assinatura={assinatura} />
+        <div className="p-4 md:p-6">
+          <Outlet />
+        </div>
       </main>
 
       {/* Bottom nav (mobile only) */}

@@ -91,6 +91,12 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
   // inferir — é combinado comercial. 50% é o mais comum no mercado.
   const [comissao, setComissao] = useState('50')
   const donoAtendeEmAlguma = tipo === 'solo' || unidades.some((u) => u.donoAtende)
+
+  // Assinatura: sem isto a barbearia nascia sem nenhuma linha em
+  // `subscriptions`, e não havia como saber quem está testando nem quando
+  // vence. A cobrança continua manual na v1 — o que muda é passar a registrar.
+  const [plano, setPlano] = useState<'basico' | 'pro'>('basico')
+  const [liberarTeste, setLiberarTeste] = useState(true)
   const [horario, setHorario] = useState<DiaSemana[]>(HORARIO_PADRAO)
   const [servicos, setServicos] = useState<ServicoEscolhido[]>(
     SERVICOS_PADRAO.map((s) => ({ ...s, escolhido: s.padrao })),
@@ -149,6 +155,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
             telefone: donoTelefone,
             comissao_percentual: donoAtendeEmAlguma ? Number(comissao) : null,
           },
+          assinatura: { plano, dias_de_teste: liberarTeste ? 7 : null },
           unidades: unidades.map((u) => ({
             nome: u.nome,
             endereco: u.endereco,
@@ -458,6 +465,39 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
               </span>
             </label>
           )}
+
+          <div className="pt-3 mt-1 border-t border-border space-y-2">
+            <span className="block text-sm font-medium text-foreground">Assinatura</span>
+
+            <label className="block">
+              <span className="text-sm text-muted-foreground">Plano</span>
+              <select
+                value={plano}
+                onChange={(e) => setPlano(e.target.value as 'basico' | 'pro')}
+                className="w-full mt-1 border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              >
+                <option value="basico">Básico</option>
+                <option value="pro">Pro — inclui lembretes e recuperação de clientes</option>
+              </select>
+            </label>
+
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={liberarTeste}
+                onChange={(e) => setLiberarTeste(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span className="text-sm text-foreground">
+                Liberar teste grátis de 7 dias
+                <span className="block text-xs text-muted-foreground">
+                  {liberarTeste
+                    ? 'O acesso vence em 7 dias e o dono é avisado dentro do CRM antes disso.'
+                    : 'Sem prazo de vencimento — use quando a barbearia já está pagando.'}
+                </span>
+              </span>
+            </label>
+          </div>
         </div>
       )}
 

@@ -10,8 +10,18 @@ import { ContatoContextoBar } from './ContatoContextoBar'
 import { useContatoContexto } from './useContatoContexto'
 import { formatarTelefone } from '../../lib/telefone'
 import { filtrarEOrdenar, naoLida } from './lista'
+import { montarThread } from './thread'
 
 type Tab = 'todas' | 'precisa_dono'
+
+/** Duas letras do nome; um ícone quando o contato ainda não tem nome. */
+function iniciais(nome: string | null) {
+  const partes = (nome ?? '').trim().split(/\s+/).filter(Boolean)
+  if (partes.length === 0) return <MessageCircle size={18} />
+  const primeira = partes[0][0]
+  const ultima = partes.length > 1 ? partes[partes.length - 1][0] : ''
+  return (primeira + ultima).toUpperCase()
+}
 
 function formatTime(iso: string | null) {
   if (!iso) return ''
@@ -204,8 +214,10 @@ export function WhatsAppWebPage() {
                 selectedId === c.id ? 'bg-surface-2' : ''
               }`}
             >
-              <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-400 flex items-center justify-center shrink-0">
-                <MessageCircle size={18} />
+              {/* Iniciais identificam a pessoa de relance; o balãozinho
+                  genérico era igual para todo mundo. */}
+              <div className="w-10 h-10 rounded-full bg-chat-avatar text-chat-avatar-foreground flex items-center justify-center shrink-0 text-xs font-semibold">
+                {iniciais(c.contact_name)}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
@@ -215,7 +227,7 @@ export function WhatsAppWebPage() {
                   <span className="flex items-center gap-1.5 shrink-0">
                     <span className="text-[11px] text-muted-foreground">{formatTime(c.last_message_at)}</span>
                     {naoLida(c) && (
-                      <span className="w-2 h-2 rounded-full bg-red-500" title="Não lida" />
+                      <span className="w-2 h-2 rounded-full bg-danger" title="Não lida" />
                     )}
                   </span>
                 </div>
@@ -241,8 +253,18 @@ export function WhatsAppWebPage() {
         {/* Thread da conversa selecionada */}
         <main className="flex-1 flex flex-col min-w-0">
           {!selectedConversation ? (
-            <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
-              Selecione uma conversa para visualizar
+            /* É a primeira coisa que o dono vê ao abrir a aba. Uma frase solta
+               no meio do vazio parecia tela quebrada. */
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 px-6 text-center">
+              <span className="w-14 h-14 rounded-full bg-surface-2 border border-border flex items-center justify-center text-muted-foreground">
+                <MessageCircle size={24} />
+              </span>
+              <div>
+                <p className="text-sm font-medium text-foreground">Suas conversas do WhatsApp</p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Escolha alguém na lista ao lado para ler e responder.
+                </p>
+              </div>
             </div>
           ) : (
             <>
@@ -305,29 +327,66 @@ export function WhatsAppWebPage() {
 
               <ContatoContextoBar contexto={contexto} loading={carregandoContexto} />
 
-              <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                {messages.map((m) => (
-                  <div
-                    key={m.id}
-                    className={`flex ${m.direction === 'in' ? 'justify-start' : 'justify-end'}`}
-                  >
-                    <div
-                      className={`max-w-[75%] rounded-lg px-3 py-2 text-sm ${
-                        m.direction === 'in'
-                          ? 'bg-surface text-foreground border border-border'
-                          : 'bg-green-600 text-white'
-                      }`}
-                    >
-                      <p className="whitespace-pre-wrap">{m.content}</p>
-                      <div
-                        className={`text-[10px] mt-1 ${m.direction === 'in' ? 'text-muted-foreground' : 'text-green-100'}`}
-                      >
-                        {m.sender === 'agente' ? 'Agente · ' : m.sender === 'dono' ? 'Você · ' : ''}
-                        {formatTime(m.created_at)}
+              <div className="flex-1 overflow-y-auto px-4 py-4">
+                {/* Largura de leitura. Sem o limite, a bolha ia a 75% da área —
+                    que numa tela larga passa de 700px e quebra a leitura: a
+                    linha fica tão longa que o olho se perde ao voltar. */}
+                <div className="max-w-2xl mx-auto">
+                  {montarThread(messages).map((item) =>
+                    item.tipo === 'dia' ? (
+                      <div key={item.chave} className="flex justify-center my-4">
+                        <span className="px-2.5 py-0.5 rounded-full bg-surface-2 border border-border text-[11px] font-medium text-muted-foreground">
+                          {item.rotulo}
+                        </span>
                       </div>
-                    </div>
-                  </div>
-                ))}
+                    ) : (
+                      <div
+                        key={item.chave}
+                        className={`flex ${item.mensagem.direction === 'in' ? 'justify-start' : 'justify-end'} ${
+                          item.ultimaDoBloco ? 'mb-2.5' : 'mb-0.5'
+                        }`}
+                      >
+                        <div
+                          className={`max-w-[75%] px-3 py-2 text-sm rounded-2xl ${
+                            item.mensagem.direction === 'in'
+                              ? 'bg-surface text-foreground border border-border'
+                              : 'bg-chat-out text-chat-out-foreground'
+                          } ${
+                            // Canto "puxado" no fim do bloco, como num balão de
+                            // fala: é o que agrupa visualmente sem precisar de
+                            // linha divisória.
+                            item.ultimaDoBloco
+                              ? item.mensagem.direction === 'in'
+                                ? 'rounded-bl-sm'
+                                : 'rounded-br-sm'
+                              : ''
+                          }`}
+                        >
+                          <p className="whitespace-pre-wrap break-words">{item.mensagem.content}</p>
+
+                          {/* Assinatura só no fim do bloco: repetir "Agente ·
+                              15:27" em cada mensagem seguida era ruído. */}
+                          {item.ultimaDoBloco && (
+                            <div
+                              className={`text-[10px] mt-1 ${
+                                item.mensagem.direction === 'in'
+                                  ? 'text-muted-foreground'
+                                  : 'text-chat-out-muted'
+                              }`}
+                            >
+                              {item.mensagem.sender === 'agente'
+                                ? 'Agente · '
+                                : item.mensagem.sender === 'dono'
+                                  ? 'Você · '
+                                  : ''}
+                              {formatTime(item.mensagem.created_at)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ),
+                  )}
+                </div>
               </div>
 
               <form onSubmit={handleSend} className="bg-surface border-t border-border p-3">
@@ -350,7 +409,7 @@ export function WhatsAppWebPage() {
                     type="submit"
                     disabled={sending || !draft.trim()}
                     aria-label="Enviar mensagem"
-                    className="bg-green-600 text-white rounded-full p-2.5 disabled:opacity-40 shrink-0"
+                    className="bg-chat-out text-chat-out-foreground rounded-full p-2.5 disabled:opacity-40 shrink-0 transition-opacity"
                   >
                     <Send size={18} />
                   </button>

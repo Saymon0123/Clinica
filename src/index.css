@@ -24,6 +24,15 @@
   --chart-track: #e9e5f5;
   --sidebar: #ffffff;
   --sidebar-border: #ece8f6;
+
+  /* Conversa do WhatsApp. Verde de propósito, e não o roxo do produto: o dono
+     reconhece a tela antes de ler qualquer rótulo. Fica como token, e não solto
+     no componente, para ter versão escura pensada em vez de herdada. */
+  --chat-out: #059669;
+  --chat-out-foreground: #ffffff;
+  --chat-out-muted: #a7f3d0;
+  --chat-avatar: #d1fae5;
+  --chat-avatar-foreground: #047857;
 }
 
 .dark {
@@ -48,6 +57,14 @@
   --chart-track: #2e2a40;
   --sidebar: #1a1826;
   --sidebar-border: #2a2640;
+
+  /* Mais fechado que o do tema claro: o verde 600 do Tailwind, usado antes,
+     brilhava demais sobre fundo escuro e cansava numa conversa longa. */
+  --chat-out: #157f5f;
+  --chat-out-foreground: #ecfdf5;
+  --chat-out-muted: #86c9b0;
+  --chat-avatar: #123a30;
+  --chat-avatar-foreground: #6ee7b7;
 }
 
 @theme inline {
@@ -72,6 +89,11 @@
   --color-chart-track: var(--chart-track);
   --color-sidebar: var(--sidebar);
   --color-sidebar-border: var(--sidebar-border);
+  --color-chat-out: var(--chat-out);
+  --color-chat-out-foreground: var(--chat-out-foreground);
+  --color-chat-out-muted: var(--chat-out-muted);
+  --color-chat-avatar: var(--chat-avatar);
+  --color-chat-avatar-foreground: var(--chat-avatar-foreground);
 }
 
 body {

@@ -48,12 +48,23 @@ type LinhaVinculo = {
 }
 
 export function SalonProvider({ children }: { children: ReactNode }) {
-  const { user, signOut } = useAuth()
+  const { user, loading: autenticando, signOut } = useAuth()
   const [unidades, setUnidades] = useState<Unidade[]>([])
   const [selecionada, setSelecionada] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   const carregar = useCallback(async () => {
+    // Enquanto o AuthContext restaura a sessão do storage, `user` é nulo — mas
+    // isso não significa "não logado", significa "ainda não sei". Declarar
+    // `loading = false` aqui fazia o `RequireManager` concluir que o usuário não
+    // é gestor e redirecionar para "/" antes de a sessão chegar.
+    //
+    // O sintoma era enganoso: navegando pelo menu tudo funcionava, porque a
+    // autenticação já estava resolvida. Só quebrava em carregamento do zero —
+    // URL digitada, refresh, ou o botão WEB, que abre `/web` em **nova aba** de
+    // propósito. Todas as rotas de gestor ficavam inalcançáveis assim.
+    if (autenticando) return
+
     if (!user) {
       setUnidades([])
       setSelecionada(null)
@@ -120,7 +131,7 @@ export function SalonProvider({ children }: { children: ReactNode }) {
       setSelecionada(proprias.length > 1 ? null : (lista[0]?.salonId ?? null))
     }
     setLoading(false)
-  }, [user, signOut])
+  }, [user, autenticando, signOut])
 
   useEffect(() => {
     carregar()

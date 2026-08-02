@@ -40,7 +40,10 @@ export function useMarketingData(salonId: string | null) {
 
     const [resumo, horarios, comissao] = await Promise.all([
       supabase.rpc('marketing_segmentos', { p_salon_id: salonId }),
-      supabase.rpc('marketing_horarios_ociosos', { p_salon_id: salonId, p_limite: 5 }),
+      // Pede a grade inteira: a tela agrupa por dia da semana, e para isso
+      // precisa enxergar todas as faixas, não as 5 piores (que costumam cair
+      // todas no mesmo dia).
+      supabase.rpc('marketing_horarios_ociosos', { p_salon_id: salonId, p_limite: 200 }),
       supabase.rpc('marketing_comissao_media', { p_salon_id: salonId }),
     ])
 

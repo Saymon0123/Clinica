@@ -13,6 +13,11 @@ function formatarData(iso: string | null) {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
 }
 
+/** "1 cliente" / "3 clientes" — segmento pequeno cai no singular o tempo todo. */
+function plural(n: number, singular: string, plural: string) {
+  return `${n} ${n === 1 ? singular : plural}`
+}
+
 function Numero({
   rotulo,
   valor,
@@ -188,7 +193,7 @@ export function SimuladorModal({
                 <Numero
                   rotulo="Resultado estimado"
                   valor={moeda(resultado.resultadoLiquido)}
-                  detalhe={`${resultado.clientesIncrementais} clientes a mais`}
+                  detalhe={`${plural(resultado.clientesIncrementais, 'cliente a mais', 'clientes a mais')}`}
                   tom={resultado.resultadoLiquido >= 0 ? 'bom' : 'ruim'}
                 />
                 <Numero
@@ -196,7 +201,7 @@ export function SimuladorModal({
                   valor={
                     resultado.clientesParaEmpatar === null
                       ? '—'
-                      : `${resultado.clientesParaEmpatar} clientes`
+                      : plural(resultado.clientesParaEmpatar, 'cliente', 'clientes')
                   }
                   detalhe="além dos que voltariam sozinhos"
                   destaque
@@ -207,8 +212,11 @@ export function SimuladorModal({
               <div className="text-sm text-muted-foreground bg-surface-2 border border-border rounded-lg p-3 space-y-1">
                 <p>
                   Cerca de <strong className="text-foreground">{resultado.clientesQueVoltamSozinhos}</strong>{' '}
-                  desses clientes voltariam sem campanha nenhuma, e vão ganhar o desconto assim mesmo
-                  — são {moeda(resultado.custoDoVazamento)} que a campanha precisa cobrir.
+                  {resultado.clientesQueVoltamSozinhos === 1
+                    ? 'desses clientes voltaria sem campanha nenhuma, e vai ganhar'
+                    : 'desses clientes voltariam sem campanha nenhuma, e vão ganhar'}{' '}
+                  o desconto assim mesmo — são {moeda(resultado.custoDoVazamento)} que a campanha
+                  precisa cobrir.
                 </p>
                 <p>
                   Se ninguém a mais voltar, você perde esse valor. Daí a partir do{' '}

@@ -3,7 +3,7 @@ import { Megaphone, Clock, ChevronRight, Info } from 'lucide-react'
 import { useSalon } from '../auth/useSalon'
 import { useMarketingData } from './useMarketingData'
 import { SimuladorModal } from './SimuladorModal'
-import { SEGMENTOS, DIAS_SEMANA, type ResumoSegmento } from './types'
+import { SEGMENTOS, DIAS_SEMANA, type HorarioOcioso, type ResumoSegmento } from './types'
 
 function moeda(valor: number) {
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -95,7 +95,25 @@ export function MarketingPage() {
     (r): r is ResumoSegmento => !!r,
   )
 
-  const maisOcioso = ociosos[0]
+  // Uma linha por dia da semana, não as N piores faixas: ordenar só por
+  // ocupação empilha cinco horários da mesma segunda-feira, e o dono fica sem
+  // saber quais DIAS estão vazios — que é a pergunta que ele faz.
+  const ociososPorDia = Object.values(
+    ociosos.reduce<Record<number, { pior: HorarioOcioso; vazias: number }>>((acc, o) => {
+      const atual = acc[o.diaSemana]
+      const vazia = o.ocupacao < 0.25 ? 1 : 0
+      if (!atual) return { ...acc, [o.diaSemana]: { pior: o, vazias: vazia } }
+      return {
+        ...acc,
+        [o.diaSemana]: {
+          pior: o.ocupacao < atual.pior.ocupacao ? o : atual.pior,
+          vazias: atual.vazias + vazia,
+        },
+      }
+    }, {}),
+  )
+    .sort((a, b) => a.pior.ocupacao - b.pior.ocupacao)
+    .slice(0, 5)
 
   return (
     <div className="space-y-5">
@@ -117,7 +135,7 @@ export function MarketingPage() {
         ))}
       </div>
 
-      {maisOcioso && (
+      {ociososPorDia.length > 0 && (
         <div className="bg-surface border border-border rounded-xl p-4">
           <div className="flex items-center gap-2 mb-3">
             <Clock size={16} className="text-muted-foreground" />
@@ -128,20 +146,16 @@ export function MarketingPage() {
             horários cheios.
           </p>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-            {ociosos.map((o) => (
-              <div
-                key={`${o.diaSemana}-${o.hora}`}
-                className="rounded-lg border border-border bg-surface-2 p-3"
-              >
-                <p className="text-sm font-medium text-foreground">
-                  {DIAS_SEMANA[o.diaSemana]} · {String(o.hora).padStart(2, '0')}h
-                </p>
+            {ociososPorDia.map(({ pior, vazias }) => (
+              <div key={pior.diaSemana} className="rounded-lg border border-border bg-surface-2 p-3">
+                <p className="text-sm font-medium text-foreground">{DIAS_SEMANA[pior.diaSemana]}</p>
                 <p className="text-xs text-muted-foreground tabular-nums mt-0.5">
-                  {(o.ocupacao * 100).toFixed(0)}% de ocupação
+                  Mais vazio às {String(pior.hora).padStart(2, '0')}h ·{' '}
+                  {(pior.ocupacao * 100).toFixed(0)}%
                 </p>
                 <p className="text-[11px] text-muted-foreground tabular-nums">
-                  {o.agendadosPorSemana.toFixed(1)} por semana · {o.capacidade}{' '}
-                  {o.capacidade === 1 ? 'barbeiro' : 'barbeiros'}
+                  {vazias} {vazias === 1 ? 'faixa quase vazia' : 'faixas quase vazias'} ·{' '}
+                  {pior.capacidade} {pior.capacidade === 1 ? 'barbeiro' : 'barbeiros'}
                 </p>
               </div>
             ))}

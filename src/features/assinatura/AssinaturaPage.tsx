@@ -16,7 +16,7 @@ function formatarData(iso: string) {
 }
 
 function Situacao({ assinatura }: { assinatura: Assinatura }) {
-  const { status, diasRestantes, expirada, acessoAte } = assinatura
+  const { status, diasRestantes, expirada, acessoAte, temRecorrencia } = assinatura
 
   if (expirada) {
     return (
@@ -82,6 +82,26 @@ function Situacao({ assinatura }: { assinatura: Assinatura }) {
             {acessoAte
               ? `Seu acesso vai até ${formatarData(acessoAte)}. Pague a fatura em aberto para continuar.`
               : 'Pague a fatura em aberto para continuar.'}
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // Pago em dia mas **sem recorrência**: o acesso vale até a data e para. Dizer
+  // "assinatura ativa" e anunciar uma "próxima cobrança" que não existe faria a
+  // tela prometer uma renovação que ninguém vai executar — e o dono só
+  // descobriria no dia em que perdesse o acesso.
+  if (!temRecorrencia) {
+    return (
+      <div className="flex items-start gap-2">
+        <CalendarClock size={18} className="shrink-0 mt-0.5 text-warning" />
+        <div>
+          <p className="font-medium text-foreground">Sem renovação automática</p>
+          <p className="text-sm text-muted-foreground">
+            {acessoAte
+              ? `Seu acesso vai até ${formatarData(acessoAte)} e não será renovado sozinho.`
+              : 'Não há cobrança automática configurada.'}
           </p>
         </div>
       </div>
@@ -162,6 +182,16 @@ export function AssinaturaPage() {
             </div>
           </div>
 
+          {/* Logo abaixo da situação, e não no rodapé: assinar é o que a pessoa
+              veio fazer aqui. Antes ficava depois do CPF e da troca de plano,
+              então era preciso rolar a página inteira para achar o botão.
+
+              Só aparece com o documento preenchido — o Asaas exige CPF/CNPJ
+              para criar o pagante, e sem ele o botão devolveria erro. */}
+          {assinatura.cpfCnpj && (
+            <AcoesDaAssinatura salonId={salonId} assinatura={assinatura} onMudou={reload} />
+          )}
+
           <RecursosDoPlano assinatura={assinatura} />
 
           <TrocarPlano salonId={salonId} assinatura={assinatura} onMudou={reload} />
@@ -172,10 +202,12 @@ export function AssinaturaPage() {
             onSalvo={reload}
           />
 
-          {/* Só faz sentido depois do documento: o Asaas exige CPF/CNPJ para
-              criar o cliente, e o botão só devolveria erro. */}
-          {assinatura.cpfCnpj && (
-            <AcoesDaAssinatura salonId={salonId} assinatura={assinatura} onMudou={reload} />
+          {/* Sem documento não há botão nenhum acima, e a página não diria o que
+              falta fazer. */}
+          {!assinatura.cpfCnpj && (
+            <p className="text-sm text-muted-foreground">
+              Informe o CPF ou CNPJ acima para poder assinar.
+            </p>
           )}
         </>
       )}

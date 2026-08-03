@@ -121,6 +121,9 @@ Deno.serve(async (req: Request) => {
   // `asaas_subscription_id` é limpo para que reassinar crie uma recorrência
   // nova; o `asaas_customer_id` permanece, porque o cadastro do pagante
   // continua valendo e recriá-lo geraria cliente duplicado no Asaas.
+  //
+  // A troca agendada também cai: ela descrevia uma renovação que não vai mais
+  // acontecer, e sobreviveria como promessa de um plano que ninguém vai cobrar.
   // ------------------------------------------------------------------
   if (acao === 'cancelar') {
     if (assinatura.asaas_subscription_id) {
@@ -136,7 +139,12 @@ Deno.serve(async (req: Request) => {
 
     const { error: erroUpdate } = await admin
       .from('subscriptions')
-      .update({ status: 'cancelada', asaas_subscription_id: null })
+      .update({
+        status: 'cancelada',
+        asaas_subscription_id: null,
+        plano_agendado: null,
+        upgrade_payment_id: null,
+      })
       .eq('id', assinatura.id)
 
     if (erroUpdate) {
@@ -329,11 +337,11 @@ Deno.serve(async (req: Request) => {
 
     // 2. Assinatura mensal. Idem: só cria se ainda não existir.
     //
-    // O status **não** muda aqui. Entre assinar e o pagamento cair a assinatura
-    // segue como está: não existe estado "aguardando pagamento" na constraint, e
-    // marcar como `atrasada` diria ao dono que ele está devendo no minuto
-    // seguinte a ter assinado. Quem muda o status é o webhook, na confirmação.
-    // A tela detecta "já assinou" pela existência da recorrência.
+    // O status vai para `pendente`: assinou, falta o pagamento cair. Sem esse
+    // estado — que só passou a existir na 0034 — quem cancelava e assinava de
+    // novo ficava marcado como `cancelada` **com recorrência ativa**, e nenhuma
+    // tela conseguia descrever isso sem mentir. Quem sai de `pendente` é o
+    // webhook, na confirmação.
     let subscriptionId = assinatura.asaas_subscription_id
     if (!subscriptionId) {
       const vencimento = new Date()
@@ -358,7 +366,7 @@ Deno.serve(async (req: Request) => {
       subscriptionId = r.data.id
       await admin
         .from('subscriptions')
-        .update({ asaas_subscription_id: subscriptionId })
+        .update({ asaas_subscription_id: subscriptionId, status: 'pendente' })
         .eq('id', assinatura.id)
     }
 

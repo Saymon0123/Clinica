@@ -1,4 +1,4 @@
-import { CreditCard, CheckCircle2, AlertTriangle, CalendarClock } from 'lucide-react'
+import { CreditCard, CheckCircle2, AlertTriangle, CalendarClock, Clock } from 'lucide-react'
 import { useSalon } from '../auth/useSalon'
 import { useAssinatura, type Assinatura } from './useAssinatura'
 import { DadosDeCobranca } from './DadosDeCobranca'
@@ -46,6 +46,23 @@ function Situacao({ assinatura }: { assinatura: Assinatura }) {
           </p>
           <p className="text-sm text-muted-foreground">
             Acesso liberado até {formatarData(acessoAte!)}, com tudo do plano incluído.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // Assinou, falta o Pix cair. Antes deste estado o dono via "Assinatura ativa"
+  // com uma próxima cobrança que ainda dependia de um pagamento não feito.
+  if (status === 'pendente') {
+    return (
+      <div className="flex items-start gap-2">
+        <Clock size={18} className="shrink-0 mt-0.5 text-primary" />
+        <div>
+          <p className="font-medium text-foreground">Aguardando o pagamento</p>
+          <p className="text-sm text-muted-foreground">
+            Assim que o Pix cair, a assinatura é liberada automaticamente
+            {acessoAte ? `. Seu acesso atual vai até ${formatarData(acessoAte)}.` : '.'}
           </p>
         </div>
       </div>

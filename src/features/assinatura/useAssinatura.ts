@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 
-export type StatusAssinatura = 'trial' | 'ativa' | 'atrasada' | 'cancelada'
+export type StatusAssinatura = 'trial' | 'pendente' | 'ativa' | 'atrasada' | 'cancelada'
 
 export type Assinatura = {
   status: StatusAssinatura

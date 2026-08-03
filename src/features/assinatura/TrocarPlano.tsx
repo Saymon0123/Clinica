@@ -106,12 +106,20 @@ export function TrocarPlano({
 
   // Troca já pedida: oferecer outra criaria uma segunda cobrança em aberto.
   if (assinatura.planoAgendado) {
+    // Dizer **para qual** plano vai. Sem o nome, o card anunciava uma mudança
+    // sem destino e o topo da tela seguia mostrando o plano antigo — o dono não
+    // tinha como saber o que tinha pedido.
+    const destino =
+      planos.find((p) => p.codigo === assinatura.planoAgendado)?.nome ?? assinatura.planoAgendado
+
     return (
       <div className="bg-surface border border-border rounded-xl p-4">
-        <h2 className="text-sm font-semibold text-foreground mb-1">Troca de plano em andamento</h2>
+        <h2 className="text-sm font-semibold text-foreground mb-1">
+          Mudança para o {destino} em andamento
+        </h2>
         <p className="text-sm text-muted-foreground">
           {assinatura.aguardandoPagamentoDaTroca
-            ? 'Assim que o pagamento da diferença cair, o plano novo é liberado automaticamente.'
+            ? `Assim que o pagamento da diferença cair, o ${destino} é liberado automaticamente.`
             : `A mudança vale a partir de ${
                 assinatura.acessoAte ? formatarData(assinatura.acessoAte) : 'a próxima renovação'
               }. Até lá você continua com tudo do plano atual, que já está pago.`}

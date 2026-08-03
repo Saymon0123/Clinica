@@ -25,6 +25,17 @@ export function HorarioBarbeiroModal({
 }) {
   const [dias, setDias] = useState<Dia[]>(DIAS_PADRAO)
   const [carregando, setCarregando] = useState(true)
+  /**
+   * Ainda não existe horário salvo — o que está na tela é só sugestão.
+   *
+   * Sem esta distinção o modal de quem nunca configurou é **idêntico** ao de
+   * quem já configurou: a semana aparece preenchida, o dono fecha satisfeito e
+   * o banco continua vazio. Foi o que aconteceu com a barbearia de testes em
+   * 2026-08-03, e só apareceu porque fui conferir por que o agente não teria
+   * horário para oferecer. Sem horário salvo, o atendimento automático não
+   * consegue marcar nada — e nada na tela denunciava isso.
+   */
+  const [nuncaSalvo, setNuncaSalvo] = useState(false)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [salvo, setSalvo] = useState(false)
@@ -39,7 +50,9 @@ export function HorarioBarbeiroModal({
       if (error) {
         console.error('Erro ao carregar horários:', error)
         setErro('Não foi possível carregar os horários.')
-      } else if (data && data.length > 0) {
+      } else if (!data || data.length === 0) {
+        setNuncaSalvo(true)
+      } else {
         setDias(
           DIAS_PADRAO.map((padrao) => {
             const salvo = data.find((d) => d.dia_semana === padrao.dia_semana)
@@ -130,6 +143,16 @@ export function HorarioBarbeiroModal({
               Dias e horários em que ele atende. Serve para a agenda e para o atendimento
               automático não oferecer horário em dia de folga.
             </p>
+
+            {/* `warning-soft` não existe nos tokens; a opacidade sobre
+                `--color-warning` dá o mesmo efeito sem inventar um token. */}
+            {nuncaSalvo && (
+              <p className="text-xs text-warning bg-warning/10 border border-warning/30 rounded-lg px-3 py-2">
+                <strong className="font-medium">Ainda não salvo.</strong> Estes são horários
+                sugeridos — enquanto não salvar, o atendimento automático não tem quando marcar e
+                não vai conseguir agendar nada.
+              </p>
+            )}
 
             <div className="space-y-1.5">
               {dias.map((d, i) => (

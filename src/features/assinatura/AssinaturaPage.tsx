@@ -3,6 +3,7 @@ import { useSalon } from '../auth/useSalon'
 import { useAssinatura, type Assinatura } from './useAssinatura'
 import { DadosDeCobranca } from './DadosDeCobranca'
 import { AcoesDaAssinatura } from './AcoesDaAssinatura'
+import { RecursosDoPlano } from './RecursosDoPlano'
 
 function moeda(valor: number) {
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -155,6 +156,8 @@ export function AssinaturaPage() {
               <Situacao assinatura={assinatura} />
             </div>
           </div>
+
+          <RecursosDoPlano assinatura={assinatura} />
 
           <DadosDeCobranca
             salonId={salonId}

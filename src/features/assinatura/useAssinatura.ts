@@ -25,6 +25,13 @@ export type Assinatura = {
    * devendo no minuto seguinte a ter assinado.
    */
   temRecorrencia: boolean
+  /**
+   * O plano dá direito às automações de WhatsApp (lembrete de 1h e confirmação
+   * de chegada). Vem de `plans.inclui_automacoes`, a mesma coluna que a view
+   * `salons_com_automacao` usa para decidir se o n8n envia — para a tela não
+   * poder prometer o que o fluxo não entrega.
+   */
+  incluiAutomacoes: boolean
 }
 
 /**
@@ -56,7 +63,9 @@ export function useAssinatura(salonId: string | null) {
 
     const { data, error } = await supabase
       .from('subscriptions')
-      .select('status, plan_codigo, valor, acesso_ate, cpf_cnpj, atendimento_ate, asaas_subscription_id, plans(nome)')
+      .select(
+        'status, plan_codigo, valor, acesso_ate, cpf_cnpj, atendimento_ate, asaas_subscription_id, plans(nome, inclui_automacoes)',
+      )
       .eq('salon_id', salonId)
       .maybeSingle()
 
@@ -69,8 +78,10 @@ export function useAssinatura(salonId: string | null) {
       return
     }
 
-    const plano = data.plans as { nome?: string } | { nome?: string }[] | null
-    const planoNome = (Array.isArray(plano) ? plano[0]?.nome : plano?.nome) ?? data.plan_codigo
+    type PlanoJoin = { nome?: string; inclui_automacoes?: boolean }
+    const planoBruto = data.plans as PlanoJoin | PlanoJoin[] | null
+    const plano = Array.isArray(planoBruto) ? planoBruto[0] : planoBruto
+    const planoNome = plano?.nome ?? data.plan_codigo
     const dias = data.acesso_ate ? diasAte(data.acesso_ate) : null
 
     setAssinatura({
@@ -84,6 +95,7 @@ export function useAssinatura(salonId: string | null) {
       cpfCnpj: data.cpf_cnpj,
       atendimentoAte: data.atendimento_ate,
       temRecorrencia: Boolean(data.asaas_subscription_id),
+      incluiAutomacoes: Boolean(plano?.inclui_automacoes),
     })
     setLoading(false)
   }, [salonId])

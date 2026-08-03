@@ -476,8 +476,11 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
                 onChange={(e) => setPlano(e.target.value as 'basico' | 'pro')}
                 className="w-full mt-1 border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
               >
-                <option value="basico">Básico</option>
-                <option value="pro">Pro — inclui lembretes e recuperação de clientes</option>
+                {/* Sem "recuperação de clientes": está na visão e é vendida
+                    como Pro, mas não existe. Prometer aqui viraria cobrança por
+                    algo que o sistema não entrega. */}
+                <option value="basico">Básico — R$ 197</option>
+                <option value="pro">Pro — R$ 299, com lembrete e confirmação de chegada</option>
               </select>
             </label>
 

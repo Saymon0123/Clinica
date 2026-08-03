@@ -3,6 +3,8 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const WEBHOOK_TOKEN = Deno.env.get('ASAAS_WEBHOOK_TOKEN')
+const ASAAS_API_KEY = Deno.env.get('ASAAS_API_KEY')
+const ASAAS_BASE_URL = Deno.env.get('ASAAS_BASE_URL') ?? 'https://api-sandbox.asaas.com'
 
 /**
  * Dias que o WhatsApp segue atendendo depois de o acesso ao CRM vencer.
@@ -30,6 +32,29 @@ function somarUmMes(data: string) {
   const d = new Date(`${data}T12:00:00Z`)
   d.setUTCMonth(d.getUTCMonth() + 1)
   return d.toISOString().slice(0, 10)
+}
+
+/**
+ * Sobe o valor da recorrência para a mensalidade do plano novo.
+ *
+ * Só acontece depois de a diferença ser paga. Fazer isso na hora do pedido
+ * cobraria o plano caro de quem desistiu no meio do caminho.
+ */
+async function ajustarRecorrencia(subscriptionId: string, valor: number) {
+  if (!ASAAS_API_KEY) {
+    console.error('ASAAS_API_KEY ausente: recorrencia segue no valor antigo.')
+    return
+  }
+  const res = await fetch(`${ASAAS_BASE_URL}/v3/subscriptions/${subscriptionId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', access_token: ASAAS_API_KEY },
+    body: JSON.stringify({ value: valor, updatePendingPayments: false }),
+  })
+  if (!res.ok) {
+    // Não derruba o evento: o plano já foi liberado e é isso que o dono espera
+    // ver. A mensalidade errada aparece na próxima fatura e dá para corrigir.
+    console.error('Falha ao ajustar o valor da recorrencia:', res.status, await res.text())
+  }
 }
 
 /** Eventos que abrem o acesso. O resto é ignorado de propósito. */
@@ -106,6 +131,50 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true, ignorado: evento })
     }
 
+    // ----------------------------------------------------------------
+    // Cobrança da diferença de troca de plano.
+    //
+    // Precisa ser tratada **antes** do caminho comum: ela é avulsa e traz o
+    // `externalReference` do salão, então cairia no filtro de baixo e ganharia
+    // um mês inteiro de acesso de presente — pagando só alguns dias de
+    // diferença.
+    // ----------------------------------------------------------------
+    if (ehPagamento && pagamento?.id && !pagamento.subscription) {
+      const { data: pendente } = await admin
+        .from('subscriptions')
+        .select('id, plano_agendado, asaas_subscription_id')
+        .eq('upgrade_payment_id', pagamento.id)
+        .maybeSingle()
+
+      if (pendente?.plano_agendado) {
+        const { data: planoNovo } = await admin
+          .from('plans')
+          .select('preco_unidade')
+          .eq('codigo', pendente.plano_agendado)
+          .maybeSingle()
+
+        const novoValor = planoNovo ? Number(planoNovo.preco_unidade) : null
+
+        await admin
+          .from('subscriptions')
+          .update({
+            plan_codigo: pendente.plano_agendado,
+            ...(novoValor != null ? { valor: novoValor } : {}),
+            plano_agendado: null,
+            upgrade_payment_id: null,
+          })
+          .eq('id', pendente.id)
+
+        // `acesso_ate` fica como está: o dono pagou a diferença de um período
+        // que já era dele, não um período novo.
+        if (pendente.asaas_subscription_id && novoValor != null) {
+          await ajustarRecorrencia(pendente.asaas_subscription_id, novoValor)
+        }
+
+        return json({ ok: true, aplicado: 'plano trocado', plano: pendente.plano_agendado })
+      }
+    }
+
     // A assinatura é encontrada pelo id do Asaas; o `externalReference` é a
     // rede de segurança para cobrança avulsa, criada fora da assinatura.
     const filtro = pagamento?.subscription
@@ -116,7 +185,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: assinatura } = await admin
       .from('subscriptions')
-      .select('id')
+      .select('id, plano_agendado, upgrade_payment_id')
       .eq(filtro.coluna, filtro.valor)
       .maybeSingle()
 
@@ -132,6 +201,21 @@ Deno.serve(async (req: Request) => {
       const base = pagamento?.dueDate ?? new Date().toISOString().slice(0, 10)
       const acessoAte = somarUmMes(base)
 
+      // Descida de plano agendada: é esta renovação que a torna real. Até aqui
+      // o dono usou o plano que tinha pago, como decidido — descer no pedido
+      // tiraria dele algo já pago.
+      let planoAplicado: string | null = null
+      let valorNovo: number | null = null
+      if (assinatura.plano_agendado && !assinatura.upgrade_payment_id) {
+        const { data: planoNovo } = await admin
+          .from('plans')
+          .select('preco_unidade')
+          .eq('codigo', assinatura.plano_agendado)
+          .maybeSingle()
+        planoAplicado = assinatura.plano_agendado
+        valorNovo = planoNovo ? Number(planoNovo.preco_unidade) : null
+      }
+
       await admin
         .from('subscriptions')
         .update({
@@ -139,10 +223,22 @@ Deno.serve(async (req: Request) => {
           acesso_ate: acessoAte,
           atendimento_ate: somarDias(acessoAte, DIAS_DE_TOLERANCIA),
           proximo_vencimento: acessoAte,
+          ...(planoAplicado
+            ? {
+                plan_codigo: planoAplicado,
+                plano_agendado: null,
+                ...(valorNovo != null ? { valor: valorNovo } : {}),
+              }
+            : {}),
         })
         .eq('id', assinatura.id)
 
-      return json({ ok: true, aplicado: 'acesso liberado', acesso_ate: acessoAte })
+      return json({
+        ok: true,
+        aplicado: 'acesso liberado',
+        acesso_ate: acessoAte,
+        ...(planoAplicado ? { plano: planoAplicado } : {}),
+      })
     }
 
     // Atraso não mexe nas datas: o acesso continua valendo até a data já paga,

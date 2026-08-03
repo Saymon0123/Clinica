@@ -4,6 +4,7 @@ import { useAssinatura, type Assinatura } from './useAssinatura'
 import { DadosDeCobranca } from './DadosDeCobranca'
 import { AcoesDaAssinatura } from './AcoesDaAssinatura'
 import { RecursosDoPlano } from './RecursosDoPlano'
+import { TrocarPlano } from './TrocarPlano'
 
 function moeda(valor: number) {
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -158,6 +159,8 @@ export function AssinaturaPage() {
           </div>
 
           <RecursosDoPlano assinatura={assinatura} />
+
+          <TrocarPlano salonId={salonId} assinatura={assinatura} onMudou={reload} />
 
           <DadosDeCobranca
             salonId={salonId}

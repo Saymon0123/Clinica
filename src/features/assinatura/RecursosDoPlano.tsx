@@ -46,13 +46,12 @@ export function RecursosDoPlano({ assinatura }: { assinatura: Assinatura }) {
         })}
       </ul>
 
-      {/* Sem isto o dono no Básico vê dois itens apagados e não sabe o que fazer
-          a respeito. A troca de plano ainda não é automática — dizer isso é
-          melhor que um botão que não existe. */}
+      {/* Sem isto o dono no Básico vê dois itens apagados e não sabe o que
+          fazer a respeito. Aponta para o bloco de troca logo abaixo. */}
       {!incluiAutomacoes && (
         <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border">
-          Os lembretes automáticos fazem parte do plano Pro. Para mudar de plano, fale com o
-          suporte.
+          Os lembretes automáticos fazem parte do plano Pro — dá para mudar aqui embaixo, pagando
+          só a diferença dos dias que faltam.
         </p>
       )}
     </div>

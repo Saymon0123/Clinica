@@ -1,4 +1,5 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { calcularProporcional } from './proporcional.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -61,7 +62,10 @@ Deno.serve(async (req: Request) => {
   const salonId = body.salonId as string | undefined
   if (!salonId) return json({ error: 'Unidade nao informada.' }, 400)
 
-  const acao = (body.acao as string) === 'cancelar' ? 'cancelar' : 'assinar'
+  const ACOES = ['assinar', 'cancelar', 'simular-troca', 'trocar-plano'] as const
+  type Acao = (typeof ACOES)[number]
+  const pedida = body.acao as string
+  const acao: Acao = (ACOES as readonly string[]).includes(pedida) ? (pedida as Acao) : 'assinar'
 
   // ------------------------------------------------------------------
   // Autorização.
@@ -95,7 +99,9 @@ Deno.serve(async (req: Request) => {
 
   const { data: assinatura, error: erroAssinatura } = await admin
     .from('subscriptions')
-    .select('id, plan_codigo, valor, cpf_cnpj, asaas_customer_id, asaas_subscription_id')
+    .select(
+      'id, plan_codigo, valor, cpf_cnpj, acesso_ate, asaas_customer_id, asaas_subscription_id, plano_agendado, upgrade_payment_id',
+    )
     .eq('salon_id', salonId)
     .maybeSingle()
 
@@ -139,6 +145,152 @@ Deno.serve(async (req: Request) => {
     }
 
     return json({ cancelada: true })
+  }
+
+  // ------------------------------------------------------------------
+  // Troca de plano.
+  //
+  // Regras decididas em 2026-08-02:
+  //
+  // - **Subir** custa só a diferença proporcional aos dias que faltam, e o
+  //   plano novo vale assim que o Pix cair — não no clique. Quem troca o
+  //   `plan_codigo` é o webhook, senão bastaria clicar para ter o Pro de graça.
+  // - **Descer** não devolve dinheiro: o dono segue no plano atual até o fim do
+  //   que pagou e a mudança vale na renovação. Nada é perdido, nada sai do
+  //   caixa, e não há estorno a processar.
+  //
+  // `simular-troca` existe para a tela mostrar o valor **antes** de o dono
+  // confirmar. A conta é a mesma nas duas ações, então o que ele vê é o que ele
+  // paga — uma segunda conta no front-end divergiria da cobrança.
+  // ------------------------------------------------------------------
+  if (acao === 'simular-troca' || acao === 'trocar-plano') {
+    const destino = body.plano as string | undefined
+    if (!destino) return json({ error: 'Informe o plano de destino.' }, 400)
+    if (destino === assinatura.plan_codigo) {
+      return json({ error: 'Este ja e o seu plano atual.' }, 400)
+    }
+
+    const { data: planos } = await admin
+      .from('plans')
+      .select('codigo, nome, preco_unidade, ativo')
+      .in('codigo', [destino, assinatura.plan_codigo])
+
+    const planoDestino = planos?.find((p) => p.codigo === destino)
+    if (!planoDestino || !planoDestino.ativo) {
+      return json({ error: 'Plano indisponivel.' }, 400)
+    }
+
+    const precoDestino = Number(planoDestino.preco_unidade)
+    // O preço atual é o `valor` congelado na assinatura, não o de tabela: quem
+    // assinou antes de um reajuste paga o que contratou, e a diferença tem de
+    // partir desse valor para não cobrar um aumento disfarçado de troca.
+    const precoAtual = assinatura.valor != null ? Number(assinatura.valor) : precoDestino
+    const conta = calcularProporcional(assinatura.acesso_ate, precoAtual, precoDestino)
+    const subida = conta.diferencaMensal > 0
+
+    if (acao === 'simular-troca') {
+      return json({
+        plano: destino,
+        planoNome: planoDestino.nome,
+        precoNovo: precoDestino,
+        subida,
+        ...conta,
+        // Sem recorrência não há o que ratear: ninguém pagou nada ainda.
+        imediata: !assinatura.asaas_subscription_id || conta.valor === 0,
+      })
+    }
+
+    // Em teste, ou com a assinatura cancelada, não existe cobrança em curso —
+    // trocar é só escolher outro plano, sem dinheiro no meio.
+    if (!assinatura.asaas_subscription_id) {
+      const { error: erroTroca } = await admin
+        .from('subscriptions')
+        .update({ plan_codigo: destino, valor: precoDestino, plano_agendado: null })
+        .eq('id', assinatura.id)
+      if (erroTroca) {
+        console.error('Erro ao trocar o plano sem recorrencia:', erroTroca)
+        return json({ error: 'Nao foi possivel trocar o plano agora.' }, 500)
+      }
+      return json({ aplicado: true, plano: destino })
+    }
+
+    if (!subida) {
+      // Descida: a recorrência passa a cobrar o valor menor já na próxima
+      // fatura, mas o `plan_codigo` só muda quando aquele pagamento for
+      // confirmado — até lá o dono usa o que pagou.
+      const r = await asaas(`/subscriptions/${assinatura.asaas_subscription_id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ value: precoDestino, updatePendingPayments: false }),
+      })
+      if (!r.ok) {
+        console.error('Asaas recusou a alteracao da recorrencia:', r.status, r.data)
+        return json({ error: erroDoAsaas(r.data) ?? 'Nao foi possivel agendar a troca.' }, 502)
+      }
+
+      await admin
+        .from('subscriptions')
+        .update({ plano_agendado: destino, upgrade_payment_id: null })
+        .eq('id', assinatura.id)
+
+      return json({ agendado: true, plano: destino, aplicaEm: assinatura.acesso_ate })
+    }
+
+    // Subida com valor abaixo do mínimo do Asaas: liberar sai mais barato que
+    // cobrar a mais ou negar o que o dono pediu. São centavos.
+    if (conta.valor === 0) {
+      const r = await asaas(`/subscriptions/${assinatura.asaas_subscription_id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ value: precoDestino, updatePendingPayments: false }),
+      })
+      if (!r.ok) {
+        console.error('Asaas recusou a alteracao da recorrencia:', r.status, r.data)
+        return json({ error: erroDoAsaas(r.data) ?? 'Nao foi possivel trocar o plano.' }, 502)
+      }
+      await admin
+        .from('subscriptions')
+        .update({ plan_codigo: destino, valor: precoDestino, plano_agendado: null })
+        .eq('id', assinatura.id)
+      return json({ aplicado: true, plano: destino, dispensado: true })
+    }
+
+    // Cobrança avulsa da diferença. **Fora** da assinatura de propósito: somar
+    // ao ciclo mudaria a mensalidade recorrente, e isto é cobrança de uma vez.
+    const cobranca = await asaas('/payments', {
+      method: 'POST',
+      body: JSON.stringify({
+        customer: assinatura.asaas_customer_id,
+        billingType: 'PIX',
+        value: conta.valor,
+        dueDate: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10),
+        description: `Troca para o plano ${planoDestino.nome} (${conta.diasRestantes} dias)`,
+        externalReference: salonId,
+      }),
+    })
+    if (!cobranca.ok) {
+      console.error('Asaas recusou a cobranca da diferenca:', cobranca.status, cobranca.data)
+      return json({ error: erroDoAsaas(cobranca.data) ?? 'Nao foi possivel gerar a cobranca.' }, 502)
+    }
+
+    // A recorrência **não** muda aqui: se o dono desistir e não pagar, a
+    // mensalidade dele tem de continuar sendo a do plano atual. Quem sobe o
+    // valor recorrente é o webhook, junto com o plano.
+    const { error: erroPendente } = await admin
+      .from('subscriptions')
+      .update({ plano_agendado: destino, upgrade_payment_id: cobranca.data.id })
+      .eq('id', assinatura.id)
+
+    if (erroPendente) {
+      console.error('Erro ao registrar a troca pendente:', erroPendente)
+      return json({ error: 'Cobranca gerada, mas houve erro ao registrar. Avise o suporte.' }, 500)
+    }
+
+    return json({
+      invoiceUrl: cobranca.data.invoiceUrl,
+      vencimento: cobranca.data.dueDate,
+      valor: conta.valor,
+      plano: destino,
+      diasRestantes: conta.diasRestantes,
+    })
   }
 
   if (!assinatura.cpf_cnpj) {

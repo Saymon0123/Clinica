@@ -32,6 +32,10 @@ export type Assinatura = {
    * poder prometer o que o fluxo não entrega.
    */
   incluiAutomacoes: boolean
+  /** Plano para o qual a assinatura vai mudar, quando há troca pendente. */
+  planoAgendado: string | null
+  /** Há uma cobrança de diferença esperando pagamento. */
+  aguardandoPagamentoDaTroca: boolean
 }
 
 /**
@@ -64,7 +68,7 @@ export function useAssinatura(salonId: string | null) {
     const { data, error } = await supabase
       .from('subscriptions')
       .select(
-        'status, plan_codigo, valor, acesso_ate, cpf_cnpj, atendimento_ate, asaas_subscription_id, plans(nome, inclui_automacoes)',
+        'status, plan_codigo, valor, acesso_ate, cpf_cnpj, atendimento_ate, asaas_subscription_id, plano_agendado, upgrade_payment_id, plans(nome, inclui_automacoes)',
       )
       .eq('salon_id', salonId)
       .maybeSingle()
@@ -96,6 +100,8 @@ export function useAssinatura(salonId: string | null) {
       atendimentoAte: data.atendimento_ate,
       temRecorrencia: Boolean(data.asaas_subscription_id),
       incluiAutomacoes: Boolean(plano?.inclui_automacoes),
+      planoAgendado: data.plano_agendado,
+      aguardandoPagamentoDaTroca: Boolean(data.upgrade_payment_id),
     })
     setLoading(false)
   }, [salonId])

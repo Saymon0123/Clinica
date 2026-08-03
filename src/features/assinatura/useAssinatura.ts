@@ -56,6 +56,7 @@ function diasAte(acessoAte: string): number {
 export function useAssinatura(salonId: string | null) {
   const [assinatura, setAssinatura] = useState<Assinatura | null>(null)
   const [loading, setLoading] = useState(true)
+  const [erro, setErro] = useState<string | null>(null)
 
   const reload = useCallback(async () => {
     if (!salonId) {
@@ -68,15 +69,33 @@ export function useAssinatura(salonId: string | null) {
     const { data, error } = await supabase
       .from('subscriptions')
       .select(
-        'status, plan_codigo, valor, acesso_ate, cpf_cnpj, atendimento_ate, asaas_subscription_id, plano_agendado, upgrade_payment_id, plans(nome, inclui_automacoes)',
+        // A chave do join é explícita porque `subscriptions` passou a ter
+        // **duas** FKs para `plans` (`plan_codigo` e `plano_agendado`). Com
+        // `plans(...)` solto o PostgREST não sabe qual usar e recusa a consulta
+        // inteira com PGRST201 — a tela ficava dizendo que a barbearia não tem
+        // plano nenhum.
+        'status, plan_codigo, valor, acesso_ate, cpf_cnpj, atendimento_ate, asaas_subscription_id, plano_agendado, upgrade_payment_id, plans!subscriptions_plan_codigo_fkey(nome, inclui_automacoes)',
       )
       .eq('salon_id', salonId)
       .maybeSingle()
 
-    if (error || !data) {
+    // Falha de consulta e ausência de assinatura são coisas diferentes, e
+    // tratá-las igual esconde defeito: um join ambíguo derrubou esta consulta
+    // em 2026-08-02 e a tela anunciou, com toda a calma, que a barbearia não
+    // tinha plano — apontando o dono para o suporte em vez de mostrar o erro.
+    if (error) {
+      console.error('Erro ao carregar assinatura:', error)
+      setAssinatura(null)
+      setErro('Não foi possível carregar a assinatura agora.')
+      setLoading(false)
+      return
+    }
+
+    setErro(null)
+
+    if (!data) {
       // Barbearia criada antes desta funcionalidade não tem assinatura. Isso
       // não é erro: some da tela em vez de acusar problema para o dono.
-      if (error) console.error('Erro ao carregar assinatura:', error)
       setAssinatura(null)
       setLoading(false)
       return
@@ -110,5 +129,5 @@ export function useAssinatura(salonId: string | null) {
     reload()
   }, [reload])
 
-  return { assinatura, loading, reload }
+  return { assinatura, loading, erro, reload }
 }

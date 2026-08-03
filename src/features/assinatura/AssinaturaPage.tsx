@@ -105,7 +105,7 @@ function Situacao({ assinatura }: { assinatura: Assinatura }) {
 
 export function AssinaturaPage() {
   const { salonId, salonName, loading: salonLoading } = useSalon()
-  const { assinatura, loading, reload } = useAssinatura(salonId)
+  const { assinatura, loading, erro, reload } = useAssinatura(salonId)
 
   if (salonLoading || loading) {
     return <p className="text-sm text-muted-foreground">Carregando...</p>
@@ -133,7 +133,11 @@ export function AssinaturaPage() {
         </div>
       </div>
 
-      {!assinatura ? (
+      {erro ? (
+        <p className="text-sm text-danger bg-danger-soft border border-danger/30 rounded-lg p-4">
+          {erro} Tente recarregar a página. Se continuar, avise o suporte.
+        </p>
+      ) : !assinatura ? (
         <p className="text-sm text-muted-foreground bg-surface-2 border border-border rounded-lg p-4">
           Esta barbearia foi cadastrada antes do controle de assinatura e ainda não tem um plano
           registrado. Fale com o suporte para regularizar — o acesso não é afetado.

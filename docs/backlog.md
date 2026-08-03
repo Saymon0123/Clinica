@@ -608,34 +608,32 @@ Refatoração de conforto, não de risco.
 
 ## Cobrança pelo Asaas
 
-### Pix real só existe em produção
-`2026-08-02` — o webhook está **provado ponta a ponta**: a confirmação de uma
-cobrança em sandbox chegou sozinha na `asaas-webhook` (evento `PAYMENT_RECEIVED`
-gravado em `asaas_eventos`) e virou `status = 'ativa'`, `acesso_ate` +1 mês e
-`atendimento_ate` +7 dias. O que **não** está provado é o Pix: o sandbox não
-movimenta dinheiro, o QR que ele gera não existe no arranjo Pix e nenhum banco
-o reconhece. Testar de verdade exige a chave de produção — e aí o pagamento é
-real. Fica pendente até a decisão de migrar.
+### O que está provado, e o que não está
+`2026-08-03` — o ciclo inteiro foi exercitado no sandbox, com quatro
+confirmações reais entregues pelo Asaas e gravadas em `asaas_eventos`:
+assinar (`pendente` → `ativa`), cancelar, trocar de plano sem recorrência,
+assinar de novo, e a **cobrança avulsa da diferença**, que aplicou o plano novo
+e subiu o valor da recorrência. O rateio parcial foi conferido pela simulação
+na própria tela: com 10 dias de um ciclo de 31 e diferença de R$ 102, previmos
+R$ 32,90 antes de olhar e foi o que apareceu.
 
-Dois achados que custaram tempo e não são óbvios:
+O que **não** está provado é o Pix. O sandbox não movimenta dinheiro, o QR que
+ele gera não existe no arranjo Pix e nenhum banco o reconhece. Testar exige a
+chave de produção — e aí o pagamento é real. Fica pendente até a decisão de
+migrar.
+
+Três achados que custaram tempo e não são óbvios:
 
 - **"Recebido em dinheiro" não dispara webhook.** É baixa manual, não
   pagamento. Foi o que fez parecer, por horas, que a integração estava muda.
-  Para simular pagamento no sandbox o caminho é `POST
-  /v3/sandbox/payment/{id}/confirm`.
+  Para confirmar pagamento no sandbox o caminho é `POST
+  /v3/sandbox/payment/{id}/confirm`, ou o botão CONFIRMAR PAGAMENTO no painel.
 - **Pagar o QR do sandbox falha com "saldo insuficiente"**, porque a conta
   estaria pagando a si mesma. Não é erro de integração.
-
-### Funções temporárias a apagar no painel
-`simular-pagamento` e `diagnostico-secrets`. Não existe MCP de exclusão de edge
-function, só o painel. Ambas são inertes (a primeira recusa rodar fora do
-sandbox, a segunda devolve 410), mas função temporária que fica vira permanente.
-
-### Recorrência de teste da Curitiba está em R$ 5
-A assinatura no Asaas (`sub_5mtwkddg5l8gry3q`) foi criada com o valor reduzido
-do teste. `subscriptions.valor` já voltou para R$ 299, então **os dois
-divergem**. É a barbearia de testes e a cobrança é fictícia; some ao cancelar e
-reassinar pelo botão.
+- **Cobrança avulsa carrega o `externalReference` do salão** e casaria no
+  filtro de fallback do webhook, ganhando um mês inteiro de acesso por pagar
+  poucos dias de diferença. Por isso a troca de plano é tratada **antes** do
+  caminho comum. Qualquer cobrança avulsa nova precisa da mesma atenção.
 
 ### `preco_unidade_rede` desproporcional
 Básico 77 / Pro 157 contra 197 / 299 da unidade avulsa. Decisão de preço

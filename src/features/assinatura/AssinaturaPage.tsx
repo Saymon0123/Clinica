@@ -52,26 +52,6 @@ function Situacao({ assinatura }: { assinatura: Assinatura }) {
     )
   }
 
-  // Cancelada mas ainda dentro do prazo: as cobranças pararam, o acesso não.
-  // É a regra decidida em 2026-08-02, e precisa ficar explícita — senão o dono
-  // cancela e fica sem saber se ainda pode usar.
-  if (status === 'cancelada') {
-    return (
-      <div className="flex items-start gap-2">
-        <CalendarClock size={18} className="shrink-0 mt-0.5 text-warning" />
-        <div>
-          <p className="font-medium text-foreground">Assinatura cancelada</p>
-          <p className="text-sm text-muted-foreground">
-            Não haverá novas cobranças
-            {acessoAte
-              ? `, e você segue com acesso até ${formatarData(acessoAte)}.`
-              : '. O acesso permanece liberado.'}
-          </p>
-        </div>
-      </div>
-    )
-  }
-
   if (status === 'atrasada') {
     return (
       <div className="flex items-start gap-2">
@@ -88,10 +68,17 @@ function Situacao({ assinatura }: { assinatura: Assinatura }) {
     )
   }
 
-  // Pago em dia mas **sem recorrência**: o acesso vale até a data e para. Dizer
-  // "assinatura ativa" e anunciar uma "próxima cobrança" que não existe faria a
-  // tela prometer uma renovação que ninguém vai executar — e o dono só
-  // descobriria no dia em que perdesse o acesso.
+  // Sem recorrência: cobre tanto quem cancelou quanto quem nunca assinou.
+  //
+  // Antes havia um estado separado para `status = 'cancelada'`, e ele mentia
+  // depois de uma troca de plano: "Assinatura cancelada" descrevia uma ação
+  // sobre o plano **anterior**, informação velha ocupando o lugar da atual. O
+  // `status` guarda história; a pergunta que a tela precisa responder é se
+  // existe renovação — e quem responde isso é a recorrência.
+  //
+  // O que o texto de cancelamento tinha de essencial fica: as cobranças param,
+  // o acesso não. É a regra de 2026-08-02, e sem dizê-la o dono cancela e fica
+  // sem saber se ainda pode usar o sistema.
   if (!temRecorrencia) {
     return (
       <div className="flex items-start gap-2">
@@ -100,7 +87,7 @@ function Situacao({ assinatura }: { assinatura: Assinatura }) {
           <p className="font-medium text-foreground">Sem renovação automática</p>
           <p className="text-sm text-muted-foreground">
             {acessoAte
-              ? `Seu acesso vai até ${formatarData(acessoAte)} e não será renovado sozinho.`
+              ? `Não há novas cobranças, e seu acesso segue até ${formatarData(acessoAte)}.`
               : 'Não há cobrança automática configurada.'}
           </p>
         </div>

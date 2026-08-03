@@ -62,8 +62,11 @@ export function TrocarPlano({
 
   const outros = planos.filter((p) => p.codigo !== assinatura.planoCodigo)
 
-  async function chamar(acao: 'simular-troca' | 'trocar-plano', plano: string) {
-    setCarregando(plano)
+  async function chamar(
+    acao: 'simular-troca' | 'trocar-plano' | 'cancelar-troca',
+    plano?: string,
+  ) {
+    setCarregando(plano ?? acao)
     setErro(null)
     try {
       const { data, error } = await supabase.functions.invoke('asaas', {
@@ -124,6 +127,22 @@ export function TrocarPlano({
                 assinatura.acessoAte ? formatarData(assinatura.acessoAte) : 'a próxima renovação'
               }. Até lá você continua com tudo do plano atual, que já está pago.`}
         </p>
+
+        {erro && <p className="text-sm text-danger mt-2">{erro}</p>}
+
+        {/* O caminho de volta. Sem ele, pedir a troca era decisão sem desfazer:
+            o bloco de escolher plano sumia e nada trazia o dono de volta. */}
+        <button
+          onClick={async () => {
+            const data = await chamar('cancelar-troca')
+            if (data) onMudou()
+          }}
+          disabled={carregando !== null}
+          className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground disabled:opacity-50"
+        >
+          {carregando === 'cancelar-troca' && <Loader2 size={14} className="animate-spin" />}
+          Desistir da mudança
+        </button>
       </div>
     )
   }

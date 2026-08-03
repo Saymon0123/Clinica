@@ -27,6 +27,30 @@ export function DadosDeCobranca({
   const [erro, setErro] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [salvo, setSalvo] = useState(false)
+  // Já preenchido, o formulário vira uma linha. Antes ele continuava dizendo
+  // "precisamos do CPF ou CNPJ" com o campo cheio — pedia o que já tinha, e
+  // ocupava o mesmo espaço das coisas que ainda exigem decisão.
+  const [editando, setEditando] = useState(false)
+
+  if (documentoAtual && !editando) {
+    return (
+      <div className="bg-surface border border-border rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <CreditCard size={16} className="text-muted-foreground shrink-0" />
+          <span className="text-sm text-muted-foreground shrink-0">Cobrança para</span>
+          <span className="text-sm text-foreground tabular-nums truncate">
+            {formatarDocumento(documentoAtual)}
+          </span>
+        </div>
+        <button
+          onClick={() => setEditando(true)}
+          className="text-sm font-medium text-muted-foreground hover:text-foreground shrink-0"
+        >
+          Alterar
+        </button>
+      </div>
+    )
+  }
 
   async function salvar(e: FormEvent) {
     e.preventDefault()
@@ -59,6 +83,7 @@ export function DadosDeCobranca({
       return
     }
     setSalvo(true)
+    setEditando(false)
     onSalvo()
   }
 
@@ -97,6 +122,19 @@ export function DadosDeCobranca({
         >
           {salvando ? 'Salvando...' : 'Salvar'}
         </button>
+        {documentoAtual && (
+          <button
+            type="button"
+            onClick={() => {
+              setDocumento(formatarDocumento(documentoAtual))
+              setErro(null)
+              setEditando(false)
+            }}
+            className="text-sm font-medium text-muted-foreground hover:text-foreground"
+          >
+            Cancelar
+          </button>
+        )}
         {salvo && (
           <span className="flex items-center gap-1.5 text-sm text-success">
             <Check size={15} />

@@ -168,11 +168,27 @@ export function AssinaturaPage() {
         </p>
       ) : (
         <>
+          {/* Plano, situação e ações no mesmo bloco. Eram três cartões de peso
+              igual empilhados, e a página não dizia o que era importante — nem
+              deixava claro que os botões agiam sobre aquele plano ali em cima. */}
           <div className="bg-surface border border-border rounded-xl p-4 space-y-4">
             <div className="flex items-baseline justify-between gap-3">
               <div>
                 <p className="text-xs text-muted-foreground">Plano</p>
                 <p className="text-lg font-semibold text-foreground">{assinatura.planoNome}</p>
+                {/* Sem isto o topo mentia por omissão: mostrava só o plano de
+                    hoje enquanto uma mudança já estava agendada, e quem olhasse
+                    apenas aqui sairia com a informação errada. */}
+                {assinatura.planoAgendadoNome && (
+                  <p className="text-xs text-warning mt-0.5">
+                    Muda para {assinatura.planoAgendadoNome}
+                    {assinatura.planoAgendadoPreco != null &&
+                      ` (${moeda(assinatura.planoAgendadoPreco)}/mês)`}
+                    {assinatura.acessoAte && !assinatura.aguardandoPagamentoDaTroca
+                      ? ` em ${formatarData(assinatura.acessoAte)}`
+                      : ''}
+                  </p>
+                )}
               </div>
               {assinatura.valor != null && (
                 <p className="text-sm text-muted-foreground tabular-nums">
@@ -184,17 +200,19 @@ export function AssinaturaPage() {
             <div className="pt-3 border-t border-border">
               <Situacao assinatura={assinatura} />
             </div>
+
+            {/* Junto da situação, e não no rodapé: assinar é o que a pessoa veio
+                fazer. Antes ficava depois do CPF e da troca de plano, então era
+                preciso rolar a página inteira para achar o botão.
+
+                Só aparece com o documento preenchido — o Asaas exige CPF/CNPJ
+                para criar o pagante, e sem ele o botão devolveria erro. */}
+            {assinatura.cpfCnpj && (
+              <div className="pt-3 border-t border-border">
+                <AcoesDaAssinatura salonId={salonId} assinatura={assinatura} onMudou={reload} />
+              </div>
+            )}
           </div>
-
-          {/* Logo abaixo da situação, e não no rodapé: assinar é o que a pessoa
-              veio fazer aqui. Antes ficava depois do CPF e da troca de plano,
-              então era preciso rolar a página inteira para achar o botão.
-
-              Só aparece com o documento preenchido — o Asaas exige CPF/CNPJ
-              para criar o pagante, e sem ele o botão devolveria erro. */}
-          {assinatura.cpfCnpj && (
-            <AcoesDaAssinatura salonId={salonId} assinatura={assinatura} onMudou={reload} />
-          )}
 
           <RecursosDoPlano assinatura={assinatura} />
 

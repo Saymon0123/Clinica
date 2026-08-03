@@ -66,8 +66,10 @@ export function AcoesDaAssinatura({
     }
   }
 
+  // Sem cartão próprio: vive dentro do bloco da situação, para ficar claro que
+  // as ações agem sobre o plano mostrado logo acima.
   return (
-    <div className="bg-surface border border-border rounded-xl p-4">
+    <div>
       {erro && <p className="text-sm text-danger mb-3">{erro}</p>}
 
       {fatura && (

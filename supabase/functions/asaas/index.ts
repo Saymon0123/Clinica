@@ -62,7 +62,7 @@ Deno.serve(async (req: Request) => {
   const salonId = body.salonId as string | undefined
   if (!salonId) return json({ error: 'Unidade nao informada.' }, 400)
 
-  const ACOES = ['assinar', 'cancelar', 'simular-troca', 'trocar-plano'] as const
+  const ACOES = ['assinar', 'cancelar', 'simular-troca', 'trocar-plano', 'cancelar-troca'] as const
   type Acao = (typeof ACOES)[number]
   const pedida = body.acao as string
   const acao: Acao = (ACOES as readonly string[]).includes(pedida) ? (pedida as Acao) : 'assinar'
@@ -153,6 +153,58 @@ Deno.serve(async (req: Request) => {
     }
 
     return json({ cancelada: true })
+  }
+
+  // ------------------------------------------------------------------
+  // Desistir da troca agendada.
+  //
+  // Sem isto, pedir a troca era caminho sem volta: o bloco de mudar de plano
+  // virava um aviso estático e o dono não tinha como voltar atrás pelo CRM. É a
+  // mesma armadilha do `agent_paused` na aba WEB — ação com ida e sem volta.
+  //
+  // Desfazer é diferente nos dois sentidos: na descida a recorrência já foi
+  // baixada no Asaas e precisa voltar ao valor do plano atual; na subida existe
+  // uma cobrança avulsa em aberto, que precisa ser removida para não ficar um
+  // Pix cobrável de algo que ninguém mais quer.
+  // ------------------------------------------------------------------
+  if (acao === 'cancelar-troca') {
+    if (!assinatura.plano_agendado) {
+      return json({ error: 'Nao ha troca agendada.' }, 400)
+    }
+
+    if (assinatura.upgrade_payment_id) {
+      const r = await asaas(`/payments/${assinatura.upgrade_payment_id}`, { method: 'DELETE' })
+      // 404 = já não existe lá, que é o efeito desejado.
+      if (!r.ok && r.status !== 404) {
+        console.error('Asaas recusou remover a cobranca da troca:', r.status, r.data)
+        return json({ error: erroDoAsaas(r.data) ?? 'Nao foi possivel desfazer a troca agora.' }, 502)
+      }
+    } else if (assinatura.asaas_subscription_id) {
+      // Devolve a mensalidade ao valor do plano que está valendo hoje.
+      const r = await asaas(`/subscriptions/${assinatura.asaas_subscription_id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          value: Number(assinatura.valor),
+          updatePendingPayments: false,
+        }),
+      })
+      if (!r.ok) {
+        console.error('Asaas recusou restaurar o valor da recorrencia:', r.status, r.data)
+        return json({ error: erroDoAsaas(r.data) ?? 'Nao foi possivel desfazer a troca agora.' }, 502)
+      }
+    }
+
+    const { error: erroDesfazer } = await admin
+      .from('subscriptions')
+      .update({ plano_agendado: null, upgrade_payment_id: null })
+      .eq('id', assinatura.id)
+
+    if (erroDesfazer) {
+      console.error('Erro ao desfazer a troca agendada:', erroDesfazer)
+      return json({ error: 'Nao foi possivel desfazer a troca agora.' }, 500)
+    }
+
+    return json({ desfeita: true })
   }
 
   // ------------------------------------------------------------------

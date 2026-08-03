@@ -34,6 +34,9 @@ export type Assinatura = {
   incluiAutomacoes: boolean
   /** Plano para o qual a assinatura vai mudar, quando há troca pendente. */
   planoAgendado: string | null
+  /** Nome e preço do plano agendado, para a tela não anunciar mudança sem destino. */
+  planoAgendadoNome: string | null
+  planoAgendadoPreco: number | null
   /** Há uma cobrança de diferença esperando pagamento. */
   aguardandoPagamentoDaTroca: boolean
 }
@@ -74,7 +77,7 @@ export function useAssinatura(salonId: string | null) {
         // `plans(...)` solto o PostgREST não sabe qual usar e recusa a consulta
         // inteira com PGRST201 — a tela ficava dizendo que a barbearia não tem
         // plano nenhum.
-        'status, plan_codigo, valor, acesso_ate, cpf_cnpj, atendimento_ate, asaas_subscription_id, plano_agendado, upgrade_payment_id, plans!subscriptions_plan_codigo_fkey(nome, inclui_automacoes)',
+        'status, plan_codigo, valor, acesso_ate, cpf_cnpj, atendimento_ate, asaas_subscription_id, plano_agendado, upgrade_payment_id, plans!subscriptions_plan_codigo_fkey(nome, inclui_automacoes), agendado:plans!subscriptions_plano_agendado_fkey(nome, preco_unidade)',
       )
       .eq('salon_id', salonId)
       .maybeSingle()
@@ -101,9 +104,14 @@ export function useAssinatura(salonId: string | null) {
       return
     }
 
-    type PlanoJoin = { nome?: string; inclui_automacoes?: boolean }
-    const planoBruto = data.plans as PlanoJoin | PlanoJoin[] | null
-    const plano = Array.isArray(planoBruto) ? planoBruto[0] : planoBruto
+    type PlanoJoin = { nome?: string; inclui_automacoes?: boolean; preco_unidade?: number }
+    const umPlano = (bruto: unknown) => {
+      const p = bruto as PlanoJoin | PlanoJoin[] | null
+      return (Array.isArray(p) ? p[0] : p) ?? null
+    }
+
+    const plano = umPlano(data.plans)
+    const agendado = umPlano(data.agendado)
     const planoNome = plano?.nome ?? data.plan_codigo
     const dias = data.acesso_ate ? diasAte(data.acesso_ate) : null
 
@@ -120,6 +128,8 @@ export function useAssinatura(salonId: string | null) {
       temRecorrencia: Boolean(data.asaas_subscription_id),
       incluiAutomacoes: Boolean(plano?.inclui_automacoes),
       planoAgendado: data.plano_agendado,
+      planoAgendadoNome: agendado?.nome ?? null,
+      planoAgendadoPreco: agendado?.preco_unidade != null ? Number(agendado.preco_unidade) : null,
       aguardandoPagamentoDaTroca: Boolean(data.upgrade_payment_id),
     })
     setLoading(false)

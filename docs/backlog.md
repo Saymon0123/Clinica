@@ -638,3 +638,49 @@ Três achados que custaram tempo e não são óbvios:
 ### `preco_unidade_rede` desproporcional
 Básico 77 / Pro 157 contra 197 / 299 da unidade avulsa. Decisão de preço
 pendente, não defeito.
+
+## Agente de WhatsApp
+
+### Agendamento fantasma — corrigido em 2026-08-04, falta reconfirmar
+Nos dois primeiros testes reais por WhatsApp o agente respondeu **"já agendei
+seu horário"** sem ter criado agendamento nenhum. É o pior erro possível: o
+cliente aparece na barbearia e não há nada na agenda.
+
+A execução gravada mostrou a causa, e não era a suspeita inicial. `Criar
+Agendamento` **nunca foi chamada**. O agente chutou `"Saymon"` como
+`professional_id` duas vezes (erro `invalid input syntax for type uuid`), foi
+buscar o id certo, consultou disponibilidade — que voltou `[]`, ou seja, dia
+livre — e anunciou que estava garantido. Com `maxIterations: 6`, as duas
+chamadas desperdiçadas provavelmente esgotaram o orçamento e forçaram a
+resposta final antes de marcar.
+
+Três correções, todas publicadas:
+
+- Seção **NUNCA AFIRME O QUE VOCÊ NÃO FEZ** no prompt: só dizer que marcou
+  depois do sucesso de `Criar Agendamento`; lista vazia de disponibilidade
+  significa dia livre, não agendamento feito.
+- `maxIterations` 6 → 14. Um agendamento completo usa cinco ferramentas; seis
+  iterações não cabem, e o que sobra quando o orçamento acaba é uma resposta
+  inventada.
+- Descrições de `$fromAI` dizendo que os ids são **UUID** e de qual ferramenta
+  vêm.
+
+Falta refazer o teste ponta a ponta e confirmar que o agendamento nasce.
+
+### `saveDataSuccessExecution` estava em `none`
+Execuções bem-sucedidas não eram gravadas, então o primeiro agendamento
+fantasma não deixou rastro nenhum e não pôde ser diagnosticado. Ligado
+(`all`, com progresso). **Rever antes de escalar**: gravar tudo cresce o banco
+do n8n; o certo é manter durante os testes e reavaliar depois.
+
+### O agente responde em Markdown, que o WhatsApp não entende
+Ele respondeu com `**Corte masculino**`; o WhatsApp usa `*asterisco simples*`,
+então o cliente vê os asteriscos. Regras de formato adicionadas ao prompt
+(negrito simples, mensagens de 3-4 linhas, no máximo 5 itens ao listar).
+Falta confirmar no celular.
+
+### Nunca releu o horário de trabalho depois de achar o uuid
+Na mesma execução, `Horário de Trabalho do Profissional` só foi chamada com o
+nome (que falhou). O agente ofereceu 09:00 sem nunca ter lido os horários
+cadastrados — acertou por coincidência. As regras 17 e 21 foram ajustadas para
+corrigir o dado e chamar de novo, mas isso precisa ser verificado no teste.

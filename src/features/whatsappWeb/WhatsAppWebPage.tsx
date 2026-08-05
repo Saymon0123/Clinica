@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { AlertCircle, Bot, MessageCircle, Search, Send, Sparkles } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
@@ -11,6 +11,7 @@ import { useContatoContexto } from './useContatoContexto'
 import { formatarTelefone } from '../../lib/telefone'
 import { filtrarEOrdenar, naoLida } from './lista'
 import { montarThread } from './thread'
+import { lerResumoVisto, marcarResumoVisto } from './resumoVisto'
 
 type Tab = 'todas' | 'precisa_dono'
 
@@ -47,7 +48,32 @@ export function WhatsAppWebPage() {
   const [resuming, setResuming] = useState(false)
   const [resumeError, setResumeError] = useState<string | null>(null)
   const [contextPopup, setContextPopup] = useState<{ nome: string; resumo: string } | null>(null)
-  const [dismissedContext, setDismissedContext] = useState<Set<string>>(new Set())
+
+  /**
+   * Rolagem da conversa.
+   *
+   * Abrir uma conversa no topo obriga o dono a rolar até embaixo toda vez para
+   * ver a mensagem que acabou de chegar — que é justamente o motivo de ele ter
+   * aberto. Vai para o fim, como qualquer aplicativo de mensagem.
+   *
+   * `perto` guarda se ele já estava no fim antes da atualização: sem isso,
+   * mensagem nova chegando enquanto ele lê o histórico arrancaria a tela de
+   * onde estava.
+   */
+  const threadRef = useRef<HTMLDivElement>(null)
+  const pertoDoFim = useRef(true)
+
+  useEffect(() => {
+    const el = threadRef.current
+    if (!el) return
+    el.scrollTop = el.scrollHeight
+    pertoDoFim.current = true
+  }, [selectedId])
+
+  useEffect(() => {
+    const el = threadRef.current
+    if (el && pertoDoFim.current) el.scrollTop = el.scrollHeight
+  }, [messages])
 
   const selectedConversation = conversations.find((c) => c.id === selectedId) ?? null
   const { contexto, loading: carregandoContexto } = useContatoContexto(
@@ -58,13 +84,21 @@ export function WhatsAppWebPage() {
   async function handleSelectConversation(id: string) {
     setSelectedId(id)
 
-    // Mostra o resumo da IA na primeira vez que o dono abre a conversa.
+    // O resumo aparece uma vez por resumo, não uma vez por abertura.
+    //
+    // Antes o controle era um Set em memória, que morre a cada recarga da
+    // página — então o popup voltava toda vez que o dono entrava na conversa,
+    // repetindo algo que ele já tinha lido. Guardar o texto já visto resolve
+    // sem perder o caso que importa: se o agente escalar de novo com um resumo
+    // diferente, o popup reaparece, porque o texto mudou.
     const conversa = conversations.find((c) => c.id === id)
-    if (conversa?.needs_human && conversa.resumo_contexto && !dismissedContext.has(id)) {
-      setContextPopup({
-        nome: conversa.contact_name ?? formatarTelefone(conversa.contact_phone),
-        resumo: conversa.resumo_contexto,
-      })
+    if (conversa?.needs_human && conversa.resumo_contexto) {
+      if (lerResumoVisto(id) !== conversa.resumo_contexto) {
+        setContextPopup({
+          nome: conversa.contact_name ?? formatarTelefone(conversa.contact_phone),
+          resumo: conversa.resumo_contexto,
+        })
+      }
     }
 
     await supabase
@@ -364,7 +398,16 @@ export function WhatsAppWebPage() {
 
               <ContatoContextoBar contexto={contexto} loading={carregandoContexto} />
 
-              <div className="flex-1 overflow-y-auto px-4 py-4">
+              <div
+                ref={threadRef}
+                onScroll={(e) => {
+                  const el = e.currentTarget
+                  // 80px de folga: quem está "quase" no fim continua sendo
+                  // levado junto pela mensagem nova.
+                  pertoDoFim.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+                }}
+                className="flex-1 overflow-y-auto px-4 py-4"
+              >
                 {/* Largura de leitura. Sem o limite, a bolha ia a 75% da área —
                     que numa tela larga passa de 700px e quebra a leitura: a
                     linha fica tão longa que o olho se perde ao voltar. */}
@@ -462,7 +505,7 @@ export function WhatsAppWebPage() {
           contactName={contextPopup.nome}
           resumo={contextPopup.resumo}
           onClose={() => {
-            if (selectedId) setDismissedContext((prev) => new Set(prev).add(selectedId))
+            if (selectedId) marcarResumoVisto(selectedId, contextPopup.resumo)
             setContextPopup(null)
           }}
         />

@@ -1,8 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Building2, Check, ChevronsUpDown, LayoutDashboard, LogOut, Store } from 'lucide-react'
+import {
+  Building2,
+  Check,
+  ChevronsUpDown,
+  LayoutDashboard,
+  LogOut,
+  MessageSquarePlus,
+  Store,
+} from 'lucide-react'
 import { useAuth } from '../features/auth/AuthContext'
 import { useSalon } from '../features/auth/useSalon'
+import { FeedbackModal } from '../features/feedback/FeedbackModal'
 
 const LABEL_PAPEL: Record<string, string> = {
   owner: 'Dono',
@@ -20,6 +29,7 @@ export function ProfileMenu() {
   const { user, signOut } = useAuth()
   const { unidades, salonId, salonName, role, isOwner, selecionarUnidade } = useSalon()
   const [aberto, setAberto] = useState(false)
+  const [feedbackAberto, setFeedbackAberto] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
 
@@ -134,6 +144,23 @@ export function ProfileMenu() {
             </>
           )}
 
+          {/* Fica no menu de perfil, e não numa aba: é conversa com quem faz o
+              sistema, não uma função da barbearia. Aqui está sempre a um clique
+              de qualquer tela, que é o que faz alguém escrever no momento em
+              que sente o atrito — depois a pessoa esquece. */}
+          <button
+            onClick={() => {
+              setFeedbackAberto(true)
+              setAberto(false)
+            }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-left text-[13px] text-foreground hover:bg-surface-2"
+          >
+            <MessageSquarePlus size={15} className="text-muted-foreground" />
+            Enviar sugestão
+          </button>
+
+          <div className="border-t border-border my-1" />
+
           <button
             onClick={() => signOut()}
             className="w-full flex items-center gap-2 px-3 py-2 text-left text-[13px] text-foreground hover:bg-surface-2"
@@ -143,6 +170,8 @@ export function ProfileMenu() {
           </button>
         </div>
       )}
+
+      {feedbackAberto && <FeedbackModal onClose={() => setFeedbackAberto(false)} />}
     </div>
   )
 }

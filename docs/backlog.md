@@ -684,3 +684,34 @@ Na mesma execução, `Horário de Trabalho do Profissional` só foi chamada com 
 nome (que falhou). O agente ofereceu 09:00 sem nunca ter lido os horários
 cadastrados — acertou por coincidência. As regras 17 e 21 foram ajustadas para
 corrigir o dado e chamar de novo, mas isso precisa ser verificado no teste.
+
+## Trocar o domínio do CRM
+
+`2026-08-05` — o endereço atual é `clinica-crm-kappa.vercel.app`, e "clinica" confunde
+o dono de barbearia no primeiro contato. Nome candidato: **Cadeira Cheia**
+(`cadeiracheia.com` estava livre; o `.com.br` é no Registro.br, que a Vercel não
+registra).
+
+**Nada disso é feito pelo MCP** — nem a Vercel (a conexão não enxerga o projeto,
+e não há ferramenta de renomear nem de variável de ambiente) nem a config de
+Auth e os secrets do Supabase. É tudo painel.
+
+Ordem que evita janela com convite quebrado — os dois endereços funcionam ao
+mesmo tempo durante a troca, porque a Vercel mantém o antigo como apelido:
+
+1. Supabase → Authentication → URL Configuration: **adicionar** o domínio novo
+   em Redirect URLs, mantendo o antigo
+2. Vercel → Settings → General → Project Name: renomear
+3. Supabase → secret `APP_URL` (usado pela `admin-create-salon` no e-mail de
+   boas-vindas do dono novo)
+4. Vercel → `VITE_APP_URL` **e redeploy** — o Vite embute em build time, mudar a
+   variável sozinha não faz efeito
+5. Conferir de fora: domínio novo servindo, login, convite e redefinição de senha
+6. Só então remover o domínio antigo das Redirect URLs
+
+No código, o fallback em `admin-create-salon/index.ts:6` aponta para o domínio
+antigo. Hoje não é usado (o secret existe), mas vira armadilha silenciosa se o
+secret sumir — atualizar junto.
+
+Se um domínio próprio (`.com.br`) estiver próximo, vale fazer **uma vez só**: são
+exatamente os mesmos seis passos.

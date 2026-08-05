@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 
 export type ItemDeAtivacao = {
-  id: 'whatsapp' | 'servicos' | 'jornada' | 'comissao'
+  id: 'assinatura' | 'whatsapp' | 'servicos' | 'jornada' | 'comissao'
   titulo: string
   /** O que a barbearia perde enquanto isso não estiver feito. */
   porque: string
@@ -33,7 +33,8 @@ export function useAtivacao(salonId: string | null) {
     }
     setLoading(true)
 
-    const [conexao, servicos, profissionais] = await Promise.all([
+    const [assinatura, conexao, servicos, profissionais] = await Promise.all([
+      supabase.from('subscriptions').select('salon_id').eq('salon_id', salonId).maybeSingle(),
       supabase.from('whatsapp_connections').select('status').eq('salon_id', salonId).maybeSingle(),
       supabase
         .from('services')
@@ -61,6 +62,22 @@ export function useAtivacao(salonId: string | null) {
       profs.length > 0 && profs.every((p) => p.comissao_percentual !== null)
 
     setItens([
+      // Só aparece quando falta, porque não é passo de configuração: é defeito
+      // de cadastro nosso. Sem a linha de assinatura a barbearia fica fora das
+      // automações e ninguém percebe — foi o que a auditoria de 2026-08-05
+      // encontrou numa unidade real da base. Aqui ele fica onde o dono já olha,
+      // em vez de esperar que ele abra a tela de Assinatura por acaso.
+      ...(assinatura.data
+        ? []
+        : [
+            {
+              id: 'assinatura' as const,
+              titulo: 'Assinatura não registrada',
+              porque: 'Sem isso os lembretes automáticos não são enviados. Fale com o suporte.',
+              rota: '/assinatura',
+              feito: false,
+            },
+          ]),
       {
         id: 'whatsapp',
         titulo: 'Conectar o WhatsApp',

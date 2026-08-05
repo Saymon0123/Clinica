@@ -11,9 +11,14 @@ const ASAAS_BASE_URL = Deno.env.get('ASAAS_BASE_URL') ?? 'https://api-sandbox.as
  *
  * Decisão de produto de 2026-08-02: vencer não derruba o atendimento na hora.
  * Cortar o agente pararia o negócio do cliente e viraria reclamação, não
- * pagamento.
+ * pagamento. Prazo fechado em **3 dias** em 2026-08-05 — depois disso o agente
+ * para de responder, pela view `salons_atendendo`.
+ *
+ * Este número precisa continuar igual ao usado nas views `salons_atendendo` e
+ * `salons_com_automacao` (migrations 0040 e seguinte). Dois prazos diferentes
+ * fariam o lembrete parar num dia e o atendimento noutro, sem explicação.
  */
-const DIAS_DE_TOLERANCIA = 7
+const DIAS_DE_TOLERANCIA = 3
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

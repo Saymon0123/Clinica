@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom'
 import {
   Calendar,
@@ -11,6 +12,7 @@ import {
   UsersRound,
   Building2,
   CreditCard,
+  MoreHorizontal,
 } from 'lucide-react'
 import { ProfileMenu } from './ProfileMenu'
 import { useSalon } from '../features/auth/useSalon'
@@ -99,6 +101,28 @@ export function AppLayout() {
   })).filter((g) => g.items.length > 0)
   const itensVisiveis = gruposVisiveis.flatMap((g) => g.items)
 
+  /**
+   * A barra inferior do celular só comporta cinco itens.
+   *
+   * Dono de rede tem dez itens de menu. Dividindo a largura de um celular por
+   * dez sobram ~37px por item — menos que a palavra "Configurações" ocupa, e
+   * era isso que embolava a barra. O resto vai para uma folha "Mais".
+   *
+   * Com cinco ou menos, todos cabem e o "Mais" não aparece: é o caso do
+   * barbeiro, que vê três telas.
+   */
+  const [maisAberto, setMaisAberto] = useState(false)
+
+  // Fecha ao trocar de tela: sem isto a folha fica por cima da pagina nova.
+  useEffect(() => {
+    setMaisAberto(false)
+  }, [location.pathname])
+
+  const CABEM_NA_BARRA = 5
+  const temMais = itensVisiveis.length > CABEM_NA_BARRA
+  const itensDaBarra = temMais ? itensVisiveis.slice(0, CABEM_NA_BARRA - 1) : itensVisiveis
+  const itensDoMais = temMais ? itensVisiveis.slice(CABEM_NA_BARRA - 1) : []
+
   // Dono de rede entra pelo painel: sem barbearia escolhida, as demais telas
   // não teriam o que carregar.
   if (!loading && !salonId && podeVerRede && !location.pathname.startsWith('/rede')) {
@@ -173,22 +197,72 @@ export function AppLayout() {
         className="md:hidden fixed bottom-0 inset-x-0 bg-sidebar border-t border-sidebar-border flex z-10"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        {itensVisiveis.map((item) => (
+        {itensDaBarra.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.to === '/'}
             className={({ isActive }) =>
-              `flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] ${
+              `flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-2 ${
                 isActive ? 'text-primary' : 'text-muted-foreground'
               }`
             }
           >
-            <item.icon size={20} />
-            {item.label}
+            <item.icon size={20} className="shrink-0" />
+            {/* `truncate` como rede de segurança: rótulo longo encolhe com
+                reticências em vez de quebrar a linha e desalinhar a barra. */}
+            <span className="text-[11px] leading-tight max-w-full truncate px-0.5">
+              {item.label}
+            </span>
           </NavLink>
         ))}
+
+        {temMais && (
+          <button
+            onClick={() => setMaisAberto(true)}
+            aria-label="Mais opções"
+            className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-2 ${
+              itensDoMais.some((i) => i.to === location.pathname)
+                ? 'text-primary'
+                : 'text-muted-foreground'
+            }`}
+          >
+            <MoreHorizontal size={20} className="shrink-0" />
+            <span className="text-[11px] leading-tight">Mais</span>
+          </button>
+        )}
       </nav>
+
+      {/* Folha "Mais": o que não coube na barra. */}
+      {maisAberto && (
+        <div
+          className="md:hidden fixed inset-0 z-30 bg-black/40 flex items-end"
+          onClick={() => setMaisAberto(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full bg-surface rounded-t-2xl border-t border-border p-2 pb-6 max-h-[70vh] overflow-y-auto"
+          >
+            <div className="mx-auto w-10 h-1 rounded-full bg-border-strong my-2" />
+            {itensDoMais.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.to === '/'}
+                onClick={() => setMaisAberto(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-4 py-3 rounded-lg text-sm ${
+                    isActive ? 'text-primary bg-primary-soft' : 'text-foreground hover:bg-surface-2'
+                  }`
+                }
+              >
+                <item.icon size={18} className="shrink-0" />
+                {item.label}
+              </NavLink>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Botão flutuante: abre o espelho do WhatsApp em nova aba (só desktop, só gestor) */}
       {isManager && (

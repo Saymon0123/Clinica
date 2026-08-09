@@ -20,7 +20,9 @@ Resolvido em 2026-08-02 pela `0026`, que removeu a view junto com as tabelas de
 pacote (fora do escopo da v1). **Quando os pacotes voltarem na v3, a view precisa
 nascer com `security_invoker = on`** — senão o mesmo furo volta com ela.
 
-### Rotacionar `EVOLUTION_API_KEY`
+### ~~Rotacionar `EVOLUTION_API_KEY`~~ — FEITO PELO DONO em 2026-08-09
+A chave foi rotacionada. O texto abaixo fica como registro do que motivou.
+
 A chave foi exposta em texto puro num print durante os testes de 2026-07-29, e
 ficou no histórico do PowerShell. É a credencial de administração do servidor
 Evolution — permite criar, apagar e ler instâncias de WhatsApp de todos os
@@ -152,8 +154,21 @@ Consequência: o lembrete reduz falta por lembrar, que já é a maior parte do
 ganho, mas o dono não consegue olhar a agenda e ver quem confirmou. E a
 "confirmação 10 min antes" da visão (v2) depende exatamente dessa peça.
 
-Caminho: o agente reconhecer a resposta como confirmação e gravar
-`status = 'confirmado'`. É trabalho no n8n, não no CRM.
+**Feito em 2026-08-09** no fluxo principal (`rJO1n7cFeNDIJyB5`), publicado:
+
+- ferramenta **Confirmar Presenca**, escrevendo pela view `agendamento_local` —
+  a mesma do cancelamento, para o retorno já trazer `data_local` e `hora_local`
+- filtro `status = 'agendado'` no update: sem ele, confirmar um horário já
+  cancelado o **ressuscitaria** na agenda
+- seção *QUANDO O CLIENTE CONFIRMA QUE VEM* no prompt, logo após CANCELAR E
+  REAGENDAR — é ali que o agente decide o que fazer com a resposta
+
+Correção de registro: `confirmado` **não** era estado morto. O botão em
+`AppointmentDetailModal.tsx:104` sempre gravou; o que faltava era o agente fazer
+isso sozinho ao ler a resposta do lembrete.
+
+**Não verificado em conversa real.** O teste é responder "confirmo" a um lembrete
+e ver `appointments.status` virar `confirmado`.
 
 ### ~~Fluxo de lembretes: 4 defeitos que impediam ativar~~ — CORRIGIDO
 Aplicados em 2026-08-02, com o fluxo ainda inativo:
@@ -378,10 +393,26 @@ Durante a verificação apareceu um defeito próprio: `recarregarUnidades()` põ
 o estado zerado — o aviso de "Salvo" desaparecia. Passou a recarregar só quando
 o **nome** muda, que é o único campo que outra tela exibe.
 
-### Wizard de criação não pede comissão nem jornada
-`SalonWizard` cria salão, dono, profissional e serviços, mas não popula
-`professional_schedules` nem `comissao_percentual`. A jornada tem fallback
-documentado (cai no horário do salão); a comissão não tem.
+### ~~Wizard de criação não pede comissão nem jornada~~ — JÁ ESTAVA CORRIGIDO
+Reaberto em 2026-08-09 para consertar, e a verificação mostrou que **já estava
+feito**: o wizard pede a comissão do dono (`SalonWizard.tsx:448`) e
+`admin-create-salon` grava a jornada derivada do horário de funcionamento
+(`jornadaDoHorario`, linha 74). O que envelheceu foi este registro.
+
+Conferido no dado real: **Samuel Rocha**, cadastrada em 05/08, nasceu com 6
+linhas de jornada e comissão definida.
+
+O que sobrou era **dado legado** das barbearias de 31/07, anteriores à correção.
+São José dos Pinhais estava com zero jornada — exatamente o que a regra 5 da
+auditoria acusa — e foi preenchida com a mesma regra da edge function, para o
+legado não divergir do que nasce hoje.
+
+**Pendência de decisão, não de código:** um profissional em São José e um em
+Curitiba seguem com `comissao_percentual` nulo, e o Financeiro deles calcula
+zero. É combinado comercial — o dono define na aba Equipe.
+
+Lição de método: item de backlog descreve o dia em que foi escrito, não o de
+hoje. Conferir no código antes de reabrir — eu quase reconstruí o que já existia.
 
 ### Pacotes de crédito e planos não têm interface
 7 tabelas com RLS e policies completas (`packages`, `package_items`,

@@ -46,8 +46,49 @@ pelo que cobram, na avaliação do dono), grupo de WhatsApp, caderno, ou memóri
 Agendar, reagendar, cancelar, informar preço.
 
 ### Nunca deve fazer
-**`[ABERTO]`** — ainda não definido. É a fronteira mais importante do produto e
-está sem resposta.
+Definido em 2026-08-09. Cada item nasceu de um comportamento observado nos
+testes ou de um dano concreto — nenhum é precaução genérica.
+
+**A regra-mãe:** o agente resolve o que é do **próprio cliente** e está **dentro
+do que a barbearia cadastrou**. Fora disso ele não decide: chama o dono, avisa
+em uma frase e para.
+
+**Dinheiro.** Não dá desconto, cortesia nem "condição especial"; não cobra preço
+diferente do catálogo; não combina forma de pagamento, parcelamento ou fiado;
+não promete promoção, pacote ou fidelidade. Nada disso é dele para dar, e o
+barbeiro só descobriria na cadeira. Pacotes, aliás, foram removidos na `0026` —
+prometê-los é prometer o que não existe.
+
+**Compromisso.** Não promete duração ("fica pronto em 20 minutos"), resultado
+("vai ficar ótimo"), garantia ("se não gostar a gente refaz") nem encaixe fora
+da jornada. Também não promete prazo de resposta do dono. Já custou caro uma
+vez: nos primeiros testes ele anunciou um agendamento que não existia.
+
+**Outras pessoas.** Não mexe, consulta nem comenta horário que não seja do
+cliente com quem fala — nem quem está agendado, nem se o barbeiro está cheio.
+`Verificar Disponibilidade` devolve agendamento de todos; a fronteira aqui separa
+"ocupado às 15h" de vazar a agenda alheia.
+
+**Fora da barbearia.** Não fala de queda de cabelo, couro cabeludo, alergia,
+química, gravidez, nem de cuidado ou resultado — **nem o descritivo**. Devolve
+para a barbearia. Não fala de concorrente, assunto pessoal, político ou
+religioso, e não manda link. O risco não é constrangimento: "pode fazer
+progressiva grávida" é uma frase que um modelo produz com naturalidade e que
+ninguém autorizou.
+
+**Identidade.** Não supõe o nome do cliente — ele já assumiu "Saymon" sem
+perguntar, num teste real. Não pede CPF, cartão, endereço nem foto.
+
+**Se perguntarem se é um robô, ele assume.** Resposta curta e sem drama. Negar é
+o tipo de coisa que vira print, e a confiança perdida aí não volta.
+
+**Reclamação vai direto para o dono**, sem tentativa de resolver. Cliente
+irritado que recebe resposta automática fica mais irritado, e essa é a conversa
+em que o dono mais perde dinheiro se for mal conduzida.
+
+Parte disto é verificável em SQL e virou regra de auditoria na migration `0049`
+— desconto, promessa de prazo, preço fora do catálogo e assunto de saúde. Sem
+isso a fronteira seria só texto, e ninguém saberia se está valendo.
 
 ### Quando chama o dono
 - sempre que o cliente pedir

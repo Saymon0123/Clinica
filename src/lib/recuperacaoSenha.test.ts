@@ -101,9 +101,24 @@ describe('codigoPareceValido', () => {
     expect(codigoPareceValido('123 456')).toBe(true)
   })
 
-  it('recusa quantidade errada de dígitos', () => {
+  /**
+   * O caso que quebrou em produção em 2026-08-09: o projeto está configurado
+   * para 8 dígitos e a tela recusava o código certo, copiado do e-mail.
+   *
+   * O teste antigo afirmava `codigoPareceValido('1234567') === false` — ele
+   * travava o defeito no lugar em vez de pegá-lo. Um teste só protege o que
+   * ele descreve, e este descrevia uma regra que o Supabase não tem.
+   */
+  it('aceita a faixa inteira que o Supabase permite configurar', () => {
+    expect(codigoPareceValido('1234567')).toBe(true)
+    expect(codigoPareceValido('12345678')).toBe(true)
+    expect(codigoPareceValido('1234567890')).toBe(true)
+    expect(codigoPareceValido('1234 5678')).toBe(true)
+  })
+
+  it('recusa o que nao pode ser codigo nenhum', () => {
     expect(codigoPareceValido('12345')).toBe(false)
-    expect(codigoPareceValido('1234567')).toBe(false)
+    expect(codigoPareceValido('12345678901')).toBe(false)
     expect(codigoPareceValido('')).toBe(false)
   })
 })

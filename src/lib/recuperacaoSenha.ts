@@ -72,7 +72,25 @@ export function normalizarCodigo(bruto: string): string {
   return (bruto ?? '').replace(/\D/g, '')
 }
 
-/** O código do Supabase tem 6 dígitos. */
+/** Menor e maior tamanho de OTP que o Supabase permite configurar. */
+export const CODIGO_MIN = 6
+export const CODIGO_MAX = 10
+
+/**
+ * O código **não** tem tamanho fixo.
+ *
+ * Isto exigia 6 dígitos exatos, e o projeto está configurado para 8 — então o
+ * código certo, copiado do e-mail, era recusado pela nossa própria tela antes
+ * de chegar ao Supabase. Pior: o campo tinha `maxLength` de 7, então o oitavo
+ * dígito nem podia ser digitado; a pessoa via um código truncado e a acusação
+ * de que ele estava errado.
+ *
+ * O tamanho é ajustável em Authentication → Providers → Email, de 6 a 10.
+ * Aceitar a faixa inteira tira a tela dessa dependência: quem julga se o código
+ * está certo é o Supabase, não nós. A checagem aqui existe só para evitar uma
+ * ida à rede com o campo obviamente incompleto.
+ */
 export function codigoPareceValido(bruto: string): boolean {
-  return normalizarCodigo(bruto).length === 6
+  const limpo = normalizarCodigo(bruto)
+  return limpo.length >= CODIGO_MIN && limpo.length <= CODIGO_MAX
 }

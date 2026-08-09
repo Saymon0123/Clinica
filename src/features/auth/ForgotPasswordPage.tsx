@@ -4,6 +4,7 @@ import { Eye, EyeOff } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { urlDeRedefinicaoDeSenha } from '../../lib/appUrl'
 import {
+  CODIGO_MAX,
   codigoPareceValido,
   hashDeEntrada,
   mensagemDeErroDoRetorno,
@@ -68,7 +69,7 @@ export function ForgotPasswordPage() {
     setErro(null)
 
     if (!codigoPareceValido(codigo)) {
-      setErro('O código tem 6 dígitos. Confira o que chegou no e-mail.')
+      setErro('Código incompleto. Confira o que chegou no e-mail.')
       return
     }
     if (senha.length < 6) {
@@ -125,7 +126,9 @@ export function ForgotPasswordPage() {
         {etapa === 'email' ? (
           <form onSubmit={pedirCodigo} className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Informe o e-mail da sua conta. Vamos enviar um código de 6 dígitos.
+              {/* Sem dizer o tamanho do código: ele é configurável no Supabase
+                  (6 a 10) e o texto envelheceria de novo a cada ajuste. */}
+              Informe o e-mail da sua conta. Vamos enviar um código de acesso.
             </p>
 
             <div>
@@ -159,8 +162,8 @@ export function ForgotPasswordPage() {
         ) : (
           <form onSubmit={salvarNovaSenha} className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Se houver conta com esse e-mail, enviamos um código de 6 dígitos. Verifique também o
-              spam. Digite o código e escolha a nova senha.
+              Se houver conta com esse e-mail, enviamos um código. Verifique também o spam.
+              Digite o código e escolha a nova senha.
             </p>
 
             <div>
@@ -171,7 +174,11 @@ export function ForgotPasswordPage() {
                 required
                 inputMode="numeric"
                 autoComplete="one-time-code"
-                maxLength={7}
+                // Folga sobre o maior codigo possivel (10 digitos), porque
+                // quem cola do e-mail traz espaco ou traco junto -- eles sao
+                // removidos depois, por `normalizarCodigo`. Estava em 7, e o
+                // oitavo digito do codigo real nao cabia no campo.
+                maxLength={CODIGO_MAX + 4}
                 placeholder="000000"
                 value={codigo}
                 onChange={(e) => setCodigo(e.target.value)}

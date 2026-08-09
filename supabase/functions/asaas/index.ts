@@ -403,7 +403,15 @@ Deno.serve(async (req: Request) => {
         method: 'POST',
         body: JSON.stringify({
           customer: customerId,
-          billingType: 'PIX',
+          // `UNDEFINED` deixa a forma de pagamento aberta na fatura — Pix,
+          // boleto ou cartão, quem paga escolhe.
+          //
+          // Não é preferência: em 2026-08-09 a conta de produção recusou
+          // `PIX` aqui com `invalid_billingType` ("A forma de pagamento não é
+          // permitida para assinaturas"), enquanto o sandbox aceitava. Fixar
+          // Pix numa recorrência é o que o Asaas não permite; na cobrança
+          // avulsa logo abaixo ele permite, e por isso lá continua `PIX`.
+          billingType: 'UNDEFINED',
           value: Number(assinatura.valor),
           nextDueDate: vencimento.toISOString().slice(0, 10),
           cycle: 'MONTHLY',

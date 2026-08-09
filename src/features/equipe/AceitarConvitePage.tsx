@@ -72,7 +72,7 @@ export function AceitarConvitePage() {
           <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary text-primary-foreground">
             <Scissors size={18} />
           </span>
-          <span className="font-semibold text-foreground">Salão CRM</span>
+          <span className="font-semibold text-foreground">Club Cut</span>
         </div>
 
         {carregando ? (

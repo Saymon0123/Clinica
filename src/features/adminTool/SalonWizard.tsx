@@ -207,7 +207,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
 
         <CopyField
           label="Mensagem pronta para WhatsApp"
-          value={`Olá! Seu acesso ao Salão CRM está pronto.\n\nLink: ${resultado.loginUrl}\nE-mail: ${resultado.email}\nSenha: ${resultado.tempPassword}\n\nRecomendo trocar a senha assim que entrar.`}
+          value={`Olá! Seu acesso ao Club Cut está pronto.\n\nLink: ${resultado.loginUrl}\nE-mail: ${resultado.email}\nSenha: ${resultado.tempPassword}\n\nRecomendo trocar a senha assim que entrar.`}
         />
 
         <div className="pt-2 border-t border-border">

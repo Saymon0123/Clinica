@@ -415,7 +415,11 @@ Deno.serve(async (req: Request) => {
           value: Number(assinatura.valor),
           nextDueDate: vencimento.toISOString().slice(0, 10),
           cycle: 'MONTHLY',
-          description: `CRM Salao - plano ${assinatura.plan_codigo}`,
+          // Vira a descricao da cobranca na fatura do Asaas -- o unico lugar
+          // onde o nome do produto aparece num documento financeiro que o
+          // cliente pagante le. Assinatura ja criada mantem a descricao
+          // antiga: o Asaas nao reescreve recorrencia existente.
+          description: `Club Cut - plano ${assinatura.plan_codigo}`,
           externalReference: salonId,
         }),
       })

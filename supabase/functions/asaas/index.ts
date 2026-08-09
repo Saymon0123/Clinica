@@ -319,7 +319,12 @@ Deno.serve(async (req: Request) => {
       method: 'POST',
       body: JSON.stringify({
         customer: assinatura.asaas_customer_id,
-        billingType: 'PIX',
+        // `UNDEFINED` pelo mesmo motivo da assinatura: forcar Pix so funciona
+        // se a conta do Asaas tiver chave Pix liberada, e a nossa nao tinha --
+        // a cobranca da diferenca era recusada e a troca de plano morria em
+        // 502. Aberta, a fatura oferece Pix, boleto e cartao, e quem paga
+        // escolhe. O caminho nao depende mais da aprovacao do Pix.
+        billingType: 'UNDEFINED',
         value: conta.valor,
         dueDate: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10),
         description: `Troca para o plano ${planoDestino.nome} (${conta.diasRestantes} dias)`,
@@ -408,9 +413,11 @@ Deno.serve(async (req: Request) => {
           //
           // Não é preferência: em 2026-08-09 a conta de produção recusou
           // `PIX` aqui com `invalid_billingType` ("A forma de pagamento não é
-          // permitida para assinaturas"), enquanto o sandbox aceitava. Fixar
-          // Pix numa recorrência é o que o Asaas não permite; na cobrança
-          // avulsa logo abaixo ele permite, e por isso lá continua `PIX`.
+          // permitida para assinaturas"), enquanto o sandbox aceitava.
+          //
+          // A causa comum das duas recusas — esta e a da cobrança avulsa da
+          // troca de plano — é a conta não ter chave Pix liberada. Nenhuma
+          // chamada nossa fixa forma de pagamento: quem escolhe é quem paga.
           billingType: 'UNDEFINED',
           value: Number(assinatura.valor),
           nextDueDate: vencimento.toISOString().slice(0, 10),

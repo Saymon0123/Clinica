@@ -667,15 +667,15 @@ Três achados que custaram tempo e não são óbvios:
   caminho comum. Qualquer cobrança avulsa nova precisa da mesma atenção.
 
 ### Curitiba: banco diz R$ 299, recorrencia no Asaas diz R$ 5
-Aberto em 2026-08-09. Para o teste de pagamento real o  da assinatura
-foi baixado para R$ 5,00, e a recorrencia  foi criada no
+Aberto em 2026-08-09. Para o teste de pagamento real o `valor` da assinatura
+foi baixado para R$ 5,00, e a recorrencia `sub_klx4z6d0xv9p83h4` foi criada no
 Asaas com esse valor. O banco ja voltou para R$ 299; **o Asaas nao**, porque a
 chave da API nao esta acessivel daqui.
 
 Enquanto durar, uma cobranca gerada por aquela recorrencia sai por **R$ 5,00**.
 
 Conserto: **Cancelar** e **Assinar agora** na tela de Assinatura. Cancelar apaga
-a recorrencia la e limpa o ; assinar cria outra ja em
+a recorrencia la e limpa o `asaas_subscription_id`; assinar cria outra ja em
 R$ 299. O cadastro do pagante e reaproveitado, entao nao duplica cliente.
 
 Vale como padrao, nao como caso isolado: **valor de teste em producao precisa de

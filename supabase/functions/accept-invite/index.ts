@@ -102,19 +102,32 @@ Deno.serve(async (req: Request) => {
       .insert({ user_id: userId, salon_id: convite.salon_id, role: convite.role })
     if (vinculoError) throw vinculoError
 
-    const { error: perfilError } = await admin
-      .from('profiles')
-      .insert({ id: userId, salon_id: convite.salon_id, role: convite.role })
-    if (perfilError) throw perfilError
+    const { data: profissional, error: profissionalError } = await admin
+      .from('professionals')
+      .insert({
+        salon_id: convite.salon_id,
+        user_id: userId,
+        nome: convite.nome,
+        ativo: true,
+        comissao_percentual: convite.comissao_percentual,
+      })
+      .select('id')
+      .single()
+    if (profissionalError || !profissional) throw profissionalError ?? new Error('Falha no profissional.')
 
-    const { error: profissionalError } = await admin.from('professionals').insert({
-      salon_id: convite.salon_id,
-      user_id: userId,
-      nome: convite.nome,
-      ativo: true,
-      comissao_percentual: convite.comissao_percentual,
-    })
-    if (profissionalError) throw profissionalError
+    // Sem vínculo com os serviços ele não apareceria como executante na
+    // agenda. Entra fazendo tudo; o gestor ajusta depois na aba Equipe.
+    const { data: servicos } = await admin
+      .from('services')
+      .select('id')
+      .eq('salon_id', convite.salon_id)
+      .eq('ativo', true)
+
+    if (servicos?.length) {
+      await admin
+        .from('professional_services')
+        .insert(servicos.map((s) => ({ professional_id: profissional.id, service_id: s.id })))
+    }
 
     // Marca o convite como usado (uso único).
     await admin

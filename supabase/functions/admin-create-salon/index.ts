@@ -3,7 +3,11 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 const ADMIN_TOOL_SECRET = Deno.env.get('ADMIN_TOOL_SECRET')
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const APP_URL = Deno.env.get('APP_URL') ?? 'https://clinica-crm-kappa.vercel.app'
+// Vai no e-mail de boas-vindas do dono novo. O fallback so entra em cena se o
+// secret `APP_URL` sumir -- mas ai ele decide sozinho para onde a pessoa e
+// mandada, sem erro nenhum aparecer. Apontava para `clinica-crm-kappa` mesmo
+// depois de o produto virar Club Cut, e o dominio antigo um dia sai do ar.
+const APP_URL = Deno.env.get('APP_URL') ?? 'https://clubcut.vercel.app'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

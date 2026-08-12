@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Check, Eye, EyeOff, Scissors } from 'lucide-react'
 import { invokeFunction } from '../../lib/invokeFunction'
+import { VERSAO_DOS_TERMOS } from '../../lib/termos'
 
 type ConviteInfo = {
   nome: string | null
@@ -19,6 +20,9 @@ export function AceitarConvitePage() {
   const [erro, setErro] = useState<string | null>(null)
 
   const [nome, setNome] = useState('')
+  // Começa DESMARCADO de propósito. Caixa pré-marcada não é ato afirmativo, e
+  // é a diferença entre um aceite que segura numa disputa e um que não.
+  const [aceitouTermos, setAceitouTermos] = useState(false)
   const [senha, setSenha] = useState('')
   const [confirmacao, setConfirmacao] = useState('')
   const [mostrarSenha, setMostrarSenha] = useState(false)
@@ -53,6 +57,10 @@ export function AceitarConvitePage() {
       setErro('Informe seu nome.')
       return
     }
+    if (!aceitouTermos) {
+      setErro('É preciso aceitar os termos de uso para continuar.')
+      return
+    }
     if (senha.length < 8) {
       setErro('A senha precisa ter pelo menos 8 caracteres.')
       return
@@ -66,7 +74,9 @@ export function AceitarConvitePage() {
     setErro(null)
     const { error } = await invokeFunction(
       'accept-invite',
-      { body: { token, senha, nome: nome.trim() || undefined } },
+      // A versão vai junto: é ela que liga o registro do aceite ao texto exato
+      // que estava no ar quando a pessoa marcou a caixa.
+      { body: { token, senha, nome: nome.trim() || undefined, versaoTermos: VERSAO_DOS_TERMOS } },
       'Não foi possível concluir o cadastro. Tente novamente.',
     )
     setSalvando(false)
@@ -188,6 +198,38 @@ export function AceitarConvitePage() {
                 onChange={(e) => setConfirmacao(e.target.value)}
                 className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
               />
+            </label>
+
+            {/* Os links abrem em aba nova: clicar para ler não pode custar a
+                senha já digitada e o convite aberto. */}
+            <label className="flex items-start gap-2 cursor-pointer pt-1">
+              <input
+                type="checkbox"
+                checked={aceitouTermos}
+                onChange={(e) => setAceitouTermos(e.target.checked)}
+                className="mt-0.5 accent-primary shrink-0"
+              />
+              <span className="text-xs text-muted-foreground">
+                Li e aceito os{' '}
+                <a
+                  href="/termos"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  termos de uso
+                </a>{' '}
+                e a{' '}
+                <a
+                  href="/privacidade"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  política de privacidade
+                </a>
+                .
+              </span>
             </label>
 
             {erro && <p className="text-sm text-danger">{erro}</p>}

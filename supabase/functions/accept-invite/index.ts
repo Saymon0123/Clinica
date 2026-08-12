@@ -25,7 +25,13 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'Method not allowed' }, 405)
   }
 
-  let body: { action?: string; token?: string; senha?: string; nome?: string } = {}
+  let body: {
+    action?: string
+    token?: string
+    senha?: string
+    nome?: string
+    versaoTermos?: string
+  } = {}
   try {
     body = await req.json()
   } catch {
@@ -81,6 +87,14 @@ Deno.serve(async (req: Request) => {
   const nomeFinal = (convite.nome ?? body.nome ?? '').trim()
   if (!nomeFinal) {
     return json({ error: 'Informe seu nome.' }, 400)
+  }
+
+  // Sem versão não há aceite: um registro que não diz QUAL texto foi aceito
+  // não prova nada. A tela sempre manda; recusar aqui fecha o caminho de quem
+  // chamar a função por fora dela.
+  const versaoTermos = body.versaoTermos?.trim()
+  if (!versaoTermos) {
+    return json({ error: 'É preciso aceitar os termos de uso para continuar.' }, 400)
   }
 
   // E-mail já cadastrado?
@@ -182,6 +196,24 @@ Deno.serve(async (req: Request) => {
         .is('acesso_ate', null)
       if (erroTrial) throw erroTrial
     }
+
+    // A prova do aceite. Gravada ANTES de marcar o convite como usado: se
+    // falhar, o catch desfaz a conta inteira e a pessoa tenta de novo — pior
+    // seria a conta existir sem registro de que alguém aceitou alguma coisa.
+    //
+    // `ip` e `user_agent` saem do cabeçalho da requisição, não do corpo. Vindo
+    // do formulário, quem aceita escolheria o que fica registrado.
+    const { error: erroAceite } = await admin.from('termos_aceites').insert({
+      user_id: userId,
+      salon_id: convite.salon_id,
+      versao: versaoTermos,
+      ip:
+        req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+        req.headers.get('cf-connecting-ip') ??
+        null,
+      user_agent: req.headers.get('user-agent'),
+    })
+    if (erroAceite) throw erroAceite
 
     // Marca o convite como usado (uso único).
     await admin

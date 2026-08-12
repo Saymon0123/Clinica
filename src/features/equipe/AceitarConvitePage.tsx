@@ -3,7 +3,14 @@ import { Link, useParams } from 'react-router-dom'
 import { Check, Eye, EyeOff, Scissors } from 'lucide-react'
 import { invokeFunction } from '../../lib/invokeFunction'
 
-type ConviteInfo = { nome: string; email: string; salao: string; role: string }
+type ConviteInfo = {
+  nome: string | null
+  email: string
+  salao: string
+  role: string
+  /** Convite de dono vem sem nome — quem aceita digita o próprio. */
+  pedeNome?: boolean
+}
 
 export function AceitarConvitePage() {
   const { token } = useParams<{ token: string }>()
@@ -11,6 +18,7 @@ export function AceitarConvitePage() {
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
 
+  const [nome, setNome] = useState('')
   const [senha, setSenha] = useState('')
   const [confirmacao, setConfirmacao] = useState('')
   const [mostrarSenha, setMostrarSenha] = useState(false)
@@ -41,6 +49,10 @@ export function AceitarConvitePage() {
 
   async function aceitar(e: FormEvent) {
     e.preventDefault()
+    if (info?.pedeNome && !nome.trim()) {
+      setErro('Informe seu nome.')
+      return
+    }
     if (senha.length < 8) {
       setErro('A senha precisa ter pelo menos 8 caracteres.')
       return
@@ -54,7 +66,7 @@ export function AceitarConvitePage() {
     setErro(null)
     const { error } = await invokeFunction(
       'accept-invite',
-      { body: { token, senha } },
+      { body: { token, senha, nome: nome.trim() || undefined } },
       'Não foi possível concluir o cadastro. Tente novamente.',
     )
     setSalvando(false)
@@ -104,10 +116,23 @@ export function AceitarConvitePage() {
         ) : (
           <form onSubmit={aceitar} className="space-y-4">
             <div>
-              <h1 className="text-base font-semibold text-foreground">Olá, {info.nome}!</h1>
+              {/* Sem nome o cumprimento sairia como "Olá, !". E quem é dono não
+                  foi convidado para *trabalhar na* barbearia — ela é dele. */}
+              <h1 className="text-base font-semibold text-foreground">
+                {info.nome ? `Olá, ${info.nome}!` : 'Bem-vindo!'}
+              </h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Você foi convidado para trabalhar na <strong>{info.salao}</strong>. Crie sua senha
-                para acessar.
+                {info.role === 'owner' ? (
+                  <>
+                    Seu acesso à <strong>{info.salao}</strong> está pronto. Crie sua senha para
+                    entrar.
+                  </>
+                ) : (
+                  <>
+                    Você foi convidado para trabalhar na <strong>{info.salao}</strong>. Crie sua
+                    senha para acessar.
+                  </>
+                )}
               </p>
             </div>
 
@@ -117,6 +142,22 @@ export function AceitarConvitePage() {
                 {info.email}
               </div>
             </div>
+
+            {info.pedeNome && (
+              <label className="block">
+                <span className="text-xs font-medium text-muted-foreground">Como você se chama?</span>
+                <input
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  placeholder="Seu nome"
+                  autoComplete="name"
+                  className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                />
+                <span className="block text-[11px] text-muted-foreground mt-1">
+                  É o nome que aparece na agenda e que o atendimento no WhatsApp usa.
+                </span>
+              </label>
+            )}
 
             <label className="block">
               <span className="text-xs font-medium text-muted-foreground">Crie uma senha</span>

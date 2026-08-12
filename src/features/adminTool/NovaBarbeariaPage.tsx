@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react'
-import { Lock, Plus, Store } from 'lucide-react'
+import { Lock, Plus, Send, Store } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { SalonWizard } from './SalonWizard'
 import { SalonList } from './SalonList'
+import { ConvidarBarbearia } from './ConvidarBarbearia'
 
 const SECRET_STORAGE_KEY = 'admin_tool_secret'
 
@@ -75,7 +76,7 @@ function AccessGate({ onUnlock }: { onUnlock: (secret: string) => void }) {
 
 export function NovaBarbeariaPage() {
   const [secret, setSecret] = useState<string | null>(() => sessionStorage.getItem(SECRET_STORAGE_KEY))
-  const [aba, setAba] = useState<'lista' | 'nova'>('lista')
+  const [aba, setAba] = useState<'lista' | 'nova' | 'convite'>('lista')
   const [refreshKey, setRefreshKey] = useState(0)
 
   if (!secret) {
@@ -113,12 +114,25 @@ export function NovaBarbeariaPage() {
             <Plus size={15} />
             Nova barbearia
           </button>
+          <button
+            onClick={() => setAba('convite')}
+            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              aba === 'convite'
+                ? 'border-primary text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Send size={15} />
+            Convidar
+          </button>
         </div>
 
         {aba === 'lista' ? (
           <SalonList secret={secret} refreshKey={refreshKey} />
-        ) : (
+        ) : aba === 'nova' ? (
           <SalonWizard secret={secret} onCreated={() => setRefreshKey((k) => k + 1)} />
+        ) : (
+          <ConvidarBarbearia secret={secret} onCriado={() => setRefreshKey((k) => k + 1)} />
         )}
       </div>
     </div>

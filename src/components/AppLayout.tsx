@@ -22,6 +22,7 @@ import { usePendingConversations } from '../features/whatsappWeb/usePendingConve
 import { useAssinatura } from '../features/assinatura/useAssinatura'
 import { AvisoAssinatura } from '../features/assinatura/AvisoAssinatura'
 import { AcessoBloqueado } from '../features/assinatura/AcessoBloqueado'
+import { CriarBarbeariaPage } from '../features/onboarding/CriarBarbeariaPage'
 import { ThemeToggle } from './ThemeToggle'
 
 type NavItem = {
@@ -73,7 +74,7 @@ function navLinkClass({ isActive }: { isActive: boolean }) {
 }
 
 export function AppLayout() {
-  const { salonId, salonName, isManager, isOwner, isNetwork, loading } = useSalon()
+  const { salonId, salonName, isManager, isOwner, isNetwork, loading, unidades } = useSalon()
   const location = useLocation()
   const { alerts, dismiss } = useAppointmentAlerts(salonId)
   const { hasPending } = usePendingConversations(isManager ? salonId : null)
@@ -122,6 +123,17 @@ export function AppLayout() {
   const temMais = itensVisiveis.length > CABEM_NA_BARRA
   const itensDaBarra = temMais ? itensVisiveis.slice(0, CABEM_NA_BARRA - 1) : itensVisiveis
   const itensDoMais = temMais ? itensVisiveis.slice(CABEM_NA_BARRA - 1) : []
+
+  // Conta sem barbearia nenhuma é o estado normal de quem acabou de se
+  // cadastrar — o segundo passo do cadastro aberto. Antes disto, seis telas
+  // repetiam "fale com o administrador do sistema", que era um beco: quem
+  // caísse ali não tinha o que fazer.
+  //
+  // `unidades.length` e não `salonId`: dono de rede sem unidade escolhida
+  // também tem `salonId` nulo, e mandá-lo criar barbearia seria absurdo.
+  if (!loading && unidades.length === 0) {
+    return <CriarBarbeariaPage />
+  }
 
   // Dono de rede entra pelo painel: sem barbearia escolhida, as demais telas
   // não teriam o que carregar.

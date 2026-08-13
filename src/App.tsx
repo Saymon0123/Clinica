@@ -43,6 +43,9 @@ const AceitarConvitePage = lazy(() =>
 // Sem guard de autenticação de propósito: são lidas por quem ainda não tem
 // conta — o dono decidindo se aceita, e o cliente da barbearia que recebeu o
 // link pelo agente. Exigir login para ler o que se aceita contraria o CDC 46.
+const CriarContaPage = lazy(() =>
+  import('./features/onboarding/CriarContaPage').then((m) => ({ default: m.CriarContaPage })),
+)
 const TermosPage = lazy(() => import('./features/legal/TermosPage').then((m) => ({ default: m.TermosPage })))
 const PrivacidadePage = lazy(() =>
   import('./features/legal/PrivacidadePage').then((m) => ({ default: m.PrivacidadePage })),
@@ -94,6 +97,7 @@ function App() {
         <Suspense fallback={<Carregando />}>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/criar-conta" element={<CriarContaPage />} />
             <Route path="/esqueci-senha" element={<ForgotPasswordPage />} />
             <Route path="/redefinir-senha" element={<ResetPasswordPage />} />
             <Route path="/admin/nova-barbearia" element={<NovaBarbeariaPage />} />

@@ -87,6 +87,16 @@ export function LoginPage() {
         >
           {submitting ? 'Entrando...' : 'Entrar'}
         </button>
+
+        {/* Sem isto a tela de cadastro existe e ninguém chega nela: o anúncio
+            leva à página de vendas, mas quem digita o endereço do CRM direto
+            cai aqui. */}
+        <p className="text-center text-sm text-muted-foreground">
+          Ainda não tem conta?{' '}
+          <Link to="/criar-conta" className="text-primary hover:underline">
+            Criar conta grátis
+          </Link>
+        </p>
       </form>
     </div>
   )

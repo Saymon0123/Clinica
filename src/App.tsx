@@ -46,6 +46,9 @@ const AceitarConvitePage = lazy(() =>
 const CriarContaPage = lazy(() =>
   import('./features/onboarding/CriarContaPage').then((m) => ({ default: m.CriarContaPage })),
 )
+// Página de vendas: é onde o anúncio e a prospecção caem. Pública, e fora do
+// CRM — quem chega aqui não tem conta.
+const VendasPage = lazy(() => import('./features/site/VendasPage').then((m) => ({ default: m.VendasPage })))
 const TermosPage = lazy(() => import('./features/legal/TermosPage').then((m) => ({ default: m.TermosPage })))
 const PrivacidadePage = lazy(() =>
   import('./features/legal/PrivacidadePage').then((m) => ({ default: m.PrivacidadePage })),
@@ -97,6 +100,7 @@ function App() {
         <Suspense fallback={<Carregando />}>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/inicio" element={<VendasPage />} />
             <Route path="/criar-conta" element={<CriarContaPage />} />
             <Route path="/esqueci-senha" element={<ForgotPasswordPage />} />
             <Route path="/redefinir-senha" element={<ResetPasswordPage />} />

@@ -731,6 +731,24 @@ nome (que falhou). O agente ofereceu 09:00 sem nunca ter lido os horários
 cadastrados — acertou por coincidência. As regras 17 e 21 foram ajustadas para
 corrigir o dado e chamar de novo, mas isso precisa ser verificado no teste.
 
+## Lembrete só para quem já conversou
+
+ — o fluxo de lembretes enviava para clientes que **nunca** haviam
+trocado mensagem com a barbearia, montando o número a partir do cadastro
+(). Isso é conversa fria saindo de um número automatizado, que
+é o comportamento que mais aciona bloqueio de número pela Meta.
+
+Corrigido no : sem conversa, sem lembrete. O envio também
+deixou de ter o fallback — agora só usa o  da conversa.
+
+**Troca consciente:** perde-se alcance (cliente cadastrado na mão nunca recebe
+lembrete até escrever uma vez) e ganha-se a segurança do número da barbearia,
+que é o ativo mais caro dela. Se o número cair, ela não perde o CRM — perde o
+canal de vendas.
+
+Ficou um ramo morto:  não é mais alcançado. Mantido
+para não mexer nas ligações; sai numa limpeza.
+
 ## Trocar o domínio do CRM
 
 `2026-08-05` — o endereço atual é `clinica-crm-kappa.vercel.app`, e "clinica" confunde

@@ -1,4 +1,5 @@
 import { LegalLayout, Secao } from './LegalLayout'
+import { DIAS_DE_TESTE } from '../../lib/planos'
 
 /**
  * Minuta dos termos de uso.
@@ -39,7 +40,8 @@ export function TermosPage() {
 
       <Secao titulo="3. Teste grátis">
         <p>
-          Quando houver teste, ele dura 7 dias e não pede cartão. A contagem começa no{' '}
+          Quando houver teste, ele dura {DIAS_DE_TESTE} dias e não pede cartão. A contagem começa
+          no{' '}
           <strong>seu primeiro acesso</strong>, não no dia em que o convite foi criado — se você
           demorar para entrar, não perde dias.
         </p>

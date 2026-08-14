@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Eye, EyeOff, MailCheck, Scissors } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { APP_URL } from '../../lib/appUrl'
+import { DIAS_DE_TESTE } from '../../lib/planos'
 
 /**
  * Primeiro passo do cadastro aberto: a conta.
@@ -98,7 +99,7 @@ export function CriarContaPage() {
         <div>
           <h1 className="text-base font-semibold text-foreground">Criar conta</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            7 dias grátis, sem cartão. Leva um minuto.
+            {DIAS_DE_TESTE} dias grátis, sem cartão. Leva um minuto.
           </p>
         </div>
 

@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { SalonWizard } from './SalonWizard'
 import { SalonList } from './SalonList'
 import { ConvidarBarbearia } from './ConvidarBarbearia'
+import { MetricasDoProduto } from './MetricasDoProduto'
 
 const SECRET_STORAGE_KEY = 'admin_tool_secret'
 
@@ -128,7 +129,12 @@ export function NovaBarbeariaPage() {
         </div>
 
         {aba === 'lista' ? (
-          <SalonList secret={secret} refreshKey={refreshKey} />
+          <div className="space-y-4">
+            {/* Fica acima da lista de propósito: o funil é a primeira coisa a
+                olhar, e a lista responde as perguntas que ele levanta. */}
+            <MetricasDoProduto secret={secret} key={refreshKey} />
+            <SalonList secret={secret} refreshKey={refreshKey} />
+          </div>
         ) : aba === 'nova' ? (
           <SalonWizard secret={secret} onCreated={() => setRefreshKey((k) => k + 1)} />
         ) : (

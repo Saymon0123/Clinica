@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Check, Copy, Send } from 'lucide-react'
 import { invokeFunction } from '../../lib/invokeFunction'
 import { HORARIO_PADRAO, SERVICOS_PADRAO, serializarHorario } from './servicosPadrao'
+import { DIAS_DE_TESTE } from '../../lib/planos'
 
 /**
  * Cadastro à distância — quando a conversa com o dono acontece por mensagem.
@@ -66,7 +67,7 @@ export function ConvidarBarbearia({ secret, onCriado }: { secret: string; onCria
         nome: nome.trim(),
         email: email.trim(),
         plano,
-        dias_de_teste: liberarTeste ? 7 : null,
+        dias_de_teste: liberarTeste ? DIAS_DE_TESTE : null,
         dono_atende: donoAtende,
         // Os padrões saem daqui, não de uma cópia dentro da edge function:
         // `servicosPadrao.ts` é a fonte única, compartilhada com o wizard.
@@ -98,7 +99,7 @@ export function ConvidarBarbearia({ secret, onCriado }: { secret: string; onCria
         </div>
 
         <p className="text-sm text-muted-foreground">
-          Mande o link para o dono. Ele escolhe a própria senha e entra — os 7 dias de teste começam
+          Mande o link para o dono. Ele escolhe a própria senha e entra — os {DIAS_DE_TESTE} dias de teste começam
           nesse momento, não agora. O link vale até <strong>{vence}</strong>.
         </p>
 
@@ -106,7 +107,7 @@ export function ConvidarBarbearia({ secret, onCriado }: { secret: string; onCria
 
         <CampoCopiavel
           label="Mensagem pronta para WhatsApp"
-          value={`Olá! Preparei o acesso da ${resultado.salao} no Club Cut.\n\nÉ só abrir o link, criar sua senha e já entrar:\n${resultado.link}\n\nSeus 7 dias de teste começam quando você entrar pela primeira vez.`}
+          value={`Olá! Preparei o acesso da ${resultado.salao} no Club Cut.\n\nÉ só abrir o link, criar sua senha e já entrar:\n${resultado.link}\n\nSeus ${DIAS_DE_TESTE} dias de teste começam quando você entrar pela primeira vez.`}
         />
 
         <button
@@ -177,7 +178,7 @@ export function ConvidarBarbearia({ secret, onCriado }: { secret: string; onCria
           className="mt-0.5 accent-primary"
         />
         <span className="text-sm text-foreground">
-          Liberar teste grátis de 7 dias
+          Liberar teste grátis de {DIAS_DE_TESTE} dias
           <span className="block text-xs text-muted-foreground">
             {liberarTeste
               ? 'Contados a partir do primeiro acesso dele — não da hora em que você gera o convite.'

@@ -24,8 +24,18 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
 
-/** Dias de teste do cadastro aberto. Decidido em 2026-08-12: 7 dias, sem cartão. */
-const DIAS_DE_TESTE = 7
+/**
+ * Dias de teste do cadastro aberto.
+ *
+ * Passou de 7 para 14 em 2026-08-14: o valor do produto aparece quando o
+ * cliente **volta** — quando um lembrete evita uma falta —, e numa barbearia
+ * média isso leva mais de uma semana. Em gpt-4o-mini, dobrar o prazo custa
+ * centavos por barbearia, e o teto da migration 0052 cobre o caso extremo.
+ *
+ * Cópia do que está em `src/lib/planos.ts`, porque edge function não importa
+ * de `src/`. Ao mudar num, mudar no outro.
+ */
+const DIAS_DE_TESTE = 14
 
 /** Plano em que a barbearia nasce. O Pro deixa o dono conhecer o produto
  *  inteiro durante o teste; a escolha real acontece na hora de assinar. */

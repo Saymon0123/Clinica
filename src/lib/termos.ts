@@ -13,7 +13,10 @@
  * Formato de data para ordenar sozinho e dizer, de bate-pronto, de quando é o
  * texto que a pessoa viu.
  */
-export const VERSAO_DOS_TERMOS = '2026-08-12'
+// 2026-08-14: o prazo do teste passou de 7 para 14 dias, e a cláusula 3 mudou
+// junto. Quem aceitou a versão anterior continua com o registro dela — é essa
+// diferença que permite saber, depois, quem precisa aceitar de novo.
+export const VERSAO_DOS_TERMOS = '2026-08-14'
 
 /**
  * O texto ainda não passou por advogado.

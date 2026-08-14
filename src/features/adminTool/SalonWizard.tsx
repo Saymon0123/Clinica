@@ -8,6 +8,7 @@ import {
   type DiaSemana,
   type ServicoPadrao,
 } from './servicosPadrao'
+import { DIAS_DE_TESTE } from '../../lib/planos'
 
 /**
  * `donoAtende` separa duas coisas que o sistema confundia: ser **dono** (acesso,
@@ -155,7 +156,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
             telefone: donoTelefone,
             comissao_percentual: donoAtendeEmAlguma ? Number(comissao) : null,
           },
-          assinatura: { plano, dias_de_teste: liberarTeste ? 7 : null },
+          assinatura: { plano, dias_de_teste: liberarTeste ? DIAS_DE_TESTE : null },
           unidades: unidades.map((u) => ({
             nome: u.nome,
             endereco: u.endereco,
@@ -492,10 +493,10 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
                 className="mt-0.5"
               />
               <span className="text-sm text-foreground">
-                Liberar teste grátis de 7 dias
+                Liberar teste grátis de {DIAS_DE_TESTE} dias
                 <span className="block text-xs text-muted-foreground">
                   {liberarTeste
-                    ? 'O acesso vence em 7 dias e o dono é avisado dentro do CRM antes disso.'
+                    ? `O acesso vence em ${DIAS_DE_TESTE} dias e o dono é avisado dentro do CRM antes disso.`
                     : 'Sem prazo de vencimento — use quando a barbearia já está pagando.'}
                 </span>
               </span>

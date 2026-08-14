@@ -23,6 +23,11 @@ export function CriarBarbeariaPage() {
 
   const [nome, setNome] = useState('')
   const [nomeSalao, setNomeSalao] = useState('')
+  // Terceiro campo, contra a regra de "dois e nenhum a mais" — e por um motivo
+  // concreto: sem telefone o produto não tem **nenhum** jeito de falar com o
+  // dono fora do CRM. Em 2026-08-14, quatro das cinco barbearias não tinham
+  // telefone nenhum, e o aviso de fim de teste não tinha para onde ir.
+  const [telefone, setTelefone] = useState('')
   // Desmarcado de propósito: caixa pré-marcada não é ato afirmativo.
   const [aceitou, setAceitou] = useState(false)
   const [salvando, setSalvando] = useState(false)
@@ -34,6 +39,9 @@ export function CriarBarbeariaPage() {
 
     if (!nome.trim()) return setErro('Informe seu nome.')
     if (!nomeSalao.trim()) return setErro('Informe o nome da barbearia.')
+    if (telefone.replace(/\D/g, '').length < 10) {
+      return setErro('Informe um WhatsApp com DDD.')
+    }
     if (!aceitou) return setErro('É preciso aceitar os termos de uso para continuar.')
 
     setSalvando(true)
@@ -41,6 +49,7 @@ export function CriarBarbeariaPage() {
       body: {
         nome: nome.trim(),
         nomeSalao: nomeSalao.trim(),
+        telefone: telefone.trim(),
         versaoTermos: VERSAO_DOS_TERMOS,
       },
     })
@@ -96,6 +105,21 @@ export function CriarBarbeariaPage() {
             />
             <span className="block text-[11px] text-muted-foreground mt-1">
               É assim que o atendimento automático se apresenta aos seus clientes.
+            </span>
+          </label>
+
+          <label className="block">
+            <span className="text-xs font-medium text-muted-foreground">Seu WhatsApp</span>
+            <input
+              value={telefone}
+              onChange={(e) => setTelefone(e.target.value)}
+              placeholder="(41) 99999-9999"
+              inputMode="tel"
+              autoComplete="tel"
+              className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+            />
+            <span className="block text-[11px] text-muted-foreground mt-1">
+              É por aqui que avisamos você sobre o teste e o pagamento. Não vai para seus clientes.
             </span>
           </label>
 

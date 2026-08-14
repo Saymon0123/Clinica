@@ -85,7 +85,7 @@ Deno.serve(async (req: Request) => {
   const autorizacao = req.headers.get('Authorization') ?? ''
   if (!autorizacao) return json({ error: 'Nao autorizado.' }, 401)
 
-  let body: { nome?: string; nomeSalao?: string; versaoTermos?: string } = {}
+  let body: { nome?: string; nomeSalao?: string; telefone?: string; versaoTermos?: string } = {}
   try {
     body = await req.json()
   } catch {
@@ -95,6 +95,8 @@ Deno.serve(async (req: Request) => {
   const nomePessoa = body.nome?.trim()
   const nomeSalao = body.nomeSalao?.trim()
   const versaoTermos = body.versaoTermos?.trim()
+  // So digitos: o que chega da tela vem com parenteses e traco.
+  const telefone = body.telefone?.replace(/\D/g, '') || null
 
   if (!nomePessoa) return json({ error: 'Informe seu nome.' }, 400)
   if (!nomeSalao) return json({ error: 'Informe o nome da barbearia.' }, 400)
@@ -172,7 +174,7 @@ Deno.serve(async (req: Request) => {
   try {
     const { data: salon, error: erroSalao } = await admin
       .from('salons')
-      .insert({ nome: nomeSalao, horario_funcionamento: HORARIO_PADRAO })
+      .insert({ nome: nomeSalao, telefone, horario_funcionamento: HORARIO_PADRAO })
       .select('id')
       .single()
     if (erroSalao || !salon) throw erroSalao ?? new Error('Falha ao criar a barbearia.')
@@ -199,7 +201,7 @@ Deno.serve(async (req: Request) => {
     // barbearia com equipe, e esse ajusta depois na aba Equipe.
     const { data: profissional, error: erroProf } = await admin
       .from('professionals')
-      .insert({ salon_id: salon.id, user_id: userId, nome: nomePessoa, ativo: true })
+      .insert({ salon_id: salon.id, user_id: userId, nome: nomePessoa, telefone, ativo: true })
       .select('id')
       .single()
     if (erroProf || !profissional) throw erroProf ?? new Error('Falha ao criar o profissional.')

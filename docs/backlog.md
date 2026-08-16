@@ -666,6 +666,24 @@ Três achados que custaram tempo e não são óbvios:
   poucos dias de diferença. Por isso a troca de plano é tratada **antes** do
   caminho comum. Qualquer cobrança avulsa nova precisa da mesma atenção.
 
+### ⚠️ ABERTO: Blue Barber está com valor de teste (R$ 5,00)
+
+Aberto em 2026-08-16 para o primeiro pagamento real do projeto. O preço do Pro
+é R$ 299; a assinatura da Blue Barber está em **R$ 5,00**, que é o mínimo que o
+Asaas aceita.
+
+**Precisa voltar para 299 assim que o teste terminar.** Se ela virar cliente
+real nesse estado, passa a pagar cinco reais por mês para sempre — e o valor é
+congelado no cadastro de propósito, então nem um reajuste de tabela corrige.
+
+Já aconteceu uma vez com a Curitiba (item abaixo). O que muda aqui: ficou
+registrado no mesmo dia, e não depois.
+
+**Ao restaurar, lembrar do segundo lado:** mudar `subscriptions.valor` não
+mexe na recorrência que existe no Asaas. Se a assinatura já tiver sido criada
+lá com R$ 5, o conserto é **Cancelar + Assinar de novo** pela tela, que recria
+a recorrência com o valor certo.
+
 ### Curitiba: banco diz R$ 299, recorrencia no Asaas diz R$ 5
 Aberto em 2026-08-09. Para o teste de pagamento real o `valor` da assinatura
 foi baixado para R$ 5,00, e a recorrencia `sub_klx4z6d0xv9p83h4` foi criada no

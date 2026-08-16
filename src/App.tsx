@@ -49,6 +49,10 @@ const CriarContaPage = lazy(() =>
 // Página de vendas: é onde o anúncio e a prospecção caem. Pública, e fora do
 // CRM — quem chega aqui não tem conta.
 const VendasPage = lazy(() => import('./features/site/VendasPage').then((m) => ({ default: m.VendasPage })))
+// Aberta pelo QR do balcão, por quem não tem conta nem vai ter.
+const AgendaPublicaPage = lazy(() =>
+  import('./features/agendaPublica/AgendaPublicaPage').then((m) => ({ default: m.AgendaPublicaPage })),
+)
 const TermosPage = lazy(() => import('./features/legal/TermosPage').then((m) => ({ default: m.TermosPage })))
 const PrivacidadePage = lazy(() =>
   import('./features/legal/PrivacidadePage').then((m) => ({ default: m.PrivacidadePage })),
@@ -106,6 +110,7 @@ function App() {
             <Route path="/redefinir-senha" element={<ResetPasswordPage />} />
             <Route path="/admin/nova-barbearia" element={<NovaBarbeariaPage />} />
             <Route path="/convite/:token" element={<AceitarConvitePage />} />
+            <Route path="/agendar/:salonId" element={<AgendaPublicaPage />} />
             <Route path="/termos" element={<TermosPage />} />
             <Route path="/privacidade" element={<PrivacidadePage />} />
             <Route

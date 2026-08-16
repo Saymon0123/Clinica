@@ -28,6 +28,29 @@ export function CriarContaPage() {
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [enviado, setEnviado] = useState(false)
+  const [reenviado, setReenviado] = useState(false)
+
+  /**
+   * Sem isto, "não recebi o e-mail" era beco: a pessoa não conseguia entrar
+   * (conta não confirmada) nem se cadastrar de novo (e-mail já existe). A
+   * única saída era falar com você — e a maioria não fala, some.
+   */
+  async function reenviar() {
+    setErro(null)
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email.trim(),
+      options: { emailRedirectTo: APP_URL },
+    })
+    if (error) {
+      console.error('Erro ao reenviar confirmacao:', error)
+      // O Supabase limita reenvio por endereço. Dizer "espere um pouco" é mais
+      // útil que repetir "não foi possível".
+      setErro('Aguarde um minuto antes de pedir outro e-mail.')
+      return
+    }
+    setReenviado(true)
+  }
 
   async function criar(e: FormEvent) {
     e.preventDefault()
@@ -75,12 +98,26 @@ export function CriarContaPage() {
           <p className="text-sm text-muted-foreground">
             Se esse e-mail já tinha conta, nada mudou: é só entrar normalmente.
           </p>
+
+          {erro && <p className="text-sm text-danger">{erro}</p>}
+
           <Link
             to="/login"
             className="block w-full text-center btn-primary rounded px-3 py-2.5 text-sm font-medium"
           >
             Ir para o login
           </Link>
+
+          {reenviado ? (
+            <p className="text-center text-xs text-success">Mandamos outro. Confira o spam.</p>
+          ) : (
+            <button
+              onClick={reenviar}
+              className="w-full text-center text-xs text-muted-foreground hover:text-foreground"
+            >
+              Não recebi o e-mail
+            </button>
+          )}
         </div>
       </div>
     )

@@ -666,23 +666,30 @@ Três achados que custaram tempo e não são óbvios:
   poucos dias de diferença. Por isso a troca de plano é tratada **antes** do
   caminho comum. Qualquer cobrança avulsa nova precisa da mesma atenção.
 
-### ⚠️ ABERTO: Blue Barber está com valor de teste (R$ 5,00)
+### ~~Primeiro pagamento real do projeto~~ — FEITO em 2026-08-16
 
-Aberto em 2026-08-16 para o primeiro pagamento real do projeto. O preço do Pro
-é R$ 299; a assinatura da Blue Barber está em **R$ 5,00**, que é o mínimo que o
-Asaas aceita.
+Percorrido o caminho inteiro, do zero, com dinheiro de verdade: cadastro aberto
+pela página de vendas, e-mail confirmado, barbearia criada, assinatura,
+pagamento no cartão e **acesso liberado pelo webhook, sem intervenção manual**.
 
-**Precisa voltar para 299 assim que o teste terminar.** Se ela virar cliente
-real nesse estado, passa a pagar cinco reais por mês para sempre — e o valor é
-congelado no cadastro de propósito, então nem um reajuste de tabela corrige.
+O que o webhook fez sozinho: `pendente` → `ativa`, `acesso_ate` um mês à
+frente do pagamento, e `atendimento_ate` três dias depois — a carência do
+WhatsApp aplicada automaticamente.
 
-Já aconteceu uma vez com a Curitiba (item abaixo). O que muda aqui: ficou
-registrado no mesmo dia, e não depois.
+**Pix e boleto estavam bloqueados** na conta do Asaas (conta de produção nova,
+pendente de análise). O cartão passou. Vale saber que o primeiro meio a liberar
+foi o cartão, não o Pix.
 
-**Ao restaurar, lembrar do segundo lado:** mudar `subscriptions.valor` não
-mexe na recorrência que existe no Asaas. Se a assinatura já tiver sido criada
-lá com R$ 5, o conserto é **Cancelar + Assinar de novo** pela tela, que recria
-a recorrência com o valor certo.
+### ⚠️ ABERTO: El Guardians cobra R$ 5,00 por mês no Asaas
+
+O teste foi pago com o valor mínimo. O banco já voltou para R$ 299, mas a
+**recorrência criada no Asaas continua em R$ 5,00** — mudar `subscriptions.valor`
+não alcança o que existe lá.
+
+Enquanto a recorrência existir, ela gera uma cobrança de R$ 5 todo dia 19.
+
+**Conserto:** Assinatura → **Cancelar**. O acesso segue até 19/09 (já pago) e as
+cobranças futuras param. Não precisa reassinar — a barbearia é de teste.
 
 ### Curitiba: banco diz R$ 299, recorrencia no Asaas diz R$ 5
 Aberto em 2026-08-09. Para o teste de pagamento real o `valor` da assinatura

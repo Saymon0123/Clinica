@@ -89,6 +89,21 @@ select c.id, 'out', 'agente', v.txt
     ('O ZZV Corte custa R$ 45,00')
   ) v(txt);
 
+-- Chaves de funcionalidade (migration 0059). Duas: uma em lançamento
+-- (desligada por padrão) e uma já liberada (ligada por padrão).
+insert into public.recursos (chave, nome, descricao, padrao) values
+  ('zzv_em_lancamento', 'ZZV Em lancamento', 'Desligado por padrao', false),
+  ('zzv_ja_liberado',   'ZZV Ja liberado',   'Ligado por padrao',   true)
+on conflict (chave) do nothing;
+
+insert into public.recursos_do_salao (salon_id, recurso, ativo, motivo)
+select id, 'zzv_em_lancamento', true, 'canario do lancamento'
+  from public.salons where nome = 'ZZV Em Dia';
+
+insert into public.recursos_do_salao (salon_id, recurso, ativo, motivo)
+select id, 'zzv_ja_liberado', false, 'dono pediu para desligar'
+  from public.salons where nome = 'ZZV Basica';
+
 -- ---------------------------------------------------------------
 -- Os cenários
 -- ---------------------------------------------------------------
@@ -137,7 +152,29 @@ select * from (
      true, (select n from achados where tipo = 'Opinou sobre saude ou resultado capilar') >= 1),
 
     ('Preco que ESTA no catalogo nao vira achado',
-     true, coalesce((select n from achados where tipo = 'Citou preco fora do catalogo'), 0) = 0)
+     true, coalesce((select n from achados where tipo = 'Citou preco fora do catalogo'), 0) = 0),
+
+    -- Chaves de funcionalidade: o que decide se dá para lançar a v2 sem
+    -- publicar para todo mundo de uma vez.
+    ('Recurso novo fica desligado para quem nao e excecao',
+     false, private.tem_recurso(
+       (select id from public.salons where nome = 'ZZV Basica'), 'zzv_em_lancamento')),
+
+    ('Excecao LIGA antes do lancamento geral',
+     true, private.tem_recurso(
+       (select id from public.salons where nome = 'ZZV Em Dia'), 'zzv_em_lancamento')),
+
+    ('Padrao global liga sem precisar de linha por barbearia',
+     true, private.tem_recurso(
+       (select id from public.salons where nome = 'ZZV Em Dia'), 'zzv_ja_liberado')),
+
+    ('Excecao DESLIGA mesmo com o padrao ligado',
+     false, private.tem_recurso(
+       (select id from public.salons where nome = 'ZZV Basica'), 'zzv_ja_liberado')),
+
+    ('Chave escrita errada devolve falso, nao erro',
+     false, private.tem_recurso(
+       (select id from public.salons where nome = 'ZZV Em Dia'), 'chave_que_nao_existe'))
 ) as t(cenario, esperado, obtido);
 
 rollback;

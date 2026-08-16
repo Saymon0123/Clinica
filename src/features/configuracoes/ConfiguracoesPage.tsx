@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Check, Save } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
+import { QrDoBalcao } from '../agendaPublica/QrDoBalcao'
 import {
   desserializarHorario,
   serializarHorario,
@@ -255,6 +256,10 @@ export function ConfiguracoesPage() {
           )}
         </div>
       </form>
+
+      {/* Depois do formulário de propósito: o cartaz é uma entrega, não um
+          campo para editar. No meio dos campos, o dono procuraria onde salvar. */}
+      <QrDoBalcao />
     </div>
   )
 }

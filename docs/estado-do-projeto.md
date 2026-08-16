@@ -25,6 +25,7 @@ criada → assinatura → pagamento → acesso liberado pelo webhook, sem interv
 | Lembrete e confirmação de chegada | só no Pro, via `salons_com_automacao` |
 | Cobrança | assinar, pagar, trocar de plano com rateio, cancelar, bloquear |
 | Entrada de clientes | cadastro aberto **e** convite por link |
+| QR do balcão | cliente sem hora marcada agenda sozinho — **só na Curitiba**, pela chave `agenda_publica` |
 | Jurídico | termos e privacidade publicados, com aceite registrado |
 | Vigilância | auditoria do agente, fronteira, teto de uso, alerta de queda |
 | CI | verde nos dois jobs; pgTAP passou pela primeira vez em 2026-08-16 |
@@ -54,12 +55,21 @@ usada no teste de pagamento.
 - Comarca do contrato e se haverá multa (recomendação: não haver)
 - Levar o [`contrato.md`](contrato.md) a um advogado
 
+**Verificação que falta:** o QR do balcão foi testado num **domingo**, com a
+Curitiba aberta na marra e restaurada depois. Falta ver a lista real num dia
+útil, com os dois barbeiros e a agenda cheia.
+
 **Dívida conhecida:** ver [`backlog.md`](backlog.md) — 33 itens abertos.
 
 ## 3. Próximo passo
 
 **Conseguir cinco barbearias pagando, pelo convite**, medindo ativação,
 retenção e custo real de IA — antes de gastar com anúncio.
+
+Em construção em paralelo, atrás da chave: o **balcão**. A primeira fatia (QR,
+horários livres e agendamento pelo próprio cliente) está pronta; faltam
+adiantar quem espera, o check-in com estado "em atendimento", e a política de
+atraso.
 
 O raciocínio está em [`autosservico.md`](autosservico.md): sem esses números,
 tráfego pago compra aprendizado pelo preço mais caro que existe. Com eles,

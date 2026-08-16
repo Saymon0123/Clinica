@@ -12,7 +12,20 @@
 -- `quando` sai pronto para ser colado na frase: "hoje as 14:00", "amanha as
 -- 14:00", "na quinta (07/08) as 14:00".
 
-create or replace view public.agendamentos_do_cliente
+-- `drop` antes de criar, e não `create or replace`.
+--
+-- A view ganha a coluna `quando` **no meio** das existentes, e o Postgres
+-- recusa: `cannot change name of view column "servico" to "quando"`
+-- (SQLSTATE 42P16). Um `create or replace` só aceita acrescentar colunas no
+-- fim, com os mesmos nomes e tipos na mesma ordem.
+--
+-- Em produção isto foi contornado à mão em 2026-08-05, mas o arquivo ficou com
+-- o `create or replace` — e por isso **um banco criado do zero a partir deste
+-- repositório falhava aqui**. Era a razão do CI vermelho nos testes de pgTAP,
+-- que constroem um banco limpo a cada execução.
+drop view if exists public.agendamentos_do_cliente;
+
+create view public.agendamentos_do_cliente
 with (security_invoker = on) as
 select
   a.id,

@@ -98,16 +98,19 @@ percentual.
 
 ## Funcionalidade ausente
 
-### Fluxo n8n da política de atraso não existe — **fora do repositório**
-O banco publica `atrasos_para_perguntar` (migration `0069`) com a lista pronta,
-e Configurações já tem o ajuste de tolerância. Falta o fluxo que lê essa view a
-cada 10 minutos e pergunta ao cliente se ele está a caminho.
+### Fluxo n8n da política de atraso está construído mas **desligado**
+`CRM Salao - Politica de Atraso` (id `67oZqGOIoKO6pAeQ`) existe e teve o wiring
+verificado com dados simulados, mas está inativo — e enquanto estiver, a
+política de atraso **não existe para o cliente**.
 
-Sem ele, a política de atraso **não existe para o cliente**: o barbeiro vê o
-atraso na faixa do balcão, mas ninguém pergunta nada a ninguém. É a mesma
-armadilha da aba Marketing — metade construída dentro de casa parece pronta.
+Ligar manda WhatsApp para clientes **reais** da Curitiba, a única barbearia com
+WhatsApp conectado. Antes disso faltam duas coisas: conferir na tela que as
+credenciais dos três nós ficaram preenchidas (o criador avisou que o nó HTTP foi
+pulado na atribuição automática), e fazer um teste sem terceiros — WhatsApp da
+El Guardians conectado, cliente com o número do dono, agendamento 15 minutos no
+passado, fluxo rodado à mão.
 
-Especificação completa em [`n8n-politica-de-atraso.md`](n8n-politica-de-atraso.md).
+Passo a passo em [`n8n-politica-de-atraso.md`](n8n-politica-de-atraso.md).
 
 ### Pacotes de crédito e planos não têm interface
 7 tabelas com RLS e policies completas (`packages`, `package_items`,

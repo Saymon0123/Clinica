@@ -11,7 +11,14 @@ export type Service = {
   preco: number
 }
 
-export type AppointmentStatus = 'agendado' | 'confirmado' | 'concluido' | 'cancelado' | 'bloqueio'
+export type AppointmentStatus =
+  | 'agendado'
+  | 'confirmado'
+  | 'concluido'
+  | 'cancelado'
+  | 'bloqueio'
+  // Aceito no banco desde a migration 0063, mas faltava aqui.
+  | 'faltou'
 
 export type Appointment = {
   id: string
@@ -21,6 +28,15 @@ export type Appointment = {
   data_hora_inicio: string
   data_hora_fim: string
   status: AppointmentStatus
+  /**
+   * Quando alguém marcou que o cliente chegou na barbearia.
+   *
+   * Nulo **não** quer dizer que faltou — quer dizer que ninguém confirmou. É
+   * data e hora, e não um status, porque chegar é independente de confirmar ou
+   * concluir, e porque a política de atraso vai precisar saber *quanto*
+   * atrasou, não só que atrasou.
+   */
+  chegou_em?: string | null
   client_nome?: string | null
   service_nome?: string | null
 }

@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
 import { useAgendaData } from './useAgendaData'
+import { FaixaDoBalcao } from './FaixaDoBalcao'
 import { MiniCalendar } from './MiniCalendar'
 import { NewAppointmentModal } from './NewAppointmentModal'
 import { AppointmentDetailModal } from './AppointmentDetailModal'
@@ -221,6 +222,13 @@ export function AgendaPage() {
             <Plus size={16} />
             Nova reserva
           </button>
+        </div>
+
+        {/* Acima da grade de propósito: entre um corte e outro o barbeiro quer
+            saber quem está aí e quem é o próximo, não caçar bloquinho na
+            grade. Some sozinha quando o dia não é hoje ou não há ninguém. */}
+        <div className="mb-4 empty:mb-0">
+          <FaixaDoBalcao appointments={appointments} data={selectedDate} onChanged={reload} />
         </div>
 
         {error && <p className="text-sm text-danger mb-3">{error}</p>}

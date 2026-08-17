@@ -3,6 +3,7 @@ import { Check, Save } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
 import { QrDoBalcao } from '../agendaPublica/QrDoBalcao'
+import { AvisoDeJornada } from './AvisoDeJornada'
 import {
   desserializarHorario,
   serializarHorario,
@@ -33,6 +34,9 @@ export function ConfiguracoesPage() {
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [salvo, setSalvo] = useState(false)
+  // Muda a cada gravação para o aviso de jornada reconferir: é justamente ao
+  // abrir um dia novo que o buraco aparece, e o aviso precisa surgir na hora.
+  const [gravacoes, setGravacoes] = useState(0)
 
   const carregar = useCallback(async () => {
     if (!salonId) return
@@ -105,6 +109,7 @@ export function ConfiguracoesPage() {
     }
 
     setSalvo(true)
+    setGravacoes((n) => n + 1)
 
     // Recarregar as unidades põe o SalonProvider em `loading`, o que faz o
     // RequireManager desmontar esta tela e ela voltar com o estado zerado —
@@ -256,6 +261,11 @@ export function ConfiguracoesPage() {
           )}
         </div>
       </form>
+
+      {/* Logo abaixo do formulário: é a consequência do que ele acabou de
+          salvar, e precisa ser lido antes de ele sair da tela achando que
+          terminou. */}
+      <AvisoDeJornada recarregar={gravacoes} />
 
       {/* Depois do formulário de propósito: o cartaz é uma entrega, não um
           campo para editar. No meio dos campos, o dono procuraria onde salvar. */}

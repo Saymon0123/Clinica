@@ -50,6 +50,15 @@ const BLOCK_STYLES: Record<string, { container: string; text: string; subtext: s
     text: 'text-muted-foreground line-through',
     subtext: 'text-muted-foreground/70',
   },
+  // Mesmo tratamento do cancelado, e pelo mesmo motivo: as travas de
+  // sobreposição e o `horarios_livres` ignoram os dois, então o horário está
+  // livre de verdade. Sem isto o bloco continuaria azul, dando a entender que
+  // segue ocupado logo depois de o barbeiro liberar a cadeira.
+  faltou: {
+    container: 'bg-surface-2 border-border-strong opacity-60',
+    text: 'text-muted-foreground line-through',
+    subtext: 'text-muted-foreground/70',
+  },
 }
 
 function AppointmentBlock({

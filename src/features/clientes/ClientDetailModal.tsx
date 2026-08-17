@@ -21,6 +21,9 @@ const STATUS_LABELS: Record<string, string> = {
   confirmado: 'Confirmado',
   concluido: 'Concluído',
   cancelado: 'Cancelado',
+  // O histórico do cliente é justamente onde a diferença entre "remarcou" e
+  // "sumiu três vezes" importa — e é o que a política de atraso vai olhar.
+  faltou: 'Não veio',
 }
 
 function one<T>(rel: T | T[] | null): T | null {

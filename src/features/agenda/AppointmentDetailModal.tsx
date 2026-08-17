@@ -10,6 +10,7 @@ const STATUS_LABELS: Record<string, string> = {
   concluido: 'Concluído',
   cancelado: 'Cancelado',
   bloqueio: 'Bloqueio',
+  faltou: 'Não veio',
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -18,6 +19,7 @@ const STATUS_STYLES: Record<string, string> = {
   concluido: 'bg-success-soft text-success',
   cancelado: 'bg-danger-soft text-danger',
   bloqueio: 'bg-surface-2 text-muted-foreground',
+  faltou: 'bg-warning-soft text-warning',
 }
 
 function formatDateTime(iso: string) {
@@ -140,7 +142,12 @@ export function AppointmentDetailModal({
     navigate(`/financeiro?${params.toString()}`)
   }
 
-  const isFinal = appointment.status === 'concluido' || appointment.status === 'cancelado'
+  // `faltou` entra aqui junto com os outros dois: oferecer "Concluir" em quem
+  // não apareceu produz atendimento fantasma no financeiro.
+  const isFinal =
+    appointment.status === 'concluido' ||
+    appointment.status === 'cancelado' ||
+    appointment.status === 'faltou'
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>

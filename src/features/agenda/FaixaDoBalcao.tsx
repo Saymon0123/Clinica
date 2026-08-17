@@ -30,6 +30,16 @@ import type { Appointment } from './types'
  *  daqui não é marcar falta. */
 const MINUTOS_DE_TOLERANCIA = 90
 
+/**
+ * Quanto de atraso antes de oferecer "Não veio".
+ *
+ * Oferecer no horário em ponto convida a toque errado e é grosseiro com quem
+ * está chegando. Dez minutos é o número que o dono do produto definiu para a
+ * política de atraso — nasce aqui como constante e, no passo 6, vira ajuste por
+ * barbearia em Configurações.
+ */
+const MINUTOS_PARA_MARCAR_FALTA = 10
+
 function minutosDesde(iso: string, agora: number) {
   return Math.floor((agora - new Date(iso).getTime()) / 60000)
 }
@@ -69,7 +79,7 @@ export function FaixaDoBalcao({
     )
   }, [data])
 
-  const { esperando, aChegar } = useMemo(() => {
+  const { esperando, aChegar, naoVieram } = useMemo(() => {
     const relevantes = appointments.filter(
       (a) => a.status !== 'bloqueio' && a.status !== 'cancelado' && a.status !== 'concluido',
     )
@@ -80,6 +90,10 @@ export function FaixaDoBalcao({
       aChegar: relevantes
         .filter((a) => !a.chegou_em && a.status !== 'faltou')
         .filter((a) => minutosDesde(a.data_hora_inicio, agora) <= MINUTOS_DE_TOLERANCIA)
+        .sort((a, b) => (a.data_hora_inicio < b.data_hora_inicio ? -1 : 1)),
+      // Fica visível só para poder ser desfeito. Some quando o dia vira.
+      naoVieram: relevantes
+        .filter((a) => a.status === 'faltou')
         .sort((a, b) => (a.data_hora_inicio < b.data_hora_inicio ? -1 : 1)),
     }
   }, [appointments, agora])
@@ -100,8 +114,41 @@ export function FaixaDoBalcao({
     onChanged()
   }
 
+  /**
+   * Marcar falta **libera a cadeira na hora**, em todos os canais: as duas
+   * travas de sobreposição e o `horarios_livres` ignoram `faltou`. É o que faz
+   * o check-in pagar — o horário volta a ser vendável para quem está no balcão.
+   *
+   * Não é o mesmo que cancelar, embora para a cadeira dê no mesmo. Cancelar é
+   * "não vai acontecer, combinado"; faltou é "marcou e não veio". A diferença
+   * mora no histórico do cliente, que é o que a política de atraso vai olhar.
+   */
+  async function marcarFalta(id: string, faltou: boolean) {
+    setSalvando(id)
+    setErro(null)
+    const { error } = await supabase
+      .from('appointments')
+      .update({ status: faltou ? 'faltou' : 'agendado' })
+      .eq('id', id)
+    setSalvando(null)
+    if (error) {
+      console.error('Erro ao marcar falta:', error)
+      // Desfazer devolve o agendamento ao estado que ocupa horário, e nesse
+      // meio-tempo a cadeira pode ter sido vendida para outra pessoa — foi
+      // justamente esse o objetivo de marcar a falta. A trava de sobreposição
+      // barra, e o barbeiro precisa entender o motivo em vez de ver "erro".
+      setErro(
+        error.code === '23P01'
+          ? 'Esse horário já foi ocupado por outra pessoa. Marque uma nova reserva.'
+          : 'Não foi possível salvar. Tente de novo.',
+      )
+      return
+    }
+    onChanged()
+  }
+
   if (!temBalcao || !ehHoje) return null
-  if (esperando.length === 0 && aChegar.length === 0) return null
+  if (esperando.length === 0 && aChegar.length === 0 && naoVieram.length === 0) return null
 
   return (
     <div className="rounded-xl border border-border bg-surface p-4 space-y-4">
@@ -166,6 +213,17 @@ export function FaixaDoBalcao({
                     {atraso > 0 && <span className="text-warning"> · {atraso} min de atraso</span>}
                   </div>
                 </div>
+                {/* "Não veio" só depois dos 10 minutos: no horário em ponto
+                    convida a toque errado e é grosseiro com quem está a caminho. */}
+                {atraso >= MINUTOS_PARA_MARCAR_FALTA && (
+                  <button
+                    onClick={() => marcarFalta(a.id, true)}
+                    disabled={salvando === a.id}
+                    className="shrink-0 rounded-lg border border-border-strong px-3 py-2 text-sm text-muted-foreground hover:bg-surface-2 disabled:opacity-50"
+                  >
+                    Não veio
+                  </button>
+                )}
                 <button
                   onClick={() => marcar(a.id, true)}
                   disabled={salvando === a.id}
@@ -177,6 +235,35 @@ export function FaixaDoBalcao({
               </div>
             )
           })}
+        </div>
+      )}
+
+      {naoVieram.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Não vieram</p>
+          {naoVieram.map((a) => (
+            <div
+              key={a.id}
+              className="flex items-center gap-3 rounded-lg border border-border p-2.5 opacity-70"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium text-foreground line-through">
+                  {a.client_nome ?? 'Sem nome'}
+                </div>
+                <div className="truncate text-xs text-muted-foreground">
+                  {hora(a.data_hora_inicio)} · horário liberado para outro cliente
+                </div>
+              </div>
+              <button
+                onClick={() => marcarFalta(a.id, false)}
+                disabled={salvando === a.id}
+                aria-label={`Desfazer falta de ${a.client_nome ?? 'cliente'}`}
+                className="shrink-0 rounded-lg p-2 text-muted-foreground hover:bg-surface-2 disabled:opacity-50"
+              >
+                <RotateCcw size={15} />
+              </button>
+            </div>
+          ))}
         </div>
       )}
 

@@ -98,6 +98,25 @@ percentual.
 
 ## Funcionalidade ausente
 
+### Instância de WhatsApp própria para os alertas do produto
+`canal_de_alertas` (migration `0071`) já centraliza por onde auditoria e
+feedback saem, e os dois fluxos leem de lá — mas a linha **ainda aponta para a
+instância da Curitiba**, que é de uma cliente.
+
+Enquanto for assim, se a Curitiba cancelar, trocar de número ou o WhatsApp dela
+cair, você para de receber auditoria e feedback **em silêncio**. É circular: o
+alerta que avisaria da queda depende do que caiu.
+
+Falta criar a instância na Evolution API, ler o QR com um número seu e rodar um
+`update` de duas colunas. Nenhum fluxo precisa ser editado. Passo a passo no
+painel da área de trabalho.
+
+### Fidelidade e clube de assinatura do cliente final
+Aparecem na descrição do Trinks e do AppBarber e não temos nenhum dos dois.
+Fidelidade é o que traz o cliente de volta à mesma barbearia; o clube
+("corte ilimitado por R$ X/mês") é receita recorrente **para o barbeiro**, o que
+muda o argumento de venda: o produto deixa de ser custo e vira faturamento.
+
 ### Fluxo n8n da política de atraso está construído mas **desligado**
 `CRM Salao - Politica de Atraso` (id `67oZqGOIoKO6pAeQ`) existe e teve o wiring
 verificado com dados simulados, mas está inativo — e enquanto estiver, a
@@ -112,11 +131,14 @@ passado, fluxo rodado à mão.
 
 Passo a passo em [`n8n-politica-de-atraso.md`](n8n-politica-de-atraso.md).
 
-### Pacotes de crédito e planos não têm interface
-7 tabelas com RLS e policies completas (`packages`, `package_items`,
-`client_packages`, `client_package_credits`, `package_usages`, `plans`,
-`subscriptions`) e **zero** referências em `src/`. Não podem ser testados pelo
-CRM.
+### ~~Pacotes de crédito e planos não têm interface~~ — OBSOLETO
+As cinco tabelas de pacote (`packages`, `package_items`, `client_packages`,
+`client_package_credits`, `package_usages`) **não existem mais** no banco —
+conferido em 2026-08-17. E `plans` e `subscriptions`, que sobraram, hoje são a
+espinha da cobrança pelo Asaas, com tela em `/assinatura`.
+
+Fica registrado como aviso de leitura: item de backlog envelhece, e este ficou
+meses acusando ausência de algo já removido.
 
 ### Integração de cobrança (Asaas) não existe
 `subscriptions` tem `asaas_customer_id` e `asaas_subscription_id`, mas nenhuma

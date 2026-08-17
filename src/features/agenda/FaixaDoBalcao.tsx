@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, RotateCcw, Users } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Check, Play, Receipt, RotateCcw, Users } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useRecurso } from '../recursos/useRecurso'
 import type { Appointment } from './types'
 
 /**
- * Quem chegou no balcão — o check-in.
+ * O balcão: quem chegou, quem está na cadeira e quem é o próximo.
  *
  * O sistema sabia o que foi *marcado*, nunca o que *aconteceu*. Sem isso,
  * `faltou` é palpite do barbeiro, adiantar quem espera é decisão de cabeça, e a
@@ -23,6 +24,12 @@ import type { Appointment } from './types'
  * larga a tesoura quando alguém entra. O momento real em que ele olha a tela é
  * entre um corte e outro, e a pergunta é sempre a mesma: quem está aí e quem é
  * o próximo. Abrir agendamento, achar botão e fechar é lento demais para isso.
+ *
+ * **Nenhum dos toques é obrigatório para o sistema estar certo.** Um barbeiro
+ * corrido pode ignorar a faixa inteira e a agenda continua funcionando — a
+ * ausência de marcação nunca pune ninguém sozinha. Essa é a razão de o passo
+ * seguinte (política de atraso) só poder *avisar*, nunca liberar por conta
+ * própria.
  */
 
 /** Quanto tempo depois do horário alguém ainda aparece em "a chegar". Passou
@@ -59,6 +66,7 @@ export function FaixaDoBalcao({
   onChanged: () => void
 }) {
   const temBalcao = useRecurso('balcao')
+  const navigate = useNavigate()
   const [salvando, setSalvando] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
 
@@ -79,13 +87,16 @@ export function FaixaDoBalcao({
     )
   }, [data])
 
-  const { esperando, aChegar, naoVieram } = useMemo(() => {
+  const { naCadeira, esperando, aChegar, naoVieram } = useMemo(() => {
     const relevantes = appointments.filter(
       (a) => a.status !== 'bloqueio' && a.status !== 'cancelado' && a.status !== 'concluido',
     )
     return {
+      naCadeira: relevantes
+        .filter((a) => a.iniciado_em)
+        .sort((a, b) => (a.iniciado_em! < b.iniciado_em! ? -1 : 1)),
       esperando: relevantes
-        .filter((a) => a.chegou_em)
+        .filter((a) => a.chegou_em && !a.iniciado_em)
         .sort((a, b) => (a.chegou_em! < b.chegou_em! ? -1 : 1)),
       aChegar: relevantes
         .filter((a) => !a.chegou_em && a.status !== 'faltou')
@@ -147,8 +158,47 @@ export function FaixaDoBalcao({
     onChanged()
   }
 
+  /** Sentou na cadeira, ou levantou por engano do barbeiro. */
+  async function iniciar(id: string, comecou: boolean) {
+    setSalvando(id)
+    setErro(null)
+    const { error } = await supabase
+      .from('appointments')
+      .update({ iniciado_em: comecou ? new Date().toISOString() : null })
+      .eq('id', id)
+    setSalvando(null)
+    if (error) {
+      console.error('Erro ao iniciar atendimento:', error)
+      setErro('Não foi possível salvar. Tente de novo.')
+      return
+    }
+    onChanged()
+  }
+
+  /**
+   * Terminar leva para o caixa, e não marca `concluido` direto.
+   *
+   * O CRM não tem "Concluir" solto — só "Concluir e cobrar", que é deliberado:
+   * atendimento fechado fora do caixa é dinheiro que some do financeiro. Um
+   * botão aqui que só mudasse o status criaria essa segunda porta, e ela seria
+   * a mais usada, porque é a que fica na mão do barbeiro o dia inteiro.
+   */
+  function terminar(a: Appointment) {
+    const params = new URLSearchParams({ appointmentId: a.id })
+    if (a.client_id) params.set('clientId', a.client_id)
+    if (a.professional_id) params.set('professionalId', a.professional_id)
+    if (a.service_id) params.set('serviceId', a.service_id)
+    navigate(`/financeiro?${params.toString()}`)
+  }
+
   if (!temBalcao || !ehHoje) return null
-  if (esperando.length === 0 && aChegar.length === 0 && naoVieram.length === 0) return null
+  if (
+    naCadeira.length === 0 &&
+    esperando.length === 0 &&
+    aChegar.length === 0 &&
+    naoVieram.length === 0
+  )
+    return null
 
   return (
     <div className="rounded-xl border border-border bg-surface p-4 space-y-4">
@@ -156,6 +206,58 @@ export function FaixaDoBalcao({
         <Users size={15} />
         No balcão
       </div>
+
+      {naCadeira.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Na cadeira</p>
+          {naCadeira.map((a) => {
+            // A duração prevista vem do próprio agendamento, que o trigger do
+            // banco já calculou pelo serviço — não precisa de campo novo.
+            const duracao =
+              new Date(a.data_hora_fim).getTime() - new Date(a.data_hora_inicio).getTime()
+            const previsto = new Date(new Date(a.iniciado_em!).getTime() + duracao)
+            const passou = Math.floor((agora - previsto.getTime()) / 60000)
+            return (
+              <div
+                key={a.id}
+                className="flex items-center gap-3 rounded-lg border border-primary bg-primary-soft p-2.5"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium text-primary-soft-foreground">
+                    {a.client_nome ?? 'Sem nome'}
+                  </div>
+                  <div className="truncate text-xs text-primary-soft-foreground/70">
+                    {a.service_nome ?? 'sem serviço'} ·{' '}
+                    {/* É esta linha que responde "quanto falta?" para quem
+                        espera — o motivo de existir o "em atendimento". */}
+                    {passou > 0 ? (
+                      <span className="text-warning">passou {passou} min do previsto</span>
+                    ) : (
+                      `termina por volta de ${previsto.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => terminar(a)}
+                  disabled={salvando === a.id}
+                  className="shrink-0 inline-flex items-center gap-1.5 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
+                >
+                  <Receipt size={15} />
+                  Terminar
+                </button>
+                <button
+                  onClick={() => iniciar(a.id, false)}
+                  disabled={salvando === a.id}
+                  aria-label={`Desfazer início de ${a.client_nome ?? 'cliente'}`}
+                  className="shrink-0 rounded-lg p-2 text-primary-soft-foreground/70 hover:bg-surface-2 disabled:opacity-50"
+                >
+                  <RotateCcw size={15} />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {esperando.length > 0 && (
         <div className="space-y-2">
@@ -178,6 +280,14 @@ export function FaixaDoBalcao({
                     {espera <= 0 ? 'chegou agora' : `esperando há ${espera} min`}
                   </div>
                 </div>
+                <button
+                  onClick={() => iniciar(a.id, true)}
+                  disabled={salvando === a.id}
+                  className="shrink-0 inline-flex items-center gap-1.5 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
+                >
+                  <Play size={15} />
+                  Iniciar
+                </button>
                 {/* Desfazer existe porque um toque errado no balcão é questão de
                     tempo, e sem saída o barbeiro para de confiar na faixa. */}
                 <button

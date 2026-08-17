@@ -37,6 +37,14 @@ export type Appointment = {
    * atrasou, não só que atrasou.
    */
   chegou_em?: string | null
+  /**
+   * Quando o atendimento começou de fato — o cliente sentou na cadeira.
+   *
+   * Com a duração prevista (`data_hora_fim - data_hora_inicio`) dá a previsão
+   * de término, que é o que permite responder a quem espera quanto falta.
+   * Nulo = chegou, mas ainda não sentou.
+   */
+  iniciado_em?: string | null
   client_nome?: string | null
   service_nome?: string | null
 }

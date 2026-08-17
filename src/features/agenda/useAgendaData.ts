@@ -30,7 +30,7 @@ export function useAgendaData(salonId: string | null, date: Date) {
       supabase
         .from('appointments')
         .select(
-          'id, professional_id, client_id, service_id, data_hora_inicio, data_hora_fim, status, chegou_em, clients(nome), services(nome)',
+          'id, professional_id, client_id, service_id, data_hora_inicio, data_hora_fim, status, chegou_em, iniciado_em, clients(nome), services(nome)',
         )
         .eq('salon_id', salonId)
         .gte('data_hora_inicio', start)
@@ -60,6 +60,7 @@ export function useAgendaData(salonId: string | null, date: Date) {
           data_hora_fim: r.data_hora_fim,
           status: r.status,
           chegou_em: r.chegou_em ?? null,
+          iniciado_em: r.iniciado_em ?? null,
           client_nome: r.clients?.nome ?? null,
           service_nome: r.services?.nome ?? null,
         }

@@ -29,6 +29,9 @@ export function ConfiguracoesPage() {
   const [nomeOriginal, setNomeOriginal] = useState('')
   const [endereco, setEndereco] = useState('')
   const [telefone, setTelefone] = useState('')
+  // Minutos livres exigidos antes e depois de cada atendimento. Zero mantem o
+  // comportamento antigo, colado.
+  const [folga, setFolga] = useState('0')
   const [horario, setHorario] = useState<DiaSemana[]>([])
   const [carregando, setCarregando] = useState(true)
   const [salvando, setSalvando] = useState(false)
@@ -44,7 +47,7 @@ export function ConfiguracoesPage() {
     setErro(null)
     const { data, error } = await supabase
       .from('salons')
-      .select('nome, endereco, telefone, horario_funcionamento')
+      .select('nome, endereco, telefone, horario_funcionamento, folga_entre_atendimentos_minutos')
       .eq('id', salonId)
       .maybeSingle()
 
@@ -59,6 +62,7 @@ export function ConfiguracoesPage() {
     setNomeOriginal(data.nome ?? '')
     setEndereco(data.endereco ?? '')
     setTelefone(data.telefone ?? '')
+    setFolga(String(data.folga_entre_atendimentos_minutos ?? 0))
     setHorario(desserializarHorario(data.horario_funcionamento))
     setCarregando(false)
   }, [salonId])
@@ -97,6 +101,7 @@ export function ConfiguracoesPage() {
         nome: nome.trim(),
         endereco: endereco.trim() || null,
         telefone: telefone.trim() || null,
+        folga_entre_atendimentos_minutos: Math.min(60, Math.max(0, Number(folga) || 0)),
         horario_funcionamento: serializarHorario(horario),
       })
       .eq('id', salonId)
@@ -201,6 +206,35 @@ export function ConfiguracoesPage() {
             <h2 className="text-base font-semibold text-foreground">Horário de funcionamento</h2>
             <p className="text-xs text-muted-foreground">
               O agente de IA só oferece horários dentro desta janela. Dia desmarcado é dia fechado.
+            </p>
+          </div>
+
+          {/* Fica no bloco do horário, e não no de dados, porque é a mesma
+              pergunta: quando dá para atender. */}
+          <div className="border-b border-border pb-4">
+            <label className="block text-sm text-muted-foreground mb-1" htmlFor="folga">
+              Folga entre um atendimento e outro
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                id="folga"
+                type="number"
+                min={0}
+                max={60}
+                step={5}
+                value={folga}
+                onChange={(e) => {
+                  setFolga(e.target.value)
+                  setSalvo(false)
+                }}
+                className="w-24 border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              />
+              <span className="text-sm text-muted-foreground">minutos</span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Tempo livre exigido antes e depois de cada horário, para limpar a cadeira e receber o
+              próximo. Vale para todos os serviços. <strong>Zero</strong> encaixa um cliente colado
+              no outro — cabe mais gente no dia, mas qualquer atraso empurra o resto.
             </p>
           </div>
 

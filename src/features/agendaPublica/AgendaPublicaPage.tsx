@@ -20,6 +20,10 @@ import { invokeFunction } from '../../lib/invokeFunction'
  * o barbeiro primeiro e descobrir que ele está cheio é porta fechada; ver que
  * tem 14:30 com o Rafael é porta aberta.
  */
+/** Quantos horários aparecem antes do "ver mais". Seis linhas de dois — cabe na
+ *  tela do celular sem rolar, e os primeiros são justamente os mais cedo. */
+const PRIMEIROS = 12
+
 type Servico = { id: string; nome: string; preco: number; duracao_minutos: number }
 type Horario = { professional_id: string; profissional: string; inicio: string; hora_local: string }
 type Consulta = {
@@ -37,6 +41,13 @@ export function AgendaPublicaPage() {
   const [escolhido, setEscolhido] = useState<Horario | null>(null)
   const [nome, setNome] = useState('')
   const [telefone, setTelefone] = useState('')
+
+  // Quem escaneia o QR está de pé no balcão e quer o horário mais cedo. A grade
+  // passou de 15 para 10 minutos e ganhou âncora no fim de cada atendimento
+  // (migration 0066) — bom para não desperdiçar cadeira, ruim para a lista: num
+  // dia de dois barbeiros são mais de oitenta botões, e o mais cedo, que é o que
+  // ele veio buscar, fica enterrado sob quarenta linhas de rolagem.
+  const [verTodos, setVerTodos] = useState(false)
 
   const [carregando, setCarregando] = useState(true)
   const [enviando, setEnviando] = useState(false)
@@ -57,6 +68,9 @@ export function AgendaPublicaPage() {
       }
       setDados(data)
       setServicoId(data.servicoEscolhido ?? null)
+      // Trocar de serviço muda a lista inteira: volta ao topo, senão ele fica
+      // olhando o fim do dia de um serviço que nem escolheu mais.
+      setVerTodos(false)
     },
     [salonId],
   )
@@ -221,7 +235,7 @@ export function AgendaPublicaPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-2">
-                  {dados.horarios.map((h) => (
+                  {(verTodos ? dados.horarios : dados.horarios.slice(0, PRIMEIROS)).map((h) => (
                     <button
                       key={`${h.professional_id}-${h.inicio}`}
                       onClick={() => {
@@ -235,6 +249,15 @@ export function AgendaPublicaPage() {
                     </button>
                   ))}
                 </div>
+              )}
+
+              {!verTodos && dados.horarios.length > PRIMEIROS && (
+                <button
+                  onClick={() => setVerTodos(true)}
+                  className="mt-2 w-full rounded-lg border border-border p-2.5 text-sm text-muted-foreground hover:bg-surface-2"
+                >
+                  Ver mais {dados.horarios.length - PRIMEIROS} horários
+                </button>
               )}
             </div>
 

@@ -3,6 +3,7 @@ import { Plus, Trash2, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
 import { useSalon } from '../auth/useSalon'
+import { useRecurso } from '../recursos/useRecurso'
 import type { SaleItemDraft } from './types'
 import { PAYMENT_LABELS } from './types'
 
@@ -52,6 +53,43 @@ export function NewSaleModal({
 
   const { isManager } = useSalon()
   const { user } = useAuth()
+
+  /**
+   * Cartão de fidelidade do cliente selecionado.
+   *
+   * Os carimbos vêm da view `fidelidade_do_cliente`, que os **conta** das
+   * vendas fechadas em vez de guardar um número. É o mesmo dado que a ficha do
+   * cliente e, depois, o agente do WhatsApp vão ler — o cliente que pergunta
+   * "quantos faltam?" recebe a resposta que está na tela do barbeiro.
+   */
+  const temFidelidade = useRecurso('fidelidade')
+  const [fidelidade, setFidelidade] = useState<{
+    carimbos: number
+    faltam: number
+    a_cada: number
+    tem_premio: boolean
+  } | null>(null)
+  const [premioAplicado, setPremioAplicado] = useState(false)
+
+  useEffect(() => {
+    setPremioAplicado(false)
+    if (!temFidelidade || !clientId) {
+      setFidelidade(null)
+      return
+    }
+    let cancelado = false
+    supabase
+      .from('fidelidade_do_cliente')
+      .select('carimbos, faltam, a_cada, tem_premio')
+      .eq('client_id', clientId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelado) setFidelidade(data)
+      })
+    return () => {
+      cancelado = true
+    }
+  }, [temFidelidade, clientId])
 
   useEffect(() => {
     async function load() {
@@ -153,6 +191,40 @@ export function NewSaleModal({
     setItems((prev) => prev.filter((_, i) => i !== index))
   }
 
+  /**
+   * Dá o serviço mais caro da comanda de graça.
+   *
+   * O mais caro, e não o primeiro, porque cartão de fidelidade é gentileza: o
+   * cliente que juntou dez carimbos e veio fazer corte **e** barba não deve
+   * sair achando que levou o brinde menor.
+   *
+   * Quando a linha tem mais de uma unidade, uma se separa a preço zero em vez
+   * de a linha inteira zerar — senão o prêmio de um corte pagaria três.
+   */
+  function aplicarPremio() {
+    let alvo = -1
+    items.forEach((it, i) => {
+      if (it.tipo !== 'servico' || it.preco_unitario <= 0) return
+      if (alvo < 0 || it.preco_unitario > items[alvo].preco_unitario) alvo = i
+    })
+    if (alvo < 0) {
+      setError('Adicione o serviço à comanda antes de usar o prêmio.')
+      return
+    }
+
+    const item = items[alvo]
+    const novos = [...items]
+    if (item.quantidade > 1) {
+      novos[alvo] = { ...item, quantidade: item.quantidade - 1 }
+      novos.splice(alvo + 1, 0, { ...item, quantidade: 1, preco_unitario: 0 })
+    } else {
+      novos[alvo] = { ...item, preco_unitario: 0 }
+    }
+    setError(null)
+    setItems(novos)
+    setPremioAplicado(true)
+  }
+
   async function handleSave() {
     if (items.length === 0) {
       setError('Adicione ao menos um item à venda.')
@@ -247,7 +319,20 @@ export function NewSaleModal({
         }
       }
 
-      // 6. Se veio de um agendamento, marca como concluído
+      // 6. Prêmio de fidelidade usado: registra o resgate, que zera a contagem.
+      //
+      // Amarrado a esta comanda de propósito: se a venda for cancelada, o
+      // `on delete cascade` derruba o resgate e os carimbos voltam. O cliente
+      // não recebeu nada, então não pode ter perdido o cartão.
+      if (premioAplicado && clientId) {
+        await supabase.from('fidelidade_resgates').insert({
+          salon_id: salonId,
+          client_id: clientId,
+          order_id: order.id,
+        })
+      }
+
+      // 7. Se veio de um agendamento, marca como concluído
       if (prefill?.appointmentId) {
         await supabase
           .from('appointments')
@@ -297,6 +382,47 @@ export function NewSaleModal({
                 ))}
               </select>
             </label>
+
+            {/* Logo abaixo do cliente, e não perto do total: é ao escolher quem
+                está na cadeira que o barbeiro precisa saber do cartão. No fim
+                da comanda ele já cobrou. */}
+            {fidelidade && (
+              <div
+                className={`rounded-lg border p-2.5 text-sm ${
+                  fidelidade.tem_premio
+                    ? 'border-success/40 bg-success-soft'
+                    : 'border-border bg-surface-2'
+                }`}
+              >
+                {premioAplicado ? (
+                  <span className="font-medium text-success">
+                    Prêmio aplicado — o serviço saiu de graça.
+                  </span>
+                ) : fidelidade.tem_premio ? (
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-foreground">
+                      <strong>Fidelidade completa!</strong> {fidelidade.carimbos} de{' '}
+                      {fidelidade.a_cada}.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={aplicarPremio}
+                      className="shrink-0 btn-primary rounded px-3 py-1.5 text-sm font-medium"
+                    >
+                      Usar o prêmio
+                    </button>
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground">
+                    Fidelidade: {fidelidade.carimbos} de {fidelidade.a_cada} —{' '}
+                    {fidelidade.faltam === 1
+                      ? 'falta 1 atendimento'
+                      : `faltam ${fidelidade.faltam} atendimentos`}
+                    .
+                  </span>
+                )}
+              </div>
+            )}
 
             <label className="block">
               <span className="text-xs font-medium text-muted-foreground">Profissional</span>

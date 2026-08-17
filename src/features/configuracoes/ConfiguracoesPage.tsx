@@ -3,6 +3,7 @@ import { Check, Save } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
 import { QrDoBalcao } from '../agendaPublica/QrDoBalcao'
+import { useRecurso } from '../recursos/useRecurso'
 import { AvisoDeJornada } from './AvisoDeJornada'
 import {
   desserializarHorario,
@@ -23,6 +24,7 @@ import {
  */
 export function ConfiguracoesPage() {
   const { salonId, salonName, isManager, recarregarUnidades } = useSalon()
+  const temFidelidade = useRecurso('fidelidade')
 
   const [nome, setNome] = useState('')
   // Guardado para saber se vale recarregar as unidades depois de salvar.
@@ -36,6 +38,8 @@ export function ConfiguracoesPage() {
   // mesma pergunta: quando o botão "Não veio" aparece na faixa do balcão, e
   // quando o agente pergunta ao cliente se ele está vindo.
   const [atraso, setAtraso] = useState('10')
+  // Atendimentos até o próximo sair de graça. Zero desliga.
+  const [fidelidade, setFidelidade] = useState('0')
   const [horario, setHorario] = useState<DiaSemana[]>([])
   const [carregando, setCarregando] = useState(true)
   const [salvando, setSalvando] = useState(false)
@@ -52,7 +56,7 @@ export function ConfiguracoesPage() {
     const { data, error } = await supabase
       .from('salons')
       .select(
-        'nome, endereco, telefone, horario_funcionamento, folga_entre_atendimentos_minutos, atraso_tolerado_minutos',
+        'nome, endereco, telefone, horario_funcionamento, folga_entre_atendimentos_minutos, atraso_tolerado_minutos, fidelidade_a_cada',
       )
       .eq('id', salonId)
       .maybeSingle()
@@ -70,6 +74,7 @@ export function ConfiguracoesPage() {
     setTelefone(data.telefone ?? '')
     setFolga(String(data.folga_entre_atendimentos_minutos ?? 0))
     setAtraso(String(data.atraso_tolerado_minutos ?? 10))
+    setFidelidade(String(data.fidelidade_a_cada ?? 0))
     setHorario(desserializarHorario(data.horario_funcionamento))
     setCarregando(false)
   }, [salonId])
@@ -112,6 +117,7 @@ export function ConfiguracoesPage() {
         // Mínimo de 5: abaixo disso o cliente recebe a pergunta enquanto ainda
         // está estacionando, e a barbearia parece impaciente.
         atraso_tolerado_minutos: Math.min(60, Math.max(5, Number(atraso) || 10)),
+        fidelidade_a_cada: Math.min(50, Math.max(0, Number(fidelidade) || 0)),
         horario_funcionamento: serializarHorario(horario),
       })
       .eq('id', salonId)
@@ -312,6 +318,46 @@ export function ConfiguracoesPage() {
             </div>
           ))}
         </div>
+
+        {/* Bloco próprio: fidelidade não é horário nem dado de cadastro — é
+            política comercial, e misturá-la com "quando abre" esconderia a
+            única coisa desta tela que mexe no preço. */}
+        {temFidelidade && (
+          <div className="bg-surface border border-border rounded-xl p-5 space-y-3">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">Cartão de fidelidade</h2>
+              <p className="text-xs text-muted-foreground">
+                O carimbo digital, no lugar do cartãozinho que se perde.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">A cada</span>
+              <input
+                id="fidelidade"
+                type="number"
+                min={0}
+                max={50}
+                value={fidelidade}
+                onChange={(e) => {
+                  setFidelidade(e.target.value)
+                  setSalvo(false)
+                }}
+                aria-label="Atendimentos para ganhar o prêmio"
+                className="w-20 border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              />
+              <span className="text-sm text-muted-foreground">
+                atendimentos, o próximo sai de graça
+              </span>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Os carimbos são contados das vendas fechadas, então cancelar uma venda desfaz o
+              carimbo sozinho — não há número para acertar na mão. O prêmio aparece para o barbeiro
+              no caixa, quando ele escolhe o cliente. <strong>Zero desliga.</strong>
+            </p>
+          </div>
+        )}
 
         {erro && <p className="text-sm text-danger">{erro}</p>}
 

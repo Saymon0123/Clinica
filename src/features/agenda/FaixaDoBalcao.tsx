@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Check, Play, Receipt, RotateCcw, Users } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useRecurso } from '../recursos/useRecurso'
+import { useSalon } from '../auth/useSalon'
 import type { Appointment } from './types'
 
 /**
@@ -38,14 +39,15 @@ import type { Appointment } from './types'
 const MINUTOS_DE_TOLERANCIA = 90
 
 /**
- * Quanto de atraso antes de oferecer "Não veio".
+ * Tolerância de atraso, usada até o valor da barbearia chegar do banco.
  *
- * Oferecer no horário em ponto convida a toque errado e é grosseiro com quem
- * está chegando. Dez minutos é o número que o dono do produto definiu para a
- * política de atraso — nasce aqui como constante e, no passo 6, vira ajuste por
- * barbearia em Configurações.
+ * Oferecer "Não veio" no horário em ponto convida a toque errado e é grosseiro
+ * com quem está chegando. O número agora é ajustável em Configurações
+ * (`salons.atraso_tolerado_minutos`) e vale para os dois lados da mesma
+ * pergunta: quando o botão aparece aqui, e quando o agente pergunta ao cliente
+ * se ele está vindo.
  */
-const MINUTOS_PARA_MARCAR_FALTA = 10
+const ATRASO_TOLERADO_PADRAO = 10
 
 function minutosDesde(iso: string, agora: number) {
   return Math.floor((agora - new Date(iso).getTime()) / 60000)
@@ -67,6 +69,26 @@ export function FaixaDoBalcao({
 }) {
   const temBalcao = useRecurso('balcao')
   const navigate = useNavigate()
+  const { salonId } = useSalon()
+
+  const [tolerancia, setTolerancia] = useState(ATRASO_TOLERADO_PADRAO)
+  useEffect(() => {
+    if (!salonId) return
+    let cancelado = false
+    supabase
+      .from('salons')
+      .select('atraso_tolerado_minutos')
+      .eq('id', salonId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelado && data?.atraso_tolerado_minutos != null) {
+          setTolerancia(data.atraso_tolerado_minutos)
+        }
+      })
+    return () => {
+      cancelado = true
+    }
+  }, [salonId])
   const [salvando, setSalvando] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
 
@@ -321,11 +343,17 @@ export function FaixaDoBalcao({
                   <div className="truncate text-xs text-muted-foreground">
                     {hora(a.data_hora_inicio)} · {a.service_nome ?? 'sem serviço'}
                     {atraso > 0 && <span className="text-warning"> · {atraso} min de atraso</span>}
+                    {/* Saber que a pergunta já saiu evita o barbeiro mandar
+                        mensagem por fora, e explica por que ele pode esperar
+                        mais um pouco antes de liberar a cadeira. */}
+                    {a.atraso_perguntado_em && (
+                      <span> · perguntamos há {minutosDesde(a.atraso_perguntado_em, agora)} min</span>
+                    )}
                   </div>
                 </div>
-                {/* "Não veio" só depois dos 10 minutos: no horário em ponto
+                {/* "Não veio" só depois da tolerância: no horário em ponto
                     convida a toque errado e é grosseiro com quem está a caminho. */}
-                {atraso >= MINUTOS_PARA_MARCAR_FALTA && (
+                {atraso >= tolerancia && (
                   <button
                     onClick={() => marcarFalta(a.id, true)}
                     disabled={salvando === a.id}

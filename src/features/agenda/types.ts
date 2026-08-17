@@ -45,6 +45,8 @@ export type Appointment = {
    * Nulo = chegou, mas ainda não sentou.
    */
   iniciado_em?: string | null
+  /** Quando o agente perguntou ao cliente atrasado se ele está vindo. */
+  atraso_perguntado_em?: string | null
   client_nome?: string | null
   service_nome?: string | null
 }

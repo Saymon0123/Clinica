@@ -32,6 +32,10 @@ export function ConfiguracoesPage() {
   // Minutos livres exigidos antes e depois de cada atendimento. Zero mantem o
   // comportamento antigo, colado.
   const [folga, setFolga] = useState('0')
+  // Minutos de atraso antes de o sistema reagir. Vale para os dois lados da
+  // mesma pergunta: quando o botão "Não veio" aparece na faixa do balcão, e
+  // quando o agente pergunta ao cliente se ele está vindo.
+  const [atraso, setAtraso] = useState('10')
   const [horario, setHorario] = useState<DiaSemana[]>([])
   const [carregando, setCarregando] = useState(true)
   const [salvando, setSalvando] = useState(false)
@@ -47,7 +51,9 @@ export function ConfiguracoesPage() {
     setErro(null)
     const { data, error } = await supabase
       .from('salons')
-      .select('nome, endereco, telefone, horario_funcionamento, folga_entre_atendimentos_minutos')
+      .select(
+        'nome, endereco, telefone, horario_funcionamento, folga_entre_atendimentos_minutos, atraso_tolerado_minutos',
+      )
       .eq('id', salonId)
       .maybeSingle()
 
@@ -63,6 +69,7 @@ export function ConfiguracoesPage() {
     setEndereco(data.endereco ?? '')
     setTelefone(data.telefone ?? '')
     setFolga(String(data.folga_entre_atendimentos_minutos ?? 0))
+    setAtraso(String(data.atraso_tolerado_minutos ?? 10))
     setHorario(desserializarHorario(data.horario_funcionamento))
     setCarregando(false)
   }, [salonId])
@@ -102,6 +109,9 @@ export function ConfiguracoesPage() {
         endereco: endereco.trim() || null,
         telefone: telefone.trim() || null,
         folga_entre_atendimentos_minutos: Math.min(60, Math.max(0, Number(folga) || 0)),
+        // Mínimo de 5: abaixo disso o cliente recebe a pergunta enquanto ainda
+        // está estacionando, e a barbearia parece impaciente.
+        atraso_tolerado_minutos: Math.min(60, Math.max(5, Number(atraso) || 10)),
         horario_funcionamento: serializarHorario(horario),
       })
       .eq('id', salonId)
@@ -235,6 +245,33 @@ export function ConfiguracoesPage() {
               Tempo livre exigido antes e depois de cada horário, para limpar a cadeira e receber o
               próximo. Vale para todos os serviços. <strong>Zero</strong> encaixa um cliente colado
               no outro — cabe mais gente no dia, mas qualquer atraso empurra o resto.
+            </p>
+          </div>
+
+          <div className="border-b border-border pb-4">
+            <label className="block text-sm text-muted-foreground mb-1" htmlFor="atraso">
+              Atraso tolerado
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                id="atraso"
+                type="number"
+                min={5}
+                max={60}
+                step={5}
+                value={atraso}
+                onChange={(e) => {
+                  setAtraso(e.target.value)
+                  setSalvo(false)
+                }}
+                className="w-24 border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              />
+              <span className="text-sm text-muted-foreground">minutos</span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Passado esse tempo, o botão <strong>Não veio</strong> aparece na agenda e o agente
+              pergunta ao cliente se ele está a caminho. O horário{' '}
+              <strong>nunca é liberado sozinho</strong> — quem decide é você.
             </p>
           </div>
 

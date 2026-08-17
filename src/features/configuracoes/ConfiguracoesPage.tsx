@@ -40,6 +40,9 @@ export function ConfiguracoesPage() {
   const [atraso, setAtraso] = useState('10')
   // Atendimentos até o próximo sair de graça. Zero desliga.
   const [fidelidade, setFidelidade] = useState('0')
+  // Quem entra por padrão. A ficha de cada cliente pode abrir exceção.
+  const [fidelidadeTodos, setFidelidadeTodos] = useState(true)
+  const [fidelidadeValidade, setFidelidadeValidade] = useState('0')
   const [horario, setHorario] = useState<DiaSemana[]>([])
   const [carregando, setCarregando] = useState(true)
   const [salvando, setSalvando] = useState(false)
@@ -56,7 +59,7 @@ export function ConfiguracoesPage() {
     const { data, error } = await supabase
       .from('salons')
       .select(
-        'nome, endereco, telefone, horario_funcionamento, folga_entre_atendimentos_minutos, atraso_tolerado_minutos, fidelidade_a_cada',
+        'nome, endereco, telefone, horario_funcionamento, folga_entre_atendimentos_minutos, atraso_tolerado_minutos, fidelidade_a_cada, fidelidade_padrao_todos, fidelidade_validade_meses',
       )
       .eq('id', salonId)
       .maybeSingle()
@@ -75,6 +78,8 @@ export function ConfiguracoesPage() {
     setFolga(String(data.folga_entre_atendimentos_minutos ?? 0))
     setAtraso(String(data.atraso_tolerado_minutos ?? 10))
     setFidelidade(String(data.fidelidade_a_cada ?? 0))
+    setFidelidadeTodos(data.fidelidade_padrao_todos ?? true)
+    setFidelidadeValidade(String(data.fidelidade_validade_meses ?? 0))
     setHorario(desserializarHorario(data.horario_funcionamento))
     setCarregando(false)
   }, [salonId])
@@ -118,6 +123,8 @@ export function ConfiguracoesPage() {
         // está estacionando, e a barbearia parece impaciente.
         atraso_tolerado_minutos: Math.min(60, Math.max(5, Number(atraso) || 10)),
         fidelidade_a_cada: Math.min(50, Math.max(0, Number(fidelidade) || 0)),
+        fidelidade_padrao_todos: fidelidadeTodos,
+        fidelidade_validade_meses: Math.min(60, Math.max(0, Number(fidelidadeValidade) || 0)),
         horario_funcionamento: serializarHorario(horario),
       })
       .eq('id', salonId)
@@ -356,6 +363,58 @@ export function ConfiguracoesPage() {
               carimbo sozinho — não há número para acertar na mão. O prêmio aparece para o barbeiro
               no caixa, quando ele escolhe o cliente. <strong>Zero desliga.</strong>
             </p>
+
+            <div className="border-t border-border pt-3 space-y-2">
+              <span className="block text-sm text-muted-foreground">Quem participa</span>
+              {/* Padrão aqui, exceção na ficha do cliente — a mesma forma das
+                  chaves de recurso. Se o barbeiro tivesse de marcar um por um,
+                  esqueceria no meio do corte, e o cliente voltaria na décima
+                  vez sem carimbo: pior que nunca ter oferecido. */}
+              {[
+                { valor: true, titulo: 'Todos os clientes', ajuda: 'e eu tiro quem não quero, na ficha' },
+                { valor: false, titulo: 'Só quem eu marcar', ajuda: 'ninguém entra sem eu escolher, na ficha' },
+              ].map((op) => (
+                <label key={String(op.valor)} className="flex items-start gap-2 text-sm text-foreground">
+                  <input
+                    type="radio"
+                    name="fidelidade-padrao"
+                    checked={fidelidadeTodos === op.valor}
+                    onChange={() => {
+                      setFidelidadeTodos(op.valor)
+                      setSalvo(false)
+                    }}
+                    className="mt-0.5 accent-primary"
+                  />
+                  <span>
+                    {op.titulo}{' '}
+                    <span className="text-muted-foreground">— {op.ajuda}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            <div className="border-t border-border pt-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">O carimbo vale por</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={60}
+                  value={fidelidadeValidade}
+                  onChange={(e) => {
+                    setFidelidadeValidade(e.target.value)
+                    setSalvo(false)
+                  }}
+                  aria-label="Meses de validade do carimbo"
+                  className="w-20 border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                />
+                <span className="text-sm text-muted-foreground">meses</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Evita que alguém sumido há dois anos volte cobrando prêmio.{' '}
+                <strong>Zero</strong> faz o carimbo nunca vencer.
+              </p>
+            </div>
           </div>
         )}
 

@@ -69,10 +69,10 @@ retenção e custo real de IA — antes de gastar com anúncio.
 Em construção em paralelo, atrás da chave: o **balcão**. Prontos o QR com
 horários livres e agendamento pelo próprio cliente (chave `agenda_publica`),
 adiantar quem espera (`trocar_horarios`) e o **check-in** — a faixa "No balcão"
-na agenda, gravando `appointments.chegou_em`, atrás da chave `balcao`. Faltam o
-estado "em atendimento" e a política de atraso. A política tem metade no
-**n8n**: a mensagem dos 10 minutos fala com o cliente, e nada que fale com o
-cliente existe sem passar por lá.
+na agenda, gravando `chegou_em`, `iniciado_em` e `faltou`, atrás da chave
+`balcao`. Falta só a **política de atraso** — e ela tem metade no **n8n**: a
+mensagem dos 10 minutos fala com o cliente, e nada que fale com o cliente existe
+sem passar por lá.
 
 O raciocínio está em [`autosservico.md`](autosservico.md): sem esses números,
 tráfego pago compra aprendizado pelo preço mais caro que existe. Com eles,

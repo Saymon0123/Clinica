@@ -66,10 +66,13 @@ Curitiba aberta na marra e restaurada depois. Falta ver a lista real num dia
 **Conseguir cinco barbearias pagando, pelo convite**, medindo ativação,
 retenção e custo real de IA — antes de gastar com anúncio.
 
-Em construção em paralelo, atrás da chave: o **balcão**. A primeira fatia (QR,
-horários livres e agendamento pelo próprio cliente) está pronta; faltam
-adiantar quem espera, o check-in com estado "em atendimento", e a política de
-atraso.
+Em construção em paralelo, atrás da chave: o **balcão**. Prontos o QR com
+horários livres e agendamento pelo próprio cliente (chave `agenda_publica`),
+adiantar quem espera (`trocar_horarios`) e o **check-in** — a faixa "No balcão"
+na agenda, gravando `appointments.chegou_em`, atrás da chave `balcao`. Faltam o
+estado "em atendimento" e a política de atraso. A política tem metade no
+**n8n**: a mensagem dos 10 minutos fala com o cliente, e nada que fale com o
+cliente existe sem passar por lá.
 
 O raciocínio está em [`autosservico.md`](autosservico.md): sem esses números,
 tráfego pago compra aprendizado pelo preço mais caro que existe. Com eles,

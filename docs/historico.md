@@ -110,9 +110,15 @@ rodada de 10 minutos.
 `lembrete_enviado` faria a confirmação nunca sair, porque o lembrete de 1h marca
 o campo bem antes.
 
-**Nunca executou.** Continua valendo o plano de ativação em
-[`estado-do-projeto.md`](estado-do-projeto.md) — e agora o teste precisa cobrir
-os dois disparos, não só um.
+**Está ativo** — conferido no n8n em 2026-08-17. O fluxo
+`CRM Salão - Lembretes de Agendamento` (id `DW0nq1Jyp9xeOJwm`) tem
+`active: true`, e dois agendamentos da Curitiba, de 05 e 07/08, estão com
+`lembrete_enviado` e `confirmacao_enviada` marcados.
+
+> Até 2026-08-17 esta seção dizia **"Nunca executou"**, e a frase foi repetida
+> como fato numa conversa. Doc não é evidência: quando ele contradiz a
+> ferramenta, quem manda é a ferramenta — e o doc se corrige na hora, senão
+> volta a enganar na próxima leitura.
 
 ### ~~Fluxo de lembretes: 4 defeitos que impediam ativar~~ — CORRIGIDO
 Aplicados em 2026-08-02, com o fluxo ainda inativo:

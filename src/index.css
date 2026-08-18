@@ -103,16 +103,25 @@ body {
   color: var(--foreground);
 }
 
+/* Curvas fortes: as embutidas do CSS (ease-out, ease-in-out) sao fracas demais
+   e a diferenca aparece justamente nas duracoes curtas que a UI usa. */
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+/* Foco visivel padronizado. Antes cada input herdava o outline do navegador,
+   que some contra o fundo escuro. */
+:where(a, button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 /* Botão primário com micro-interação premium (glow + leve elevação) */
 .btn-primary {
   background-color: var(--primary);
   color: var(--primary-foreground);
   transition: transform 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
-}
-.btn-primary:hover:not(:disabled) {
-  background-color: var(--primary-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 10px 24px -8px color-mix(in srgb, var(--primary) 55%, transparent);
 }
 .btn-primary:active:not(:disabled) {
   transform: translateY(0) scale(0.98);
@@ -120,6 +129,50 @@ body {
 }
 .btn-primary:disabled {
   cursor: not-allowed;
+}
+
+/* Hover so onde ha cursor de verdade: no toque, :hover dispara junto do tap e
+   o botao fica preso no estado de hover depois que o dedo sai. */
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 24px -8px color-mix(in srgb, var(--primary) 55%, transparent);
+  }
+}
+
+/* Entrada de conteudo. Usada nas telas publicas, que sao vistas uma vez por
+   cliente: e o unico lugar do produto onde animacao de entrada se paga. */
+@keyframes surge {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.surge {
+  animation: surge 340ms var(--ease-out) both;
+}
+
+/* Cascata na grade de horarios: --i e o indice do item. O atraso e curto de
+   proposito, senao o ultimo horario aparece depois de o dedo ja estar na tela. */
+.surge-stagger > * {
+  animation: surge 300ms var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 28ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .surge,
+  .surge-stagger > * {
+    animation: none;
+  }
+  .btn-primary {
+    transition: background-color 150ms ease;
+  }
 }
 
 /* Confete da comemoração de meta atingida */

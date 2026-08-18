@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from 'react'
 import { useParams } from 'react-router-dom'
 import { Check, Clock, Scissors } from 'lucide-react'
 import { invokeFunction } from '../../lib/invokeFunction'
@@ -118,24 +118,29 @@ export function AgendaPublicaPage() {
   const servico = dados?.servicos.find((s) => s.id === servicoId)
 
   return (
-    <div className="min-h-screen bg-background px-4 py-8">
-      <div className="w-full max-w-sm mx-auto space-y-5">
-        <div className="flex items-center gap-2.5">
-          <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary text-primary-foreground">
-            <Scissors size={18} />
+    <div className="min-h-[100dvh] bg-background px-4 py-8">
+      <div className="w-full max-w-sm mx-auto space-y-6">
+        {/* Cabecalho de marca. Quem escaneia o QR chega sem contexto nenhum: o
+            nome da barbearia grande e a primeira coisa que confirma que ele
+            esta no lugar certo. */}
+        <div className="flex items-center gap-3">
+          <span className="flex items-center justify-center w-11 h-11 rounded-xl bg-primary text-primary-foreground shrink-0">
+            <Scissors size={20} />
           </span>
-          <span className="font-semibold text-foreground">{dados?.salao ?? 'Carregando...'}</span>
+          <span className="text-lg font-bold tracking-tight text-foreground leading-tight">
+            {dados?.salao ?? 'Carregando...'}
+          </span>
         </div>
 
         {pronto ? (
-          <div className="rounded-xl border border-success/40 bg-surface p-5 space-y-3">
+          <div className="surge rounded-xl border border-success/40 bg-surface p-5 space-y-3 shadow-[0_12px_32px_-16px_color-mix(in_srgb,var(--foreground)_40%,transparent)]">
             <div className="flex items-center gap-2 text-success">
               <Check size={20} />
               <h1 className="text-base font-semibold">Horário marcado!</h1>
             </div>
             <p className="text-sm text-foreground">
               <strong>{escolhido?.hora_local}</strong> com {escolhido?.profissional}
-              {servico ? ` — ${servico.nome}` : ''}.
+              {servico ? `, ${servico.nome}` : ''}.
             </p>
             <p className="text-sm text-muted-foreground">
               É só aguardar. Se precisar mudar alguma coisa, fale com a barbearia.
@@ -147,20 +152,20 @@ export function AgendaPublicaPage() {
           <p className="text-sm text-danger">{erro}</p>
         ) : escolhido ? (
           // ---------- Passo 3: quem é você ----------
-          <form onSubmit={agendar} className="space-y-4">
-            <div className="rounded-lg border border-primary/40 bg-primary-soft/40 p-3">
-              <div className="text-sm font-medium text-foreground">
+          <form onSubmit={agendar} className="surge space-y-4">
+            <div className="rounded-xl border border-primary/40 bg-primary-soft/40 p-4">
+              <div className="text-base font-semibold text-foreground">
                 {escolhido.hora_local} com {escolhido.profissional}
               </div>
               {servico && (
-                <div className="text-xs text-muted-foreground mt-0.5">
+                <div className="text-xs text-muted-foreground mt-1">
                   {servico.nome} · R$ {servico.preco} · {servico.duracao_minutos} min
                 </div>
               )}
               <button
                 type="button"
                 onClick={() => setEscolhido(null)}
-                className="text-xs text-primary hover:underline mt-1"
+                className="text-xs font-medium text-primary hover:underline mt-2"
               >
                 trocar horário
               </button>
@@ -172,7 +177,7 @@ export function AgendaPublicaPage() {
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
                 autoComplete="name"
-                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-3 text-base"
+                className="mt-1.5 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3.5 py-3 text-base transition-colors duration-150 focus:border-primary"
               />
             </label>
 
@@ -184,9 +189,9 @@ export function AgendaPublicaPage() {
                 placeholder="(41) 99999-9999"
                 inputMode="tel"
                 autoComplete="tel"
-                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-3 text-base"
+                className="mt-1.5 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3.5 py-3 text-base transition-colors duration-150 focus:border-primary"
               />
-              <span className="block text-[11px] text-muted-foreground mt-1">
+              <span className="block text-[11px] text-muted-foreground mt-1.5">
                 É por aqui que a barbearia fala com você sobre esse horário.
               </span>
             </label>
@@ -196,7 +201,7 @@ export function AgendaPublicaPage() {
             <button
               type="submit"
               disabled={enviando}
-              className="w-full btn-primary rounded px-3 py-3 text-base font-medium disabled:opacity-50"
+              className="w-full btn-primary rounded-lg px-3 py-3.5 text-base font-semibold disabled:opacity-50"
             >
               {enviando ? 'Marcando...' : 'Confirmar horário'}
             </button>
@@ -212,11 +217,11 @@ export function AgendaPublicaPage() {
                   setServicoId(e.target.value)
                   consultar(e.target.value)
                 }}
-                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-3 text-base"
+                className="mt-1.5 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3.5 py-3 text-base transition-colors duration-150 focus:border-primary"
               >
                 {dados.servicos.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.nome} — R$ {s.preco}
+                    {s.nome} · R$ {s.preco}
                   </option>
                 ))}
               </select>
@@ -234,15 +239,16 @@ export function AgendaPublicaPage() {
                   barbearia.
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  {(verTodos ? dados.horarios : dados.horarios.slice(0, PRIMEIROS)).map((h) => (
+                <div key={servicoId ?? 'todos'} className="surge-stagger grid grid-cols-2 gap-2">
+                  {(verTodos ? dados.horarios : dados.horarios.slice(0, PRIMEIROS)).map((h, i) => (
                     <button
                       key={`${h.professional_id}-${h.inicio}`}
+                      style={{ '--i': i } as CSSProperties}
                       onClick={() => {
                         setEscolhido(h)
                         setErro(null)
                       }}
-                      className="rounded-lg border border-border-strong p-3 text-left hover:bg-surface-2"
+                      className="rounded-lg border border-border-strong bg-surface p-3 text-left transition-[border-color,background-color,transform] duration-150 hover:border-primary hover:bg-primary-soft/30 active:scale-[0.98]"
                     >
                       <div className="text-base font-semibold text-foreground">{h.hora_local}</div>
                       <div className="text-xs text-muted-foreground truncate">{h.profissional}</div>
@@ -254,7 +260,7 @@ export function AgendaPublicaPage() {
               {!verTodos && dados.horarios.length > PRIMEIROS && (
                 <button
                   onClick={() => setVerTodos(true)}
-                  className="mt-2 w-full rounded-lg border border-border p-2.5 text-sm text-muted-foreground hover:bg-surface-2"
+                  className="mt-2 w-full rounded-lg border border-border p-2.5 text-sm font-medium text-muted-foreground transition-colors duration-150 hover:border-border-strong hover:bg-surface-2"
                 >
                   Ver mais {dados.horarios.length - PRIMEIROS} horários
                 </button>

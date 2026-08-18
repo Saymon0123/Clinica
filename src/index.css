@@ -247,6 +247,27 @@ body {
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Regua de poste de barbearia.
+
+   E o unico elemento decorativo da pagina, e existe por um motivo: o mercado
+   inteiro se veste de SaaS generico (gradiente, card, iconezinho), e nenhum
+   concorrente usa o vocabulario do proprio oficio. A listra diagonal do poste e
+   reconhecida na calcada antes de qualquer palavra ser lida.
+
+   Usada duas vezes, e so: fechando o heroi e antes do rodape. Repetida em toda
+   secao viraria papel de parede e perderia o sentido.
+--------------------------------------------------------------------------- */
+.regua-poste {
+  height: 5px;
+  background-image: repeating-linear-gradient(
+    -52deg,
+    var(--l-accent) 0 7px,
+    transparent 7px 17px
+  );
+  opacity: 0.55;
+}
+
 /* Numero grande: sem tabular-nums o contador troca de largura a cada frame e a
    linha inteira treme durante a contagem. */
 .landing-num {

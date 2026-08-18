@@ -398,3 +398,21 @@ nome (que falhou). O agente ofereceu 09:00 sem nunca ter lido os horários
 cadastrados — acertou por coincidência. As regras 17 e 21 foram ajustadas para
 corrigir o dado e chamar de novo, mas isso precisa ser verificado no teste.
 
+
+## Rodapé da landing: canais de suporte reais (2026-08-18)
+
+O rodapé novo lê os canais de `src/lib/contato.ts`, e hoje os três estão
+`null` de propósito — número de WhatsApp de suporte, e-mail e Instagram não
+existem oficialmente, e inventar um canal que ninguém atende é pior que não
+ter. Enquanto isso, o rodapé mostra a frase dos Termos ("suporte por WhatsApp,
+resposta em até 1 dia útil").
+
+Quando os canais existirem, preencher `CONTATO` em `contato.ts` e eles
+aparecem sozinhos. Fora do repositório: criar/definir o número de WhatsApp de
+suporte e o e-mail (domínio), e decidir se haverá perfil de Instagram.
+
+## Depoimentos reais para a landing (permanente)
+
+`Depoimentos.tsx` continua com a lista vazia e a seção oculta. A regra está
+documentada no arquivo: só entra depoimento real, com autorização por escrito
+e número conferido com o dono. Coletar os primeiros com os clientes-piloto.

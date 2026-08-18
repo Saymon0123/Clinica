@@ -237,6 +237,42 @@ body {
   letter-spacing: -0.03em;
 }
 
+/* Polegar do controle deslizante.
+   `appearance: none` (necessario para pintar o trilho) apaga o polegar nativo
+   na maioria dos navegadores, entao ele tem de ser desenhado a mao. Precisa dos
+   dois seletores: o -webkit e o -moz nao podem ficar na mesma regra, porque um
+   seletor desconhecido invalida a declaracao inteira. */
+.landing input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: var(--polegar);
+  height: var(--polegar);
+  border-radius: 9999px;
+  background: var(--l-accent);
+  border: 2px solid var(--l-bg);
+  cursor: grab;
+  box-shadow: 0 2px 10px -2px rgba(0, 0, 0, 0.7);
+}
+
+.landing input[type='range']::-moz-range-thumb {
+  width: var(--polegar);
+  height: var(--polegar);
+  border-radius: 9999px;
+  background: var(--l-accent);
+  border: 2px solid var(--l-bg);
+  cursor: grab;
+  box-shadow: 0 2px 10px -2px rgba(0, 0, 0, 0.7);
+}
+
+.landing input[type='range']:active::-webkit-slider-thumb {
+  cursor: grabbing;
+}
+
+.landing input[type='range']:focus-visible {
+  outline: 2px solid var(--l-accent);
+  outline-offset: 4px;
+}
+
 /* Entrada de conteudo. Usada nas telas publicas, que sao vistas uma vez por
    cliente: e o unico lugar do produto onde animacao de entrada se paga. */
 @keyframes surge {

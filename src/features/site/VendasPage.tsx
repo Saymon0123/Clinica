@@ -2,10 +2,12 @@ import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { CalendarCheck, Check, MessageCircle, Scissors, Smartphone, Wallet } from 'lucide-react'
 import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'motion/react'
-import { DIAS_DE_TESTE } from '../../lib/planos'
+import { DIAS_DE_TESTE, PRECO_BASICO, PRECO_PRO } from '../../lib/planos'
 import { ChatDemo } from './landing/ChatDemo'
 import { ProdutoDemo } from './landing/ProdutoDemo'
 import { Depoimentos } from './landing/Depoimentos'
+import { FaqAccordion } from './landing/FaqAccordion'
+import { Calculadora } from './landing/Calculadora'
 import { CtaFixo } from './landing/CtaFixo'
 import { Contador, Cta, Reveal, RevealGrupo, RevealItem } from './landing/primitivos'
 import { useRolou } from './landing/useRolou'
@@ -433,13 +435,20 @@ function Preco() {
           </p>
         </Reveal>
 
+        {/* E aqui o dono confere a frase acima com os números dele, antes de
+            ver a mensalidade. A âncora deixa de ser algo que a página afirma e
+            vira uma conta que ele mesmo fez. */}
+        <Reveal delay={0.08} className="mt-12">
+          <Calculadora />
+        </Reveal>
+
         <RevealGrupo className="mt-14 grid gap-4 lg:grid-cols-2" intervalo={0.1}>
           <RevealItem>
             <div className="glass h-full rounded-[24px] p-8 transition-transform duration-300 hover:-translate-y-1 sm:p-10">
               <div className="text-[15px] font-semibold text-[var(--l-fg-mute)]">Básico</div>
               <div className="mt-4 flex items-baseline gap-1">
                 <span className="text-[19px] text-[var(--l-fg-mute)]">R$</span>
-                <span className="landing-num text-[52px] text-[var(--l-fg)]">197</span>
+                <span className="landing-num text-[52px] text-[var(--l-fg)]">{PRECO_BASICO}</span>
                 <span className="text-[15px] text-[var(--l-fg-faint)]">/mês</span>
               </div>
               <ul className="mt-9 flex flex-col gap-3.5">
@@ -467,7 +476,7 @@ function Preco() {
               <div className="text-[15px] font-semibold opacity-75">Pro</div>
               <div className="mt-4 flex items-baseline gap-1">
                 <span className="text-[19px] opacity-75">R$</span>
-                <span className="landing-num text-[52px]">299</span>
+                <span className="landing-num text-[52px]">{PRECO_PRO}</span>
                 <span className="text-[15px] opacity-70">/mês</span>
               </div>
               <ul className="mt-9 flex flex-col gap-3.5 text-[15px]">
@@ -540,20 +549,9 @@ function Faq() {
           <h2 className={TITULO}>Perguntas que todo dono faz</h2>
         </Reveal>
 
-        <RevealGrupo className="mt-14 flex flex-col" intervalo={0.06}>
-          {PERGUNTAS.map(([p, r]) => (
-            <RevealItem key={p}>
-              <div className="grid gap-3 border-t border-[var(--l-line)] py-8 lg:grid-cols-[0.85fr_1.15fr] lg:gap-14">
-                <div className="text-[18px] font-semibold tracking-[-0.015em] text-[var(--l-fg)]">
-                  {p}
-                </div>
-                <p className="max-w-[58ch] text-[15px] leading-relaxed text-[var(--l-fg-mute)]">
-                  {r}
-                </p>
-              </div>
-            </RevealItem>
-          ))}
-        </RevealGrupo>
+        <Reveal delay={0.08} className="mt-14">
+          <FaqAccordion itens={PERGUNTAS.map(([pergunta, resposta]) => ({ pergunta, resposta }))} />
+        </Reveal>
       </div>
     </section>
   )

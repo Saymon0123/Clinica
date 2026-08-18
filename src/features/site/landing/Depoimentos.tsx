@@ -59,7 +59,7 @@ export function Depoimentos() {
             <RevealItem key={d.nome}>
               <figure className="card flex h-full flex-col rounded-[var(--r-md)] p-7 sm:p-8">
                 {d.resultado && (
-                  <div className="landing-num mb-5 text-[28px] text-[var(--l-ink-deep)]">
+                  <div className="landing-num mb-5 text-[28px] text-[var(--l-accent)]">
                     {d.resultado}
                   </div>
                 )}

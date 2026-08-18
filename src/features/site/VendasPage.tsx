@@ -276,7 +276,7 @@ function Recursos() {
           {RECURSOS.map((f) => (
             <RevealItem key={f.titulo} className={f.largo ? 'md:col-span-2' : ''}>
               <div className="card h-full rounded-[var(--r-md)] p-7 sm:p-9">
-                <f.icone size={20} strokeWidth={1.5} className="text-[var(--l-ink-deep)]" />
+                <f.icone size={20} strokeWidth={1.5} className="text-[var(--l-accent)]" />
                 <h3 className="mt-7 text-[21px] font-semibold tracking-[-0.015em] text-[var(--l-fg)]">
                   {f.titulo}
                 </h3>
@@ -557,7 +557,7 @@ function Preco() {
                     <Check
                       size={17}
                       strokeWidth={2}
-                      className="mt-0.5 shrink-0 text-[var(--l-ink-deep)]"
+                      className="mt-0.5 shrink-0 text-[var(--l-accent)]"
                     />
                     {i}
                   </li>

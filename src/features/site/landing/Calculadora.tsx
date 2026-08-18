@@ -79,7 +79,7 @@ function Controle({
         style={
           {
             '--polegar': '18px',
-            background: `linear-gradient(to right, var(--l-accent) ${parada}, rgba(14,15,12,0.14) ${parada})`,
+            background: `linear-gradient(to right, var(--l-accent) ${parada}, rgba(14,14,11,0.14) ${parada})`,
           } as React.CSSProperties
         }
       />
@@ -126,7 +126,7 @@ export function Calculadora() {
               arrastar, em vez de o número trocar em silêncio. */}
           <div
             aria-live="polite"
-            className="landing-num mt-2 text-[clamp(2.4rem,6vw,3.6rem)] text-[var(--l-ink-deep)]"
+            className="landing-num mt-2 text-[clamp(2.4rem,6vw,3.6rem)] text-[var(--l-accent)]"
           >
             {moeda(porMes)}
           </div>

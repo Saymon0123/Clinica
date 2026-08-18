@@ -24,10 +24,13 @@ const DIA = [
 ] as const
 
 const ESTADO: Record<string, { rotulo: string; classe: string }> = {
-  feito: { rotulo: 'Atendido', classe: 'bg-[rgba(14,15,12,0.06)] text-[var(--l-fg-faint)]' },
-  cadeira: { rotulo: 'Na cadeira', classe: 'bg-[var(--l-accent-pale)] text-[#054d28]' },
-  confirmado: { rotulo: 'Confirmado', classe: 'bg-[var(--l-accent-pale)] text-[#054d28]' },
-  aguardando: { rotulo: 'Aguardando', classe: 'bg-[rgba(14,15,12,0.06)] text-[var(--l-fg-mute)]' },
+  feito: { rotulo: 'Atendido', classe: 'bg-[rgba(14,14,11,0.06)] text-[var(--l-fg-faint)]' },
+  // Estado positivo usa o verde semantico, e nao o tijolo da marca: chip de
+  // agenda e informacao, e pintar informacao com a cor do botao faz o olho
+  // procurar clique onde nao tem.
+  cadeira: { rotulo: 'Na cadeira', classe: 'bg-[var(--l-ok-pale)] text-[var(--l-ok)]' },
+  confirmado: { rotulo: 'Confirmado', classe: 'bg-[var(--l-ok-pale)] text-[var(--l-ok)]' },
+  aguardando: { rotulo: 'Aguardando', classe: 'bg-[rgba(14,14,11,0.06)] text-[var(--l-fg-mute)]' },
 }
 
 function Agenda() {
@@ -84,7 +87,7 @@ function Barra({ altura, destaque, atraso }: { altura: number; destaque: boolean
     <div className="flex h-full flex-1 items-end">
       <motion.span
         className={`w-full origin-bottom rounded-t-[3px] ${
-          destaque ? 'bg-[var(--l-accent)]' : 'bg-[rgba(14,15,12,0.12)]'
+          destaque ? 'bg-[var(--l-accent)]' : 'bg-[rgba(14,14,11,0.12)]'
         }`}
         style={{ height: `${altura}%` }}
         initial={semMovimento ? false : { scaleY: 0 }}

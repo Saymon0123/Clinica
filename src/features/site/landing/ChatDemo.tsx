@@ -147,7 +147,7 @@ export function ChatDemo() {
         tela escura, ou seja, invisivel. O aparelho e objeto fisico simulado, e
         objeto simulado segue a aparencia do que imita.
       */}
-      <div className="relative z-[1] overflow-hidden rounded-[34px] bg-[#0e0f0c] p-2 shadow-[0_24px_60px_-28px_rgba(14,15,12,0.45)]">
+      <div className="relative z-[1] overflow-hidden rounded-[34px] bg-[#0e0f0c] p-2 shadow-[0_24px_60px_-28px_rgba(14,14,11,0.45)]">
         <div className="overflow-hidden rounded-[27px] bg-[#121110]">
           {/* Cabeçalho da conversa */}
           <div className="flex items-center gap-2.5 border-b border-white/10 bg-[#1c1b19] px-4 py-3">

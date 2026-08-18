@@ -147,41 +147,70 @@ body {
    A landing nao usa os tokens do CRM de proposito: o produto tem tema claro e
    escuro que o dono escolhe, e a landing tem direcao de arte fixa.
 
-   A direcao virou clara. Canvas em verde-sabao, cartoes brancos por cima, e a
+   A direcao e clara e QUENTE. Canvas em lona, cartoes brancos por cima, e a
    elevacao vem SO do contraste entre as duas superficies: sem sombra, sem
-   vidro, sem halo. Isso e o oposto do que estava aqui, e e proposital — no
-   sistema, superficie chapada e a regra, nao economia.
+   vidro, sem halo. Superficie chapada e a regra, nao economia.
 
-   Verde-limao e o unico accent, e so aparece em acao (botao, indicador). Nunca
-   como fundo de secao, e nunca atras de um botao verde.
+   A cor vem do vocabulario do oficio, e nao do vocabulario de fintech: tinta
+   quase preta sobre lona crua, com um unico acento de tijolo. Foi essa a
+   estrutura que apareceu sozinha em toda marca que transmite oficio (Filson,
+   Toast, Mailchimp, Hodinkee) — preto quente, papel, um acento saturado e
+   quente, zero gradiente. O SaaS do ramo faz o contrario: a ServiceTitan vende
+   para eletricista e se pinta com o azul cru do Material Design.
+
+   A TIPOGRAFIA nao acompanha essa virada, e isso e proposital: grotesco neutro
+   no peso 900 e o que da o lado tecnico. Cor e material dizem oficio; a letra
+   diz produto. Trocar tambem a letra por condensada de fachada empurraria a
+   pagina para pastiche de barbearia vintage, que e onde as barbearias reais ja
+   estao (Playfair + Montserrat de tema pronto) e de onde a gente quer sair.
 --------------------------------------------------------------------------- */
 .landing {
   /* Superficie */
   --l-canvas: #ffffff;
-  --l-bg: #e8ebe6;
+  --l-bg: #e6dbcb;
   --l-bg-lift: #ffffff;
 
-  /* Tinta */
-  --l-fg: #0e0f0c;
-  --l-fg-mute: #454745;
-  --l-fg-faint: #868685;
+  /* Tinta. Preto quente, nao neutro: sobre lona um cinza frio suja. */
+  --l-fg: #0e0e0b;
+  --l-fg-mute: #47443e;
+  --l-fg-faint: #85807a;
 
   /* Linha. Sobre fundo claro a linha e tinta com alfa, e nao branco com alfa,
-     que sobre sabao simplesmente some. */
-  --l-line: rgba(14, 15, 12, 0.12);
-  --l-line-strong: rgba(14, 15, 12, 0.28);
+     que sobre a lona simplesmente some. */
+  --l-line: rgba(14, 14, 11, 0.14);
+  --l-line-strong: rgba(14, 14, 11, 0.3);
 
-  /* Marca */
-  --l-accent: #9fe870;
-  --l-accent-deep: #cdffad;
-  --l-accent-pale: #e2f6d5;
-  /* Texto sobre o limao e tinta, nunca branco: branco sobre #9fe870 da 1.6:1 e
-     e ilegivel. Tinta sobre limao da 14:1. */
-  --l-on-accent: #0e0f0c;
-  /* Verde COMO TEXTO sobre superficie clara. O limao da 1.4:1 sobre branco e
-     some; este e o verde-floresta do sistema para tinta, 10:1 sobre branco.
-     Regra: limao age (fundo de botao, indicador), floresta fala (texto). */
-  --l-ink-deep: #163300;
+  /*
+    Marca: tijolo.
+
+    Ele e o unico acento e faz as duas coisas que o limao nao conseguia fazer
+    junto — agir e falar:
+
+      tijolo sobre branco ......... 4.95:1  -> pode ser TEXTO
+      branco sobre tijolo ......... 4.95:1  -> pode ser BOTAO, com texto branco
+      tijolo sobre a lona ......... 3.62:1  -> so grafico ou texto grande
+
+    A ultima linha e a unica restricao que sobrou: numero e titulo em tijolo
+    ficam no cartao branco, nunca soltos sobre a lona.
+  */
+  --l-accent: #bf4940;
+  /* Estado de hover: mais FUNDO, nao mais claro. Clarear um acento quente o
+     lava; o limao precisava clarear porque ja estava no teto de saturacao. */
+  --l-accent-deep: #a63a32;
+  --l-accent-pale: #f3e1de;
+  --l-on-accent: #ffffff;
+  /* Tinta do acento para texto pequeno sobre --l-accent-pale (6.6:1). */
+  --l-on-accent-pale: #8a2f27;
+
+  /*
+    Verde semantico, separado da marca de proposito.
+
+    "Confirmado" e "Na cadeira" sao estado positivo, e nao chamada de acao.
+    Pintar chip de agenda com a cor do botao gasta o acento em informacao e faz
+    o olho procurar clique onde nao tem. Este verde nunca aparece em botao.
+  */
+  --l-ok: #1f5a3d;
+  --l-ok-pale: #e2efe7;
 
   /*
     Escala de canto. O sistema tem o canto generoso como assinatura, entao
@@ -203,11 +232,15 @@ body {
 
 /* Display no peso 900.
    E a voz do sistema, e nao um titulo grande qualquer: em 700 a manchete perde
-   a densidade que faz o tamanho valer a pena. A entrelinha fecha abaixo de 1
-   porque em 900 as linhas se tocam bem. */
+   a densidade que faz o tamanho valer a pena.
+
+   A entrelinha fecha abaixo de 1, mas nao ate 0.9: em portugues o circunflexo
+   de "voce" encosta na linha de cima na manchete do heroi. Referencia em ingles
+   nao esbarra nisso porque nao tem diacritico alto; 0.94 mantem a densidade e
+   devolve a folga de que o acento precisa. */
 .landing-display {
   font-weight: 900;
-  line-height: 0.9;
+  line-height: 0.94;
   letter-spacing: -0.025em;
   text-wrap: balance;
 }
@@ -219,13 +252,13 @@ body {
   background-color: var(--l-canvas);
 }
 
-/* Cartao no sabao, para quando ele precisa aparecer sobre o branco. */
+/* Cartao na lona, para quando ele precisa aparecer sobre o branco. */
 .card-suave {
   background-color: var(--l-bg);
 }
 
-/* Cartao invertido: tinta com o limao por cima. Usado no plano recomendado e no
-   rodape. E a unica inversao de polaridade da pagina. */
+/* Cartao invertido: tinta com o tijolo por cima. Usado no plano recomendado e
+   no rodape. E a unica inversao de polaridade da pagina. */
 .card-tinta {
   background-color: var(--l-fg);
   color: var(--l-canvas);
@@ -238,8 +271,8 @@ body {
    generico e nenhum concorrente usa o vocabulario do proprio oficio; a listra
    diagonal do poste e reconhecida na calcada antes de qualquer palavra.
 
-   Sobre fundo claro a listra e de TINTA, e nao do limao: limao sobre sabao
-   quase nao aparece, e gastaria o accent numa faixa decorativa em vez de
+   Sobre fundo claro a listra e de TINTA, e nao do tijolo: sobre a lona o
+   tijolo da 3.62:1, e gastaria o accent numa faixa decorativa em vez de
    guardar ele para a acao.
 
    Usada duas vezes, e so: fechando o heroi e antes do rodape.

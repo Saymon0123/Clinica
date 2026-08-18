@@ -57,7 +57,7 @@ export function Depoimentos() {
         <RevealGrupo className="mt-14 grid gap-4 md:grid-cols-2 lg:grid-cols-3" intervalo={0.08}>
           {DEPOIMENTOS.map((d) => (
             <RevealItem key={d.nome}>
-              <figure className="glass flex h-full flex-col rounded-[var(--r-md)] p-7 sm:p-8">
+              <figure className="card flex h-full flex-col rounded-[var(--r-md)] p-7 sm:p-8">
                 {d.resultado && (
                   <div className="landing-num mb-5 text-[28px] text-[var(--l-accent)]">
                     {d.resultado}

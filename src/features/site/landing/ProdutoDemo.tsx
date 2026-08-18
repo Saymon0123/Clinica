@@ -24,10 +24,13 @@ const DIA = [
 ] as const
 
 const ESTADO: Record<string, { rotulo: string; classe: string }> = {
-  feito: { rotulo: 'Atendido', classe: 'bg-white/8 text-[var(--l-fg-faint)]' },
-  cadeira: { rotulo: 'Na cadeira', classe: 'bg-[var(--l-accent)]/18 text-[var(--l-accent)]' },
-  confirmado: { rotulo: 'Confirmado', classe: 'bg-emerald-400/12 text-emerald-300' },
-  aguardando: { rotulo: 'Aguardando', classe: 'bg-white/8 text-[var(--l-fg-mute)]' },
+  feito: { rotulo: 'Atendido', classe: 'bg-[rgba(14,14,11,0.06)] text-[var(--l-fg-faint)]' },
+  // Estado positivo usa o verde semantico, e nao o tijolo da marca: chip de
+  // agenda e informacao, e pintar informacao com a cor do botao faz o olho
+  // procurar clique onde nao tem.
+  cadeira: { rotulo: 'Na cadeira', classe: 'bg-[var(--l-ok-pale)] text-[var(--l-ok)]' },
+  confirmado: { rotulo: 'Confirmado', classe: 'bg-[var(--l-ok-pale)] text-[var(--l-ok)]' },
+  aguardando: { rotulo: 'Aguardando', classe: 'bg-[rgba(14,14,11,0.06)] text-[var(--l-fg-mute)]' },
 }
 
 function Agenda() {
@@ -36,7 +39,7 @@ function Agenda() {
   const semMovimento = useReducedMotion()
 
   return (
-    <div ref={ref} className="glass rounded-[var(--r-md)] p-6 sm:p-9">
+    <div ref={ref} className="card rounded-[var(--r-md)] p-6 sm:p-9">
       <div className="flex items-baseline justify-between">
         <div className="text-[15px] font-semibold text-[var(--l-fg)]">Agenda de hoje</div>
         <div className="text-[12px] text-[var(--l-fg-faint)]">Rafael</div>
@@ -51,7 +54,7 @@ function Agenda() {
               initial={semMovimento ? false : { opacity: 0, x: -10 }}
               animate={naTela || semMovimento ? { opacity: 1, x: 0 } : undefined}
               transition={{ duration: 0.42, delay: i * 0.07, ease: [0.23, 1, 0.32, 1] }}
-              className="flex items-center gap-3.5 rounded-[var(--r-sm)] border border-[var(--l-line)] bg-white/[0.02] px-4 py-3.5"
+              className="flex items-center gap-3.5 rounded-[var(--r-sm)] border border-[var(--l-line)] bg-[var(--l-bg)]/60 px-4 py-3.5"
             >
               <span className="w-[46px] shrink-0 text-[13px] font-semibold tabular-nums text-[var(--l-fg-mute)]">
                 {a.hora}
@@ -84,7 +87,7 @@ function Barra({ altura, destaque, atraso }: { altura: number; destaque: boolean
     <div className="flex h-full flex-1 items-end">
       <motion.span
         className={`w-full origin-bottom rounded-t-[3px] ${
-          destaque ? 'bg-[var(--l-accent)]' : 'bg-white/12'
+          destaque ? 'bg-[var(--l-accent)]' : 'bg-[rgba(14,14,11,0.12)]'
         }`}
         style={{ height: `${altura}%` }}
         initial={semMovimento ? false : { scaleY: 0 }}
@@ -107,7 +110,7 @@ const SEMANA = [
 
 function Caixa() {
   return (
-    <div className="glass rounded-[var(--r-md)] p-6 sm:p-9">
+    <div className="card rounded-[var(--r-md)] p-6 sm:p-9">
       <div className="text-[15px] font-semibold text-[var(--l-fg)]">Caixa da semana</div>
 
       <div className="mt-4 flex items-baseline gap-1.5">

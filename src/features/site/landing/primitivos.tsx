@@ -141,7 +141,7 @@ export function BotaoMagnetico({
 
   const destaque = variante === 'destaque'
   const cor = destaque
-    ? 'bg-[var(--l-accent)] text-[var(--l-on-accent)] hover:shadow-[0_0_44px_-6px_rgba(224,138,60,0.65)]'
+    ? 'bg-[var(--l-accent)] text-[var(--l-on-accent)] hover:bg-[var(--l-accent-deep)]'
     : 'border border-[var(--l-line-strong)] text-[var(--l-fg)] hover:border-[var(--l-accent)]'
 
   function seguirCursor(e: React.MouseEvent) {
@@ -178,7 +178,7 @@ export function BotaoMagnetico({
     >
       <Link
         to={to}
-        className={`relative inline-flex min-h-[52px] items-center justify-center rounded-full px-8 text-[15px] font-semibold transition-[transform,box-shadow] duration-200 hover:scale-[1.02] active:scale-[0.97] ${cor} ${className}`}
+        className={`relative inline-flex min-h-[52px] items-center justify-center rounded-full px-8 text-[15px] font-semibold transition-[transform,background-color] duration-200 hover:scale-[1.02] active:scale-[0.97] ${cor} ${className}`}
       >
         {children}
       </Link>

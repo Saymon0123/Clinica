@@ -80,7 +80,13 @@ const MICROCOPY = 'Sem cartão. Cancela quando quiser.'
  * dele; sozinho, do tamanho de meia tela, lê como página inacabada. `SECAO_APOIO`
  * é para as partes de serviço, que não precisam do mesmo palco.
  */
+/*
+   Superficie por secao. No sistema, a elevacao vem do contraste sabao/branco:
+   secao com cartoes brancos fica no sabao (o cartao salta), secao de texto puro
+   fica em banda branca (o texto ganha um palco). A pagina alterna as duas.
+*/
 const SECAO = 'relative overflow-hidden px-6 py-[76px] lg:py-[104px]'
+const SECAO_BRANCA = 'relative overflow-hidden bg-[var(--l-canvas)] px-6 py-[76px] lg:py-[104px]'
 const SECAO_APOIO = 'relative overflow-hidden px-6 py-[64px] lg:py-[84px]'
 const CAIXA = 'relative z-[1] mx-auto max-w-[1180px]'
 
@@ -114,13 +120,13 @@ function Navbar() {
     <header
       className={`fixed inset-x-0 top-0 z-50 transition-[background-color,backdrop-filter,border-color] duration-300 ${
         rolou
-          ? 'border-b border-[var(--l-line)] bg-[rgba(10,9,8,0.72)] backdrop-blur-xl'
+          ? 'border-b border-[var(--l-line)] bg-[rgba(255,255,255,0.85)] backdrop-blur-xl'
           : 'border-b border-transparent bg-transparent'
       }`}
     >
       <div className="mx-auto flex h-[72px] max-w-[1180px] items-center justify-between px-6">
         <Link to="/inicio" className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-[var(--r-sm)] bg-[var(--l-accent-deep)] text-white">
+          <span className="flex h-8 w-8 items-center justify-center rounded-[var(--r-sm)] bg-[var(--l-fg)] text-[var(--l-accent)]">
             <Scissors size={16} strokeWidth={1.9} />
           </span>
           <span className="text-[17px] font-bold tracking-tight text-[var(--l-fg)]">Club Cut</span>
@@ -142,16 +148,6 @@ function Navbar() {
 function Hero() {
   return (
     <section className="relative overflow-hidden px-6 pb-[88px] pt-[124px] lg:pb-[108px] lg:pt-[148px]">
-      {/* Duas fontes de luz: uma atrás do texto, outra atrás do aparelho. É o
-          que impede o quase-preto de ler como fundo chapado. */}
-      <div
-        className="glow left-[-16%] top-[-14%] h-[560px] w-[720px]"
-        style={{ '--glow-tint': 'rgba(224,138,60,0.15)' } as React.CSSProperties}
-      />
-      <div
-        className="glow right-[-10%] top-[8%] h-[520px] w-[560px]"
-        style={{ '--glow-tint': 'rgba(224,138,60,0.1)' } as React.CSSProperties}
-      />
 
       <div className={`${CAIXA} grid items-center gap-16 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10`}>
         <div>
@@ -209,7 +205,7 @@ const DORES = [
  */
 function Dor() {
   return (
-    <section className={SECAO}>
+    <section className={SECAO_BRANCA}>
       <div className={CAIXA}>
         <Reveal>
           <h2 className={TITULO_NARRATIVA}>Você conhece esse dia</h2>
@@ -271,10 +267,6 @@ const RECURSOS = [
 function Recursos() {
   return (
     <section className={SECAO}>
-      <div
-        className="glow right-[-14%] top-[6%] h-[520px] w-[620px]"
-        style={{ '--glow-tint': 'rgba(224,138,60,0.09)' } as React.CSSProperties}
-      />
       <div className={CAIXA}>
         <Reveal>
           <h2 className={TITULO_DECISAO}>O que o Club Cut faz</h2>
@@ -283,7 +275,7 @@ function Recursos() {
         <RevealGrupo className="mt-11 grid gap-4 md:grid-cols-3">
           {RECURSOS.map((f) => (
             <RevealItem key={f.titulo} className={f.largo ? 'md:col-span-2' : ''}>
-              <div className="glass h-full rounded-[var(--r-md)] p-7 sm:p-9">
+              <div className="card h-full rounded-[var(--r-md)] p-7 sm:p-9">
                 <f.icone size={20} strokeWidth={1.5} className="text-[var(--l-accent)]" />
                 <h3 className="mt-7 text-[21px] font-semibold tracking-[-0.015em] text-[var(--l-fg)]">
                   {f.titulo}
@@ -318,11 +310,7 @@ function Recursos() {
  */
 function Franqueza() {
   return (
-    <section className="relative overflow-hidden px-6 py-[72px] lg:py-[96px]">
-      <div
-        className="glow left-1/2 top-1/2 h-[420px] w-[760px] -translate-x-1/2 -translate-y-1/2"
-        style={{ '--glow-tint': 'rgba(224,138,60,0.1)' } as React.CSSProperties}
-      />
+    <section className="relative overflow-hidden bg-[var(--l-canvas)] px-6 py-[72px] lg:py-[96px]">
       <div className={CAIXA}>
         <Reveal>
           <p className="max-w-[19ch] text-[clamp(1.6rem,4vw,2.9rem)] font-semibold leading-[1.2] tracking-[-0.025em] text-[var(--l-fg)]">
@@ -354,10 +342,6 @@ function Franqueza() {
 function PorDentro() {
   return (
     <section className={SECAO}>
-      <div
-        className="glow left-1/2 top-1/3 h-[520px] w-[900px] -translate-x-1/2"
-        style={{ '--glow-tint': 'rgba(224,138,60,0.08)' } as React.CSSProperties}
-      />
       <div className={CAIXA}>
         <Reveal>
           <h2 className={TITULO_NARRATIVA}>E do seu lado, fica assim</h2>
@@ -412,7 +396,7 @@ function ComoComeca() {
   })
 
   return (
-    <section className={SECAO_APOIO}>
+    <section className={`${SECAO_APOIO} bg-[var(--l-canvas)]`}>
       <div className={`${CAIXA} grid gap-12 lg:grid-cols-[0.8fr_1.2fr]`}>
         <Reveal>
           <h2 className={TITULO_APOIO}>Como começa</h2>
@@ -469,7 +453,7 @@ function PassoNaLinha({
 
   return (
     <li className="relative flex gap-6 pb-11 last:pb-0">
-      <span className="relative z-[1] flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--l-line-strong)] bg-[var(--l-bg-lift)] text-[14px] font-bold text-[var(--l-fg-mute)]">
+      <span className="relative z-[1] flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--l-line-strong)] bg-[var(--l-bg)] text-[14px] font-bold text-[var(--l-fg-mute)]">
         {indice + 1}
         <motion.span
           className="absolute inset-0 flex items-center justify-center rounded-full bg-[var(--l-accent)] text-[var(--l-on-accent)]"
@@ -547,10 +531,6 @@ const BASICO = [
 function Preco() {
   return (
     <section className={SECAO}>
-      <div
-        className="glow left-1/2 top-1/4 h-[620px] w-[860px] -translate-x-1/2"
-        style={{ '--glow-tint': 'rgba(224,138,60,0.11)' } as React.CSSProperties}
-      />
       <div className={CAIXA}>
         <Reveal>
           <h2 className={TITULO_DECISAO}>Quanto custa</h2>
@@ -564,7 +544,7 @@ function Preco() {
 
         <RevealGrupo className="mt-11 grid gap-4 lg:grid-cols-2" intervalo={0.1}>
           <RevealItem>
-            <div className="glass h-full rounded-[var(--r-md)] p-8 transition-transform duration-300 hover:-translate-y-1 sm:p-10">
+            <div className="card h-full rounded-[var(--r-md)] p-8 transition-transform duration-300 hover:-translate-y-1 sm:p-10">
               <div className="text-[15px] font-semibold text-[var(--l-fg-mute)]">Básico</div>
               <div className="mt-4 flex items-baseline gap-1">
                 <span className="text-[19px] text-[var(--l-fg-mute)]">R$</span>
@@ -589,8 +569,8 @@ function Preco() {
           {/* O plano recomendado é o único bloco em laranja sólido da página.
               É o carimbo, e ele só significa destaque porque não se repete. */}
           <RevealItem>
-            <div className="relative h-full rounded-[var(--r-md)] bg-[var(--l-accent)] p-8 text-[var(--l-on-accent)] transition-[transform,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-[0_0_70px_-14px_rgba(224,138,60,0.6)] sm:p-10">
-              <span className="absolute right-8 top-8 rounded-full bg-[var(--l-on-accent)]/14 px-3 py-1 text-[11px] font-bold">
+            <div className="card-tinta relative h-full rounded-[var(--r-md)] p-8 transition-transform duration-300 hover:-translate-y-1 sm:p-10">
+              <span className="absolute right-8 top-8 rounded-full bg-[var(--l-accent)] px-3 py-1 text-[11px] font-bold text-[var(--l-on-accent)]">
                 Mais escolhido
               </span>
               <div className="text-[15px] font-semibold opacity-75">Pro</div>
@@ -663,7 +643,7 @@ const PERGUNTAS = [
 
 function Faq() {
   return (
-    <section className={SECAO_APOIO}>
+    <section className={`${SECAO_APOIO} bg-[var(--l-canvas)]`}>
       <div className={CAIXA}>
         <Reveal>
           <h2 className={TITULO_APOIO}>Perguntas que todo dono faz</h2>
@@ -682,10 +662,6 @@ function Faq() {
 function Fecho() {
   return (
     <section className="relative overflow-hidden px-6 py-[100px] text-center lg:py-[132px]">
-      <div
-        className="glow left-1/2 top-1/2 h-[680px] w-[900px] -translate-x-1/2 -translate-y-1/2"
-        style={{ '--glow-tint': 'rgba(224,138,60,0.16)' } as React.CSSProperties}
-      />
       <div className={CAIXA}>
         <Reveal>
           <h2 className="landing-display mx-auto max-w-[17ch] text-[clamp(2.4rem,6vw,4.6rem)] text-[var(--l-fg)]">
@@ -709,9 +685,9 @@ function Fecho() {
 
 function Rodape() {
   return (
-    <footer className="relative z-[1] px-6 pb-16">
-      <div className="mx-auto flex max-w-[1180px] flex-wrap items-center gap-x-8 gap-y-3 border-t border-[var(--l-line)] pt-10">
-        <span className="flex items-center gap-2 text-[14px] font-semibold text-[var(--l-fg-mute)]">
+    <footer className="card-tinta relative z-[1] px-6 py-14">
+      <div className="mx-auto flex max-w-[1180px] flex-wrap items-center gap-x-8 gap-y-3">
+        <span className="flex items-center gap-2 text-[14px] font-semibold text-white/85">
           <Scissors size={14} strokeWidth={1.9} className="text-[var(--l-accent)]" />
           Club Cut
         </span>
@@ -723,7 +699,7 @@ function Rodape() {
           <Link
             key={href}
             to={href}
-            className="text-[14px] text-[var(--l-fg-faint)] transition-colors duration-200 hover:text-[var(--l-fg)]"
+            className="text-[14px] text-white/60 transition-colors duration-200 hover:text-white"
           >
             {rotulo}
           </Link>
@@ -738,9 +714,6 @@ function Rodape() {
 export function VendasPage() {
   return (
     <div className="landing min-h-[100dvh]">
-      {/* Grão por cima de tudo, sem capturar clique. Tira o chapado do fundo. */}
-      <div className="landing-grain" aria-hidden="true" />
-
       <Navbar />
       <main>
         <Hero />

@@ -9,7 +9,7 @@ import { Depoimentos } from './landing/Depoimentos'
 import { FaqAccordion } from './landing/FaqAccordion'
 import { Calculadora } from './landing/Calculadora'
 import { CtaFixo } from './landing/CtaFixo'
-import { Contador, Cta, Reveal, RevealGrupo, RevealItem } from './landing/primitivos'
+import { Cta, Reveal, RevealGrupo, RevealItem } from './landing/primitivos'
 import { useRolou } from './landing/useRolou'
 
 /**
@@ -90,7 +90,7 @@ function Navbar() {
     >
       <div className="mx-auto flex h-[72px] max-w-[1180px] items-center justify-between px-6">
         <Link to="/inicio" className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[var(--l-accent-deep)] text-white">
+          <span className="flex h-8 w-8 items-center justify-center rounded-[var(--r-sm)] bg-[var(--l-accent-deep)] text-white">
             <Scissors size={16} strokeWidth={1.9} />
           </span>
           <span className="text-[17px] font-bold tracking-tight text-[var(--l-fg)]">Club Cut</span>
@@ -253,7 +253,7 @@ function Recursos() {
         <RevealGrupo className="mt-11 grid gap-4 md:grid-cols-3">
           {RECURSOS.map((f) => (
             <RevealItem key={f.titulo} className={f.largo ? 'md:col-span-2' : ''}>
-              <div className="glass h-full rounded-[22px] p-7 sm:p-9">
+              <div className="glass h-full rounded-[var(--r-md)] p-7 sm:p-9">
                 <f.icone size={20} strokeWidth={1.5} className="text-[var(--l-accent)]" />
                 <h3 className="mt-7 text-[21px] font-semibold tracking-[-0.015em] text-[var(--l-fg)]">
                   {f.titulo}
@@ -272,9 +272,24 @@ function Recursos() {
 
 /* -------------------------------------------------------------------------- */
 
+/**
+ * A agenda e o caixa por dentro.
+ *
+ * É a prova de que existe um sistema atrás do bot, e estava no mesmo container
+ * de 1180px do texto, comprimida e fácil de passar batido. Ganhou um container
+ * mais largo que o resto da página: a peça é para ser OLHADA, e largura é o que
+ * dá tempo de olhar.
+ *
+ * O halo atrás separa a demonstração do texto ao redor sem precisar de um
+ * fundo diferente, que quebraria a continuidade do ambiente escuro.
+ */
 function PorDentro() {
   return (
     <section className={SECAO}>
+      <div
+        className="glow left-1/2 top-1/3 h-[520px] w-[900px] -translate-x-1/2"
+        style={{ '--glow-tint': 'rgba(224,138,60,0.08)' } as React.CSSProperties}
+      />
       <div className={CAIXA}>
         <Reveal>
           <h2 className={TITULO_NARRATIVA}>E do seu lado, fica assim</h2>
@@ -282,54 +297,16 @@ function PorDentro() {
             O que o agente marca cai direto na agenda, e o que você atende fecha no caixa.
           </p>
         </Reveal>
-
-        <Reveal delay={0.1} className="mt-11">
-          <ProdutoDemo />
-        </Reveal>
       </div>
+
+      <Reveal delay={0.1} className="relative z-[1] mx-auto mt-12 max-w-[1360px]">
+        <ProdutoDemo />
+      </Reveal>
     </section>
   )
 }
 
 /* -------------------------------------------------------------------------- */
-
-/**
- * Números do produto.
- *
- * São fatos verificáveis do sistema, e não métricas de adoção. Contador de
- * "barbearias ativas" ou "faltas evitadas" precisaria de número real; inventado,
- * seria alegação falsa numa página que vende para gente de verdade.
- */
-const NUMEROS = [
-  { ate: 24, sufixo: 'h', rotulo: 'atendendo, todo dia' },
-  { ate: DIAS_DE_TESTE, sufixo: '', rotulo: 'dias de teste, sem cartão' },
-  { ate: 1, sufixo: 'h', rotulo: 'antes, o lembrete sai' },
-  { ate: 10, sufixo: 'min', rotulo: 'antes, a confirmação' },
-]
-
-function Numeros() {
-  return (
-    <section className="relative overflow-hidden px-6 py-[56px] lg:py-[72px]">
-      <div className={CAIXA}>
-        <RevealGrupo
-          className="grid gap-10 border-y border-[var(--l-line)] py-14 sm:grid-cols-2 lg:grid-cols-4"
-          intervalo={0.08}
-        >
-          {NUMEROS.map((n) => (
-            <RevealItem key={n.rotulo}>
-              <div className="landing-num text-[clamp(2.6rem,5vw,3.6rem)] text-[var(--l-accent)]">
-                <Contador ate={n.ate} sufixo={n.sufixo} />
-              </div>
-              <div className="mt-3 max-w-[22ch] text-[14px] leading-snug text-[var(--l-fg-mute)]">
-                {n.rotulo}
-              </div>
-            </RevealItem>
-          ))}
-        </RevealGrupo>
-      </div>
-    </section>
-  )
-}
 
 /* -------------------------------------------------------------------------- */
 
@@ -481,7 +458,7 @@ function Preco() {
 
         <RevealGrupo className="mt-11 grid gap-4 lg:grid-cols-2" intervalo={0.1}>
           <RevealItem>
-            <div className="glass h-full rounded-[24px] p-8 transition-transform duration-300 hover:-translate-y-1 sm:p-10">
+            <div className="glass h-full rounded-[var(--r-md)] p-8 transition-transform duration-300 hover:-translate-y-1 sm:p-10">
               <div className="text-[15px] font-semibold text-[var(--l-fg-mute)]">Básico</div>
               <div className="mt-4 flex items-baseline gap-1">
                 <span className="text-[19px] text-[var(--l-fg-mute)]">R$</span>
@@ -506,7 +483,7 @@ function Preco() {
           {/* O plano recomendado é o único bloco em laranja sólido da página.
               É o carimbo, e ele só significa destaque porque não se repete. */}
           <RevealItem>
-            <div className="relative h-full rounded-[24px] bg-[var(--l-accent)] p-8 text-[var(--l-on-accent)] transition-[transform,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-[0_0_70px_-14px_rgba(224,138,60,0.6)] sm:p-10">
+            <div className="relative h-full rounded-[var(--r-md)] bg-[var(--l-accent)] p-8 text-[var(--l-on-accent)] transition-[transform,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-[0_0_70px_-14px_rgba(224,138,60,0.6)] sm:p-10">
               <span className="absolute right-8 top-8 rounded-full bg-[var(--l-on-accent)]/14 px-3 py-1 text-[11px] font-bold">
                 Mais escolhido
               </span>
@@ -664,7 +641,6 @@ export function VendasPage() {
         <Dor />
         <Recursos />
         <PorDentro />
-        <Numeros />
         <Depoimentos />
         <ComoComeca />
         <Preco />

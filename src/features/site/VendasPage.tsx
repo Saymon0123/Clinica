@@ -1,16 +1,13 @@
+import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { CalendarCheck, Check, MessageCircle, Scissors, Smartphone, Wallet } from 'lucide-react'
+import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'motion/react'
 import { DIAS_DE_TESTE } from '../../lib/planos'
 import { ChatDemo } from './landing/ChatDemo'
 import { ProdutoDemo } from './landing/ProdutoDemo'
-import {
-  BotaoMagnetico,
-  BotaoSimples,
-  Contador,
-  Reveal,
-  RevealGrupo,
-  RevealItem,
-} from './landing/primitivos'
+import { Depoimentos } from './landing/Depoimentos'
+import { CtaFixo } from './landing/CtaFixo'
+import { Contador, Cta, Reveal, RevealGrupo, RevealItem } from './landing/primitivos'
 import { useRolou } from './landing/useRolou'
 
 /**
@@ -26,22 +23,35 @@ import { useRolou } from './landing/useRolou'
  * uso. Os preços saem de `plans`; se a tabela mudar, este texto precisa mudar
  * junto.
  *
- * **Direção visual:** escuro contínuo, com o ritmo vindo de halo de luz e
- * mudança de superfície em vez de troca de fundo. Bandas que se chocam davam um
- * corte seco a cada seção; aqui a página é um ambiente só, e o que muda é para
- * onde a luz aponta.
+ * **A copy fala de perda, não de ganho.** "Agenda automática" é benefício de
+ * catálogo e não mexe com ninguém; o corte que foi para o concorrente porque a
+ * mensagem das 22h ficou sem resposta, sim. E fala com hora e número: "cliente
+ * esperando" é abstração, "15h20 e a cadeira vazia" é uma cena que o dono já
+ * viveu.
  *
- * **Layout varia por seção de propósito.** Se toda seção fosse "título + grade
- * de cards", a página inteira leria como um template, por melhor que estivesse
- * o acabamento de cada bloco.
+ * **Uma decisão por seção.** Cada chamada para ação vem com a mesma microcopy
+ * de risco embaixo, e a barra fixa se apaga quando qualquer uma delas está à
+ * vista, para nunca haver dois botões disputando o mesmo olhar.
+ *
+ * **Um só elemento gritando.** O laranja sólido aparece na chamada principal e
+ * no plano recomendado, e em mais nada. Espalhado, ele deixa de significar
+ * "é por aqui".
  */
 const CTA = `Testar ${DIAS_DE_TESTE} dias grátis`
+const MICROCOPY = 'Sem cartão. Cancela quando quiser.'
 
-/** Respiro entre seções. Generoso: é o que separa "caro" de "apertado". */
 const SECAO = 'relative overflow-hidden px-6 py-[104px] lg:py-[150px]'
 const CAIXA = 'relative z-[1] mx-auto max-w-[1180px]'
 const TITULO = 'landing-display text-[clamp(2rem,4.6vw,3.4rem)] text-[var(--l-fg)]'
 
+/**
+ * Barra de navegação sem chamada para ação.
+ *
+ * O botão daqui competia com o do herói na mesma tela, e dois botões iguais na
+ * mesma dobra fazem a pessoa escolher entre botões em vez de escolher o
+ * produto. Quem já é cliente tem o "Entrar", que é outra intenção; quem não é
+ * tem o botão grande logo abaixo e a barra fixa depois.
+ */
 function Navbar() {
   const rolou = useRolou(80)
 
@@ -61,23 +71,12 @@ function Navbar() {
           <span className="text-[17px] font-bold tracking-tight text-[var(--l-fg)]">Club Cut</span>
         </Link>
 
-        <div className="flex items-center gap-6">
-          <Link
-            to="/login"
-            className="text-[14px] font-medium text-[var(--l-fg-mute)] transition-colors duration-200 hover:text-[var(--l-fg)]"
-          >
-            Entrar
-          </Link>
-          {/* O esconde-esconde fica no wrapper, e não no botão: `hidden` e
-              `inline-flex` são os dois utilitários de `display`, e qual vence
-              depende da ordem no CSS gerado, não da ordem escrita aqui. No
-              celular o botão aparecia junto do logo e do "Entrar". */}
-          <span className="hidden sm:block">
-            <BotaoSimples to="/criar-conta" className="!min-h-[44px] !px-6 !text-sm">
-              {CTA}
-            </BotaoSimples>
-          </span>
-        </div>
+        <Link
+          to="/login"
+          className="text-[14px] font-medium text-[var(--l-fg-mute)] transition-colors duration-200 hover:text-[var(--l-fg)]"
+        >
+          Entrar
+        </Link>
       </div>
     </header>
   )
@@ -103,21 +102,21 @@ function Hero() {
         <div>
           <Reveal>
             <h1 className="landing-display text-[clamp(2.9rem,7.4vw,5.6rem)] text-[var(--l-fg)]">
-              Sua barbearia agenda sozinha
+              O cliente não espera
             </h1>
           </Reveal>
 
           <Reveal delay={0.09}>
-            <p className="mt-8 max-w-[44ch] text-[17px] leading-relaxed text-[var(--l-fg-mute)] sm:text-[19px]">
-              O cliente chama no WhatsApp, o atendimento responde e marca na agenda. Você fica
-              cortando cabelo.
+            <p className="mt-8 max-w-[45ch] text-[17px] leading-relaxed text-[var(--l-fg-mute)] sm:text-[19px]">
+              Mensagem às 22h respondida no outro dia vira corte na concorrência. O Club Cut
+              responde na hora e já marca na agenda.
             </p>
           </Reveal>
 
           <Reveal delay={0.17}>
-            <div className="mt-11">
-              <BotaoMagnetico to="/criar-conta">{CTA}</BotaoMagnetico>
-            </div>
+            <Cta className="mt-11" microcopy={MICROCOPY}>
+              {CTA}
+            </Cta>
           </Reveal>
         </div>
 
@@ -167,33 +166,34 @@ function Dor() {
 
 /* -------------------------------------------------------------------------- */
 
+/** Cada texto carrega uma hora ou um número: a cena convence, o adjetivo não. */
 const RECURSOS = [
   {
     icone: MessageCircle,
     titulo: 'Atende no WhatsApp, sozinho',
     texto:
-      'Responde preço, horário e o que a barbearia faz. Marca, remarca e cancela a qualquer hora, inclusive de madrugada e no domingo.',
+      'Responde preço, horário e o que a barbearia faz. Marca, remarca e cancela. Às 23h40 de um domingo, ele responde igual.',
     largo: true,
   },
   {
     icone: CalendarCheck,
     titulo: 'Agenda que não deixa furo',
     texto:
-      'O horário de cada barbeiro, o tempo de cada serviço, e nada marcado por cima de nada. O que o agente marca aparece na hora.',
+      'Corte de 40 minutos às 10h termina 10h40, e é 10h40 que aparece livre para o próximo. Nada marcado por cima de nada.',
     largo: false,
   },
   {
     icone: Smartphone,
-    titulo: 'Lembra o cliente antes',
+    titulo: 'Você sabe da falta às 14h50',
     texto:
-      'Uma hora antes ele recebe um lembrete e confirma se vem. Dez minutos antes, um "está a caminho?". Menos cadeira vazia.',
+      'Uma hora antes, o lembrete pergunta se ele vem. Dez minutos antes, um "está a caminho?". Dá tempo de chamar outro.',
     largo: false,
   },
   {
     icone: Wallet,
     titulo: 'O dinheiro do dia, fechado',
     texto:
-      'Comanda, caixa e a comissão de cada barbeiro calculada sozinha. Você fecha o dia sabendo quanto entrou.',
+      'Comanda, caixa e a comissão de cada barbeiro calculada sozinha. Você fecha o dia sabendo quanto entrou e quanto é de cada um.',
     largo: true,
   },
 ]
@@ -259,7 +259,7 @@ function PorDentro() {
  *
  * São fatos verificáveis do sistema, e não métricas de adoção. Contador de
  * "barbearias ativas" ou "faltas evitadas" precisaria de número real; inventado,
- * seria uma alegação falsa numa página que vende para gente de verdade.
+ * seria alegação falsa numa página que vende para gente de verdade.
  */
 const NUMEROS = [
   { ate: 24, sufixo: 'h', rotulo: 'atendendo, todo dia' },
@@ -306,40 +306,103 @@ const PASSOS = [
   ],
 ]
 
-/** Coluna estreita com fio ligando os passos: a ordem aqui é informação real. */
+/**
+ * Os três passos, com o trilho preenchendo conforme a pessoa desce.
+ *
+ * Ver o quanto falta para o fim é o que faz alguém terminar: um passo que já
+ * está pela metade motiva mais do que três passos parados. O trilho preenche em
+ * `scaleY` e não em `height` para não recalcular layout a cada quadro de scroll.
+ */
 function ComoComeca() {
+  const ref = useRef<HTMLOListElement>(null)
+  const semMovimento = useReducedMotion()
+
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ['start 78%', 'end 65%'],
+  })
+  const preenchimento = useSpring(scrollYProgress, {
+    stiffness: 110,
+    damping: 28,
+    restDelta: 0.001,
+  })
+
   return (
     <section className={SECAO}>
       <div className={`${CAIXA} grid gap-14 lg:grid-cols-[0.8fr_1.2fr]`}>
         <Reveal>
           <h2 className={TITULO}>Como começa</h2>
+          <p className="mt-6 max-w-[34ch] text-[17px] leading-relaxed text-[var(--l-fg-mute)]">
+            Três passos. O mais demorado leva dois minutos.
+          </p>
         </Reveal>
 
-        <RevealGrupo className="flex flex-col" intervalo={0.09}>
+        <ol ref={ref} className="relative flex flex-col">
+          {/* Trilho de fundo e trilho preenchido, um sobre o outro. */}
+          <span className="absolute bottom-10 left-[19px] top-10 w-px bg-[var(--l-line)]" />
+          <motion.span
+            className="absolute bottom-10 left-[19px] top-10 w-px origin-top bg-[var(--l-accent)]"
+            style={{ scaleY: semMovimento ? 1 : preenchimento }}
+          />
+
           {PASSOS.map(([titulo, texto], i) => (
-            <RevealItem key={titulo}>
-              <div className="relative flex gap-6 pb-11 last:pb-0">
-                {/* Fio que liga um passo ao seguinte. Some no último. */}
-                {i < PASSOS.length - 1 && (
-                  <span className="absolute bottom-2 left-[19px] top-11 w-px bg-[var(--l-line)]" />
-                )}
-                <span className="relative z-[1] flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--l-line-strong)] bg-[var(--l-bg-lift)] text-[14px] font-bold text-[var(--l-accent)]">
-                  {i + 1}
-                </span>
-                <div className="pt-1.5">
-                  <div className="text-[19px] font-semibold tracking-[-0.015em] text-[var(--l-fg)]">
-                    {titulo}
-                  </div>
-                  <p className="mt-2.5 max-w-[46ch] text-[15px] leading-relaxed text-[var(--l-fg-mute)]">
-                    {texto}
-                  </p>
-                </div>
-              </div>
-            </RevealItem>
+            <PassoNaLinha
+              key={titulo}
+              indice={i}
+              total={PASSOS.length}
+              titulo={titulo}
+              texto={texto}
+              progresso={preenchimento}
+              semMovimento={!!semMovimento}
+            />
           ))}
-        </RevealGrupo>
+        </ol>
       </div>
     </section>
+  )
+}
+
+function PassoNaLinha({
+  indice,
+  total,
+  titulo,
+  texto,
+  progresso,
+  semMovimento,
+}: {
+  indice: number
+  total: number
+  titulo: string
+  texto: string
+  progresso: ReturnType<typeof useSpring>
+  semMovimento: boolean
+}) {
+  // O passo acende quando o preenchimento chega nele. Como opacidade de uma
+  // camada por cima, e não troca de classe: assim o valor contínuo do scroll
+  // não vira estado do React.
+  const inicio = indice / total
+  const aceso = useTransform(progresso, [inicio, inicio + 0.5 / total], [0, 1])
+
+  return (
+    <li className="relative flex gap-6 pb-11 last:pb-0">
+      <span className="relative z-[1] flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--l-line-strong)] bg-[var(--l-bg-lift)] text-[14px] font-bold text-[var(--l-fg-mute)]">
+        {indice + 1}
+        <motion.span
+          className="absolute inset-0 flex items-center justify-center rounded-full bg-[var(--l-accent)] text-[var(--l-on-accent)]"
+          style={{ opacity: semMovimento ? 1 : aceso }}
+        >
+          {indice + 1}
+        </motion.span>
+      </span>
+      <div className="pt-1.5">
+        <div className="text-[19px] font-semibold tracking-[-0.015em] text-[var(--l-fg)]">
+          {titulo}
+        </div>
+        <p className="mt-2.5 max-w-[46ch] text-[15px] leading-relaxed text-[var(--l-fg-mute)]">
+          {texto}
+        </p>
+      </div>
+    </li>
   )
 }
 
@@ -362,14 +425,17 @@ function Preco() {
       <div className={CAIXA}>
         <Reveal>
           <h2 className={TITULO}>Quanto custa</h2>
-          <p className="mt-6 max-w-[46ch] text-[17px] leading-relaxed text-[var(--l-fg-mute)]">
+          {/* A âncora. Vem antes do preço de propósito: comparado com uma
+              cadeira vazia por semana, a mensalidade deixa de ser o número
+              grande da tela. */}
+          <p className="mt-7 max-w-[24ch] text-[clamp(1.4rem,2.8vw,2rem)] font-semibold leading-[1.25] tracking-[-0.02em] text-[var(--l-fg)]">
             Uma cadeira vazia por semana já custa mais que isso.
           </p>
         </Reveal>
 
         <RevealGrupo className="mt-14 grid gap-4 lg:grid-cols-2" intervalo={0.1}>
           <RevealItem>
-            <div className="glass h-full rounded-[24px] p-8 transition-transform duration-300 sm:p-10 hover:-translate-y-1">
+            <div className="glass h-full rounded-[24px] p-8 transition-transform duration-300 hover:-translate-y-1 sm:p-10">
               <div className="text-[15px] font-semibold text-[var(--l-fg-mute)]">Básico</div>
               <div className="mt-4 flex items-baseline gap-1">
                 <span className="text-[19px] text-[var(--l-fg-mute)]">R$</span>
@@ -394,7 +460,7 @@ function Preco() {
           {/* O plano recomendado é o único bloco em laranja sólido da página.
               É o carimbo, e ele só significa destaque porque não se repete. */}
           <RevealItem>
-            <div className="relative h-full rounded-[24px] bg-[var(--l-accent)] p-8 text-[var(--l-on-accent)] transition-[transform,box-shadow] duration-300 sm:p-10 hover:-translate-y-1 hover:shadow-[0_0_70px_-14px_rgba(224,138,60,0.6)]">
+            <div className="relative h-full rounded-[24px] bg-[var(--l-accent)] p-8 text-[var(--l-on-accent)] transition-[transform,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-[0_0_70px_-14px_rgba(224,138,60,0.6)] sm:p-10">
               <span className="absolute right-8 top-8 rounded-full bg-[var(--l-on-accent)]/14 px-3 py-1 text-[11px] font-bold">
                 Mais escolhido
               </span>
@@ -429,12 +495,12 @@ function Preco() {
         </RevealGrupo>
 
         <Reveal delay={0.14}>
-          <div className="mt-14">
-            <BotaoMagnetico to="/criar-conta">{CTA}</BotaoMagnetico>
-            <p className="mt-6 text-[14px] text-[var(--l-fg-faint)]">
-              Sem cartão. No teste você usa o Pro completo e cancela quando quiser, sem multa.
-            </p>
-          </div>
+          <Cta
+            className="mt-14"
+            microcopy={`${MICROCOPY} No teste você usa o Pro completo.`}
+          >
+            {CTA}
+          </Cta>
         </Reveal>
       </div>
     </section>
@@ -504,8 +570,8 @@ function Fecho() {
       />
       <div className={CAIXA}>
         <Reveal>
-          <h2 className="landing-display mx-auto max-w-[16ch] text-[clamp(2.4rem,6vw,4.6rem)] text-[var(--l-fg)]">
-            Experimente com a sua agenda de verdade
+          <h2 className="landing-display mx-auto max-w-[17ch] text-[clamp(2.4rem,6vw,4.6rem)] text-[var(--l-fg)]">
+            Quantos cortes você perdeu esse mês sem saber?
           </h2>
         </Reveal>
         <Reveal delay={0.09}>
@@ -514,9 +580,9 @@ function Fecho() {
           </p>
         </Reveal>
         <Reveal delay={0.16}>
-          <div className="mt-12">
-            <BotaoMagnetico to="/criar-conta">{CTA}</BotaoMagnetico>
-          </div>
+          <Cta className="mt-12" microcopy={MICROCOPY}>
+            {CTA}
+          </Cta>
         </Reveal>
       </div>
     </section>
@@ -564,12 +630,16 @@ export function VendasPage() {
         <Recursos />
         <PorDentro />
         <Numeros />
+        <Depoimentos />
         <ComoComeca />
         <Preco />
         <Faq />
         <Fecho />
       </main>
       <Rodape />
+
+      {/* Aparece depois do herói e se apaga perto de qualquer CTA de seção. */}
+      <CtaFixo rotulo={CTA} microcopy={MICROCOPY} />
     </div>
   )
 }

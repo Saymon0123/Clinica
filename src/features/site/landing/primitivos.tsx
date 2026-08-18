@@ -22,15 +22,6 @@ import {
 const SAIDA = [0.23, 1, 0.32, 1] as const
 
 /**
- * `Link` do Router com as props de movimento.
- *
- * Criado uma vez, fora de qualquer componente: `motion.create` dentro do render
- * devolveria um tipo novo a cada passagem e o React desmontaria e remontaria o
- * link inteiro, perdendo o foco e cortando a animação no meio.
- */
-const LinkAnimado = motion.create(Link)
-
-/**
  * Entrada por scroll.
  *
  * `once` é deliberado: reanimar a cada passagem transforma a página num
@@ -140,7 +131,7 @@ export function BotaoMagnetico({
   variante?: 'destaque' | 'discreto'
   className?: string
 }) {
-  const ref = useRef<HTMLAnchorElement>(null)
+  const ref = useRef<HTMLSpanElement>(null)
   const semMovimento = useReducedMotion()
 
   const x = useMotionValue(0)
@@ -149,8 +140,6 @@ export function BotaoMagnetico({
   const my = useSpring(y, { stiffness: 260, damping: 22, mass: 0.4 })
 
   const destaque = variante === 'destaque'
-  const base =
-    'relative inline-flex items-center justify-center min-h-[52px] rounded-full px-8 text-[15px] font-semibold transition-shadow duration-300'
   const cor = destaque
     ? 'bg-[var(--l-accent)] text-[var(--l-on-accent)] hover:shadow-[0_0_44px_-6px_rgba(224,138,60,0.65)]'
     : 'border border-[var(--l-line-strong)] text-[var(--l-fg)] hover:border-[var(--l-accent)]'
@@ -169,38 +158,58 @@ export function BotaoMagnetico({
     y.set(0)
   }
 
+  /*
+    O deslocamento magnético fica no elemento de fora e a resposta ao toque no
+    link de dentro, de propósito.
+
+    Os dois são transform. No mesmo elemento, o Motion escreve `transform` em
+    style a cada quadro e apagaria o `scale` da classe — e `whileHover` do
+    Motion dispara no toque, deixando o botão preso aumentado depois que o dedo
+    sai. Separados, o pai translada, o filho escala, e o `hover:` do Tailwind já
+    vem atrás de `@media (hover: hover)`.
+  */
   return (
-    <LinkAnimado
+    <motion.span
       ref={ref}
-      to={to}
       onMouseMove={seguirCursor}
       onMouseLeave={soltar}
       style={{ x: mx, y: my }}
-      whileTap={semMovimento ? undefined : { scale: 0.97 }}
-      className={`${base} ${cor} ${className}`}
+      className="inline-block"
     >
-      {children}
-    </LinkAnimado>
+      <Link
+        to={to}
+        className={`relative inline-flex min-h-[52px] items-center justify-center rounded-full px-8 text-[15px] font-semibold transition-[transform,box-shadow] duration-200 hover:scale-[1.02] active:scale-[0.97] ${cor} ${className}`}
+      >
+        {children}
+      </Link>
+    </motion.span>
   )
 }
 
-/** Versão sem física, para onde um link simples basta. */
-export function BotaoSimples({
-  to,
+/**
+ * Chamada para ação com a microcopy de risco embaixo.
+ *
+ * Andam juntas em todo ponto da página, e não só no preço: a objeção ("vou ter
+ * que passar cartão? fico preso?") aparece em cada lugar onde a pessoa cogita
+ * clicar, e responder só uma vez, lá embaixo, é responder tarde.
+ *
+ * O `data-cta-inline` é o que faz a barra fixa se apagar quando este botão está
+ * à vista, para as duas nunca disputarem o mesmo olhar.
+ */
+export function Cta({
   children,
+  microcopy = 'Sem cartão. Cancela quando quiser.',
   className = '',
 }: {
-  to: string
   children: ReactNode
+  microcopy?: string
   className?: string
 }) {
   return (
-    <Link
-      to={to}
-      className={`inline-flex min-h-[52px] items-center justify-center rounded-full bg-[var(--l-accent)] px-8 text-[15px] font-semibold text-[var(--l-on-accent)] transition-shadow duration-300 hover:shadow-[0_0_44px_-6px_rgba(224,138,60,0.65)] ${className}`}
-    >
-      {children}
-    </Link>
+    <div data-cta-inline className={className}>
+      <BotaoMagnetico to="/criar-conta">{children}</BotaoMagnetico>
+      <p className="mt-5 text-[13.5px] text-[var(--l-fg-faint)]">{microcopy}</p>
+    </div>
   )
 }
 

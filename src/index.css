@@ -141,6 +141,48 @@ body {
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Pagina de vendas: sistema de bandas em dois modos.
+
+   A landing nao usa os tokens do CRM de proposito. O produto tem tema claro e
+   escuro que o dono escolhe; a landing tem preto e branco como COMPOSICAO, em
+   bandas que se chocam. Se ela herdasse --background, o modo escuro do
+   navegador quebraria o ritmo preto/branco que e a estrutura da pagina.
+
+   Preto puro, e nao quase-preto: contra o branco da banda seguinte, #0a0a0a
+   parece sujeira de renderizacao em vez de escolha.
+
+   O terracota da marca ocupa aqui o lugar de um unico carimbo (plano em
+   destaque e detalhes), nao de tema. Espalhado, para de significar destaque.
+--------------------------------------------------------------------------- */
+.landing {
+  --l-dark: #000000;
+  --l-light: #ffffff;
+  --l-soft: #f4f4f4;
+  --l-elevated: #16181a;
+  --l-ink: #191c1f;
+  --l-mute: #505a63;
+  --l-on-dark: #ffffff;
+  --l-on-dark-mute: rgba(255, 255, 255, 0.72);
+  --l-hairline-light: #e2e2e7;
+  --l-hairline-dark: rgba(255, 255, 255, 0.14);
+  --l-brand: #b5602a;
+  --l-brand-on-dark: #e0a068;
+
+  background-color: var(--l-dark);
+  color: var(--l-on-dark);
+}
+
+/* Display do sistema: entrelinha 1.0 e tracking negativo que aperta conforme o
+   corpo cresce. Sem isso a Archivo em 100px fica com buraco entre as linhas e
+   perde a densidade editorial que o sistema pede. */
+.landing-display {
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
 /* Entrada de conteudo. Usada nas telas publicas, que sao vistas uma vez por
    cliente: e o unico lugar do produto onde animacao de entrada se paga. */
 @keyframes surge {
@@ -163,6 +205,23 @@ body {
 .surge-stagger > * {
   animation: surge 300ms var(--ease-out) both;
   animation-delay: calc(var(--i, 0) * 28ms);
+}
+
+/* Revelacao por scroll na landing, em CSS puro (animation-timeline roda fora da
+   main thread e dispensa IntersectionObserver).
+
+   O @supports nao e detalhe: sem ele, o navegador que nao entende
+   animation-timeline aplica o estado inicial via `both` e CONGELA a secao
+   invisivel. O conteudo tem de aparecer por padrao e so ganhar a revelacao
+   onde ela funciona. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal {
+      animation: surge linear both;
+      animation-timeline: view();
+      animation-range: entry 10% cover 26%;
+    }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -38,6 +38,36 @@ import { useRolou } from './landing/useRolou'
  * **Um só elemento gritando.** O laranja sólido aparece na chamada principal e
  * no plano recomendado, e em mais nada. Espalhado, ele deixa de significar
  * "é por aqui".
+ *
+ * ---------------------------------------------------------------------------
+ * POSICIONAMENTO, e por que a página é escrita assim
+ *
+ * A categoria está lotada. Uma busca por "sistema de agendamento com IA para
+ * barbearia" devolve uma dúzia de produtos com a MESMA lista de recursos
+ * (agenda, WhatsApp, IA, financeiro, comissão, fidelidade) e a MESMA promessa:
+ * "reduza até X% das faltas", com X indo de 50 a 90 conforme a página. Nenhum
+ * publica de onde tirou o número, e todos usam "até", que permite dizer 70
+ * quando o real foi 4.
+ *
+ * O Club Cut custa mais que a maioria deles, e isso é escolha, não descuido.
+ * Uma página que promete a mesma coisa por três vezes o preço não fecha venda,
+ * então ela não compete na mesma frase.
+ *
+ * Duas coisas sustentam o preço, e as duas já são verdade no produto:
+ *
+ * 1. O agente ASSUME QUE É AUTOMÁTICO quando perguntam, e sai da frente quando
+ *    o dono entra na conversa. O concorrente faz o oposto: batiza o robô de
+ *    gente. O medo real do dono não é "será que agenda?", é "e se falar besteira
+ *    com meu cliente". Ninguém responde isso porque admitir risco atrapalha a
+ *    venda — e é exatamente por isso que responder aqui separa.
+ *
+ * 2. A página NÃO PROMETE PERCENTUAL. Num mercado onde todos gritam um número
+ *    inventado, ser o único que não grita é a coisa mais distinta possível. No
+ *    lugar da promessa vem a calculadora, com os números do próprio dono.
+ *
+ * Ao mexer nesta página: não introduza percentual de resultado sem medição, e
+ * não suavize a frase da seção `Franqueza`. As duas coisas são o produto.
+ * ---------------------------------------------------------------------------
  */
 const CTA = `Testar ${DIAS_DE_TESTE} dias grátis`
 const MICROCOPY = 'Sem cartão. Cancela quando quiser.'
@@ -126,15 +156,15 @@ function Hero() {
       <div className={`${CAIXA} grid items-center gap-16 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10`}>
         <div>
           <Reveal>
-            <h1 className="landing-display text-[clamp(2.9rem,7.4vw,5.6rem)] text-[var(--l-fg)]">
-              O cliente não espera
+            <h1 className="landing-display text-[clamp(2.6rem,6.6vw,5rem)] text-[var(--l-fg)]">
+              Ele atende. Não finge ser você.
             </h1>
           </Reveal>
 
           <Reveal delay={0.09}>
             <p className="mt-8 max-w-[45ch] text-[17px] leading-relaxed text-[var(--l-fg-mute)] sm:text-[19px]">
-              Mensagem às 22h respondida no outro dia vira corte na concorrência. O Club Cut
-              responde na hora e já marca na agenda.
+              Mensagem às 22h respondida no outro dia é corte perdido. Ele responde na hora, marca
+              na agenda, e sai da frente quando você entra na conversa.
             </p>
           </Reveal>
 
@@ -265,6 +295,44 @@ function Recursos() {
             </RevealItem>
           ))}
         </RevealGrupo>
+      </div>
+    </section>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A franqueza, dita em voz alta.
+ *
+ * É o posicionamento inteiro numa frase. A categoria vende o contrário: o
+ * concorrente batiza o robô de "Jarvis" e trabalha para que o cliente ache que
+ * está falando com gente.
+ *
+ * O medo real do dono não é "será que agenda?", é "e se falar besteira com meu
+ * cliente e me queimar?". Nenhum concorrente responde isso, porque admitir
+ * risco atrapalha a venda. É justamente por isso que responder aqui separa o
+ * Club Cut do resto — e é o que sustenta cobrar mais.
+ *
+ * Sem card e sem ícone de propósito: a frase é a peça.
+ */
+function Franqueza() {
+  return (
+    <section className="relative overflow-hidden px-6 py-[72px] lg:py-[96px]">
+      <div
+        className="glow left-1/2 top-1/2 h-[420px] w-[760px] -translate-x-1/2 -translate-y-1/2"
+        style={{ '--glow-tint': 'rgba(224,138,60,0.1)' } as React.CSSProperties}
+      />
+      <div className={CAIXA}>
+        <Reveal>
+          <p className="max-w-[19ch] text-[clamp(1.6rem,4vw,2.9rem)] font-semibold leading-[1.2] tracking-[-0.025em] text-[var(--l-fg)]">
+            Se o cliente perguntar se é robô, ele responde que é.
+          </p>
+          <p className="mt-7 max-w-[46ch] text-[17px] leading-relaxed text-[var(--l-fg-mute)]">
+            A gente não acha certo enganar o seu cliente. Ele escreve como gente, atende como gente,
+            e quando perguntam, não mente. É o seu nome na conversa.
+          </p>
+        </Reveal>
       </div>
     </section>
   )
@@ -424,6 +492,51 @@ function PassoNaLinha({
 
 /* -------------------------------------------------------------------------- */
 
+/**
+ * O número que a gente não vai prometer.
+ *
+ * Todo concorrente da categoria lidera com "reduza até X% das faltas", e o X
+ * escala de 50 a 90 conforme a página. Nenhum publica de onde saiu, e o "até"
+ * é a palavra que deixa dizer 70 quando o real foi 4.
+ *
+ * Recusar esse número parecia fraqueza nossa, porque a página ficava sem prova.
+ * É o contrário: num mercado onde todos gritam um percentual inventado, ser o
+ * único que não grita é a coisa mais distinta que dá para fazer. E a
+ * calculadora entrega a alternativa honesta na mesma tela, senão a recusa
+ * ficaria sendo só crítica sem oferta.
+ *
+ * Nenhum concorrente é citado pelo nome de propósito. A afirmação é sobre a
+ * prática da categoria, que é verificável em qualquer busca, e não sobre uma
+ * empresa específica.
+ */
+function SemPromessa() {
+  return (
+    <section className={SECAO}>
+      <div className={CAIXA}>
+        <Reveal>
+          <h2 className={TITULO_NARRATIVA}>Não vamos prometer 70%</h2>
+          <div className="mt-7 flex max-w-[54ch] flex-col gap-5 text-[17px] leading-relaxed text-[var(--l-fg-mute)]">
+            <p>
+              Você vai ver esse número por aí, e as variações dele: menos 50%, menos 70%, menos 90%
+              de falta. Pergunte de onde saiu.
+            </p>
+            <p>
+              A gente não tem esse número. Ninguém mediu a sua barbearia, e o que acontece numa não
+              acontece igual na outra. O que dá para fazer é a conta com os seus números.
+            </p>
+          </div>
+        </Reveal>
+
+        <Reveal delay={0.1} className="mt-12">
+          <Calculadora />
+        </Reveal>
+      </div>
+    </section>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+
 const BASICO = [
   'Atendimento automático no WhatsApp',
   'Agenda e clientes',
@@ -447,13 +560,6 @@ function Preco() {
           <p className="mt-7 max-w-[24ch] text-[clamp(1.4rem,2.8vw,2rem)] font-semibold leading-[1.25] tracking-[-0.02em] text-[var(--l-fg)]">
             Uma cadeira vazia por semana já custa mais que isso.
           </p>
-        </Reveal>
-
-        {/* E aqui o dono confere a frase acima com os números dele, antes de
-            ver a mensalidade. A âncora deixa de ser algo que a página afirma e
-            vira uma conta que ele mesmo fez. */}
-        <Reveal delay={0.08} className="mt-12">
-          <Calculadora />
         </Reveal>
 
         <RevealGrupo className="mt-11 grid gap-4 lg:grid-cols-2" intervalo={0.1}>
@@ -638,15 +744,20 @@ export function VendasPage() {
       <Navbar />
       <main>
         <Hero />
+        {/* Fecha o heroi. Marca onde a barbearia comeca. */}
+        <div className="regua-poste" aria-hidden="true" />
         <Dor />
         <Recursos />
+        <Franqueza />
         <PorDentro />
         <Depoimentos />
         <ComoComeca />
+        <SemPromessa />
         <Preco />
         <Faq />
         <Fecho />
       </main>
+      <div className="regua-poste" aria-hidden="true" />
       <Rodape />
 
       {/* Aparece depois do herói e se apaga perto de qualquer CTA de seção. */}

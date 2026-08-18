@@ -58,7 +58,7 @@ function Balao({ fala }: { fala: Fala }) {
         className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-snug ${
           doAgente
             ? 'rounded-br-md bg-[#10684f] text-[#ecfdf5]'
-            : 'rounded-bl-md bg-[#26211c] text-[var(--l-fg)]'
+            : 'rounded-bl-md bg-[#2a2927] text-white'
         }`}
       >
         {fala.texto}
@@ -78,7 +78,7 @@ function Digitando({ doAgente }: { doAgente: boolean }) {
     >
       <div
         className={`flex gap-1 rounded-2xl px-3.5 py-3 ${
-          doAgente ? 'rounded-br-md bg-[#10684f]' : 'rounded-bl-md bg-[#26211c]'
+          doAgente ? 'rounded-br-md bg-[#10684f]' : 'rounded-bl-md bg-[#2a2927]'
         }`}
       >
         {[0, 1, 2].map((i) => (
@@ -139,24 +139,26 @@ export function ChatDemo() {
 
   return (
     <div ref={ref} className="relative mx-auto w-full max-w-[330px]">
-      {/* Halo atrás do aparelho: a única fonte de profundidade da peça. */}
-      <div
-        className="glow -inset-12"
-        style={{ '--glow-tint': 'rgba(224,138,60,0.22)' } as React.CSSProperties}
-      />
+      {/*
+        O aparelho tem cor propria, e nao os tokens da pagina.
 
-      <div className="glass relative z-[1] overflow-hidden rounded-[34px] p-2">
-        <div className="overflow-hidden rounded-[27px] bg-[#0d0b09]">
+        A landing e clara agora; a tela de um celular com WhatsApp aberto nao é.
+        Herdar os tokens deixaria o texto do cabecalho em tinta escura sobre a
+        tela escura, ou seja, invisivel. O aparelho e objeto fisico simulado, e
+        objeto simulado segue a aparencia do que imita.
+      */}
+      <div className="relative z-[1] overflow-hidden rounded-[34px] bg-[#0e0f0c] p-2 shadow-[0_24px_60px_-28px_rgba(14,15,12,0.45)]">
+        <div className="overflow-hidden rounded-[27px] bg-[#121110]">
           {/* Cabeçalho da conversa */}
-          <div className="flex items-center gap-2.5 border-b border-[var(--l-line)] bg-[#16130f] px-4 py-3">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--l-accent-deep)] text-[12px] font-bold text-white">
+          <div className="flex items-center gap-2.5 border-b border-white/10 bg-[#1c1b19] px-4 py-3">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--l-accent)] text-[12px] font-bold text-[var(--l-on-accent)]">
               BC
             </span>
             <div className="min-w-0">
-              <div className="truncate text-[13px] font-semibold text-[var(--l-fg)]">
+              <div className="truncate text-[13px] font-semibold text-white">
                 Barbearia Corte Certo
               </div>
-              <div className="text-[10.5px] text-[var(--l-fg-faint)]">online</div>
+              <div className="text-[10.5px] text-white/55">online</div>
             </div>
           </div>
 

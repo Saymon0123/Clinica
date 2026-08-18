@@ -144,128 +144,114 @@ body {
 /* ---------------------------------------------------------------------------
    Pagina de vendas.
 
-   A landing nao usa os tokens do CRM de proposito. O produto tem tema claro e
-   escuro que o dono escolhe; a landing tem uma direcao de arte fixa, escura, e
-   herdar --background faria o modo do navegador desmontar a composicao.
+   A landing nao usa os tokens do CRM de proposito: o produto tem tema claro e
+   escuro que o dono escolhe, e a landing tem direcao de arte fixa.
 
-   Quase-preto e nao preto puro: gradiente, brilho e grao precisam de uma base
-   com alguma luz para registrar. Sobre #000 chapado eles somem, e o resultado
-   e o fundo de slide que a pagina esta tentando deixar de ser. O tom puxa para
-   o quente para conversar com o laranja em vez de brigar com ele.
+   A direcao virou clara. Canvas em verde-sabao, cartoes brancos por cima, e a
+   elevacao vem SO do contraste entre as duas superficies: sem sombra, sem
+   vidro, sem halo. Isso e o oposto do que estava aqui, e e proposital — no
+   sistema, superficie chapada e a regra, nao economia.
+
+   Verde-limao e o unico accent, e so aparece em acao (botao, indicador). Nunca
+   como fundo de secao, e nunca atras de um botao verde.
 --------------------------------------------------------------------------- */
 .landing {
-  --l-bg: #0a0908;
-  --l-bg-lift: #12100d;
-  --l-line: rgba(255, 255, 255, 0.09);
-  --l-line-strong: rgba(255, 255, 255, 0.17);
-  --l-fg: #f7f2ea;
-  --l-fg-mute: rgba(247, 242, 234, 0.6);
-  /* 0.5 e nao 0.38: sobre este fundo, 0.38 da ~3.4:1 de contraste e reprova no
-     minimo de leitura. E o tom dos avisos pequenos (o "sem cartao", os links do
-     rodape), justamente onde ninguem percebe que nao esta conseguindo ler. */
-  --l-fg-faint: rgba(247, 242, 234, 0.5);
-  --l-accent: #e08a3c;
-  --l-accent-deep: #b5602a;
-  --l-on-accent: #150d05;
+  /* Superficie */
+  --l-canvas: #ffffff;
+  --l-bg: #e8ebe6;
+  --l-bg-lift: #ffffff;
+
+  /* Tinta */
+  --l-fg: #0e0f0c;
+  --l-fg-mute: #454745;
+  --l-fg-faint: #868685;
+
+  /* Linha. Sobre fundo claro a linha e tinta com alfa, e nao branco com alfa,
+     que sobre sabao simplesmente some. */
+  --l-line: rgba(14, 15, 12, 0.12);
+  --l-line-strong: rgba(14, 15, 12, 0.28);
+
+  /* Marca */
+  --l-accent: #9fe870;
+  --l-accent-deep: #cdffad;
+  --l-accent-pale: #e2f6d5;
+  /* Texto sobre o limao e tinta, nunca branco: branco sobre #9fe870 da 1.6:1 e
+     e ilegivel. Tinta sobre limao da 14:1. */
+  --l-on-accent: #0e0f0c;
+  /* Verde COMO TEXTO sobre superficie clara. O limao da 1.4:1 sobre branco e
+     some; este e o verde-floresta do sistema para tinta, 10:1 sobre branco.
+     Regra: limao age (fundo de botao, indicador), floresta fala (texto). */
+  --l-ink-deep: #163300;
 
   /*
-    Escala de canto: tres valores, e so tres.
-
-    A pagina tinha oito raios diferentes em uso (3, 10, 12, 16, 22, 24, 27, 34).
-    Ninguem percebe isso conscientemente, mas e o que separa uma pagina que
-    parece um sistema de uma que parece acumulada.
-
-    --r-sm  controles e marcas pequenas
-    --r-md  cards e blocos de conteudo
-    pilula  qualquer coisa clicavel
+    Escala de canto. O sistema tem o canto generoso como assinatura, entao
+    --r-md subiu de 20 para 24: cartao e botao dividem o mesmo raio.
 
     EXCECOES, e sao so estas: o aparelho e os baloes da conversa simulam
-    hardware e um app de terceiro, entao seguem a forma do que imitam e nao a
-    nossa; e as barras do grafico sao marca de dado, nao moldura.
+    hardware e um app de terceiro, entao seguem a forma do que imitam; e as
+    barras do grafico sao marca de dado, nao moldura.
   */
   --r-sm: 12px;
-  --r-md: 20px;
+  --r-md: 24px;
 
   background-color: var(--l-bg);
   color: var(--l-fg);
-  font-family: 'Geist', 'Archivo', system-ui, sans-serif;
+  font-family: 'Inter', 'Archivo', system-ui, sans-serif;
+  font-feature-settings: 'calt';
   -webkit-font-smoothing: antialiased;
 }
 
-/* Display: entrelinha abaixo de 1 e tracking negativo que aperta conforme o
-   corpo cresce. Sem isso a manchete em 110px fica com buraco entre as linhas e
-   perde a densidade que faz o tamanho valer a pena. */
+/* Display no peso 900.
+   E a voz do sistema, e nao um titulo grande qualquer: em 700 a manchete perde
+   a densidade que faz o tamanho valer a pena. A entrelinha fecha abaixo de 1
+   porque em 900 as linhas se tocam bem. */
 .landing-display {
-  font-weight: 700;
-  line-height: 0.94;
-  letter-spacing: -0.035em;
+  font-weight: 900;
+  line-height: 0.9;
+  letter-spacing: -0.025em;
   text-wrap: balance;
 }
 
-/* Grao. Fica num overlay fixo e pointer-events:none: aplicado a um container
-   que rola, o navegador repinta a textura a cada frame e o scroll cai no
-   celular. Fixo, ele e pintado uma vez e so. */
-.landing-grain {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  pointer-events: none;
-  opacity: 0.05;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+/* Cartao branco sobre o sabao. Sem sombra e sem borda de proposito: o contraste
+   entre as duas superficies E a elevacao. Sombra aqui seria uma segunda pista
+   dizendo a mesma coisa, e mais fraca. */
+.card {
+  background-color: var(--l-canvas);
 }
 
-/* Halo de luz. Gradiente radial em vez de filter:blur de proposito: blur num
-   elemento grande e recalculado a cada frame de scroll, o gradiente e barato. */
-.glow {
-  position: absolute;
-  pointer-events: none;
-  z-index: 0;
-  border-radius: 9999px;
-  background: radial-gradient(circle, var(--glow-tint, rgba(224, 138, 60, 0.17)) 0%, transparent 68%);
+/* Cartao no sabao, para quando ele precisa aparecer sobre o branco. */
+.card-suave {
+  background-color: var(--l-bg);
 }
 
-/* Vidro: gradiente diagonal para a superficie nao ficar chapada, linha de 1px
-   e um brilho interno na aresta de cima, que e o que da a impressao de espessura. */
-.glass {
-  background-image: linear-gradient(158deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.018));
-  border: 1px solid var(--l-line);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
-    0 26px 64px -34px rgba(0, 0, 0, 0.95);
-}
-
-/* Sem blur disponivel, o gradiente translucido perde contraste e o texto fica
-   ilegivel sobre o que estiver atras. Cai para superficie solida. */
-@media (prefers-reduced-transparency: reduce) {
-  .glass {
-    background-image: none;
-    background-color: #16130f;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
+/* Cartao invertido: tinta com o limao por cima. Usado no plano recomendado e no
+   rodape. E a unica inversao de polaridade da pagina. */
+.card-tinta {
+  background-color: var(--l-fg);
+  color: var(--l-canvas);
 }
 
 /* ---------------------------------------------------------------------------
    Regua de poste de barbearia.
 
-   E o unico elemento decorativo da pagina, e existe por um motivo: o mercado
-   inteiro se veste de SaaS generico (gradiente, card, iconezinho), e nenhum
-   concorrente usa o vocabulario do proprio oficio. A listra diagonal do poste e
-   reconhecida na calcada antes de qualquer palavra ser lida.
+   Unico elemento decorativo da pagina. O mercado inteiro se veste de SaaS
+   generico e nenhum concorrente usa o vocabulario do proprio oficio; a listra
+   diagonal do poste e reconhecida na calcada antes de qualquer palavra.
 
-   Usada duas vezes, e so: fechando o heroi e antes do rodape. Repetida em toda
-   secao viraria papel de parede e perderia o sentido.
+   Sobre fundo claro a listra e de TINTA, e nao do limao: limao sobre sabao
+   quase nao aparece, e gastaria o accent numa faixa decorativa em vez de
+   guardar ele para a acao.
+
+   Usada duas vezes, e so: fechando o heroi e antes do rodape.
 --------------------------------------------------------------------------- */
 .regua-poste {
   height: 5px;
   background-image: repeating-linear-gradient(
     -52deg,
-    var(--l-accent) 0 7px,
+    var(--l-fg) 0 7px,
     transparent 7px 17px
   );
-  opacity: 0.55;
+  opacity: 0.28;
 }
 
 /* Numero grande: sem tabular-nums o contador troca de largura a cada frame e a
@@ -288,7 +274,7 @@ body {
   height: var(--polegar);
   border-radius: 9999px;
   background: var(--l-accent);
-  border: 2px solid var(--l-bg);
+  border: 2px solid var(--l-canvas);
   cursor: grab;
   box-shadow: 0 2px 10px -2px rgba(0, 0, 0, 0.7);
 }
@@ -298,7 +284,7 @@ body {
   height: var(--polegar);
   border-radius: 9999px;
   background: var(--l-accent);
-  border: 2px solid var(--l-bg);
+  border: 2px solid var(--l-canvas);
   cursor: grab;
   box-shadow: 0 2px 10px -2px rgba(0, 0, 0, 0.7);
 }

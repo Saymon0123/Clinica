@@ -79,7 +79,7 @@ function Controle({
         style={
           {
             '--polegar': '18px',
-            background: `linear-gradient(to right, var(--l-accent) ${parada}, rgba(255,255,255,0.13) ${parada})`,
+            background: `linear-gradient(to right, var(--l-accent) ${parada}, rgba(14,15,12,0.14) ${parada})`,
           } as React.CSSProperties
         }
       />
@@ -95,7 +95,7 @@ export function Calculadora() {
   const sobra = porMes - PRECO_PRO
 
   return (
-    <div className="glass rounded-[var(--r-md)] p-7 sm:p-10">
+    <div className="card rounded-[var(--r-md)] p-7 sm:p-10">
       <div className="grid gap-10 lg:grid-cols-[1fr_1fr] lg:gap-14">
         <div className="flex flex-col gap-8">
           <Controle
@@ -126,7 +126,7 @@ export function Calculadora() {
               arrastar, em vez de o número trocar em silêncio. */}
           <div
             aria-live="polite"
-            className="landing-num mt-2 text-[clamp(2.4rem,6vw,3.6rem)] text-[var(--l-accent)]"
+            className="landing-num mt-2 text-[clamp(2.4rem,6vw,3.6rem)] text-[var(--l-ink-deep)]"
           >
             {moeda(porMes)}
           </div>

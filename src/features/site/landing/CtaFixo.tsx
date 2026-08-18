@@ -73,7 +73,7 @@ export function CtaFixo({ rotulo, microcopy }: { rotulo: string; microcopy: stri
               daqui: é ela que responde "vou ter que passar cartão?" no momento
               em que a pessoa cogita clicar.
             */}
-            <div className="flex w-full flex-col gap-2.5 rounded-2xl border border-[var(--l-line)] bg-[rgba(255,255,255,0.94)] p-3 shadow-[0_16px_44px_-18px_rgba(14,14,11,0.35)] backdrop-blur-xl sm:w-auto sm:flex-row sm:items-center sm:gap-4 sm:rounded-full sm:py-2 sm:pl-6 sm:pr-2">
+            <div className="flex w-full flex-col gap-2.5 rounded-2xl border border-[var(--l-line)] bg-[rgba(22,32,27,0.92)] p-3 shadow-[0_16px_44px_-18px_rgba(0,0,0,0.6)] backdrop-blur-xl sm:w-auto sm:flex-row sm:items-center sm:gap-4 sm:rounded-full sm:py-2 sm:pl-6 sm:pr-2">
               <span className="text-center text-[13px] leading-tight text-[var(--l-fg-mute)] sm:text-left">
                 {microcopy}
               </span>

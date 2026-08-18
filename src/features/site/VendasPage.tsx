@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { CalendarCheck, Check, MessageCircle, Scissors, Smartphone, Wallet } from 'lucide-react'
 import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'motion/react'
 import { DIAS_DE_TESTE, PRECO_BASICO, PRECO_PRO } from '../../lib/planos'
+import { CONTATO } from '../../lib/contato'
 import { ChatDemo } from './landing/ChatDemo'
 import { ProdutoDemo } from './landing/ProdutoDemo'
 import { Depoimentos } from './landing/Depoimentos'
@@ -35,7 +36,7 @@ import { useRolou } from './landing/useRolou'
  * de risco embaixo, e a barra fixa se apaga quando qualquer uma delas está à
  * vista, para nunca haver dois botões disputando o mesmo olhar.
  *
- * **Um só elemento gritando.** O laranja sólido aparece na chamada principal e
+ * **Um só elemento gritando.** O verde sólido aparece na chamada principal e
  * no plano recomendado, e em mais nada. Espalhado, ele deixa de significar
  * "é por aqui".
  *
@@ -81,9 +82,9 @@ const MICROCOPY = 'Sem cartão. Cancela quando quiser.'
  * é para as partes de serviço, que não precisam do mesmo palco.
  */
 /*
-   Superficie por secao. No sistema, a elevacao vem do contraste sabao/branco:
-   secao com cartoes brancos fica no sabao (o cartao salta), secao de texto puro
-   fica em banda branca (o texto ganha um palco). A pagina alterna as duas.
+   Superficie por secao. No escuro a elevacao vem do contraste base/cartao:
+   secao com cartoes fica na base (o cartao salta), secao de texto puro fica na
+   banda de superficie (o texto ganha um palco). A pagina alterna as duas.
 */
 const SECAO = 'relative overflow-hidden px-6 py-[76px] lg:py-[104px]'
 const SECAO_BRANCA = 'relative overflow-hidden bg-[var(--l-canvas)] px-6 py-[76px] lg:py-[104px]'
@@ -120,7 +121,7 @@ function Navbar() {
     <header
       className={`fixed inset-x-0 top-0 z-50 transition-[background-color,backdrop-filter,border-color] duration-300 ${
         rolou
-          ? 'border-b border-[var(--l-line)] bg-[rgba(255,255,255,0.85)] backdrop-blur-xl'
+          ? 'border-b border-[var(--l-line)] bg-[rgba(13,21,18,0.78)] backdrop-blur-xl'
           : 'border-b border-transparent bg-transparent'
       }`}
     >
@@ -153,7 +154,7 @@ function Hero() {
         <div>
           <Reveal>
             <h1 className="landing-display text-[clamp(2.6rem,6.6vw,5rem)] text-[var(--l-fg)]">
-              Ele atende. Não finge ser você.
+              Ele atende. Não <em className="landing-serif">finge</em> ser você.
             </h1>
           </Reveal>
 
@@ -208,7 +209,7 @@ function Dor() {
     <section className={SECAO_BRANCA}>
       <div className={CAIXA}>
         <Reveal>
-          <h2 className={TITULO_NARRATIVA}>Você conhece esse dia</h2>
+          <h2 className={TITULO_NARRATIVA}>Você conhece esse <em className="landing-serif">dia</em></h2>
         </Reveal>
 
         <RevealGrupo className="mt-12 flex flex-col gap-10 sm:gap-14" intervalo={0.11}>
@@ -269,14 +270,14 @@ function Recursos() {
     <section className={SECAO}>
       <div className={CAIXA}>
         <Reveal>
-          <h2 className={TITULO_DECISAO}>O que o Club Cut faz</h2>
+          <h2 className={TITULO_DECISAO}>O que o Club Cut <em className="landing-serif">faz</em></h2>
         </Reveal>
 
         <RevealGrupo className="mt-11 grid gap-4 md:grid-cols-3">
           {RECURSOS.map((f) => (
             <RevealItem key={f.titulo} className={f.largo ? 'md:col-span-2' : ''}>
               <div className="card h-full rounded-[var(--r-md)] p-7 sm:p-9">
-                <f.icone size={20} strokeWidth={1.5} className="text-[var(--l-accent)]" />
+                <f.icone size={20} strokeWidth={1.5} className="text-[var(--l-accent-ink)]" />
                 <h3 className="mt-7 text-[21px] font-semibold tracking-[-0.015em] text-[var(--l-fg)]">
                   {f.titulo}
                 </h3>
@@ -344,7 +345,7 @@ function PorDentro() {
     <section className={SECAO}>
       <div className={CAIXA}>
         <Reveal>
-          <h2 className={TITULO_NARRATIVA}>E do seu lado, fica assim</h2>
+          <h2 className={TITULO_NARRATIVA}>E do seu lado, fica <em className="landing-serif">assim</em></h2>
           <p className="mt-6 max-w-[52ch] text-[17px] leading-relaxed text-[var(--l-fg-mute)]">
             O que o agente marca cai direto na agenda, e o que você atende fecha no caixa.
           </p>
@@ -359,6 +360,82 @@ function PorDentro() {
 }
 
 /* -------------------------------------------------------------------------- */
+
+/**
+ * A mesma cena, com e sem.
+ *
+ * As três linhas são as três dores da abertura, fechadas: a mensagem das 22h,
+ * a falta das 15h20 e o caixa no fim do dia. A página abre o problema lá em
+ * cima e fecha ele aqui, com o produto no meio — é prova por comportamento,
+ * não por número.
+ *
+ * **Cada célula descreve só o que o sistema faz hoje.** Nenhuma promete
+ * resultado ("recupera o cliente", "reduz a falta"): descrevem o que acontece
+ * mecanicamente, que é verificável no teste grátis. A regra da página vale
+ * aqui em dobro, porque tabela dá cara de fato a qualquer frase.
+ */
+const COMPARACAO: Array<[cena: string, sem: string, com: string]> = [
+  [
+    'Mensagem às 22h',
+    'Fica para amanhã. Às vezes o cliente também.',
+    'Respondida na hora, com preço e horário livre.',
+  ],
+  [
+    'Cliente não aparece',
+    'Você descobre olhando para a cadeira vazia.',
+    'Lembrete 1h antes pergunta se ele vem. Você sabe antes.',
+  ],
+  [
+    'Fim do dia',
+    'Comanda de papel, comissão de cabeça.',
+    'Caixa fechado e a comissão de cada um, calculada.',
+  ],
+]
+
+function ComSem() {
+  return (
+    <section className={`${SECAO_APOIO} bg-[var(--l-canvas)]`}>
+      <div className={CAIXA}>
+        <Reveal>
+          <h2 className={TITULO_NARRATIVA}>
+            O mesmo dia, <em className="landing-serif">duas</em> versões
+          </h2>
+        </Reveal>
+
+        <RevealGrupo className="mt-11 overflow-hidden rounded-[var(--r-md)] border border-[var(--l-line)]">
+          {/* Cabeçalho da tabela, em etiqueta mono. */}
+          <div className="hidden grid-cols-[0.8fr_1fr_1fr] gap-6 border-b border-[var(--l-line)] bg-[var(--l-bg)] px-7 py-4 sm:grid">
+            <span className="landing-label text-[var(--l-fg-faint)]">A cena</span>
+            <span className="landing-label text-[var(--l-fg-faint)]">Sem</span>
+            <span className="landing-label text-[var(--l-accent-ink)]">Com o Club Cut</span>
+          </div>
+
+          {COMPARACAO.map(([cena, sem, com], i) => (
+            <RevealItem key={cena}>
+              <div
+                className={`grid gap-3 px-7 py-6 sm:grid-cols-[0.8fr_1fr_1fr] sm:gap-6 ${
+                  i > 0 ? 'border-t border-[var(--l-line)]' : ''
+                }`}
+              >
+                <span className="text-[15px] font-semibold text-[var(--l-fg)]">{cena}</span>
+                <span className="text-[15px] leading-relaxed text-[var(--l-fg-faint)]">
+                  <span className="landing-label mr-2 inline sm:hidden">Sem —</span>
+                  {sem}
+                </span>
+                <span className="text-[15px] leading-relaxed text-[var(--l-fg)]">
+                  <span className="landing-label mr-2 inline text-[var(--l-accent-ink)] sm:hidden">
+                    Com —
+                  </span>
+                  {com}
+                </span>
+              </div>
+            </RevealItem>
+          ))}
+        </RevealGrupo>
+      </div>
+    </section>
+  )
+}
 
 /* -------------------------------------------------------------------------- */
 
@@ -399,7 +476,7 @@ function ComoComeca() {
     <section className={`${SECAO_APOIO} bg-[var(--l-canvas)]`}>
       <div className={`${CAIXA} grid gap-12 lg:grid-cols-[0.8fr_1.2fr]`}>
         <Reveal>
-          <h2 className={TITULO_APOIO}>Como começa</h2>
+          <h2 className={TITULO_APOIO}>Como <em className="landing-serif">começa</em></h2>
           <p className="mt-6 max-w-[34ch] text-[17px] leading-relaxed text-[var(--l-fg-mute)]">
             Três passos. O mais demorado leva dois minutos.
           </p>
@@ -498,7 +575,7 @@ function SemPromessa() {
     <section className={SECAO}>
       <div className={CAIXA}>
         <Reveal>
-          <h2 className={TITULO_NARRATIVA}>Não vamos prometer 70%</h2>
+          <h2 className={TITULO_NARRATIVA}>Não vamos <em className="landing-serif">prometer</em> 70%</h2>
           <div className="mt-7 flex max-w-[54ch] flex-col gap-5 text-[17px] leading-relaxed text-[var(--l-fg-mute)]">
             <p>
               Você vai ver esse número por aí, e as variações dele: menos 50%, menos 70%, menos 90%
@@ -533,7 +610,7 @@ function Preco() {
     <section className={SECAO}>
       <div className={CAIXA}>
         <Reveal>
-          <h2 className={TITULO_DECISAO}>Quanto custa</h2>
+          <h2 className={TITULO_DECISAO}>Quanto <em className="landing-serif">custa</em></h2>
           {/* A âncora. Vem antes do preço de propósito: comparado com uma
               cadeira vazia por semana, a mensalidade deixa de ser o número
               grande da tela. */}
@@ -545,7 +622,7 @@ function Preco() {
         <RevealGrupo className="mt-11 grid gap-4 lg:grid-cols-2" intervalo={0.1}>
           <RevealItem>
             <div className="card h-full rounded-[var(--r-md)] p-8 transition-transform duration-300 hover:-translate-y-1 sm:p-10">
-              <div className="text-[15px] font-semibold text-[var(--l-fg-mute)]">Básico</div>
+              <div className="landing-label text-[var(--l-fg-mute)]">Básico</div>
               <div className="mt-4 flex items-baseline gap-1">
                 <span className="text-[19px] text-[var(--l-fg-mute)]">R$</span>
                 <span className="landing-num text-[52px] text-[var(--l-fg)]">{PRECO_BASICO}</span>
@@ -557,7 +634,7 @@ function Preco() {
                     <Check
                       size={17}
                       strokeWidth={2}
-                      className="mt-0.5 shrink-0 text-[var(--l-accent)]"
+                      className="mt-0.5 shrink-0 text-[var(--l-accent-ink)]"
                     />
                     {i}
                   </li>
@@ -566,14 +643,14 @@ function Preco() {
             </div>
           </RevealItem>
 
-          {/* O plano recomendado é o único bloco em laranja sólido da página.
+          {/* O plano recomendado é o único cartão claro da página inteira.
               É o carimbo, e ele só significa destaque porque não se repete. */}
           <RevealItem>
             <div className="card-tinta relative h-full rounded-[var(--r-md)] p-8 transition-transform duration-300 hover:-translate-y-1 sm:p-10">
-              <span className="absolute right-8 top-8 rounded-full bg-[var(--l-accent)] px-3 py-1 text-[11px] font-bold text-[var(--l-on-accent)]">
+              <span className="absolute right-8 top-8 landing-label rounded-full bg-[var(--l-accent)] px-3 py-1.5 text-[var(--l-on-accent)]">
                 Mais escolhido
               </span>
-              <div className="text-[15px] font-semibold opacity-75">Pro</div>
+              <div className="landing-label opacity-75">Pro</div>
               <div className="mt-4 flex items-baseline gap-1">
                 <span className="text-[19px] opacity-75">R$</span>
                 <span className="landing-num text-[52px]">{PRECO_PRO}</span>
@@ -646,7 +723,7 @@ function Faq() {
     <section className={`${SECAO_APOIO} bg-[var(--l-canvas)]`}>
       <div className={CAIXA}>
         <Reveal>
-          <h2 className={TITULO_APOIO}>Perguntas que todo dono faz</h2>
+          <h2 className={TITULO_APOIO}>Perguntas que todo <em className="landing-serif">dono</em> faz</h2>
         </Reveal>
 
         <Reveal delay={0.08} className="mt-10">
@@ -665,7 +742,7 @@ function Fecho() {
       <div className={CAIXA}>
         <Reveal>
           <h2 className="landing-display mx-auto max-w-[17ch] text-[clamp(2.4rem,6vw,4.6rem)] text-[var(--l-fg)]">
-            Quantos cortes você perdeu esse mês sem saber?
+            Quantos cortes você <em className="landing-serif">perdeu</em> esse mês sem saber?
           </h2>
         </Reveal>
         <Reveal delay={0.09}>
@@ -683,27 +760,88 @@ function Fecho() {
   )
 }
 
+/**
+ * Rodapé em três colunas: marca, produto e suporte.
+ *
+ * Os canais de contato leem de `CONTATO` e só aparecem quando o canal real
+ * existe. Um "fale conosco" apontando para lugar nenhum é pior que nenhum:
+ * alguém escreve, ninguém responde, e a página que promete "responde na hora"
+ * vira piada.
+ */
 function Rodape() {
+  const linkClasse =
+    'text-[14px] text-[var(--l-fg-mute)] transition-colors duration-200 hover:text-[var(--l-fg)]'
+
+  const suporte = [
+    CONTATO.whatsapp && {
+      href: `https://wa.me/${CONTATO.whatsapp}`,
+      rotulo: 'Suporte no WhatsApp',
+      externo: true,
+    },
+    CONTATO.email && { href: `mailto:${CONTATO.email}`, rotulo: CONTATO.email, externo: true },
+    CONTATO.instagram && {
+      href: `https://instagram.com/${CONTATO.instagram}`,
+      rotulo: `@${CONTATO.instagram}`,
+      externo: true,
+    },
+  ].filter(Boolean) as Array<{ href: string; rotulo: string; externo: boolean }>
+
   return (
-    <footer className="card-tinta relative z-[1] px-6 py-14">
-      <div className="mx-auto flex max-w-[1180px] flex-wrap items-center gap-x-8 gap-y-3">
-        <span className="flex items-center gap-2 text-[14px] font-semibold text-white/85">
-          <Scissors size={14} strokeWidth={1.9} className="text-[var(--l-accent)]" />
-          Club Cut
+    <footer className="relative z-[1] border-t border-[var(--l-line)] bg-[var(--l-canvas)] px-6 pb-10 pt-14">
+      <div className="mx-auto grid max-w-[1180px] gap-10 sm:grid-cols-[1.2fr_1fr_1fr]">
+        <div>
+          <span className="flex items-center gap-2.5 text-[16px] font-bold text-[var(--l-fg)]">
+            <span className="flex h-8 w-8 items-center justify-center rounded-[var(--r-sm)] bg-[var(--l-accent)] text-[var(--l-on-accent)]">
+              <Scissors size={15} strokeWidth={1.9} />
+            </span>
+            Club Cut
+          </span>
+          <p className="mt-4 max-w-[30ch] text-[13.5px] leading-relaxed text-[var(--l-fg-faint)]">
+            Atendimento, agenda e caixa para barbearia, no WhatsApp que ela já tem.
+          </p>
+        </div>
+
+        <div className="flex flex-col items-start gap-3">
+          <span className="landing-label text-[var(--l-fg-faint)]">Produto</span>
+          {[
+            ['/criar-conta', CTA],
+            ['/login', 'Entrar'],
+            ['/termos', 'Termos de uso'],
+            ['/privacidade', 'Privacidade'],
+          ].map(([href, rotulo]) => (
+            <Link key={href} to={href} className={linkClasse}>
+              {rotulo}
+            </Link>
+          ))}
+        </div>
+
+        <div className="flex flex-col items-start gap-3">
+          <span className="landing-label text-[var(--l-fg-faint)]">Suporte</span>
+          {suporte.length > 0 ? (
+            suporte.map((s) => (
+              <a
+                key={s.href}
+                href={s.href}
+                target="_blank"
+                rel="noreferrer"
+                className={linkClasse}
+              >
+                {s.rotulo}
+              </a>
+            ))
+          ) : (
+            <p className="max-w-[26ch] text-[13.5px] leading-relaxed text-[var(--l-fg-faint)]">
+              O suporte é feito por WhatsApp, dentro do sistema, com resposta em até 1 dia útil.
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="mx-auto mt-12 flex max-w-[1180px] flex-wrap items-center justify-between gap-3 border-t border-[var(--l-line)] pt-6">
+        <span className="landing-label text-[var(--l-fg-faint)]">
+          © {new Date().getFullYear()} Club Cut
         </span>
-        {[
-          ['/termos', 'Termos de uso'],
-          ['/privacidade', 'Privacidade'],
-          ['/login', 'Entrar'],
-        ].map(([href, rotulo]) => (
-          <Link
-            key={href}
-            to={href}
-            className="text-[14px] text-white/60 transition-colors duration-200 hover:text-white"
-          >
-            {rotulo}
-          </Link>
-        ))}
+        <span className="landing-label text-[var(--l-fg-faint)]">criado pela Aura</span>
       </div>
     </footer>
   )
@@ -723,6 +861,7 @@ export function VendasPage() {
         <Recursos />
         <Franqueza />
         <PorDentro />
+        <ComSem />
         <Depoimentos />
         <ComoComeca />
         <SemPromessa />

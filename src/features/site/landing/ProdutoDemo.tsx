@@ -24,13 +24,13 @@ const DIA = [
 ] as const
 
 const ESTADO: Record<string, { rotulo: string; classe: string }> = {
-  feito: { rotulo: 'Atendido', classe: 'bg-[rgba(14,14,11,0.06)] text-[var(--l-fg-faint)]' },
-  // Estado positivo usa o verde semantico, e nao o tijolo da marca: chip de
-  // agenda e informacao, e pintar informacao com a cor do botao faz o olho
-  // procurar clique onde nao tem.
+  feito: { rotulo: 'Atendido', classe: 'bg-[rgba(243,241,234,0.07)] text-[var(--l-fg-faint)]' },
+  // Estado positivo: fundo do acento em alfa com o verde claro por cima. O
+  // chip e informacao, nao acao — por isso usa o par pale/ink, nunca o verde
+  // solido do botao.
   cadeira: { rotulo: 'Na cadeira', classe: 'bg-[var(--l-ok-pale)] text-[var(--l-ok)]' },
   confirmado: { rotulo: 'Confirmado', classe: 'bg-[var(--l-ok-pale)] text-[var(--l-ok)]' },
-  aguardando: { rotulo: 'Aguardando', classe: 'bg-[rgba(14,14,11,0.06)] text-[var(--l-fg-mute)]' },
+  aguardando: { rotulo: 'Aguardando', classe: 'bg-[rgba(243,241,234,0.07)] text-[var(--l-fg-mute)]' },
 }
 
 function Agenda() {
@@ -41,7 +41,7 @@ function Agenda() {
   return (
     <div ref={ref} className="card rounded-[var(--r-md)] p-6 sm:p-9">
       <div className="flex items-baseline justify-between">
-        <div className="text-[15px] font-semibold text-[var(--l-fg)]">Agenda de hoje</div>
+        <div className="landing-label text-[var(--l-fg-mute)]">Agenda de hoje</div>
         <div className="text-[12px] text-[var(--l-fg-faint)]">Rafael</div>
       </div>
 
@@ -56,7 +56,7 @@ function Agenda() {
               transition={{ duration: 0.42, delay: i * 0.07, ease: [0.23, 1, 0.32, 1] }}
               className="flex items-center gap-3.5 rounded-[var(--r-sm)] border border-[var(--l-line)] bg-[var(--l-bg)]/60 px-4 py-3.5"
             >
-              <span className="w-[46px] shrink-0 text-[13px] font-semibold tabular-nums text-[var(--l-fg-mute)]">
+              <span className="landing-num w-[46px] shrink-0 text-[12.5px] text-[var(--l-fg-mute)]">
                 {a.hora}
               </span>
               <span className="min-w-0 flex-1">
@@ -87,7 +87,7 @@ function Barra({ altura, destaque, atraso }: { altura: number; destaque: boolean
     <div className="flex h-full flex-1 items-end">
       <motion.span
         className={`w-full origin-bottom rounded-t-[3px] ${
-          destaque ? 'bg-[var(--l-accent)]' : 'bg-[rgba(14,14,11,0.12)]'
+          destaque ? 'bg-[var(--l-accent-ink)]' : 'bg-[rgba(243,241,234,0.14)]'
         }`}
         style={{ height: `${altura}%` }}
         initial={semMovimento ? false : { scaleY: 0 }}
@@ -111,7 +111,7 @@ const SEMANA = [
 function Caixa() {
   return (
     <div className="card rounded-[var(--r-md)] p-6 sm:p-9">
-      <div className="text-[15px] font-semibold text-[var(--l-fg)]">Caixa da semana</div>
+      <div className="landing-label text-[var(--l-fg-mute)]">Caixa da semana</div>
 
       <div className="mt-4 flex items-baseline gap-1.5">
         <span className="text-[15px] text-[var(--l-fg-mute)]">R$</span>
@@ -145,7 +145,7 @@ function Caixa() {
             <span className="text-[var(--l-fg-mute)]">
               {nome} <span className="text-[var(--l-fg-faint)]">· comissão {pct}</span>
             </span>
-            <span className="font-semibold tabular-nums text-[var(--l-fg)]">{valor}</span>
+            <span className="landing-num text-[12.5px] text-[var(--l-fg)]">{valor}</span>
           </div>
         ))}
       </div>

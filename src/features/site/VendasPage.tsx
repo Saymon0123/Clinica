@@ -1,13 +1,17 @@
 import { Link } from 'react-router-dom'
-import {
-  CalendarCheck,
-  Check,
-  MessageCircle,
-  Scissors,
-  Smartphone,
-  Wallet,
-} from 'lucide-react'
+import { CalendarCheck, Check, MessageCircle, Scissors, Smartphone, Wallet } from 'lucide-react'
 import { DIAS_DE_TESTE } from '../../lib/planos'
+import { ChatDemo } from './landing/ChatDemo'
+import { ProdutoDemo } from './landing/ProdutoDemo'
+import {
+  BotaoMagnetico,
+  BotaoSimples,
+  Contador,
+  Reveal,
+  RevealGrupo,
+  RevealItem,
+} from './landing/primitivos'
+import { useRolou } from './landing/useRolou'
 
 /**
  * Página de vendas — onde o anúncio e a prospecção caem.
@@ -22,59 +26,146 @@ import { DIAS_DE_TESTE } from '../../lib/planos'
  * uso. Os preços saem de `plans`; se a tabela mudar, este texto precisa mudar
  * junto.
  *
- * **Estrutura visual:** bandas alternadas de preto e branco, que se chocam sem
- * transição. Preto conta a história (promessa, produto, preço, fecho), branco
- * é modo catálogo, onde a pessoa compara e tira dúvida. A troca de fundo marca
- * a troca de intenção da leitura, e é por isso que a página não tem tema claro
- * e escuro: o contraste entre as bandas É a composição.
+ * **Direção visual:** escuro contínuo, com o ritmo vindo de halo de luz e
+ * mudança de superfície em vez de troca de fundo. Bandas que se chocam davam um
+ * corte seco a cada seção; aqui a página é um ambiente só, e o que muda é para
+ * onde a luz aponta.
+ *
+ * **Layout varia por seção de propósito.** Se toda seção fosse "título + grade
+ * de cards", a página inteira leria como um template, por melhor que estivesse
+ * o acabamento de cada bloco.
  */
-const CTA_PRIMARIO = `Testar ${DIAS_DE_TESTE} dias grátis`
+const CTA = `Testar ${DIAS_DE_TESTE} dias grátis`
 
-/** Banda preta: os momentos em que a página afirma alguma coisa. */
-function BandaEscura({
-  children,
-  className = '',
-}: {
-  children: React.ReactNode
-  className?: string
-}) {
+/** Respiro entre seções. Generoso: é o que separa "caro" de "apertado". */
+const SECAO = 'relative overflow-hidden px-6 py-[104px] lg:py-[150px]'
+const CAIXA = 'relative z-[1] mx-auto max-w-[1180px]'
+const TITULO = 'landing-display text-[clamp(2rem,4.6vw,3.4rem)] text-[var(--l-fg)]'
+
+function Navbar() {
+  const rolou = useRolou(80)
+
   return (
-    <section
-      className={`bg-[var(--l-dark)] text-[var(--l-on-dark)] px-6 py-16 sm:py-22 ${className}`}
+    <header
+      className={`fixed inset-x-0 top-0 z-50 transition-[background-color,backdrop-filter,border-color] duration-300 ${
+        rolou
+          ? 'border-b border-[var(--l-line)] bg-[rgba(10,9,8,0.72)] backdrop-blur-xl'
+          : 'border-b border-transparent bg-transparent'
+      }`}
     >
-      {children}
+      <div className="mx-auto flex h-[72px] max-w-[1180px] items-center justify-between px-6">
+        <Link to="/inicio" className="flex items-center gap-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[var(--l-accent-deep)] text-white">
+            <Scissors size={16} strokeWidth={1.9} />
+          </span>
+          <span className="text-[17px] font-bold tracking-tight text-[var(--l-fg)]">Club Cut</span>
+        </Link>
+
+        <div className="flex items-center gap-6">
+          <Link
+            to="/login"
+            className="text-[14px] font-medium text-[var(--l-fg-mute)] transition-colors duration-200 hover:text-[var(--l-fg)]"
+          >
+            Entrar
+          </Link>
+          {/* O esconde-esconde fica no wrapper, e não no botão: `hidden` e
+              `inline-flex` são os dois utilitários de `display`, e qual vence
+              depende da ordem no CSS gerado, não da ordem escrita aqui. No
+              celular o botão aparecia junto do logo e do "Entrar". */}
+          <span className="hidden sm:block">
+            <BotaoSimples to="/criar-conta" className="!min-h-[44px] !px-6 !text-sm">
+              {CTA}
+            </BotaoSimples>
+          </span>
+        </div>
+      </div>
+    </header>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+
+function Hero() {
+  return (
+    <section className="relative overflow-hidden px-6 pb-[104px] pt-[132px] lg:pb-[140px] lg:pt-[168px]">
+      {/* Duas fontes de luz: uma atrás do texto, outra atrás do aparelho. É o
+          que impede o quase-preto de ler como fundo chapado. */}
+      <div
+        className="glow left-[-16%] top-[-14%] h-[560px] w-[720px]"
+        style={{ '--glow-tint': 'rgba(224,138,60,0.15)' } as React.CSSProperties}
+      />
+      <div
+        className="glow right-[-10%] top-[8%] h-[520px] w-[560px]"
+        style={{ '--glow-tint': 'rgba(224,138,60,0.1)' } as React.CSSProperties}
+      />
+
+      <div className={`${CAIXA} grid items-center gap-16 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10`}>
+        <div>
+          <Reveal>
+            <h1 className="landing-display text-[clamp(2.9rem,7.4vw,5.6rem)] text-[var(--l-fg)]">
+              Sua barbearia agenda sozinha
+            </h1>
+          </Reveal>
+
+          <Reveal delay={0.09}>
+            <p className="mt-8 max-w-[44ch] text-[17px] leading-relaxed text-[var(--l-fg-mute)] sm:text-[19px]">
+              O cliente chama no WhatsApp, o atendimento responde e marca na agenda. Você fica
+              cortando cabelo.
+            </p>
+          </Reveal>
+
+          <Reveal delay={0.17}>
+            <div className="mt-11">
+              <BotaoMagnetico to="/criar-conta">{CTA}</BotaoMagnetico>
+            </div>
+          </Reveal>
+        </div>
+
+        <Reveal delay={0.22}>
+          <ChatDemo />
+        </Reveal>
+      </div>
     </section>
   )
 }
 
-/** Banda branca: os momentos em que a página deixa a pessoa conferir. */
-function BandaClara({
-  children,
-  className = '',
-}: {
-  children: React.ReactNode
-  className?: string
-}) {
+/* -------------------------------------------------------------------------- */
+
+const DORES = [
+  'Está com a máquina na mão e o celular toca. Ou você para o corte, ou o cliente espera, e às vezes desiste.',
+  'Marcou alguém às 15h. Às 15h20 a cadeira continua vazia, e aquele horário não volta.',
+  'Alguém perguntou o preço da barba às 22h. Você respondeu no dia seguinte, e ele já tinha cortado em outro lugar.',
+]
+
+/** Sem cards: as frases são o conteúdo, e caixa em volta só as afastaria da leitura. */
+function Dor() {
   return (
-    <section
-      className={`bg-[var(--l-light)] text-[var(--l-ink)] px-6 py-16 sm:py-22 ${className}`}
-    >
-      {children}
+    <section className={SECAO}>
+      <div className={CAIXA}>
+        <Reveal>
+          <h2 className={TITULO}>Você conhece esse dia</h2>
+        </Reveal>
+
+        <RevealGrupo className="mt-14 flex flex-col" intervalo={0.09}>
+          {DORES.map((d, i) => (
+            <RevealItem key={d}>
+              <div className="grid gap-5 border-t border-[var(--l-line)] py-8 sm:grid-cols-[64px_1fr] sm:gap-10 sm:py-10">
+                <span className="landing-num text-[15px] text-[var(--l-accent)]">
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <p className="max-w-[52ch] text-[19px] leading-[1.5] text-[var(--l-fg-mute)] sm:text-[22px]">
+                  {d}
+                </p>
+              </div>
+            </RevealItem>
+          ))}
+        </RevealGrupo>
+      </div>
     </section>
   )
 }
 
-/** Pílula branca sobre preto: a ação mais clara da página. */
-function BotaoClaro({ children }: { children: React.ReactNode }) {
-  return (
-    <Link
-      to="/criar-conta"
-      className="inline-flex items-center justify-center min-h-12 rounded-full bg-[var(--l-light)] px-7 text-base font-semibold text-[var(--l-dark)] transition-[transform,background-color] duration-150 hover:bg-[#c9c9cd] active:scale-[0.98]"
-    >
-      {children}
-    </Link>
-  )
-}
+/* -------------------------------------------------------------------------- */
 
 const RECURSOS = [
   {
@@ -82,26 +173,126 @@ const RECURSOS = [
     titulo: 'Atende no WhatsApp, sozinho',
     texto:
       'Responde preço, horário e o que a barbearia faz. Marca, remarca e cancela a qualquer hora, inclusive de madrugada e no domingo.',
+    largo: true,
   },
   {
     icone: CalendarCheck,
     titulo: 'Agenda que não deixa furo',
     texto:
       'O horário de cada barbeiro, o tempo de cada serviço, e nada marcado por cima de nada. O que o agente marca aparece na hora.',
+    largo: false,
   },
   {
     icone: Smartphone,
     titulo: 'Lembra o cliente antes',
     texto:
       'Uma hora antes ele recebe um lembrete e confirma se vem. Dez minutos antes, um "está a caminho?". Menos cadeira vazia.',
+    largo: false,
   },
   {
     icone: Wallet,
     titulo: 'O dinheiro do dia, fechado',
     texto:
       'Comanda, caixa e a comissão de cada barbeiro calculada sozinha. Você fecha o dia sabendo quanto entrou.',
+    largo: true,
   },
 ]
+
+/** Bento: células de tamanhos diferentes. Quatro cards iguais seriam o template. */
+function Recursos() {
+  return (
+    <section className={SECAO}>
+      <div
+        className="glow right-[-14%] top-[6%] h-[520px] w-[620px]"
+        style={{ '--glow-tint': 'rgba(224,138,60,0.09)' } as React.CSSProperties}
+      />
+      <div className={CAIXA}>
+        <Reveal>
+          <h2 className={TITULO}>O que o Club Cut faz</h2>
+        </Reveal>
+
+        <RevealGrupo className="mt-14 grid gap-4 md:grid-cols-3">
+          {RECURSOS.map((f) => (
+            <RevealItem key={f.titulo} className={f.largo ? 'md:col-span-2' : ''}>
+              <div className="glass h-full rounded-[22px] p-7 sm:p-9">
+                <f.icone size={20} strokeWidth={1.5} className="text-[var(--l-accent)]" />
+                <h3 className="mt-7 text-[21px] font-semibold tracking-[-0.015em] text-[var(--l-fg)]">
+                  {f.titulo}
+                </h3>
+                <p className="mt-3 max-w-[46ch] text-[15px] leading-relaxed text-[var(--l-fg-mute)]">
+                  {f.texto}
+                </p>
+              </div>
+            </RevealItem>
+          ))}
+        </RevealGrupo>
+      </div>
+    </section>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+
+function PorDentro() {
+  return (
+    <section className={SECAO}>
+      <div className={CAIXA}>
+        <Reveal>
+          <h2 className={TITULO}>E do seu lado, fica assim</h2>
+          <p className="mt-6 max-w-[52ch] text-[17px] leading-relaxed text-[var(--l-fg-mute)]">
+            O que o agente marca cai direto na agenda, e o que você atende fecha no caixa.
+          </p>
+        </Reveal>
+
+        <Reveal delay={0.1} className="mt-14">
+          <ProdutoDemo />
+        </Reveal>
+      </div>
+    </section>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Números do produto.
+ *
+ * São fatos verificáveis do sistema, e não métricas de adoção. Contador de
+ * "barbearias ativas" ou "faltas evitadas" precisaria de número real; inventado,
+ * seria uma alegação falsa numa página que vende para gente de verdade.
+ */
+const NUMEROS = [
+  { ate: 24, sufixo: 'h', rotulo: 'atendendo, todo dia' },
+  { ate: DIAS_DE_TESTE, sufixo: '', rotulo: 'dias de teste, sem cartão' },
+  { ate: 1, sufixo: 'h', rotulo: 'antes, o lembrete sai' },
+  { ate: 10, sufixo: 'min', rotulo: 'antes, a confirmação' },
+]
+
+function Numeros() {
+  return (
+    <section className="relative overflow-hidden px-6 py-[88px] lg:py-[112px]">
+      <div className={CAIXA}>
+        <RevealGrupo
+          className="grid gap-10 border-y border-[var(--l-line)] py-14 sm:grid-cols-2 lg:grid-cols-4"
+          intervalo={0.08}
+        >
+          {NUMEROS.map((n) => (
+            <RevealItem key={n.rotulo}>
+              <div className="landing-num text-[clamp(2.6rem,5vw,3.6rem)] text-[var(--l-accent)]">
+                <Contador ate={n.ate} sufixo={n.sufixo} />
+              </div>
+              <div className="mt-3 max-w-[22ch] text-[14px] leading-snug text-[var(--l-fg-mute)]">
+                {n.rotulo}
+              </div>
+            </RevealItem>
+          ))}
+        </RevealGrupo>
+      </div>
+    </section>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
 
 const PASSOS = [
   ['Crie sua conta', 'E-mail e senha. Você confirma pelo e-mail e já entra.'],
@@ -114,6 +305,143 @@ const PASSOS = [
     'A barbearia já vem com horário e serviços preenchidos. Você muda preço, duração e horário em dois minutos.',
   ],
 ]
+
+/** Coluna estreita com fio ligando os passos: a ordem aqui é informação real. */
+function ComoComeca() {
+  return (
+    <section className={SECAO}>
+      <div className={`${CAIXA} grid gap-14 lg:grid-cols-[0.8fr_1.2fr]`}>
+        <Reveal>
+          <h2 className={TITULO}>Como começa</h2>
+        </Reveal>
+
+        <RevealGrupo className="flex flex-col" intervalo={0.09}>
+          {PASSOS.map(([titulo, texto], i) => (
+            <RevealItem key={titulo}>
+              <div className="relative flex gap-6 pb-11 last:pb-0">
+                {/* Fio que liga um passo ao seguinte. Some no último. */}
+                {i < PASSOS.length - 1 && (
+                  <span className="absolute bottom-2 left-[19px] top-11 w-px bg-[var(--l-line)]" />
+                )}
+                <span className="relative z-[1] flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--l-line-strong)] bg-[var(--l-bg-lift)] text-[14px] font-bold text-[var(--l-accent)]">
+                  {i + 1}
+                </span>
+                <div className="pt-1.5">
+                  <div className="text-[19px] font-semibold tracking-[-0.015em] text-[var(--l-fg)]">
+                    {titulo}
+                  </div>
+                  <p className="mt-2.5 max-w-[46ch] text-[15px] leading-relaxed text-[var(--l-fg-mute)]">
+                    {texto}
+                  </p>
+                </div>
+              </div>
+            </RevealItem>
+          ))}
+        </RevealGrupo>
+      </div>
+    </section>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+
+const BASICO = [
+  'Atendimento automático no WhatsApp',
+  'Agenda e clientes',
+  'Financeiro e comissão',
+  'Catálogo de serviços',
+]
+
+function Preco() {
+  return (
+    <section className={SECAO}>
+      <div
+        className="glow left-1/2 top-1/4 h-[620px] w-[860px] -translate-x-1/2"
+        style={{ '--glow-tint': 'rgba(224,138,60,0.11)' } as React.CSSProperties}
+      />
+      <div className={CAIXA}>
+        <Reveal>
+          <h2 className={TITULO}>Quanto custa</h2>
+          <p className="mt-6 max-w-[46ch] text-[17px] leading-relaxed text-[var(--l-fg-mute)]">
+            Uma cadeira vazia por semana já custa mais que isso.
+          </p>
+        </Reveal>
+
+        <RevealGrupo className="mt-14 grid gap-4 lg:grid-cols-2" intervalo={0.1}>
+          <RevealItem>
+            <div className="glass h-full rounded-[24px] p-8 transition-transform duration-300 sm:p-10 hover:-translate-y-1">
+              <div className="text-[15px] font-semibold text-[var(--l-fg-mute)]">Básico</div>
+              <div className="mt-4 flex items-baseline gap-1">
+                <span className="text-[19px] text-[var(--l-fg-mute)]">R$</span>
+                <span className="landing-num text-[52px] text-[var(--l-fg)]">197</span>
+                <span className="text-[15px] text-[var(--l-fg-faint)]">/mês</span>
+              </div>
+              <ul className="mt-9 flex flex-col gap-3.5">
+                {BASICO.map((i) => (
+                  <li key={i} className="flex gap-3 text-[15px] text-[var(--l-fg-mute)]">
+                    <Check
+                      size={17}
+                      strokeWidth={2}
+                      className="mt-0.5 shrink-0 text-[var(--l-accent)]"
+                    />
+                    {i}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </RevealItem>
+
+          {/* O plano recomendado é o único bloco em laranja sólido da página.
+              É o carimbo, e ele só significa destaque porque não se repete. */}
+          <RevealItem>
+            <div className="relative h-full rounded-[24px] bg-[var(--l-accent)] p-8 text-[var(--l-on-accent)] transition-[transform,box-shadow] duration-300 sm:p-10 hover:-translate-y-1 hover:shadow-[0_0_70px_-14px_rgba(224,138,60,0.6)]">
+              <span className="absolute right-8 top-8 rounded-full bg-[var(--l-on-accent)]/14 px-3 py-1 text-[11px] font-bold">
+                Mais escolhido
+              </span>
+              <div className="text-[15px] font-semibold opacity-75">Pro</div>
+              <div className="mt-4 flex items-baseline gap-1">
+                <span className="text-[19px] opacity-75">R$</span>
+                <span className="landing-num text-[52px]">299</span>
+                <span className="text-[15px] opacity-70">/mês</span>
+              </div>
+              <ul className="mt-9 flex flex-col gap-3.5 text-[15px]">
+                <li className="flex gap-3">
+                  <Check size={17} strokeWidth={2.4} className="mt-0.5 shrink-0" />
+                  Tudo do Básico
+                </li>
+                <li className="flex gap-3">
+                  <Check size={17} strokeWidth={2.4} className="mt-0.5 shrink-0" />
+                  <span>
+                    <strong className="font-semibold">Lembrete 1h antes</strong>, perguntando se o
+                    cliente confirma
+                  </span>
+                </li>
+                <li className="flex gap-3">
+                  <Check size={17} strokeWidth={2.4} className="mt-0.5 shrink-0" />
+                  <span>
+                    <strong className="font-semibold">Confirmação 10 min antes</strong>, para você
+                    saber do atraso antes da cadeira esfriar
+                  </span>
+                </li>
+              </ul>
+            </div>
+          </RevealItem>
+        </RevealGrupo>
+
+        <Reveal delay={0.14}>
+          <div className="mt-14">
+            <BotaoMagnetico to="/criar-conta">{CTA}</BotaoMagnetico>
+            <p className="mt-6 text-[14px] text-[var(--l-fg-faint)]">
+              Sem cartão. No teste você usa o Pro completo e cancela quando quiser, sem multa.
+            </p>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
 
 const PERGUNTAS = [
   [
@@ -138,243 +466,110 @@ const PERGUNTAS = [
   ],
 ]
 
+function Faq() {
+  return (
+    <section className={SECAO}>
+      <div className={CAIXA}>
+        <Reveal>
+          <h2 className={TITULO}>Perguntas que todo dono faz</h2>
+        </Reveal>
+
+        <RevealGrupo className="mt-14 flex flex-col" intervalo={0.06}>
+          {PERGUNTAS.map(([p, r]) => (
+            <RevealItem key={p}>
+              <div className="grid gap-3 border-t border-[var(--l-line)] py-8 lg:grid-cols-[0.85fr_1.15fr] lg:gap-14">
+                <div className="text-[18px] font-semibold tracking-[-0.015em] text-[var(--l-fg)]">
+                  {p}
+                </div>
+                <p className="max-w-[58ch] text-[15px] leading-relaxed text-[var(--l-fg-mute)]">
+                  {r}
+                </p>
+              </div>
+            </RevealItem>
+          ))}
+        </RevealGrupo>
+      </div>
+    </section>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+
+function Fecho() {
+  return (
+    <section className="relative overflow-hidden px-6 py-[120px] text-center lg:py-[170px]">
+      <div
+        className="glow left-1/2 top-1/2 h-[680px] w-[900px] -translate-x-1/2 -translate-y-1/2"
+        style={{ '--glow-tint': 'rgba(224,138,60,0.16)' } as React.CSSProperties}
+      />
+      <div className={CAIXA}>
+        <Reveal>
+          <h2 className="landing-display mx-auto max-w-[16ch] text-[clamp(2.4rem,6vw,4.6rem)] text-[var(--l-fg)]">
+            Experimente com a sua agenda de verdade
+          </h2>
+        </Reveal>
+        <Reveal delay={0.09}>
+          <p className="mx-auto mt-8 max-w-[42ch] text-[17px] leading-relaxed text-[var(--l-fg-mute)] sm:text-[19px]">
+            Em {DIAS_DE_TESTE} dias dá tempo de ver o lembrete evitando uma falta.
+          </p>
+        </Reveal>
+        <Reveal delay={0.16}>
+          <div className="mt-12">
+            <BotaoMagnetico to="/criar-conta">{CTA}</BotaoMagnetico>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  )
+}
+
+function Rodape() {
+  return (
+    <footer className="relative z-[1] px-6 pb-16">
+      <div className="mx-auto flex max-w-[1180px] flex-wrap items-center gap-x-8 gap-y-3 border-t border-[var(--l-line)] pt-10">
+        <span className="flex items-center gap-2 text-[14px] font-semibold text-[var(--l-fg-mute)]">
+          <Scissors size={14} strokeWidth={1.9} className="text-[var(--l-accent)]" />
+          Club Cut
+        </span>
+        {[
+          ['/termos', 'Termos de uso'],
+          ['/privacidade', 'Privacidade'],
+          ['/login', 'Entrar'],
+        ].map(([href, rotulo]) => (
+          <Link
+            key={href}
+            to={href}
+            className="text-[14px] text-[var(--l-fg-faint)] transition-colors duration-200 hover:text-[var(--l-fg)]"
+          >
+            {rotulo}
+          </Link>
+        ))}
+      </div>
+    </footer>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+
 export function VendasPage() {
   return (
     <div className="landing min-h-[100dvh]">
-      {/* Navegação: uma linha, marca à esquerda, ação à direita. */}
-      <header className="bg-[var(--l-dark)] px-6">
-        <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--l-brand)] text-white">
-              <Scissors size={17} />
-            </span>
-            <span className="text-lg font-bold tracking-tight text-[var(--l-on-dark)]">
-              Club Cut
-            </span>
-          </div>
-          <div className="flex items-center gap-5">
-            <Link
-              to="/login"
-              className="text-sm font-semibold text-[var(--l-on-dark-mute)] transition-colors duration-150 hover:text-[var(--l-on-dark)]"
-            >
-              Entrar
-            </Link>
-            <span className="hidden sm:block">
-              <BotaoClaro>{CTA_PRIMARIO}</BotaoClaro>
-            </span>
-          </div>
-        </div>
-      </header>
+      {/* Grão por cima de tudo, sem capturar clique. Tira o chapado do fundo. */}
+      <div className="landing-grain" aria-hidden="true" />
 
-      {/* Promessa. Manchete curta de propósito: no tamanho de display do
-          sistema, uma frase longa vira quatro linhas e perde o impacto. */}
-      <section className="bg-[var(--l-dark)] px-6 pt-14 pb-20 sm:pt-20 sm:pb-28">
-        <div className="surge mx-auto max-w-[1200px]">
-          <h1 className="landing-display text-[clamp(2.75rem,9vw,6.5rem)] text-[var(--l-on-dark)]">
-            Sua barbearia agenda sozinha
-          </h1>
-          <p className="mt-7 max-w-[46ch] text-lg leading-relaxed text-[var(--l-on-dark-mute)]">
-            O cliente chama no WhatsApp, o atendimento responde e marca na agenda. Você fica
-            cortando cabelo.
-          </p>
-          <div className="mt-9">
-            <BotaoClaro>{CTA_PRIMARIO}</BotaoClaro>
-          </div>
-        </div>
-      </section>
-
-      {/* O problema, na língua do dono. Fundo branco: aqui ela para de ouvir a
-          promessa e começa a se reconhecer. */}
-      <BandaClara>
-        <div className="reveal mx-auto max-w-[1200px]">
-          <h2 className="landing-display text-[clamp(2rem,5vw,3rem)] text-[var(--l-ink)]">
-            Você conhece esse dia
-          </h2>
-          <div className="mt-10 grid gap-px overflow-hidden rounded-[20px] border border-[var(--l-hairline-light)] bg-[var(--l-hairline-light)] sm:grid-cols-3">
-            {[
-              'Está com a máquina na mão e o celular toca. Ou você para o corte, ou o cliente espera, e às vezes desiste.',
-              'Marcou alguém às 15h. Às 15h20 a cadeira continua vazia, e aquele horário não volta.',
-              'Alguém perguntou o preço da barba às 22h. Você respondeu no dia seguinte, e ele já tinha cortado em outro lugar.',
-            ].map((t) => (
-              <p key={t} className="bg-[var(--l-light)] p-8 text-base leading-relaxed text-[var(--l-mute)]">
-                {t}
-              </p>
-            ))}
-          </div>
-        </div>
-      </BandaClara>
-
-      {/* O produto. Volta ao preto: é a parte que afirma. */}
-      <BandaEscura>
-        <div className="reveal mx-auto max-w-[1200px]">
-          <h2 className="landing-display text-[clamp(2rem,5vw,3rem)] text-[var(--l-on-dark)]">
-            O que o Club Cut faz
-          </h2>
-          <div className="mt-10 grid gap-4 sm:grid-cols-2">
-            {RECURSOS.map((f) => (
-              <div key={f.titulo} className="rounded-[20px] bg-[var(--l-elevated)] p-8">
-                <f.icone size={22} className="text-[var(--l-brand-on-dark)]" />
-                <h3 className="mt-5 text-2xl font-semibold tracking-tight text-[var(--l-on-dark)]">
-                  {f.titulo}
-                </h3>
-                <p className="mt-3 text-base leading-relaxed text-[var(--l-on-dark-mute)]">
-                  {f.texto}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </BandaEscura>
-
-      {/* Como começa. Numeração porque aqui a ordem é informação real: são
-          passos que acontecem nessa sequência. */}
-      <BandaClara>
-        <div className="reveal mx-auto max-w-[1200px]">
-          <h2 className="landing-display text-[clamp(2rem,5vw,3rem)] text-[var(--l-ink)]">
-            Como começa
-          </h2>
-          <ol className="mt-10 grid gap-10 sm:grid-cols-3">
-            {PASSOS.map(([titulo, texto], i) => (
-              <li key={titulo}>
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--l-brand)] text-sm font-bold text-white">
-                  {i + 1}
-                </span>
-                <div className="mt-5 text-xl font-semibold tracking-tight text-[var(--l-ink)]">
-                  {titulo}
-                </div>
-                <p className="mt-2.5 text-base leading-relaxed text-[var(--l-mute)]">{texto}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </BandaClara>
-
-      {/* Preço. O plano recomendado é o único bloco de terracota da página:
-          é o carimbo, e ele só significa destaque porque não se repete. */}
-      <BandaEscura>
-        <div className="reveal mx-auto max-w-[1200px]">
-          <h2 className="landing-display text-[clamp(2rem,5vw,3rem)] text-[var(--l-on-dark)]">
-            Quanto custa
-          </h2>
-          <p className="mt-5 max-w-[46ch] text-lg leading-relaxed text-[var(--l-on-dark-mute)]">
-            Uma cadeira vazia por semana já custa mais que isso.
-          </p>
-
-          <div className="mt-10 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-[20px] bg-[var(--l-elevated)] p-8">
-              <div className="text-2xl font-semibold tracking-tight text-[var(--l-on-dark)]">
-                Básico
-              </div>
-              <div className="mt-3 text-5xl font-bold tracking-tight text-[var(--l-on-dark)]">
-                R$ 197
-                <span className="text-lg font-normal text-[var(--l-on-dark-mute)]">/mês</span>
-              </div>
-              <ul className="mt-7 space-y-3 text-base text-[var(--l-on-dark-mute)]">
-                {[
-                  'Atendimento automático no WhatsApp',
-                  'Agenda e clientes',
-                  'Financeiro e comissão',
-                  'Catálogo de serviços',
-                ].map((i) => (
-                  <li key={i} className="flex gap-2.5">
-                    <Check size={18} className="mt-0.5 shrink-0 text-[var(--l-brand-on-dark)]" />
-                    {i}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Texto em branco puro sobre o terracota: qualquer tom mais suave
-                cai abaixo do contraste mínimo de leitura nesse fundo. */}
-            <div className="relative rounded-[20px] bg-[var(--l-brand)] p-8 text-white">
-              <span className="absolute right-8 top-8 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
-                Mais escolhido
-              </span>
-              <div className="text-2xl font-semibold tracking-tight">Pro</div>
-              <div className="mt-3 text-5xl font-bold tracking-tight">
-                R$ 299<span className="text-lg font-normal">/mês</span>
-              </div>
-              <ul className="mt-7 space-y-3 text-base">
-                <li className="flex gap-2.5">
-                  <Check size={18} className="mt-0.5 shrink-0" />
-                  Tudo do Básico
-                </li>
-                <li className="flex gap-2.5">
-                  <Check size={18} className="mt-0.5 shrink-0" />
-                  <span>
-                    <strong>Lembrete 1h antes</strong>, perguntando se o cliente confirma
-                  </span>
-                </li>
-                <li className="flex gap-2.5">
-                  <Check size={18} className="mt-0.5 shrink-0" />
-                  <span>
-                    <strong>Confirmação 10 min antes</strong>, para você saber do atraso antes da
-                    cadeira esfriar
-                  </span>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="mt-10">
-            <BotaoClaro>{CTA_PRIMARIO}</BotaoClaro>
-            <p className="mt-5 text-sm text-[var(--l-on-dark-mute)]">
-              Sem cartão. No teste você usa o Pro completo e cancela quando quiser, sem multa.
-            </p>
-          </div>
-        </div>
-      </BandaEscura>
-
-      {/* Dúvidas. Modo catálogo de novo: é onde ela confere antes de decidir. */}
-      <BandaClara>
-        <div className="reveal mx-auto max-w-[1200px]">
-          <h2 className="landing-display text-[clamp(2rem,5vw,3rem)] text-[var(--l-ink)]">
-            Perguntas que todo dono faz
-          </h2>
-          <div className="mt-10 grid gap-x-16 gap-y-10 sm:grid-cols-2">
-            {PERGUNTAS.map(([p, r]) => (
-              <div key={p}>
-                <div className="text-xl font-semibold tracking-tight text-[var(--l-ink)]">{p}</div>
-                <p className="mt-2.5 text-base leading-relaxed text-[var(--l-mute)]">{r}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </BandaClara>
-
-      {/* Fecho. */}
-      <BandaEscura>
-        <div className="reveal mx-auto max-w-[1200px]">
-          <h2 className="landing-display text-[clamp(2.25rem,6vw,4.5rem)] max-w-[18ch] text-[var(--l-on-dark)]">
-            Experimente com a sua agenda de verdade
-          </h2>
-          <p className="mt-7 max-w-[46ch] text-lg leading-relaxed text-[var(--l-on-dark-mute)]">
-            Em {DIAS_DE_TESTE} dias dá tempo de ver o lembrete evitando uma falta.
-          </p>
-          <div className="mt-9">
-            <BotaoClaro>{CTA_PRIMARIO}</BotaoClaro>
-          </div>
-        </div>
-      </BandaEscura>
-
-      <footer className="bg-[var(--l-dark)] px-6 py-14">
-        <div className="mx-auto max-w-[1200px] border-t border-[var(--l-hairline-dark)] pt-10">
-          <div className="flex flex-wrap gap-x-7 gap-y-3 text-sm text-[var(--l-on-dark-mute)]">
-            <Link to="/termos" className="transition-colors duration-150 hover:text-[var(--l-on-dark)]">
-              Termos de uso
-            </Link>
-            <Link
-              to="/privacidade"
-              className="transition-colors duration-150 hover:text-[var(--l-on-dark)]"
-            >
-              Privacidade
-            </Link>
-            <Link to="/login" className="transition-colors duration-150 hover:text-[var(--l-on-dark)]">
-              Entrar
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <Navbar />
+      <main>
+        <Hero />
+        <Dor />
+        <Recursos />
+        <PorDentro />
+        <Numeros />
+        <ComoComeca />
+        <Preco />
+        <Faq />
+        <Fecho />
+      </main>
+      <Rodape />
     </div>
   )
 }

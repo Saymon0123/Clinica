@@ -142,45 +142,99 @@ body {
 }
 
 /* ---------------------------------------------------------------------------
-   Pagina de vendas: sistema de bandas em dois modos.
+   Pagina de vendas.
 
    A landing nao usa os tokens do CRM de proposito. O produto tem tema claro e
-   escuro que o dono escolhe; a landing tem preto e branco como COMPOSICAO, em
-   bandas que se chocam. Se ela herdasse --background, o modo escuro do
-   navegador quebraria o ritmo preto/branco que e a estrutura da pagina.
+   escuro que o dono escolhe; a landing tem uma direcao de arte fixa, escura, e
+   herdar --background faria o modo do navegador desmontar a composicao.
 
-   Preto puro, e nao quase-preto: contra o branco da banda seguinte, #0a0a0a
-   parece sujeira de renderizacao em vez de escolha.
-
-   O terracota da marca ocupa aqui o lugar de um unico carimbo (plano em
-   destaque e detalhes), nao de tema. Espalhado, para de significar destaque.
+   Quase-preto e nao preto puro: gradiente, brilho e grao precisam de uma base
+   com alguma luz para registrar. Sobre #000 chapado eles somem, e o resultado
+   e o fundo de slide que a pagina esta tentando deixar de ser. O tom puxa para
+   o quente para conversar com o laranja em vez de brigar com ele.
 --------------------------------------------------------------------------- */
 .landing {
-  --l-dark: #000000;
-  --l-light: #ffffff;
-  --l-soft: #f4f4f4;
-  --l-elevated: #16181a;
-  --l-ink: #191c1f;
-  --l-mute: #505a63;
-  --l-on-dark: #ffffff;
-  --l-on-dark-mute: rgba(255, 255, 255, 0.72);
-  --l-hairline-light: #e2e2e7;
-  --l-hairline-dark: rgba(255, 255, 255, 0.14);
-  --l-brand: #b5602a;
-  --l-brand-on-dark: #e0a068;
+  --l-bg: #0a0908;
+  --l-bg-lift: #12100d;
+  --l-line: rgba(255, 255, 255, 0.09);
+  --l-line-strong: rgba(255, 255, 255, 0.17);
+  --l-fg: #f7f2ea;
+  --l-fg-mute: rgba(247, 242, 234, 0.6);
+  /* 0.5 e nao 0.38: sobre este fundo, 0.38 da ~3.4:1 de contraste e reprova no
+     minimo de leitura. E o tom dos avisos pequenos (o "sem cartao", os links do
+     rodape), justamente onde ninguem percebe que nao esta conseguindo ler. */
+  --l-fg-faint: rgba(247, 242, 234, 0.5);
+  --l-accent: #e08a3c;
+  --l-accent-deep: #b5602a;
+  --l-on-accent: #150d05;
 
-  background-color: var(--l-dark);
-  color: var(--l-on-dark);
+  background-color: var(--l-bg);
+  color: var(--l-fg);
+  font-family: 'Geist', 'Archivo', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Display do sistema: entrelinha 1.0 e tracking negativo que aperta conforme o
-   corpo cresce. Sem isso a Archivo em 100px fica com buraco entre as linhas e
-   perde a densidade editorial que o sistema pede. */
+/* Display: entrelinha abaixo de 1 e tracking negativo que aperta conforme o
+   corpo cresce. Sem isso a manchete em 110px fica com buraco entre as linhas e
+   perde a densidade que faz o tamanho valer a pena. */
 .landing-display {
   font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.03em;
+  line-height: 0.94;
+  letter-spacing: -0.035em;
   text-wrap: balance;
+}
+
+/* Grao. Fica num overlay fixo e pointer-events:none: aplicado a um container
+   que rola, o navegador repinta a textura a cada frame e o scroll cai no
+   celular. Fixo, ele e pintado uma vez e so. */
+.landing-grain {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Halo de luz. Gradiente radial em vez de filter:blur de proposito: blur num
+   elemento grande e recalculado a cada frame de scroll, o gradiente e barato. */
+.glow {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 9999px;
+  background: radial-gradient(circle, var(--glow-tint, rgba(224, 138, 60, 0.17)) 0%, transparent 68%);
+}
+
+/* Vidro: gradiente diagonal para a superficie nao ficar chapada, linha de 1px
+   e um brilho interno na aresta de cima, que e o que da a impressao de espessura. */
+.glass {
+  background-image: linear-gradient(158deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.018));
+  border: 1px solid var(--l-line);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 26px 64px -34px rgba(0, 0, 0, 0.95);
+}
+
+/* Sem blur disponivel, o gradiente translucido perde contraste e o texto fica
+   ilegivel sobre o que estiver atras. Cai para superficie solida. */
+@media (prefers-reduced-transparency: reduce) {
+  .glass {
+    background-image: none;
+    background-color: #16130f;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* Numero grande: sem tabular-nums o contador troca de largura a cada frame e a
+   linha inteira treme durante a contagem. */
+.landing-num {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.03em;
 }
 
 /* Entrada de conteudo. Usada nas telas publicas, que sao vistas uma vez por
@@ -207,22 +261,9 @@ body {
   animation-delay: calc(var(--i, 0) * 28ms);
 }
 
-/* Revelacao por scroll na landing, em CSS puro (animation-timeline roda fora da
-   main thread e dispensa IntersectionObserver).
-
-   O @supports nao e detalhe: sem ele, o navegador que nao entende
-   animation-timeline aplica o estado inicial via `both` e CONGELA a secao
-   invisivel. O conteudo tem de aparecer por padrao e so ganhar a revelacao
-   onde ela funciona. */
-@supports (animation-timeline: view()) {
-  @media (prefers-reduced-motion: no-preference) {
-    .reveal {
-      animation: surge linear both;
-      animation-timeline: view();
-      animation-range: entry 10% cover 26%;
-    }
-  }
-}
+/* A revelacao por scroll da landing saiu daqui para o Motion: a versao em CSS
+   nao consegue escalonar o atraso entre os filhos de uma secao, que e o que faz
+   a entrada parecer uma sequencia em vez de um bloco piscando de uma vez. */
 
 @media (prefers-reduced-motion: reduce) {
   .surge,

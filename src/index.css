@@ -168,6 +168,24 @@ body {
   --l-accent-deep: #b5602a;
   --l-on-accent: #150d05;
 
+  /*
+    Escala de canto: tres valores, e so tres.
+
+    A pagina tinha oito raios diferentes em uso (3, 10, 12, 16, 22, 24, 27, 34).
+    Ninguem percebe isso conscientemente, mas e o que separa uma pagina que
+    parece um sistema de uma que parece acumulada.
+
+    --r-sm  controles e marcas pequenas
+    --r-md  cards e blocos de conteudo
+    pilula  qualquer coisa clicavel
+
+    EXCECOES, e sao so estas: o aparelho e os baloes da conversa simulam
+    hardware e um app de terceiro, entao seguem a forma do que imitam e nao a
+    nossa; e as barras do grafico sao marca de dado, nao moldura.
+  */
+  --r-sm: 12px;
+  --r-md: 20px;
+
   background-color: var(--l-bg);
   color: var(--l-fg);
   font-family: 'Geist', 'Archivo', system-ui, sans-serif;

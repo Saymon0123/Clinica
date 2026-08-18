@@ -36,13 +36,13 @@ function Agenda() {
   const semMovimento = useReducedMotion()
 
   return (
-    <div ref={ref} className="glass rounded-[22px] p-5 sm:p-7">
+    <div ref={ref} className="glass rounded-[var(--r-md)] p-6 sm:p-9">
       <div className="flex items-baseline justify-between">
-        <div className="text-[13px] font-semibold text-[var(--l-fg)]">Agenda de hoje</div>
+        <div className="text-[15px] font-semibold text-[var(--l-fg)]">Agenda de hoje</div>
         <div className="text-[12px] text-[var(--l-fg-faint)]">Rafael</div>
       </div>
 
-      <div className="mt-5 flex flex-col gap-1.5">
+      <div className="mt-7 flex flex-col gap-2">
         {DIA.map((a, i) => {
           const e = ESTADO[a.estado]
           return (
@@ -51,16 +51,16 @@ function Agenda() {
               initial={semMovimento ? false : { opacity: 0, x: -10 }}
               animate={naTela || semMovimento ? { opacity: 1, x: 0 } : undefined}
               transition={{ duration: 0.42, delay: i * 0.07, ease: [0.23, 1, 0.32, 1] }}
-              className="flex items-center gap-3 rounded-xl border border-[var(--l-line)] bg-white/[0.02] px-3 py-2.5"
+              className="flex items-center gap-3.5 rounded-[var(--r-sm)] border border-[var(--l-line)] bg-white/[0.02] px-4 py-3.5"
             >
-              <span className="w-[42px] shrink-0 text-[12.5px] font-semibold tabular-nums text-[var(--l-fg-mute)]">
+              <span className="w-[46px] shrink-0 text-[13px] font-semibold tabular-nums text-[var(--l-fg-mute)]">
                 {a.hora}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13px] font-medium text-[var(--l-fg)]">
+                <span className="block truncate text-[14px] font-medium text-[var(--l-fg)]">
                   {a.cliente}
                 </span>
-                <span className="block truncate text-[11.5px] text-[var(--l-fg-faint)]">
+                <span className="block truncate text-[12px] text-[var(--l-fg-faint)]">
                   {a.servico}
                 </span>
               </span>
@@ -107,8 +107,8 @@ const SEMANA = [
 
 function Caixa() {
   return (
-    <div className="glass rounded-[22px] p-5 sm:p-7">
-      <div className="text-[13px] font-semibold text-[var(--l-fg)]">Caixa da semana</div>
+    <div className="glass rounded-[var(--r-md)] p-6 sm:p-9">
+      <div className="text-[15px] font-semibold text-[var(--l-fg)]">Caixa da semana</div>
 
       <div className="mt-4 flex items-baseline gap-1.5">
         <span className="text-[15px] text-[var(--l-fg-mute)]">R$</span>
@@ -117,7 +117,7 @@ function Caixa() {
         </span>
       </div>
 
-      <div className="mt-6 flex h-24 items-end gap-2">
+      <div className="mt-7 flex h-32 items-end gap-2.5">
         {SEMANA.map((d, i) => (
           <Barra key={i} altura={d.v} destaque={i === SEMANA.length - 1} atraso={i * 0.06} />
         ))}
@@ -152,7 +152,7 @@ function Caixa() {
 
 export function ProdutoDemo() {
   return (
-    <div className="grid gap-4 lg:grid-cols-[1.15fr_1fr]">
+    <div className="grid gap-5 lg:grid-cols-[1.1fr_1fr]">
       <Agenda />
       <Caixa />
     </div>

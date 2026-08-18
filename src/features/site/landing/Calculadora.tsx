@@ -95,7 +95,7 @@ export function Calculadora() {
   const sobra = porMes - PRECO_PRO
 
   return (
-    <div className="glass rounded-[24px] p-7 sm:p-10">
+    <div className="glass rounded-[var(--r-md)] p-7 sm:p-10">
       <div className="grid gap-10 lg:grid-cols-[1fr_1fr] lg:gap-14">
         <div className="flex flex-col gap-8">
           <Controle

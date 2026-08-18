@@ -42,9 +42,32 @@ import { useRolou } from './landing/useRolou'
 const CTA = `Testar ${DIAS_DE_TESTE} dias grátis`
 const MICROCOPY = 'Sem cartão. Cancela quando quiser.'
 
-const SECAO = 'relative overflow-hidden px-6 py-[104px] lg:py-[150px]'
+/**
+ * Respiro entre seções.
+ *
+ * Era 150px em cima e embaixo, o que dava 300px de preto entre uma seção e a
+ * seguinte. Espaço vazio só lê como respiro quando alguma coisa mora perto
+ * dele; sozinho, do tamanho de meia tela, lê como página inacabada. `SECAO_APOIO`
+ * é para as partes de serviço, que não precisam do mesmo palco.
+ */
+const SECAO = 'relative overflow-hidden px-6 py-[76px] lg:py-[104px]'
+const SECAO_APOIO = 'relative overflow-hidden px-6 py-[64px] lg:py-[84px]'
 const CAIXA = 'relative z-[1] mx-auto max-w-[1180px]'
-const TITULO = 'landing-display text-[clamp(2rem,4.6vw,3.4rem)] text-[var(--l-fg)]'
+
+/**
+ * Três níveis de título, e não um só.
+ *
+ * Seis seções no mesmo corpo de 54px faziam o olho descer a página sem nunca
+ * ter motivo para acelerar ou desacelerar: os layouts variavam, o ritmo não.
+ * O tamanho passa a dizer o que a seção pesa na decisão.
+ *
+ * DECISAO é onde a pessoa escolhe (o que o produto faz, quanto custa).
+ * NARRATIVA é onde ela se reconhece ou vê a prova.
+ * APOIO é serviço: consulta antes de decidir, não convence sozinho.
+ */
+const TITULO_DECISAO = 'landing-display text-[clamp(2rem,4.6vw,3.4rem)] text-[var(--l-fg)]'
+const TITULO_NARRATIVA = 'landing-display text-[clamp(1.75rem,3.6vw,2.75rem)] text-[var(--l-fg)]'
+const TITULO_APOIO = 'landing-display text-[clamp(1.5rem,2.6vw,2.05rem)] text-[var(--l-fg)]'
 
 /**
  * Barra de navegação sem chamada para ação.
@@ -88,7 +111,7 @@ function Navbar() {
 
 function Hero() {
   return (
-    <section className="relative overflow-hidden px-6 pb-[104px] pt-[132px] lg:pb-[140px] lg:pt-[168px]">
+    <section className="relative overflow-hidden px-6 pb-[88px] pt-[124px] lg:pb-[108px] lg:pt-[148px]">
       {/* Duas fontes de luz: uma atrás do texto, outra atrás do aparelho. É o
           que impede o quase-preto de ler como fundo chapado. */}
       <div
@@ -138,26 +161,40 @@ const DORES = [
   'Alguém perguntou o preço da barba às 22h. Você respondeu no dia seguinte, e ele já tinha cortado em outro lugar.',
 ]
 
-/** Sem cards: as frases são o conteúdo, e caixa em volta só as afastaria da leitura. */
+/**
+ * As três cenas do dia ruim.
+ *
+ * É a melhor copy da página, e estava com o tratamento mais fraco: cinza
+ * apagado, 22px, encostada na margem esquerda com metade da tela vazia à
+ * direita. Passou a ser lida como o que é, o momento em que o dono se
+ * reconhece, e não como uma lista de apoio.
+ *
+ * **A numeração saiu.** As três cenas são paralelas, não uma sequência: o
+ * celular tocando durante o corte não vem antes da cadeira vazia das 15h20.
+ * Numerar ali era enfeite vestido de estrutura, e gastava o significado que o
+ * número tem em "Como começa", onde a ordem é informação de verdade.
+ *
+ * A alternância de lado ocupa a metade direita que sobrava e mantém as três no
+ * mesmo peso, sem sugerir ordem, que é o que uma escada de recuo faria.
+ */
 function Dor() {
   return (
     <section className={SECAO}>
       <div className={CAIXA}>
         <Reveal>
-          <h2 className={TITULO}>Você conhece esse dia</h2>
+          <h2 className={TITULO_NARRATIVA}>Você conhece esse dia</h2>
         </Reveal>
 
-        <RevealGrupo className="mt-14 flex flex-col" intervalo={0.09}>
+        <RevealGrupo className="mt-12 flex flex-col gap-10 sm:gap-14" intervalo={0.11}>
           {DORES.map((d, i) => (
             <RevealItem key={d}>
-              <div className="grid gap-5 border-t border-[var(--l-line)] py-8 sm:grid-cols-[64px_1fr] sm:gap-10 sm:py-10">
-                <span className="landing-num text-[15px] text-[var(--l-accent)]">
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-                <p className="max-w-[52ch] text-[19px] leading-[1.5] text-[var(--l-fg-mute)] sm:text-[22px]">
-                  {d}
-                </p>
-              </div>
+              <p
+                className={`max-w-[30ch] text-[clamp(1.3rem,2.9vw,2rem)] font-medium leading-[1.32] tracking-[-0.02em] text-[var(--l-fg)] ${
+                  i % 2 === 1 ? 'sm:ml-auto sm:text-right' : ''
+                }`}
+              >
+                {d}
+              </p>
             </RevealItem>
           ))}
         </RevealGrupo>
@@ -210,10 +247,10 @@ function Recursos() {
       />
       <div className={CAIXA}>
         <Reveal>
-          <h2 className={TITULO}>O que o Club Cut faz</h2>
+          <h2 className={TITULO_DECISAO}>O que o Club Cut faz</h2>
         </Reveal>
 
-        <RevealGrupo className="mt-14 grid gap-4 md:grid-cols-3">
+        <RevealGrupo className="mt-11 grid gap-4 md:grid-cols-3">
           {RECURSOS.map((f) => (
             <RevealItem key={f.titulo} className={f.largo ? 'md:col-span-2' : ''}>
               <div className="glass h-full rounded-[22px] p-7 sm:p-9">
@@ -240,13 +277,13 @@ function PorDentro() {
     <section className={SECAO}>
       <div className={CAIXA}>
         <Reveal>
-          <h2 className={TITULO}>E do seu lado, fica assim</h2>
+          <h2 className={TITULO_NARRATIVA}>E do seu lado, fica assim</h2>
           <p className="mt-6 max-w-[52ch] text-[17px] leading-relaxed text-[var(--l-fg-mute)]">
             O que o agente marca cai direto na agenda, e o que você atende fecha no caixa.
           </p>
         </Reveal>
 
-        <Reveal delay={0.1} className="mt-14">
+        <Reveal delay={0.1} className="mt-11">
           <ProdutoDemo />
         </Reveal>
       </div>
@@ -272,7 +309,7 @@ const NUMEROS = [
 
 function Numeros() {
   return (
-    <section className="relative overflow-hidden px-6 py-[88px] lg:py-[112px]">
+    <section className="relative overflow-hidden px-6 py-[56px] lg:py-[72px]">
       <div className={CAIXA}>
         <RevealGrupo
           className="grid gap-10 border-y border-[var(--l-line)] py-14 sm:grid-cols-2 lg:grid-cols-4"
@@ -330,10 +367,10 @@ function ComoComeca() {
   })
 
   return (
-    <section className={SECAO}>
-      <div className={`${CAIXA} grid gap-14 lg:grid-cols-[0.8fr_1.2fr]`}>
+    <section className={SECAO_APOIO}>
+      <div className={`${CAIXA} grid gap-12 lg:grid-cols-[0.8fr_1.2fr]`}>
         <Reveal>
-          <h2 className={TITULO}>Como começa</h2>
+          <h2 className={TITULO_APOIO}>Como começa</h2>
           <p className="mt-6 max-w-[34ch] text-[17px] leading-relaxed text-[var(--l-fg-mute)]">
             Três passos. O mais demorado leva dois minutos.
           </p>
@@ -426,7 +463,7 @@ function Preco() {
       />
       <div className={CAIXA}>
         <Reveal>
-          <h2 className={TITULO}>Quanto custa</h2>
+          <h2 className={TITULO_DECISAO}>Quanto custa</h2>
           {/* A âncora. Vem antes do preço de propósito: comparado com uma
               cadeira vazia por semana, a mensalidade deixa de ser o número
               grande da tela. */}
@@ -442,7 +479,7 @@ function Preco() {
           <Calculadora />
         </Reveal>
 
-        <RevealGrupo className="mt-14 grid gap-4 lg:grid-cols-2" intervalo={0.1}>
+        <RevealGrupo className="mt-11 grid gap-4 lg:grid-cols-2" intervalo={0.1}>
           <RevealItem>
             <div className="glass h-full rounded-[24px] p-8 transition-transform duration-300 hover:-translate-y-1 sm:p-10">
               <div className="text-[15px] font-semibold text-[var(--l-fg-mute)]">Básico</div>
@@ -543,13 +580,13 @@ const PERGUNTAS = [
 
 function Faq() {
   return (
-    <section className={SECAO}>
+    <section className={SECAO_APOIO}>
       <div className={CAIXA}>
         <Reveal>
-          <h2 className={TITULO}>Perguntas que todo dono faz</h2>
+          <h2 className={TITULO_APOIO}>Perguntas que todo dono faz</h2>
         </Reveal>
 
-        <Reveal delay={0.08} className="mt-14">
+        <Reveal delay={0.08} className="mt-10">
           <FaqAccordion itens={PERGUNTAS.map(([pergunta, resposta]) => ({ pergunta, resposta }))} />
         </Reveal>
       </div>
@@ -561,7 +598,7 @@ function Faq() {
 
 function Fecho() {
   return (
-    <section className="relative overflow-hidden px-6 py-[120px] text-center lg:py-[170px]">
+    <section className="relative overflow-hidden px-6 py-[100px] text-center lg:py-[132px]">
       <div
         className="glow left-1/2 top-1/2 h-[680px] w-[900px] -translate-x-1/2 -translate-y-1/2"
         style={{ '--glow-tint': 'rgba(224,138,60,0.16)' } as React.CSSProperties}

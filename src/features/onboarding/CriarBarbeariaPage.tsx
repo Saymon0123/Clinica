@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Scissors } from 'lucide-react'
+import { MarcaClubCut } from '../../components/MarcaClubCut'
 import { invokeFunction } from '../../lib/invokeFunction'
 import { useSalon } from '../auth/useSalon'
 import { useAuth } from '../auth/AuthContext'
@@ -70,7 +70,7 @@ export function CriarBarbeariaPage() {
       <div className="w-full max-w-sm bg-surface border border-border rounded-xl p-6 space-y-4">
         <div className="flex items-center gap-2.5">
           <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary text-primary-foreground">
-            <Scissors size={18} />
+            <MarcaClubCut size={18} />
           </span>
           <span className="font-semibold text-foreground">Club Cut</span>
         </div>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from 'react'
+import { MarcaClubCut } from '../../components/MarcaClubCut'
 import { useParams } from 'react-router-dom'
-import { Check, Clock, Scissors } from 'lucide-react'
+import { Check, Clock } from 'lucide-react'
 import { invokeFunction } from '../../lib/invokeFunction'
 
 /**
@@ -125,7 +126,7 @@ export function AgendaPublicaPage() {
             esta no lugar certo. */}
         <div className="flex items-center gap-3">
           <span className="flex items-center justify-center w-11 h-11 rounded-xl bg-primary text-primary-foreground shrink-0">
-            <Scissors size={20} />
+            <MarcaClubCut size={20} />
           </span>
           <span className="text-lg font-bold tracking-tight text-foreground leading-tight">
             {dados?.salao ?? 'Carregando...'}

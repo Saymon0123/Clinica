@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { MarcaClubCut } from './MarcaClubCut'
 import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom'
 import {
   Calendar,
@@ -7,7 +8,6 @@ import {
   Link2,
   Globe,
   Tag,
-  Scissors,
   Settings,
   UsersRound,
   Building2,
@@ -157,7 +157,7 @@ export function AppLayout() {
       <header className="md:hidden flex items-center justify-between px-4 h-14 bg-sidebar border-b border-sidebar-border sticky top-0 z-20">
         <div className="flex items-center gap-2 min-w-0">
           <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary text-primary-foreground shrink-0">
-            <Scissors size={16} />
+            <MarcaClubCut size={16} />
           </span>
           <span className="font-semibold text-foreground truncate">{salonName ?? 'Rede'}</span>
         </div>

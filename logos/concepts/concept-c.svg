@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>Club Cut — CC, a troca de mãos</title>
+  <mask id="mc">
+    <circle cx="186" cy="256" r="86" fill="none" stroke="#fff" stroke-width="62"/>
+    <rect x="186" y="216" width="240" height="80" fill="#000" transform="rotate(-52 186 256)"/>
+  </mask>
+  <mask id="mc2">
+    <circle cx="326" cy="256" r="86" fill="none" stroke="#fff" stroke-width="62"/>
+    <rect x="326" y="216" width="240" height="80" fill="#000" transform="rotate(-52 326 256)"/>
+  </mask>
+  <g id="icon">
+    <rect width="512" height="512" rx="116" fill="#1F5D42"/>
+    <rect width="512" height="512" fill="#F3F1EA" mask="url(#mc)"/>
+    <rect width="512" height="512" fill="#7CC5A0" mask="url(#mc2)"/>
+  </g>
+</svg>

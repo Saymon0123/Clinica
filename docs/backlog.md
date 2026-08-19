@@ -445,3 +445,17 @@ zero: nenhum concorrente copia sem expor que o bot dele mente.
 
 Depende de peça fora do repositório: um número de WhatsApp com o agente
 rodando, apontado para uma barbearia de demonstração no n8n.
+
+## Marca do Club Cut (2026-08-19)
+
+A marca virou componente único em `src/components/MarcaClubCut.tsx`, usado em
+todas as telas. Antes cada uma desenhava o logo por conta própria com o ícone
+`Scissors` do lucide — sete lugares, um glifo de biblioteca.
+
+Pendências fora do repositório:
+
+- Exportar PNGs da marca (192/512/1024) para `apple-touch-icon`, manifesto PWA
+  e perfis sociais. O ambiente atual não tem conversor SVG instalado; dá para
+  gerar com `npx @aspect-build/resvg` ou pelo próprio navegador.
+- Não existe `site.webmanifest`. Quando existir, apontar os ícones e usar
+  `#0D1512` como `theme_color`.

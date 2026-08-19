@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
+import { MarcaClubCut } from '../../components/MarcaClubCut'
 import { Link } from 'react-router-dom'
-import { Eye, EyeOff, MailCheck, Scissors } from 'lucide-react'
+import { Eye, EyeOff, MailCheck } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { APP_URL } from '../../lib/appUrl'
 import { DIAS_DE_TESTE } from '../../lib/planos'
@@ -128,7 +129,7 @@ export function CriarContaPage() {
       <div className="surge w-full max-w-sm bg-surface border border-border rounded-xl p-6 space-y-5 shadow-[0_16px_40px_-24px_color-mix(in_srgb,var(--foreground)_45%,transparent)]">
         <div className="flex items-center gap-3">
           <span className="flex items-center justify-center w-11 h-11 rounded-xl bg-primary text-primary-foreground shrink-0">
-            <Scissors size={20} />
+            <MarcaClubCut size={20} />
           </span>
           <span className="text-lg font-bold tracking-tight text-foreground">Club Cut</span>
         </div>

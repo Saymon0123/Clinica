@@ -30,3 +30,7 @@ graphify-out/
 *.sln
 *.sw?
 __pycache__/
+
+# Renders de exploração de marca — regeneráveis a partir de logos/concepts/
+logos/preview.html
+logos/preview.png

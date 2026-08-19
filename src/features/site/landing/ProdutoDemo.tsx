@@ -228,7 +228,7 @@ export function ProdutoDemo() {
                 if (e.key === 'ArrowRight') setAba((n) => (n + 1) % ABAS.length)
                 if (e.key === 'ArrowLeft') setAba((n) => (n - 1 + ABAS.length) % ABAS.length)
               }}
-              className={`landing-label rounded-full px-4 py-2 transition-colors duration-200 ${
+              className={`landing-label inline-flex min-h-[44px] items-center rounded-full px-4 transition-colors duration-200 ${
                 aba === i
                   ? 'bg-[var(--l-accent-pale)] text-[var(--l-accent-ink)]'
                   : 'text-[var(--l-fg-faint)] hover:text-[var(--l-fg-mute)]'

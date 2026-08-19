@@ -227,7 +227,7 @@ export function Depoimentos() {
                     onClick={() => setAtivo(i)}
                     aria-label={`Ler o depoimento de ${d.nome}, ${d.ondeE}`}
                     aria-pressed={ativo === i}
-                    className={`landing-num flex h-10 w-10 items-center justify-center rounded-full border text-[13px] transition-all duration-300 ${
+                    className={`landing-num flex h-11 w-11 items-center justify-center rounded-full border text-[13px] transition-all duration-300 ${
                       ativo === i
                         ? 'border-[var(--l-accent-ink)] bg-[var(--l-accent-pale)] text-[var(--l-accent-ink)]'
                         : 'border-[var(--l-line)] text-[var(--l-fg-faint)] hover:border-[var(--l-line-strong)] hover:text-[var(--l-fg-mute)]'

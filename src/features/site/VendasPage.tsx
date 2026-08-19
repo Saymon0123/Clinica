@@ -129,17 +129,22 @@ function Navbar() {
       }`}
     >
       <div className="mx-auto flex h-[72px] max-w-[1180px] items-center justify-between px-6">
-        <Link to="/inicio" className="flex items-center gap-2.5">
+        <Link to="/inicio" className="-my-2 flex min-h-[44px] items-center gap-2.5 py-2">
           <MarcaClubCut size={32} />
           <span className="text-[17px] font-bold tracking-tight text-[var(--l-fg)]">Club Cut</span>
         </Link>
 
-        <Link
-          to="/login"
-          className="text-[14px] font-medium text-[var(--l-fg-mute)] transition-colors duration-200 hover:text-[var(--l-fg)]"
-        >
-          Entrar
-        </Link>
+        {/* O cabecalho tinha links de navegacao sem landmark: leitor de tela
+            nao tinha como pular para eles. E o alvo de toque subiu para 44px,
+            que e o minimo para o dedo. */}
+        <nav aria-label="Principal">
+          <Link
+            to="/login"
+            className="-mx-3 inline-flex min-h-[44px] items-center px-3 text-[14px] font-medium text-[var(--l-fg-mute)] transition-colors duration-200 hover:text-[var(--l-fg)]"
+          >
+            Entrar
+          </Link>
+        </nav>
       </div>
     </header>
   )
@@ -289,7 +294,14 @@ function Recursos() {
           {RECURSOS.map((f) => (
             <RevealItem key={f.titulo} className={f.largo ? 'md:col-span-2' : ''}>
               <div className="card h-full rounded-[var(--r-md)] p-7 sm:p-9">
-                <f.icone size={20} strokeWidth={1.5} className="text-[var(--l-accent-ink)]" />
+                {/* Icone decorativo: o titulo do card ja diz tudo. Sem aria-hidden o
+                    leitor de tela anuncia um grafico sem nome antes do texto. */}
+                <f.icone
+                  size={20}
+                  strokeWidth={1.5}
+                  aria-hidden="true"
+                  className="text-[var(--l-accent-ink)]"
+                />
                 <h3 className="mt-7 text-[21px] font-semibold tracking-[-0.015em] text-[var(--l-fg)]">
                   {f.titulo}
                 </h3>
@@ -669,6 +681,7 @@ function Preco() {
                     <Check
                       size={17}
                       strokeWidth={2}
+                      aria-hidden="true"
                       className="mt-0.5 shrink-0 text-[var(--l-accent-ink)]"
                     />
                     {i}
@@ -693,18 +706,18 @@ function Preco() {
               </div>
               <ul className="mt-9 flex flex-col gap-3.5 text-[15px]">
                 <li className="flex gap-3">
-                  <Check size={17} strokeWidth={2.4} className="mt-0.5 shrink-0" />
+                  <Check size={17} strokeWidth={2.4} aria-hidden="true" className="mt-0.5 shrink-0" />
                   Tudo do Básico
                 </li>
                 <li className="flex gap-3">
-                  <Check size={17} strokeWidth={2.4} className="mt-0.5 shrink-0" />
+                  <Check size={17} strokeWidth={2.4} aria-hidden="true" className="mt-0.5 shrink-0" />
                   <span>
                     <strong className="font-semibold">Lembrete 1h antes</strong>, perguntando se o
                     cliente confirma
                   </span>
                 </li>
                 <li className="flex gap-3">
-                  <Check size={17} strokeWidth={2.4} className="mt-0.5 shrink-0" />
+                  <Check size={17} strokeWidth={2.4} aria-hidden="true" className="mt-0.5 shrink-0" />
                   <span>
                     <strong className="font-semibold">Confirmação 10 min antes</strong>, para você
                     saber do atraso antes da cadeira esfriar
@@ -824,8 +837,11 @@ function Fecho() {
  * vira piada.
  */
 function Rodape() {
+  /* `min-h-[44px]` e o minimo de alvo de toque. Os links do rodape tinham
+     21px de altura -- meio dedo. O recuo negativo mantem o alinhamento
+     visual da coluna enquanto a area clicavel cresce. */
   const linkClasse =
-    'text-[14px] text-[var(--l-fg-mute)] transition-colors duration-200 hover:text-[var(--l-fg)]'
+    '-mx-2 inline-flex min-h-[44px] items-center px-2 text-[14px] text-[var(--l-fg-mute)] transition-colors duration-200 hover:text-[var(--l-fg)]'
 
   const suporte = [
     CONTATO.whatsapp && {
@@ -854,7 +870,7 @@ function Rodape() {
           </p>
         </div>
 
-        <div className="flex flex-col items-start gap-3">
+        <div className="flex flex-col items-start gap-0.5">
           <span className="landing-label text-[var(--l-fg-faint)]">Produto</span>
           {[
             ['/criar-conta', CTA],
@@ -868,7 +884,7 @@ function Rodape() {
           ))}
         </div>
 
-        <div className="flex flex-col items-start gap-3">
+        <div className="flex flex-col items-start gap-0.5">
           <span className="landing-label text-[var(--l-fg-faint)]">Suporte</span>
           {suporte.length > 0 ? (
             suporte.map((s) => (

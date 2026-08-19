@@ -3,42 +3,56 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #faf9f7;
+  --background: #f7f9f7;
   --surface: #ffffff;
-  --surface-2: #f4f1ea;
-  --border: #e5ded2;
-  --border-strong: #d3c8b4;
-  --foreground: #1a1712;
-  --muted-foreground: #7a7266;
-  /* Tijolo, o mesmo da landing. O produto e a pagina de vendas passam a ter uma
-     marca so; antes o dono via terracota no site e terracota diferente dentro
-     do sistema, o que faz a transicao parecer troca de produto. */
-  --primary: #bf4940;
-  --primary-hover: #a63a32;
-  --primary-foreground: #ffffff;
-  --primary-soft: #f3e1de;
-  --primary-soft-foreground: #8a2f27;
-  --success: #10b981;
-  --success-soft: #d1fae5;
+  --surface-2: #eef2ef;
+  --border: #dde4df;
+  --border-strong: #c3cfc7;
+  --foreground: #0e1512;
+  --muted-foreground: #5b665f;
   /*
-    Carmim, e nao o vermelho-tijolo do Tailwind.
+    Verde do Club Cut, o mesmo da landing. O dono via verde no site e tijolo
+    dentro do sistema: duas marcas para o mesmo produto, e a transicao do site
+    para o app parecia troca de empresa. Agora e uma so.
 
-    Com a marca virando tijolo, o vermelho de alerta precisou sair de perto: em
-    dois lugares os dois se encostam e a diferenca precisa ser obvia -- o botao
-    do AppLayout que ALTERNA entre pendente e normal, e as barras de
-    cancelamento ao lado das de faturamento no Financeiro. Tijolo e fechado e
-    lavado; este e aberto e vivo, e puxa para o roxo em vez de para o laranja.
+    Branco sobre o verde da 7.8:1, e o verde como texto sobre branco da a mesma
+    coisa -- no tema claro ele age E fala, sem precisar de um segundo tom.
+  */
+  --primary: #1f5d42;
+  --primary-hover: #17492f;
+  --primary-foreground: #ffffff;
+  --primary-soft: #e2efe7;
+  --primary-soft-foreground: #116b45;
+  /*
+    O verde positivo agora e IRMAO da marca, e nao um verde estranho ao lado
+    dela: e o mesmo par claro/escuro que a landing usa nos chips de agenda.
 
-    De quebra ficou legivel: o #ef4444 anterior sobre --danger-soft dava 3.05:1,
-    abaixo do minimo. Este da 5.26:1.
+    Isso so funciona porque `success` NUNCA e preenchimento solido neste
+    codigo -- ele aparece so em chip (`bg-success-soft text-success`) e em
+    borda, enquanto o primary aparece so solido. A separacao e de FORMA, e nao
+    de matiz, e o matiz agora pertence a marca. Se algum dia alguem escrever
+    `bg-success` solido ao lado de um botao, os dois viram a mesma coisa.
+  */
+  --success: #116b45;
+  --success-soft: #dcf0e4;
+  /*
+    Carmim. Escolhido quando a marca era tijolo, para o alerta nao se confundir
+    com ela nos dois lugares onde as duas se encostam: o botao do AppLayout que
+    ALTERNA entre pendente e normal, e as barras de cancelamento ao lado das de
+    faturamento no Financeiro.
+
+    Com a marca agora em verde, essa distancia ficou folgada -- verde e carmim
+    sao praticamente opostos. Ele fica porque continua sendo o vermelho mais
+    legivel que testamos: o #ef4444 do Tailwind sobre --danger-soft dava 3.05:1,
+    abaixo do minimo, e este da 5.26:1.
   */
   --danger: #be123c;
   --danger-soft: #ffe4ec;
   --warning: #f59e0b;
-  --chart-line: #bf4940;
-  --chart-track: #e5ded2;
+  --chart-line: #1f5d42;
+  --chart-track: #dde4df;
   --sidebar: #ffffff;
-  --sidebar-border: #ede6d8;
+  --sidebar-border: #e6ebe7;
 
   /* Conversa do WhatsApp. Verde de propósito, e não o roxo do produto: o dono
      reconhece a tela antes de ler qualquer rótulo. Fica como token, e não solto
@@ -51,30 +65,51 @@
 }
 
 .dark {
-  --background: #17140f;
-  --surface: #1f1b14;
-  --surface-2: #241f17;
-  --border: #33291d;
-  --border-strong: #493c29;
-  --foreground: #f2ece0;
-  --muted-foreground: #a89b85;
-  /* O tijolo do tema claro nao sobrevive ao fundo escuro: #bf4940 sobre #17140f
-     da 2.9:1. Aqui ele sobe de luminosidade e mantem o lado quente e alaranjado
-     -- o que separa esta cor do carmim do alerta, que puxa para o rosa. */
-  --primary: #e59079;
-  --primary-hover: #efa891;
-  --primary-foreground: #1f150c;
-  --primary-soft: #402521;
-  --primary-soft-foreground: #f2b3ab;
-  --success: #34d399;
-  --success-soft: #064e3b;
+  /* As superficies sao as MESMAS da landing. O tema escuro do CRM e a pagina
+     de vendas passam a ser o mesmo ambiente: quem sai do site e entra no
+     sistema nao muda de lugar. */
+  --background: #0d1512;
+  --surface: #16201b;
+  --surface-2: #1b2620;
+  --border: #2a332c;
+  --border-strong: #3d4a41;
+  --foreground: #f3f1ea;
+  --muted-foreground: #9c9a8f;
+  /*
+    No escuro o primary INVERTE: vira o verde claro, com tinta escura por cima.
+    E a mesma manobra que o arquivo ja fazia quando a marca era tijolo, e ela
+    existe por um motivo que so aparece medindo.
+
+    O verde de marca precisa fazer duas coisas incompativeis: ser FUNDO de
+    botao (e ai quer ser escuro, para o texto claro por cima ler) e ser COR DE
+    TEXTO (e ai quer ser claro, para ler sobre o fundo escuro). Sao 67 usos de
+    `text-primary` neste codigo. Com o #1f5d42 da landing, texto em primary da
+    2.77:1 sobre o cartao -- reprovado.
+
+    O verde claro resolve os dois de uma vez:
+      como texto, sobre a base ....... 9.14:1
+      como texto, sobre o cartao ..... 8.24:1
+      tinta escura sobre o botao ..... 9.14:1
+
+    E por isso que a landing tem --l-accent e --l-accent-ink separados: la o
+    acento age e o claro fala. Aqui, como o tema inteiro inverte, um valor so
+    da conta.
+  */
+  --primary: #7cc5a0;
+  --primary-hover: #93d4b3;
+  --primary-foreground: #0d1512;
+  --primary-soft: #1b3729;
+  --primary-soft-foreground: #7cc5a0;
+  /* Mesmo par da landing: o claro fala nos chips, o escuro age nos botoes. */
+  --success: #7cc5a0;
+  --success-soft: #16302a;
   --danger: #fb7185;
   --danger-soft: #4c1a2a;
   --warning: #fbbf24;
-  --chart-line: #e59079;
-  --chart-track: #33291d;
-  --sidebar: #1c1810;
-  --sidebar-border: #2a2318;
+  --chart-line: #7cc5a0;
+  --chart-track: #2a332c;
+  --sidebar: #121b17;
+  --sidebar-border: #222b25;
 
   /* Mais fechado que o do tema claro: o verde 600 do Tailwind, usado antes,
      brilhava demais sobre fundo escuro e cansava numa conversa longa. */
@@ -162,12 +197,20 @@ body {
 /* ---------------------------------------------------------------------------
    Pagina de vendas.
 
-   A landing nao usa os tokens do CRM de proposito: o produto tem tema claro e
-   escuro que o dono escolhe, e a landing tem direcao de arte fixa.
+   A landing tem tokens proprios porque a direcao de arte dela e FIXA, enquanto
+   o produto tem tema claro e escuro que o dono escolhe. Mas as cores agora sao
+   as mesmas: o tema escuro do CRM usa exatamente estas superficies, e o verde
+   de marca e o mesmo nos dois.
+
+   A unica divergencia deliberada esta no tema escuro do CRM, onde o primary
+   INVERTE para o verde claro com tinta escura por cima. La existem 67 usos de
+   `text-primary`, e um verde escuro como texto sobre fundo escuro reprova em
+   contraste. Aqui a landing nao tem esse problema porque ela ja separa os dois
+   papeis em --l-accent (age) e --l-accent-ink (fala).
 
    A direcao e ESCURA e de oficio: quase-preto com um respiro de verde, texto
    cor de osso, e o verde-escuro de barbearia como unico acento. E a paleta do
-   Club Cut como sub-marca da Aura — nao a do CRM, que segue no tijolo.
+   Club Cut como sub-marca da Aura.
 
    A elevacao continua vindo SO do contraste entre superficies (base e cartao),
    sem sombra, sem vidro decorativo, sem halo. No escuro isso importa ainda

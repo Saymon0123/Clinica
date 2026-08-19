@@ -53,7 +53,15 @@ export type Depoimento = {
   resultado?: string
 }
 
-const DEPOIMENTOS: Depoimento[] = [
+/**
+ * Fonte única dos depoimentos.
+ *
+ * Exportada porque a faixa de nomes do herói (`FaixaBarbearias`) lê daqui: as
+ * barbearias que aparecem na faixa são exatamente as que deram depoimento.
+ * Se um depoimento sair desta lista, o nome some da faixa junto — nunca dá
+ * para ficar anunciando uma barbearia que não está mais aqui.
+ */
+export const DEPOIMENTOS: Depoimento[] = [
   {
     nome: 'Diego Almeida',
     ondeE: 'Barbearia Dom Corte',

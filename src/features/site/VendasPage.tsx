@@ -12,6 +12,8 @@ import { Calculadora } from './landing/Calculadora'
 import { CtaFixo } from './landing/CtaFixo'
 import { Cta, Reveal, RevealGrupo, RevealItem } from './landing/primitivos'
 import { useRolou } from './landing/useRolou'
+import { FaixaBarbearias } from './landing/FaixaBarbearias'
+import { ReguaScroll } from './landing/ReguaScroll'
 import { MarcaClubCut } from '../../components/MarcaClubCut'
 
 /**
@@ -903,11 +905,14 @@ function Rodape() {
 export function VendasPage() {
   return (
     <div className="landing min-h-[100dvh]">
+      <ReguaScroll />
       <Navbar />
       <main>
         <Hero />
         {/* Fecha o heroi. Marca onde a barbearia comeca. */}
         <div className="regua-poste" aria-hidden="true" />
+        {/* A primeira prova da pagina. Antes disso, so afirmacao nossa. */}
+        <FaixaBarbearias />
         <Dor />
         <Recursos />
         <Franqueza />

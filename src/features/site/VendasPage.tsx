@@ -152,16 +152,27 @@ function Hero() {
 
       <div className={`${CAIXA} grid items-center gap-16 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10`}>
         <div>
+          {/* A sobrancelha existe para resolver um pronome orfao: o H1 comeca
+              falando de "ele" e, no celular, o aparelho com a conversa fica
+              abaixo da dobra. Sem esta linha, metade do trafego le um pronome
+              sem dono como primeira palavra da pagina. */}
           <Reveal>
-            <h1 className="landing-display text-[clamp(2.6rem,6.6vw,5rem)] text-[var(--l-fg)]">
-              Ele atende. Não <em className="landing-serif">finge</em> ser você.
+            <p className="landing-label text-[var(--l-fg-faint)]">
+              Atendimento no WhatsApp para barbearia
+            </p>
+          </Reveal>
+
+          <Reveal delay={0.05}>
+            <h1 className="landing-display mt-5 text-[clamp(2.6rem,6.6vw,5rem)] text-[var(--l-fg)]">
+              Suas mãos estão ocupadas. As <em className="landing-serif">dele</em> não.
             </h1>
           </Reveal>
 
-          <Reveal delay={0.09}>
-            <p className="mt-8 max-w-[45ch] text-[17px] leading-relaxed text-[var(--l-fg-mute)] sm:text-[19px]">
-              Mensagem às 22h respondida no outro dia é corte perdido. Ele responde na hora, marca
-              na agenda, e sai da frente quando você entra na conversa.
+          <Reveal delay={0.12}>
+            <p className="mt-8 max-w-[46ch] text-[17px] leading-relaxed text-[var(--l-fg-mute)] sm:text-[19px]">
+              Ele responde a mensagem das 22h na hora, marca na agenda, e devolve a conversa no
+              segundo em que você larga a máquina. Se o cliente perguntar se é robô, ele responde
+              que é.
             </p>
           </Reveal>
 
@@ -209,7 +220,7 @@ function Dor() {
     <section className={SECAO_BRANCA}>
       <div className={CAIXA}>
         <Reveal>
-          <h2 className={TITULO_NARRATIVA}>Você conhece esse <em className="landing-serif">dia</em></h2>
+          <h2 className={TITULO_NARRATIVA}>Não é falta de <em className="landing-serif">jeito</em>. É que suas mãos estavam ocupadas.</h2>
         </Reveal>
 
         <RevealGrupo className="mt-12 flex flex-col gap-10 sm:gap-14" intervalo={0.11}>
@@ -270,7 +281,7 @@ function Recursos() {
     <section className={SECAO}>
       <div className={CAIXA}>
         <Reveal>
-          <h2 className={TITULO_DECISAO}>O que o Club Cut <em className="landing-serif">faz</em></h2>
+          <h2 className={TITULO_DECISAO}>O que ele faz enquanto você <em className="landing-serif">corta</em></h2>
         </Reveal>
 
         <RevealGrupo className="mt-11 grid gap-4 md:grid-cols-3">
@@ -321,6 +332,28 @@ function Franqueza() {
             A gente não acha certo enganar o seu cliente. Ele escreve como gente, atende como gente,
             e quando perguntam, não mente. É o seu nome na conversa.
           </p>
+
+          {/*
+            Prova falsificavel, e a unica prova que esta pagina pode dar hoje:
+            em vez de AFIRMAR que ele assume ser robo, deixa a pessoa testar.
+            Custa nada e nenhum concorrente copia sem expor que o bot dele mente.
+
+            So aparece com numero real em CONTATO. Convite para conversar com um
+            numero que nao existe seria pior que nao convidar.
+          */}
+          {CONTATO.whatsapp && (
+            <p className="mt-7 text-[17px] leading-relaxed text-[var(--l-fg)]">
+              Não acredita?{' '}
+              <a
+                href={`https://wa.me/${CONTATO.whatsapp}`}
+                target="_blank"
+                rel="noreferrer"
+                className="underline decoration-[var(--l-accent-ink)] decoration-2 underline-offset-4 transition-colors duration-200 hover:text-[var(--l-accent-ink)]"
+              >
+                Manda mensagem pro nosso número e pergunta.
+              </a>
+            </p>
+          )}
         </Reveal>
       </div>
     </section>
@@ -347,7 +380,7 @@ function PorDentro() {
         <Reveal>
           <h2 className={TITULO_NARRATIVA}>E do seu lado, fica <em className="landing-serif">assim</em></h2>
           <p className="mt-6 max-w-[52ch] text-[17px] leading-relaxed text-[var(--l-fg-mute)]">
-            O que o agente marca cai direto na agenda, e o que você atende fecha no caixa.
+            O que ele marca cai direto na agenda, e o que você atende fecha no caixa.
           </p>
         </Reveal>
       </div>
@@ -599,10 +632,10 @@ function SemPromessa() {
 /* -------------------------------------------------------------------------- */
 
 const BASICO = [
-  'Atendimento automático no WhatsApp',
-  'Agenda e clientes',
-  'Financeiro e comissão',
-  'Catálogo de serviços',
+  'Ele atende no WhatsApp que a barbearia já tem',
+  'A agenda e quem já cortou com você',
+  'O caixa do dia e a comissão de cada um',
+  'Seus serviços, seus preços, sua duração',
 ]
 
 function Preco() {
@@ -615,7 +648,8 @@ function Preco() {
               cadeira vazia por semana, a mensalidade deixa de ser o número
               grande da tela. */}
           <p className="mt-7 max-w-[24ch] text-[clamp(1.4rem,2.8vw,2rem)] font-semibold leading-[1.25] tracking-[-0.02em] text-[var(--l-fg)]">
-            Uma cadeira vazia por semana já custa mais que isso.
+            Tem sistema de barbearia por R$ 49. A gente sabe. E uma cadeira vazia por semana
+            custa mais que os dois.
           </p>
         </Reveal>
 
@@ -648,7 +682,7 @@ function Preco() {
           <RevealItem>
             <div className="card-tinta relative h-full rounded-[var(--r-md)] p-8 transition-transform duration-300 hover:-translate-y-1 sm:p-10">
               <span className="absolute right-8 top-8 landing-label rounded-full bg-[var(--l-accent)] px-3 py-1.5 text-[var(--l-on-accent)]">
-                Mais escolhido
+                O que a gente recomenda
               </span>
               <div className="landing-label opacity-75">Pro</div>
               <div className="mt-4 flex items-baseline gap-1">
@@ -702,11 +736,11 @@ const PERGUNTAS = [
   ],
   [
     'E se eu quiser responder eu mesmo?',
-    'É só responder. O atendimento automático percebe e sai da frente naquela conversa, até você devolver para ele.',
+    'É só responder. Ele percebe e sai da frente naquela conversa, até você devolver para ele.',
   ],
   [
     'O cliente vai perceber que é automático?',
-    'Se ele perguntar, o atendimento assume que é automático. A gente não acha certo enganar o seu cliente. Fora isso, ele escreve como gente.',
+    'Se ele perguntar, ele assume que é automático. A gente não acha certo enganar o seu cliente. Fora isso, ele escreve como gente.',
   ],
   [
     'Tem fidelidade?',
@@ -715,6 +749,25 @@ const PERGUNTAS = [
   [
     'Funciona com mais de um barbeiro?',
     'Sim. Cada um tem o próprio horário e a própria comissão, e o cliente pode escolher com quem quer cortar.',
+  ],
+  /*
+    As tres perguntas abaixo entraram porque eram as objecoes que a pagina
+    deixava o leitor formular sozinho, na cabeca dele, sem ninguem para
+    responder. A do preco e a mais cara: quem viu R$ 49 no concorrente e nao
+    ouve nada sobre isso simplesmente fecha a aba.
+  */
+  [
+    `Por que custa mais que os outros?`,
+    'Porque não é um robô com respostas prontas. Ele entende quando o cliente muda de ideia no meio da conversa, e sai da frente sozinho quando você entra. Nos ' +
+      `${DIAS_DE_TESTE} dias você compara com qualquer outro sem pagar nada.`,
+  ],
+  [
+    'Vou perder o jeito pessoal do meu atendimento?',
+    'A conversa continua sua. Ele responde o que é sempre igual — preço, horário, o que a barbearia faz — e te devolve o cliente na hora em que você entra. O papo que importa continua sendo com você.',
+  ],
+  [
+    'E se der problema no meio do sábado?',
+    'O suporte é por WhatsApp, com resposta em até 1 dia útil. E se ele parar, o WhatsApp continua sendo o seu: as mensagens chegam normalmente e você responde como sempre respondeu.',
   ],
 ]
 
@@ -742,12 +795,13 @@ function Fecho() {
       <div className={CAIXA}>
         <Reveal>
           <h2 className="landing-display mx-auto max-w-[17ch] text-[clamp(2.4rem,6vw,4.6rem)] text-[var(--l-fg)]">
-            Quantos cortes você <em className="landing-serif">perdeu</em> esse mês sem saber?
+            Amanhã às 22h alguém vai te mandar <em className="landing-serif">mensagem</em>.
           </h2>
         </Reveal>
         <Reveal delay={0.09}>
           <p className="mx-auto mt-8 max-w-[42ch] text-[17px] leading-relaxed text-[var(--l-fg-mute)] sm:text-[19px]">
-            Em {DIAS_DE_TESTE} dias dá tempo de ver o lembrete evitando uma falta.
+            Em {DIAS_DE_TESTE} dias dá tempo de ver ele responder, marcar, e o cliente aparecer
+            na cadeira.
           </p>
         </Reveal>
         <Reveal delay={0.16}>

@@ -416,3 +416,32 @@ suporte e o e-mail (domínio), e decidir se haverá perfil de Instagram.
 `Depoimentos.tsx` continua com a lista vazia e a seção oculta. A regra está
 documentada no arquivo: só entra depoimento real, com autorização por escrito
 e número conferido com o dono. Coletar os primeiros com os clientes-piloto.
+
+## Coletar os primeiros depoimentos reais (2026-08-19)
+
+A seção de depoimentos está construída e testada (`Depoimentos.tsx`, padrão
+adaptado da 21st.dev). Ela renderiza sozinha assim que houver o primeiro item
+em `DEPOIMENTOS`. Falta só o conteúdo, que tem que ser real.
+
+Mensagem para mandar para as barbearias-piloto:
+
+  "Oi [nome], tudo certo? Tô montando a página do Club Cut e queria colocar
+   sua opinião nela. Duas perguntas rápidas:
+   1) O que mudou no seu dia depois que começou a usar?
+   2) Tem algum número que você consegue tirar do sistema? (cortes no mês,
+      faltas, quanto entrou) — pode ser aproximado, mas tem que ser real.
+   Posso publicar seu nome e o nome da barbearia? Se preferir só o primeiro
+   nome, sem problema."
+
+O "sim" tem que vir por escrito (o print da conversa serve). Sem autorização,
+não entra. Sem número conferido, entra só a fala — `resultado` é opcional.
+
+## Prova falsificável na seção Franqueza (2026-08-19)
+
+A landing tem o convite "Manda mensagem pro nosso número e pergunta [se é
+robô]" pronto, mas ele só renderiza quando `CONTATO.whatsapp` deixa de ser
+null em `src/lib/contato.ts`. É a prova mais forte disponível hoje e custa
+zero: nenhum concorrente copia sem expor que o bot dele mente.
+
+Depende de peça fora do repositório: um número de WhatsApp com o agente
+rodando, apontado para uma barbearia de demonstração no n8n.

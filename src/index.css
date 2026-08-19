@@ -363,6 +363,27 @@ body {
   opacity: 0.28;
 }
 
+/* ---------------------------------------------------------------------------
+   Faixa das barbearias.
+
+   O laco desliza -50% porque a lista e renderizada DUAS vezes: no fim do ciclo
+   a segunda copia esta exatamente onde a primeira comecou, e a emenda nao
+   aparece. Anima `transform`, e nao `left`, para nao recalcular layout a cada
+   quadro.
+
+   A duracao e longa de proposito. Faixa que corre rapido vira letreiro de
+   promocao; devagar ela e so um fundo que se move.
+--------------------------------------------------------------------------- */
+@keyframes faixa-desliza {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.faixa-desliza {
+  animation: faixa-desliza 42s linear infinite;
+}
+
 /* Numero grande em mono. O tabular-nums do grotesco era o mono pedindo
    desculpa: agora o numero e mono de verdade (ja tabular por natureza), e a
    mesma voz da comanda aparece em preco, caixa e comissao. */

@@ -113,9 +113,19 @@ export function Depoimentos() {
     <section className="relative overflow-hidden bg-[var(--l-canvas)] px-6 py-[76px] lg:py-[104px]">
       <div className="relative z-[1] mx-auto max-w-[1180px]">
         <Reveal>
+          {/*
+            O titulo anterior era "Quem ja deixou de perder cliente": uma
+            oracao relativa sem substantivo antes dela, com "deixou de perder"
+            exigindo duas leituras para virar sentido. Titulo de secao nao
+            pode custar releitura -- quem passa o olho desiste.
+          */}
           <h2 className="landing-display text-[clamp(1.75rem,3.6vw,2.75rem)] text-[var(--l-fg)]">
-            Quem já deixou de perder <em className="landing-serif">cliente</em>
+            O que dizem os <em className="landing-serif">donos</em> que já usam
           </h2>
+          {/* A contagem sai do proprio array: nunca fica desatualizada. */}
+          <p className="mt-5 text-[16px] leading-relaxed text-[var(--l-fg-mute)] sm:text-[17px]">
+            {DEPOIMENTOS.length} donos de barbearia, nas palavras deles.
+          </p>
         </Reveal>
 
         <Reveal delay={0.08}>
@@ -147,30 +157,67 @@ export function Depoimentos() {
                     leva a frase; quem parou lê o resto. As duas são palavras
                     da mesma pessoa, na mesma resposta.
                   */}
+                  {/*
+                    Aspas curvas de verdade, e nao o apostrofo reto: sao elas
+                    que dizem "isto e alguem falando" antes de qualquer rotulo
+                    ser lido. Sem elas a frase parecia manchete nossa, e nao
+                    fala de cliente.
+                  */}
                   <p className="landing-display text-[clamp(1.35rem,2.8vw,2rem)] text-[var(--l-fg)]">
-                    {d.titulo}
+                    &ldquo;{d.titulo}&rdquo;
                   </p>
                   <p className="mt-6 text-[16px] leading-relaxed text-[var(--l-fg-mute)] sm:text-[17px]">
-                    {d.fala}
+                    &ldquo;{d.fala}&rdquo;
                   </p>
+
+                  {/*
+                    A assinatura vive DENTRO do blockquote, de proposito.
+
+                    Antes ela ficava na mesma linha dos botoes de selecao, e
+                    por isso era lida como legenda do controle em vez de
+                    autoria da fala -- a citacao parecia anonima. Aqui ela
+                    troca junto com a fala, encostada nela, que e o unico
+                    lugar onde uma assinatura significa alguma coisa.
+                  */}
+                  <footer className="mt-7 flex items-center gap-3.5">
+                    <span
+                      aria-hidden="true"
+                      className="landing-num flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--l-accent-pale)] text-[14px] text-[var(--l-accent-ink)]"
+                    >
+                      {d.nome.charAt(0)}
+                    </span>
+                    <cite className="not-italic">
+                      <span className="block text-[15px] font-semibold text-[var(--l-fg)]">
+                        {d.nome}
+                      </span>
+                      <span className="mt-0.5 block text-[13.5px] text-[var(--l-fg-faint)]">
+                        {d.ondeE}
+                      </span>
+                    </cite>
+                  </footer>
                 </blockquote>
               ))}
             </div>
 
-            <div className="mt-10 flex items-center gap-6">
-              {/*
-                Seleção por inicial em mono, e não por foto. A página inteira é
-                desenhada sem fotografia; e foto de banco de imagem num
-                depoimento denuncia que o depoimento é falso mesmo quando ele
-                é verdadeiro.
-              */}
-              <div className="flex gap-2">
+            {/*
+              Barra de troca, agora so um controle: o nome saiu daqui e foi
+              para junto da fala. Rotulo em mono na frente porque uma fileira
+              de iniciais soltas nao se explica -- ninguem adivinha que sao
+              botoes.
+
+              Inicial em mono, e nao foto: a pagina inteira e desenhada sem
+              fotografia, e foto de banco de imagem num depoimento denuncia
+              que ele e falso mesmo quando e verdadeiro.
+            */}
+            <div className="mt-12 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-[var(--l-line)] pt-8">
+              <span className="landing-label text-[var(--l-fg-faint)]">Ler outro</span>
+              <div className="flex flex-wrap gap-2">
                 {DEPOIMENTOS.map((d, i) => (
                   <button
                     key={d.nome}
                     type="button"
                     onClick={() => setAtivo(i)}
-                    aria-label={`Ver o depoimento de ${d.nome}`}
+                    aria-label={`Ler o depoimento de ${d.nome}, ${d.ondeE}`}
                     aria-pressed={ativo === i}
                     className={`landing-num flex h-10 w-10 items-center justify-center rounded-full border text-[13px] transition-all duration-300 ${
                       ativo === i
@@ -180,25 +227,6 @@ export function Depoimentos() {
                   >
                     {d.nome.charAt(0)}
                   </button>
-                ))}
-              </div>
-
-              <div className="h-9 w-px bg-[var(--l-line)]" />
-
-              <div className="grid flex-1">
-                {DEPOIMENTOS.map((d, i) => (
-                  <div
-                    key={d.nome}
-                    aria-hidden={ativo !== i}
-                    className={`col-start-1 row-start-1 transition-all duration-300 ${
-                      ativo === i
-                        ? 'opacity-100'
-                        : 'pointer-events-none -translate-x-1 opacity-0'
-                    }`}
-                  >
-                    <div className="text-[14px] font-semibold text-[var(--l-fg)]">{d.nome}</div>
-                    <div className="mt-0.5 text-[13px] text-[var(--l-fg-faint)]">{d.ondeE}</div>
-                  </div>
                 ))}
               </div>
             </div>

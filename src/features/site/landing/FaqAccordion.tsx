@@ -85,7 +85,10 @@ export function FaqAccordion({ itens }: { itens: Pergunta[] }) {
                   animate={{ rotate: semMovimento ? 0 : ativa ? 45 : 0, opacity: ativa || emFoco ? 1 : 0.45 }}
                   transition={semMovimento ? { duration: 0 } : MOLA}
                 >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  {/* Decorativa: o estado aberto/fechado ja e anunciado pelo
+                      `aria-expanded` do botao. Sem aria-hidden o leitor de tela
+                      anuncia um grafico sem nome depois de cada pergunta. */}
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                     <path
                       d="M8 1V15M1 8H15"
                       stroke="currentColor"

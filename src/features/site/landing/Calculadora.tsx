@@ -87,7 +87,10 @@ function Controle({
     <label className="block">
       <span className="flex items-center justify-between gap-4">
         <span className="text-[14px] text-[var(--l-fg-mute)]">{rotulo}</span>
-        <span className="flex items-baseline gap-1 rounded-[10px] border border-[var(--l-line)] bg-[var(--l-bg)] px-3 py-1.5 transition-colors duration-200 focus-within:border-[var(--l-accent-ink)]">
+        {/* A altura vai no INPUT, e nao na moldura: o alvo de toque e o campo
+            em si, e uma moldura alta com um campo baixo dentro nao ajuda o
+            dedo em nada. Ele tinha 29px, e e o gancho principal da pagina. */}
+        <span className="inline-flex items-center gap-1 rounded-[10px] border border-[var(--l-line)] bg-[var(--l-bg)] px-3 transition-colors duration-200 focus-within:border-[var(--l-accent-ink)]">
           {prefixo && <span className="text-[13px] text-[var(--l-fg-faint)]">{prefixo}</span>}
           {/*
             `text` + inputmode numérico, e não type=number: o number nativo traz
@@ -107,7 +110,7 @@ function Controle({
             onKeyDown={(e) => {
               if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
             }}
-            className="landing-num w-[3ch] bg-transparent text-right text-[19px] text-[var(--l-fg)] outline-none"
+            className="landing-num h-[44px] w-[3ch] bg-transparent text-right text-[19px] text-[var(--l-fg)] outline-none"
             aria-label={rotulo}
           />
         </span>

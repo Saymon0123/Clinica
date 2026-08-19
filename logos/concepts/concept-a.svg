@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>Club Cut — C cortado na placa</title>
+  <mask id="ma">
+    <circle cx="256" cy="256" r="132" fill="none" stroke="#fff" stroke-width="72"/>
+    <rect x="256" y="206" width="330" height="100" fill="#000" transform="rotate(-52 256 256)"/>
+  </mask>
+  <g id="icon">
+    <rect width="512" height="512" rx="116" fill="#1F5D42"/>
+    <rect width="512" height="512" rx="116" fill="#F3F1EA" mask="url(#ma)"/>
+  </g>
+</svg>

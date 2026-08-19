@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarCheck, Check, MessageCircle, Scissors, Smartphone, Wallet } from 'lucide-react'
+import { CalendarCheck, Check, MessageCircle, Smartphone, Wallet } from 'lucide-react'
 import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'motion/react'
 import { DIAS_DE_TESTE, PRECO_BASICO, PRECO_PRO } from '../../lib/planos'
 import { CONTATO } from '../../lib/contato'
@@ -12,6 +12,7 @@ import { Calculadora } from './landing/Calculadora'
 import { CtaFixo } from './landing/CtaFixo'
 import { Cta, Reveal, RevealGrupo, RevealItem } from './landing/primitivos'
 import { useRolou } from './landing/useRolou'
+import { MarcaClubCut } from '../../components/MarcaClubCut'
 
 /**
  * Página de vendas — onde o anúncio e a prospecção caem.
@@ -127,9 +128,7 @@ function Navbar() {
     >
       <div className="mx-auto flex h-[72px] max-w-[1180px] items-center justify-between px-6">
         <Link to="/inicio" className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-[var(--r-sm)] bg-[var(--l-fg)] text-[var(--l-accent)]">
-            <Scissors size={16} strokeWidth={1.9} />
-          </span>
+          <MarcaClubCut size={32} />
           <span className="text-[17px] font-bold tracking-tight text-[var(--l-fg)]">Club Cut</span>
         </Link>
 
@@ -845,9 +844,7 @@ function Rodape() {
       <div className="mx-auto grid max-w-[1180px] gap-10 sm:grid-cols-[1.2fr_1fr_1fr]">
         <div>
           <span className="flex items-center gap-2.5 text-[16px] font-bold text-[var(--l-fg)]">
-            <span className="flex h-8 w-8 items-center justify-center rounded-[var(--r-sm)] bg-[var(--l-accent)] text-[var(--l-on-accent)]">
-              <Scissors size={15} strokeWidth={1.9} />
-            </span>
+            <MarcaClubCut size={32} />
             Club Cut
           </span>
           <p className="mt-4 max-w-[30ch] text-[13.5px] leading-relaxed text-[var(--l-fg-faint)]">

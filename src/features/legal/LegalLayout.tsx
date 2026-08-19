@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
+import { MarcaClubCut } from '../../components/MarcaClubCut'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, Scissors } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 import { TERMOS_EM_REVISAO, VERSAO_DOS_TERMOS } from '../../lib/termos'
 
 /**
@@ -17,7 +18,7 @@ export function LegalLayout({ titulo, children }: { titulo: string; children: Re
       <div className="w-full max-w-2xl mx-auto space-y-6">
         <Link to="/login" className="flex items-center gap-2 w-fit">
           <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-primary-foreground">
-            <Scissors size={17} />
+            <MarcaClubCut size={17} />
           </span>
           <span className="font-semibold text-foreground">Club Cut</span>
         </Link>

@@ -1,16 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <title>Club Cut</title>
-  <clipPath id="p"><rect width="512" height="512" rx="116"/></clipPath>
-  <mask id="l">
+  <title>Club Cut — C na régua</title>
+  <clipPath id="pd"><rect width="512" height="512" rx="116"/></clipPath>
+  <mask id="md">
     <rect width="512" height="512" fill="#fff"/>
     <circle cx="256" cy="256" r="132" fill="none" stroke="#000" stroke-width="72"/>
     <rect x="256" y="206" width="330" height="100" fill="#fff" transform="rotate(-52 256 256)"/>
   </mask>
-  <g clip-path="url(#p)">
+  <g id="icon" clip-path="url(#pd)">
     <rect width="512" height="512" fill="#F3F1EA"/>
-    <g mask="url(#l)">
+    <g mask="url(#md)">
       <rect width="512" height="512" fill="#1F5D42"/>
-      <g stroke="#0D1512" stroke-opacity=".26" stroke-width="58">
+      <g stroke="#0D1512" stroke-opacity=".28" stroke-width="58">
         <path d="M-120 340 L340 -120"/><path d="M-40 560 L560 -40"/><path d="M180 640 L640 180"/>
       </g>
     </g>

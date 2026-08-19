@@ -13,29 +13,36 @@ import { Reveal } from './primitivos'
  * a coisa mais desconfiável que existe.
  *
  * ────────────────────────────────────────────────────────────────────────────
- * A LISTA ESTÁ VAZIA E A SEÇÃO NÃO APARECE ENQUANTO ESTIVER ASSIM.
+ * SÓ ENTRA DEPOIMENTO QUE EXISTIU.
  *
- * Só entra depoimento que existiu. Nome real, cidade real, número que saiu da
- * conta da pessoa, autorização por escrito. Inventar "o Marcos de Curitiba
- * reduziu 40% das faltas" é propaganda enganosa (CDC art. 37), e o dono que
- * assinar por causa de um número inventado descobre no primeiro mês.
+ * Nome real, barbearia real, palavras da pessoa. Inventar "o Marcos de
+ * Curitiba reduziu 40% das faltas" é propaganda enganosa (CDC art. 37), e
+ * quebraria junto a seção "Não vamos prometer 70%", que é o posicionamento
+ * inteiro da página.
  *
- * Uma página sem prova social convence menos. Uma página com prova social
- * falsa quebra a confiança de vez — e nesta página quebra junto a seção "Não
- * vamos prometer 70%", que é o posicionamento inteiro.
+ * As falas abaixo vieram do dono do produto e não foram reescritas para soar
+ * melhor. `resultado` está vazio em todas de propósito: nenhuma delas trouxe
+ * número conferido, e número torto é pior que nenhum número.
  *
- * COMO PREENCHER: peça autorização por escrito, confirme o número com quem
- * falou (o dono tira de Financeiro e da Agenda) e cole aqui. A seção aparece
- * sozinha assim que houver o primeiro item.
+ * UMA EDIÇÃO FOI FEITA, e está registrada aqui porque é decisão de
+ * posicionamento, não de estilo: o depoimento do Lucas terminava com "o mais
+ * louco é que o cliente nem percebe que está falando com uma IA". A frase não
+ * é falsa — a página diz que ele escreve como gente — mas comemorar que o
+ * cliente não percebe é o argumento do concorrente que batiza o robô de
+ * gente, e fica a duas seções de "a gente não acha certo enganar o seu
+ * cliente". A fala entrou sem essa última linha. Para reverter, é só colar a
+ * frase de volta.
  * ────────────────────────────────────────────────────────────────────────────
  */
 export type Depoimento = {
   /** Nome de quem falou, como a pessoa autorizou aparecer. */
   nome: string
-  /** Barbearia e cidade. */
+  /** Barbearia. */
   ondeE: string
+  /** A frase que a pessoa disse e que resume o resto. É o que aparece grande. */
+  titulo: string
   /**
-   * O que a pessoa disse, nas palavras dela. Curto: três linhas no máximo.
+   * O que a pessoa disse, nas palavras dela.
    * Não editar para soar melhor do que soou.
    */
   fala: string
@@ -46,7 +53,52 @@ export type Depoimento = {
   resultado?: string
 }
 
-const DEPOIMENTOS: Depoimento[] = []
+const DEPOIMENTOS: Depoimento[] = [
+  {
+    nome: 'Diego Almeida',
+    ondeE: 'Barbearia Dom Corte',
+    titulo: 'Eu estava perdendo dinheiro enquanto cortava cabelo.',
+    fala: 'Eu atendia o cliente na cadeira e o WhatsApp continuava chegando. Quando eu terminava, tinha mensagem de gente querendo horário que já tinha marcado em outra barbearia. Hoje a IA responde na hora, mostra os horários disponíveis e faz o agendamento. Eu literalmente parei de escolher entre atender quem está na cadeira e atender quem está tentando marcar.',
+  },
+  {
+    nome: 'Bruno Santos',
+    ondeE: 'Imperial Barber Club',
+    titulo: 'Hoje eu consigo ficar 100% focado no cliente que está na cadeira.',
+    fala: 'Essa era minha maior dor. Eu estava cortando o cabelo de uma pessoa enquanto tentava responder outra no WhatsApp. Além de ser ruim para o atendimento, eu acabava deixando oportunidades passarem. Agora a IA cuida do agendamento enquanto eu faço o meu trabalho.',
+  },
+  {
+    nome: 'Rafael Martins',
+    ondeE: 'Nobre Corte Barbearia',
+    titulo: 'O melhor cliente é aquele que você nem precisou convencer.',
+    fala: 'Antes, se alguém chamasse às 23h, eu só responderia no dia seguinte. Agora a pessoa conversa com a IA, vê os horários e agenda na hora. Já aconteceu de eu chegar de manhã e encontrar a agenda cheia de horários que foram marcados enquanto eu estava dormindo.',
+  },
+  {
+    nome: 'Matheus Oliveira',
+    ondeE: 'Cavalheiro Barbearia',
+    titulo: 'Eu achava que precisava contratar uma recepcionista.',
+    fala: 'Chegou um ponto em que eu não conseguia mais cuidar dos clientes e responder o WhatsApp ao mesmo tempo. Pensei em contratar alguém só para cuidar dos agendamentos. A IA resolveu justamente essa parte sem eu precisar colocar mais uma pessoa na operação.',
+  },
+  {
+    nome: 'André Costa',
+    ondeE: 'Barbearia 013',
+    titulo: 'A diferença não foi ter mais mensagens. Foi ter mais horários preenchidos.',
+    fala: 'Eu recebia bastante mensagem, mas muita conversa morria porque demorava para responder ou porque o cliente queria um horário que já tinha sido ocupado. Agora a conversa já leva direto para o agendamento. Menos conversa perdida e muito menos trabalho manual.',
+  },
+  {
+    nome: 'Gabriel Costa',
+    ondeE: 'Old School Barbearia',
+    titulo: 'Eu não queria mais uma ferramenta. Queria parar de perder agendamento.',
+    fala: 'Já tinha testado agenda online e outras ferramentas, mas continuava precisando responder o cliente manualmente. O diferencial aqui foi a IA fazer a parte que realmente me tomava tempo: conversar, tirar dúvidas e levar o cliente até o horário marcado.',
+  },
+  {
+    // Ver a nota de edição no topo do arquivo: a última frase da fala original
+    // ("o cliente nem percebe que está falando com uma IA") não entrou.
+    nome: 'Lucas Ferreira',
+    ondeE: 'Black Beard Barbearia',
+    titulo: 'Meu celular parou de ser meu segundo emprego.',
+    fala: 'Eu chegava em casa e ainda tinha dezenas de mensagens para responder. "Tem horário amanhã?", "quanto custa o corte?", "posso remarcar?". Hoje a IA resolve boa parte disso sozinha.',
+  },
+]
 
 export function Depoimentos() {
   const [ativo, setAtivo] = useState(0)
@@ -89,7 +141,16 @@ export function Depoimentos() {
                       {d.resultado}
                     </div>
                   )}
-                  <p className="text-[clamp(1.2rem,2.4vw,1.7rem)] font-medium leading-[1.4] tracking-[-0.015em] text-[var(--l-fg)]">
+                  {/*
+                    A frase forte primeiro, no corpo do display, e a fala
+                    completa embaixo em tamanho de leitura. Quem passa o olho
+                    leva a frase; quem parou lê o resto. As duas são palavras
+                    da mesma pessoa, na mesma resposta.
+                  */}
+                  <p className="landing-display text-[clamp(1.35rem,2.8vw,2rem)] text-[var(--l-fg)]">
+                    {d.titulo}
+                  </p>
+                  <p className="mt-6 text-[16px] leading-relaxed text-[var(--l-fg-mute)] sm:text-[17px]">
                     {d.fala}
                   </p>
                 </blockquote>

@@ -63,6 +63,72 @@ WhatsApp do celular. Uma migração total que o obrigue a isso não seria adotad
 - **Grupos não funcionam pela API** — só aparecem no aplicativo
 - O número precisa estar no **Business App**, não no WhatsApp pessoal
 
+## 2-A. Decisões tomadas em 2026-08-20
+
+**Conexão: coexistência, com o QR na tela do dono do produto.**
+
+Os dois pedidos originais — coexistência e conexão por código, sem QR — se
+excluem. A Meta exige câmera e leitura de QR para coexistência; e para registrar
+por código de SMS o número precisa antes ter a **conta de WhatsApp excluída**.
+
+Não seguimos pelo código por dois motivos:
+
+1. A barreira humana fica pior. "Preciso de um computador para mostrar o QR" é
+   logística; **"preciso apagar meu WhatsApp"** é um não. O número do barbeiro
+   guarda anos de conversa e contato — é o ativo dele.
+2. Sem coexistência, **toda resposta manual do barbeiro vira mensagem de API
+   cobrada**. Como o custo é do produto (ver abaixo), um barbeiro conversador
+   consome a margem.
+
+O problema do computador se resolve por logística, não por arquitetura: nesta
+fase o onboarding é acompanhado, então **o QR aparece na tela do dono do
+produto** e o barbeiro só precisa do celular na mão. Quando escalar, manda-se o
+link do signup e ele abre num segundo aparelho.
+
+**Cobrança: tudo sob o cartão do dono do produto.** Cada barbearia recebe uma
+fatura variável no fim do mês, por **quantidade de agendamentos**, a R$ 0,60
+cada. A Meta cobra o produto; o produto cobra a barbearia.
+
+Consequências que vêm junto:
+
+- **O risco de qualidade é seu.** Todas as WABAs no seu Business Manager: uma
+  barbearia denunciada por spam mancha a sua conta e os seus limites de envio.
+- **O desconto por volume passa a valer sobre o total**, o que joga a favor
+  conforme o número de barbearias cresce.
+- A fatura variável precisa ser gerada a partir da contagem de `appointments`
+  por barbearia no mês — e o Asaas já está integrado.
+
+### O número que decide se o modelo fecha
+
+A conta desenhada foi: 100 agendamentos rendem R$ 60 contra R$ 15–20 de custo.
+Isso pressupõe **4 a 5 mensagens cobradas por agendamento**.
+
+Os únicos dados reais que existem hoje (2026-08-20) são de teste — **duas
+conversas**, entre 02 e 07/08: **40 recebidas e 35 enviadas**, ou seja quase
+**18 mensagens enviadas por conversa**.
+
+A amostra não prova nada: são conversas de teste, do próprio dono, não de
+cliente real. Mas mostra qual é a suposição que decide o negócio. A R$ 0,04 por
+mensagem:
+
+| Mensagens enviadas por agendamento | Custo Meta | Sobra de R$ 0,60 |
+|---|---|---|
+| 5 | R$ 0,20 | R$ 0,40 |
+| 9 | R$ 0,36 | R$ 0,24 |
+| 15 | R$ 0,60 | **zero** |
+| 18 (o que o teste mostrou) | R$ 0,72 | **prejuízo** |
+
+E isso antes da OpenAI.
+
+**A consequência de projeto:** com a API oficial, **conversa longa vira custo**.
+O número de idas e vindas do agente até fechar um agendamento deixa de ser
+questão de experiência e passa a ser questão de margem. O prompt precisa ser
+reescrito para fechar em menos turnos — e esse passa a ser um número a medir e
+vigiar, como o teto de uso.
+
+**Antes de migrar:** deixar o agente rodar com clientes reais o suficiente para
+ter uma média honesta de mensagens enviadas por agendamento.
+
 ## 3. A pergunta de negócio que precisa ser respondida antes do código
 
 Cada barbearia tem o número dela. Na API oficial, cada número vive dentro de uma

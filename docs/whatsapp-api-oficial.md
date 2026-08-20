@@ -129,6 +129,32 @@ vigiar, como o teto de uso.
 **Antes de migrar:** deixar o agente rodar com clientes reais o suficiente para
 ter uma média honesta de mensagens enviadas por agendamento.
 
+### Feito em 2026-08-20: o prompt foi reescrito para fechar em três mensagens
+
+O fluxo `rJO1n7cFeNDIJyB5` teve o `systemMessage` alterado e **publicado**. Três
+regras do prompt antigo obrigavam idas e voltas que não decidiam nada:
+
+| Regra removida | Por que custava uma mensagem |
+|---|---|
+| *"pergunte se prefere manhã, tarde ou noite **antes de listar** horários"* | uma rodada inteira para descobrir o que a própria lista já mostra |
+| *"se sobrarem dois ou mais barbeiros, **PARE** e pergunte a preferência"* | o nome do barbeiro cabe ao lado de cada horário |
+| *"cliente novo: pergunte o nome e **espere** a resposta"* | cabia junto com serviço e dia |
+
+O caminho agora é: **1)** pergunta tudo o que falta de uma vez, nome incluído;
+**2)** oferece até cinco horários concretos com o nome do barbeiro em cada;
+**3)** marca e confirma — porque escolher um horário da lista **já é** a
+confirmação, e *"posso confirmar?"* é uma mensagem que não decide nada.
+
+**O que não foi afrouxado:** a fronteira inteira, a proibição de inventar
+serviço/preço/horário, o "nunca afirme o que você não fez", a exigência de
+esperar o nome antes de cadastrar e a regra de não marcar com barbeiro fora da
+jornada. Economizar mensagem não virou adivinhar — está escrito no prompt com
+essas palavras.
+
+**Falta medir.** A mudança é de instrução, não de código: só conversa real diz
+se ela pega. Reconferir a média de enviadas por conversa depois de algumas
+conversas novas.
+
 ## 3. A pergunta de negócio que precisa ser respondida antes do código
 
 Cada barbearia tem o número dela. Na API oficial, cada número vive dentro de uma

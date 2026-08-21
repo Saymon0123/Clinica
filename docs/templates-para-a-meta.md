@@ -3,7 +3,11 @@
 **Gerado de `public.whatsapp_templates` em 2026-08-20.** A tabela é a fonte;
 este arquivo é a cópia de trabalho para o cadastro no painel.
 
-**23 templates:** 11 da família lembrete e 12 da família recuperação.
+**24 templates:** 11 da família lembrete e 13 da família recuperação.
+
+A recuperação acontece em **dois toques — 1 mês e 3 meses** — com textos
+diferentes em cada um. Repetir a mesma frase nos dois é o que faz o cliente
+bloquear, e bloqueio derruba o alcance dos lembretes.
 
 ---
 
@@ -126,6 +130,14 @@ paga com a funcionalidade que dá lucro.
 - **Corpo:** Oi, {{1}}! Voce pediu para que te avisassemos quando desse o intervalo do seu {{2}}. Ja faz {{3}}. Quer marcar na *{{4}}*?
 - **Botões:** Quero marcar · Agora nao
 - **Variáveis:** primeiro nome, serviço, tempo desde a última visita, barbearia
+
+### retorno_pedido_segunda
+- **Corpo:** Oi, {{1}}! Faz {{2}} desde a sua ultima passada na *{{3}}*. Voce pediu para que te avisassemos, entao fica o lembrete. Quer marcar?
+- **Botões:** Quero marcar · Nao quero mais receber
+- **Variáveis:** primeiro nome, tempo desde a última visita, barbearia
+
+> **Segundo toque (3 meses)** da família por opt-in. O primeiro é o
+> `retorno_pedido`.
 
 ### retorno_faltou
 - **Corpo:** Oi, {{1}}! Voce tinha horario na *{{2}}* em {{3}} e acabou nao dando pra vir. Quer remarcar?

@@ -371,8 +371,12 @@ body {
    aparece. Anima `transform`, e nao `left`, para nao recalcular layout a cada
    quadro.
 
-   A duracao e longa de proposito. Faixa que corre rapido vira letreiro de
-   promocao; devagar ela e so um fundo que se move.
+   A duracao vem de `--faixa-duration`, calculada em JS a partir da largura
+   real do conteudo (largura / velocidade-alvo em px/s). Numero fixo aqui
+   acoplava a duracao ao conteudo de quando foi escrito — nomes de texto
+   compridos — e ficou visivelmente lento quando o conteudo virou logos
+   pequenas: menos largura para percorrer no mesmo tempo. O fallback so
+   aparece no instante antes do JS medir.
 --------------------------------------------------------------------------- */
 @keyframes faixa-desliza {
   to {
@@ -381,7 +385,7 @@ body {
 }
 
 .faixa-desliza {
-  animation: faixa-desliza 42s linear infinite;
+  animation: faixa-desliza var(--faixa-duration, 20s) linear infinite;
 }
 
 /* Numero grande em mono. O tabular-nums do grotesco era o mono pedindo

@@ -71,6 +71,23 @@ export function NewSaleModal({
   } | null>(null)
   const [premioAplicado, setPremioAplicado] = useState(false)
 
+  /**
+   * "Quer que a gente te avise quando der tempo de voltar?"
+   *
+   * **Vem marcado de propósito**, e isso é uma decisão de negócio: o barbeiro
+   * se encarrega de dizer ao cliente que a mensagem vai chegar. É essa fala no
+   * balcão que torna verdadeira a frase "você pediu para que te avisássemos" —
+   * e é ela que faz a mensagem custar ~R$ 0,04 (utilidade) em vez de ~R$ 0,35
+   * (marketing), porque a Meta classifica pela existência de uma ação anterior
+   * do cliente.
+   *
+   * O texto ao lado não é enfeite: é o roteiro do que o barbeiro precisa dizer.
+   * Sem essa frase dita em voz alta, o cliente recebe uma mensagem afirmando
+   * algo que ele não fez, estranha, e bloqueia — e bloqueio derruba a nota do
+   * número, que derruba o alcance dos lembretes.
+   */
+  const [avisarRetorno, setAvisarRetorno] = useState(true)
+
   useEffect(() => {
     setPremioAplicado(false)
     if (!temFidelidade || !clientId) {
@@ -332,7 +349,25 @@ export function NewSaleModal({
         })
       }
 
-      // 7. Se veio de um agendamento, marca como concluído
+      // 7. Aviso de retorno: registra a preferência E o momento em que ela foi
+      // confirmada num caixa.
+      //
+      // A data é o que importa. Ela é a diferença entre "esse cliente foi
+      // avisado, com o barbeiro na frente dele" e "esse cliente nunca ouviu
+      // falar disso" — e é ela que decide se a mensagem pode dizer "você pediu
+      // para que te avisássemos". Sem a data, o default `true` da coluna
+      // reivindicaria consentimento da base inteira, retroativamente.
+      if (clientId) {
+        await supabase
+          .from('clients')
+          .update({
+            quer_aviso_de_retorno: avisarRetorno,
+            aviso_de_retorno_em: new Date().toISOString(),
+          })
+          .eq('id', clientId)
+      }
+
+      // 8. Se veio de um agendamento, marca como concluído
       if (prefill?.appointmentId) {
         await supabase
           .from('appointments')
@@ -382,6 +417,25 @@ export function NewSaleModal({
                 ))}
               </select>
             </label>
+
+            {clientId && (
+              <label className="flex items-start gap-2.5 rounded-lg border border-border bg-surface-2 p-2.5">
+                <input
+                  type="checkbox"
+                  checked={avisarRetorno}
+                  onChange={(e) => setAvisarRetorno(e.target.checked)}
+                  className="mt-0.5 accent-primary"
+                />
+                <span className="text-sm text-foreground">
+                  Avisar quando der tempo de voltar
+                  <span className="block text-xs text-muted-foreground mt-0.5">
+                    Fale com ele agora: <em>“quer que a gente te avise daqui a umas semanas?”</em>{' '}
+                    Se ele não quiser, desmarque. Mensagem para quem não foi avisado vira reclamação
+                    — e bloqueio derruba o alcance dos lembretes.
+                  </span>
+                </span>
+              </label>
+            )}
 
             {/* Logo abaixo do cliente, e não perto do total: é ao escolher quem
                 está na cadeira que o barbeiro precisa saber do cartão. No fim

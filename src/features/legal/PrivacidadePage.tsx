@@ -136,6 +136,25 @@ export function PrivacidadePage() {
         </p>
       </Secao>
 
+      <Secao titulo="Como pedir a exclusão dos seus dados">
+        <p>
+          Escreva para <strong>castrocollin01@gmail.com</strong> com o assunto{' '}
+          <strong>Exclusão de dados</strong>, informando o <strong>nome</strong> e o{' '}
+          <strong>telefone</strong> que você usa na barbearia. São eles que localizam o seu
+          cadastro.
+        </p>
+        <p>
+          Respondemos em até <strong>15 dias</strong> confirmando o que foi apagado. Se você é
+          cliente de uma barbearia, avisamos a ela — que é a controladora dos seus dados — e a
+          exclusão vale dos dois lados.
+        </p>
+        <p>
+          <strong>O que não conseguimos apagar:</strong> registros de pagamento e documentos
+          fiscais, que a lei obriga a guardar por prazo próprio. Nesses casos o dado deixa de ser
+          usado para qualquer outra finalidade, e é descartado assim que o prazo legal termina.
+        </p>
+      </Secao>
+
       <Secao titulo="Crianças">
         <p>
           Barbearias atendem crianças. Quando o atendido for menor de 12 anos, cabe à barbearia

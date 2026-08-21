@@ -57,10 +57,14 @@ export function FaixaBarbearias() {
 
   /*
     Mede a largura real de UMA cópia da lista (a outra é o espelho que fecha
-    o laço) e converte em duração pela velocidade-alvo, em vez de uma
-    duração fixa que fica errada toda vez que o conteúdo muda de tamanho.
-    ResizeObserver reage também ao carregamento assíncrono das imagens, que
-    muda a largura depois do primeiro paint.
+    o laço) e o gap que a separa da segunda cópia, e usa a soma — não -50%
+    fixo — como distância do laço. -50% da largura total só fecha sem emenda
+    se o gap entre as duas cópias for idêntico ao gap médio dentro de cada
+    uma, o que não é garantido; a soma medida sempre pousa a cópia 2 exatamente
+    onde a cópia 1 começou. A duração converte essa mesma distância pela
+    velocidade-alvo, em vez de uma duração fixa que fica errada toda vez que
+    o conteúdo muda de tamanho. ResizeObserver reage também ao carregamento
+    assíncrono das imagens, que muda a largura depois do primeiro paint.
   */
   useEffect(() => {
     const track = listaRef.current?.parentElement
@@ -69,8 +73,11 @@ export function FaixaBarbearias() {
 
     const observer = new ResizeObserver(() => {
       const largura = lista.getBoundingClientRect().width
-      if (largura > 0) {
-        track.style.setProperty('--faixa-duration', `${largura / VELOCIDADE_PX_S}s`)
+      const gap = parseFloat(getComputedStyle(track).columnGap) || 0
+      const distancia = largura + gap
+      if (distancia > 0) {
+        track.style.setProperty('--faixa-distancia', `${distancia}px`)
+        track.style.setProperty('--faixa-duration', `${distancia / VELOCIDADE_PX_S}s`)
       }
     })
     observer.observe(lista)
@@ -117,9 +124,11 @@ export function FaixaBarbearias() {
       }}
     >
       {/*
-        Duas cópias da mesma lista, deslizando -50%. No fim do ciclo a segunda
-        cópia está exatamente onde a primeira começou, então o laço não tem
-        emenda visível. É por isso que a duplicata existe — não é redundância.
+        Duas cópias da mesma lista, deslizando por `--faixa-distancia` (a
+        largura de uma cópia mais o gap que a separa da outra). No fim do
+        ciclo a segunda cópia está exatamente onde a primeira começou, então
+        o laço não tem emenda visível. É por isso que a duplicata existe —
+        não é redundância.
 
         A cópia é `aria-hidden`: o leitor de tela lê a lista uma vez só.
       */}

@@ -25,21 +25,23 @@ import { DEPOIMENTOS } from './Depoimentos'
  * ela deu depoimento — sem lista paralela que possa divergir, e sem tentação de
  * encher a faixa com nomes que não autorizaram nada.
  *
- * ─── Logo quando existe, nome quando não ────────────────────────────────────
+ * ─── Só logo, nunca nome em texto misturado ─────────────────────────────────
  *
- * Nem toda barbearia tem uma logo em arquivo. Em vez de esperar todas
- * chegarem, a faixa mostra a logo de quem já tem (`d.logo`) e o nome em texto
- * de quem ainda não — sem inventar marca nenhuma.
+ * Nem toda barbearia tem uma logo em arquivo ainda. Em vez de misturar logo
+ * com nome escrito na mesma faixa — o que lê como dois níveis de acabamento
+ * diferentes lado a lado —, a faixa só mostra quem já tem logo. Quem não tem
+ * continua com depoimento normal na seção de depoimentos; some daqui até a
+ * logo chegar.
  */
-type ItemFaixa = { chave: string; ondeE: string; logo?: string }
+type ItemFaixa = { chave: string; ondeE: string; logo: string }
 
 export function FaixaBarbearias() {
   const semMovimento = useReducedMotion()
 
-  const itens: ItemFaixa[] = DEPOIMENTOS.map((d) => ({
+  const itens: ItemFaixa[] = DEPOIMENTOS.filter((d) => d.logo).map((d) => ({
     chave: d.ondeE,
     ondeE: d.ondeE,
-    logo: d.logo,
+    logo: d.logo as string,
   }))
   if (itens.length === 0) return null
 
@@ -109,12 +111,9 @@ export function FaixaBarbearias() {
 /**
  * Logo em `grayscale`, volta à cor no hover/foco da faixa inteira — o mesmo
  * tratamento que qualquer "as-featured-in" usa para a marca não competir com
- * o herói. Sem logo, cai para o nome em texto que já existia.
+ * o herói.
  */
 function ItemLogo({ item }: { item: ItemFaixa }) {
-  if (!item.logo) {
-    return <span className="text-[15px] font-medium text-[var(--l-fg-mute)]">{item.ondeE}</span>
-  }
   return (
     <img
       src={item.logo}

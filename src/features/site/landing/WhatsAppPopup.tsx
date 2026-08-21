@@ -8,17 +8,18 @@ import { CONTATO } from '../../../lib/contato'
  * O botão flutuante de WhatsApp, com o painel que abre dele.
  *
  * **É a casca para o bot de tira-dúvidas, não o bot.** Por enquanto ele não
- * responde nada sozinho: a mensagem que a pessoa digita abre o WhatsApp de
- * verdade, com o texto já preenchido, igual ao link que já existe na seção
- * de franqueza. Fingir uma conversa de bot que ainda não existe seria pior
- * que não ter o botão — vira exatamente o "meio pronto" que o CLAUDE.md deste
- * projeto pede pra evitar. Quando o agente de tira-dúvidas existir no n8n,
- * só o que acontece ao enviar muda; o resto do desenho fica.
+ * responde nada sozinho: com número real em CONTATO, a mensagem que a
+ * pessoa digita abre o WhatsApp de verdade, com o texto já preenchido, igual
+ * ao link que já existe na seção de franqueza. Quando o agente de
+ * tira-dúvidas existir no n8n, só o que acontece ao enviar muda; o resto do
+ * desenho fica.
  *
- * **Só existe com número real.** Segue a mesma regra da seção de franqueza:
- * sem CONTATO.whatsapp preenchido, este componente não renderiza nada — um
- * botão de WhatsApp que abre uma tela e não leva a lugar nenhum é pior do
- * que não ter o botão.
+ * **Fica visível mesmo sem número real.** Diferente da seção de franqueza —
+ * lá o convite promete algo específico ("manda mensagem e pergunta se é
+ * robô") que sem número vira convite pra um buraco. Aqui o botão promete só
+ * "dá para falar com a gente", e sem número diz exatamente isso: o campo
+ * fica desabilitado com "em breve" em vez de fingir que envia. É a diferença
+ * entre ocultar o que ainda não existe e mentir sobre o que existe.
  *
  * **Por que fica ACIMA do CtaFixo.** Os dois são elementos fixos no canto
  * inferior. O CtaFixo publica a própria altura em `--cta-fixo-h` (ver
@@ -26,23 +27,25 @@ import { CONTATO } from '../../../lib/contato'
  * posição para cima quando a barra de CTA está na tela, em vez de os dois
  * adivinharem a altura um do outro com números fixos.
  */
-const MENSAGEM_PADRAO =
+const MENSAGEM_COM_NUMERO =
   'Oi! Ainda não temos um assistente automático por aqui, mas dá para falar direto com a gente. Manda sua dúvida que a gente responde.'
+
+const MENSAGEM_SEM_NUMERO =
+  'Esse canal ainda não está ativo. Em breve dá para falar com a gente por aqui.'
 
 export function WhatsAppPopup() {
   const [aberto, setAberto] = useState(false)
   const [rascunho, setRascunho] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const semMovimento = useReducedMotion()
-
-  useEffect(() => {
-    if (aberto) inputRef.current?.focus()
-  }, [aberto])
-
-  if (!CONTATO.whatsapp) return null
   const numero = CONTATO.whatsapp
 
+  useEffect(() => {
+    if (aberto && numero) inputRef.current?.focus()
+  }, [aberto, numero])
+
   function enviar() {
+    if (!numero) return
     const texto = rascunho.trim()
     if (!texto) return
     window.open(`https://wa.me/${numero}?text=${encodeURIComponent(texto)}`, '_blank', 'noreferrer')
@@ -87,7 +90,7 @@ export function WhatsAppPopup() {
             <div className="px-3.5 py-4">
               <div className="flex justify-start">
                 <p className="max-w-[85%] rounded-2xl rounded-bl-md bg-[#2a2927] px-3.5 py-2.5 text-[13px] leading-snug text-white">
-                  {MENSAGEM_PADRAO}
+                  {numero ? MENSAGEM_COM_NUMERO : MENSAGEM_SEM_NUMERO}
                 </p>
               </div>
             </div>
@@ -104,13 +107,14 @@ export function WhatsAppPopup() {
                 type="text"
                 value={rascunho}
                 onChange={(e) => setRascunho(e.target.value)}
-                placeholder="Escreva sua dúvida..."
-                className="min-w-0 flex-1 rounded-full bg-white/[0.06] px-3.5 py-2.5 text-[13px] text-white placeholder:text-white/40 outline-none focus:bg-white/10"
+                disabled={!numero}
+                placeholder={numero ? 'Escreva sua dúvida...' : 'Em breve'}
+                className="min-w-0 flex-1 rounded-full bg-white/[0.06] px-3.5 py-2.5 text-[13px] text-white placeholder:text-white/40 outline-none focus:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
               />
               <button
                 type="submit"
-                disabled={!rascunho.trim()}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white transition-[opacity,transform] duration-200 active:scale-95 disabled:opacity-40"
+                disabled={!numero || !rascunho.trim()}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white transition-[opacity,transform] duration-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Enviar"
               >
                 <WhatsAppGlyph className="h-4 w-4" />

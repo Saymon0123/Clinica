@@ -197,9 +197,28 @@ leitura de QR.
 
 ### Uma vez só, para você — a verificação do negócio
 
-Este é o item que trava tudo o mais. Comece por ele.
+> **Correção de 2026-08-20:** este documento dizia que a verificação travava
+> tudo e que era por onde começar. **Está errado, e a inversão importa.**
+>
+> Sem verificação nenhuma, a Meta libera **250 destinatários únicos por dia**,
+> compartilhados entre todos os números do portfólio. São *destinatários*, não
+> mensagens: um cliente que troca dez mensagens com o agente conta como um.
+>
+> Numa barbearia de cinco atendimentos por dia isso dá uns 10 únicos diários.
+> **Há folga para ~25 barbearias antes de o limite apertar.** Verificado, o
+> limite salta para 100 mil por dia.
+>
+> Portanto: **construa e valide primeiro, verifique depois** — perto das 20
+> barbearias, quando já houver receita para pagar a burocracia. Apresentar a
+> verificação como portão de entrada fez uma tarefa que não bloqueia nada
+> parecer pré-requisito.
 
-#### Antes de abrir o site: o que ter na mão
+#### Se e quando for verificar: o que ter na mão
+
+A lista abaixo é o **pior caso**. Na prática a Meta muitas vezes verifica
+sozinha pelos registros públicos, e quando pede documento costuma pedir o que
+falta, não tudo. Sendo MEI, o certificado do `gov.br` é um PDF só, grátis, que
+prova existência e CNPJ ao mesmo tempo.
 
 Tudo em PDF ou foto legível, com o documento inteiro visível (sem cortar bordas):
 

@@ -765,3 +765,30 @@ incompatibilidade entre a lista montada pela view e o corpo do template só
 aparece quando a Meta recusa o envio, e como nada sem `status = 'aprovado'` é
 enviado hoje, o defeito ficaria dormindo até o dia da aprovação — ou seja,
 apareceria junto com todo o resto. Hoje ela está vazia nos 24 templates.
+
+
+## Canal de alertas interno — 2026-08-21
+
+Auditoria do agente e feedback dos donos passam a chegar por **e-mail**, não
+por WhatsApp. Migrations 0090 e 0091.
+
+**Por quê:** na API oficial, mensagem que o sistema inicia exige template
+aprovado, e alerta de auditoria tem texto arbitrário — para caber num template
+o corpo seria quase todo `{{1}}`, formato que a Meta costuma recusar. E nada
+disso é conversa com cliente: é o produto falando com o dono do produto. Não há
+razão para pagar pedágio da Meta nem para caber em 1024 caracteres.
+
+O banco já está correto: `canal_de_alertas_conferido` devolve
+`e_de_cliente = false`.
+
+**Falta, e nesta ordem:**
+
+1. **n8n (você):** criar uma credencial SMTP. Sem ela não dá para trocar os
+   nós — e trocar sem credencial quebraria alertas que hoje funcionam.
+2. **n8n (eu):** trocar o nó de envio de `CRM Salao - Auditoria do Agente` e
+   `CRM Salao - Feedback dos Donos` por `emailSend`, lendo `email` de
+   `canal_de_alertas`.
+
+**Até o passo 2, os alertas continuam saindo pela instância da Curitiba.** O
+banco diz e-mail, os fluxos ainda não sabem — o defeito descrito na 0090 segue
+vivo na prática até os nós serem trocados.

@@ -73,20 +73,49 @@ type MensagemRecebida = {
   /** Resposta de botão de template — é assim que "Sim, confirmo" chega. */
   button?: { text: string; payload: string }
   interactive?: { button_reply?: { id: string; title: string } }
+  audio?: { id: string; mime_type?: string; voice?: boolean }
+  image?: { id: string; mime_type?: string; caption?: string }
+  video?: { id: string; mime_type?: string; caption?: string }
+  document?: { id: string; mime_type?: string; filename?: string }
 }
 
+type Conteudo = { texto: string | null; media_id: string | null; tipo: string }
+
 /**
- * O texto que interessa, venha ele de onde vier.
+ * O que interessa da mensagem, venha ela de onde vier.
  *
  * Botão de template não chega como texto: chega em `button` ou em
  * `interactive.button_reply`. Sem tratar os três, o cliente aperta
  * "Sim, confirmo" e o agente não recebe nada.
+ *
+ * **Áudio e imagem não chegam com conteúdo** — chegam com um `id` de mídia, e
+ * ouvir ou ver exige uma segunda chamada à API para baixar o arquivo. Por isso
+ * o `media_id` é repassado ao n8n em vez de resolvido aqui: a transcrição e a
+ * descrição de imagem **já existem lá** (nós `Transcrever Áudio` e
+ * `Descrever Imagem`), e duplicá-las aqui criaria duas verdades sobre como o
+ * sistema entende áudio.
+ *
+ * Cliente de barbearia manda áudio o tempo todo. Uma versão anterior desta
+ * função descartava tudo que não fosse texto ou botão — e teria feito metade
+ * das mensagens sumirem em silêncio na migração.
  */
-function textoDaMensagem(m: MensagemRecebida): string | null {
-  if (m.type === 'text') return m.text?.body ?? null
-  if (m.button?.text) return m.button.text
-  if (m.interactive?.button_reply?.title) return m.interactive.button_reply.title
-  return null
+function conteudoDaMensagem(m: MensagemRecebida): Conteudo {
+  if (m.type === 'text') return { texto: m.text?.body ?? null, media_id: null, tipo: 'texto' }
+  if (m.button?.text) return { texto: m.button.text, media_id: null, tipo: 'botao' }
+  if (m.interactive?.button_reply?.title) {
+    return { texto: m.interactive.button_reply.title, media_id: null, tipo: 'botao' }
+  }
+  if (m.type === 'audio') return { texto: null, media_id: m.audio?.id ?? null, tipo: 'audio' }
+  if (m.type === 'image') {
+    return { texto: m.image?.caption ?? null, media_id: m.image?.id ?? null, tipo: 'imagem' }
+  }
+  if (m.type === 'video') {
+    return { texto: m.video?.caption ?? null, media_id: m.video?.id ?? null, tipo: 'video' }
+  }
+  if (m.type === 'document') {
+    return { texto: m.document?.filename ?? null, media_id: m.document?.id ?? null, tipo: 'documento' }
+  }
+  return { texto: null, media_id: null, tipo: m.type }
 }
 
 Deno.serve(async (req) => {
@@ -144,9 +173,12 @@ Deno.serve(async (req) => {
         if (valor.statuses?.length) continue
 
         for (const m of (valor.messages ?? []) as MensagemRecebida[]) {
-          const texto = textoDaMensagem(m)
-          if (!texto) {
-            console.error('Tipo de mensagem sem texto tratavel:', m.type)
+          const { texto, media_id, tipo } = conteudoDaMensagem(m)
+
+          // Só descarta o que não tem texto NEM mídia — figurinha, localização,
+          // contato. Áudio e imagem seguem com o media_id para o n8n resolver.
+          if (!texto && !media_id) {
+            console.error('Mensagem sem texto e sem midia, tipo:', m.type)
             continue
           }
 
@@ -169,9 +201,12 @@ Deno.serve(async (req) => {
               contact_name: valor.contacts?.[0]?.profile?.name ?? null,
               message_id: m.id,
               texto,
-              // De botão ou digitada: o agente trata diferente uma confirmação
-              // vinda de "Sim, confirmo" e uma frase solta.
-              origem: m.type === 'text' ? 'texto' : 'botao',
+              // Quando vem preenchido, o n8n baixa a mídia pela API e transcreve
+              // ou descreve antes de entregar ao agente.
+              media_id,
+              // texto | botao | audio | imagem | video | documento. O agente
+              // trata diferente uma confirmação vinda de botão e uma frase solta.
+              tipo,
             }),
           })
           if (!resposta.ok) {

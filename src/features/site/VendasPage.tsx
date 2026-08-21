@@ -5,6 +5,7 @@ import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'mo
 import { DIAS_DE_TESTE, PRECO_BASICO, PRECO_PRO } from '../../lib/planos'
 import { CONTATO } from '../../lib/contato'
 import { ChatDemo } from './landing/ChatDemo'
+import { ProvaRobo } from './landing/ProvaRobo'
 import { ProdutoDemo } from './landing/ProdutoDemo'
 import { Depoimentos } from './landing/Depoimentos'
 import { FaqAccordion } from './landing/FaqAccordion'
@@ -336,7 +337,7 @@ function Recursos() {
 function Franqueza() {
   return (
     <section className="relative overflow-hidden bg-[var(--l-canvas)] px-6 py-[72px] lg:py-[96px]">
-      <div className={CAIXA}>
+      <div className={`${CAIXA} grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:gap-10`}>
         <Reveal>
           <p className="max-w-[19ch] text-[clamp(1.6rem,4vw,2.9rem)] font-semibold leading-[1.2] tracking-[-0.025em] text-[var(--l-fg)]">
             Se o cliente perguntar se é robô, ele responde que é.
@@ -367,6 +368,16 @@ function Franqueza() {
               </a>
             </p>
           )}
+        </Reveal>
+
+        {/*
+          Enquanto o numero real de CONTATO nao existe, esta e a prova que dá
+          para mostrar: a mesma pergunta e a mesma resposta, encenadas — não
+          um convite para testar um numero que nao existe, mas também não a
+          frase sozinha sobre metade da tela vazia.
+        */}
+        <Reveal delay={0.1}>
+          <ProvaRobo />
         </Reveal>
       </div>
     </section>

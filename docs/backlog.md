@@ -446,6 +446,27 @@ zero: nenhum concorrente copia sem expor que o bot dele mente.
 Depende de peça fora do repositório: um número de WhatsApp com o agente
 rodando, apontado para uma barbearia de demonstração no n8n.
 
+## Popup de WhatsApp na landing, casca para o bot de tira-dúvidas (2026-08-21)
+
+`WhatsAppPopup.tsx` — botão flutuante no canto inferior direito, que abre um
+painel de conversa. Hoje ele não responde nada sozinho: a mensagem digitada
+abre o WhatsApp de verdade (`wa.me`) com o texto preenchido, igual ao convite
+da seção de franqueza. Mesma regra dos outros canais: só renderiza quando
+`CONTATO.whatsapp` deixa de ser `null`; sem número real, um botão de WhatsApp
+que não leva a lugar nenhum é pior que não ter o botão.
+
+Fica coordenado com o `CtaFixo` (a barra fixa de CTA) por uma variável CSS
+(`--cta-fixo-h`, publicada pelo próprio `CtaFixo`): o popup sobe para não
+colidir quando a barra está na tela, sem números fixos adivinhando a altura
+um do outro.
+
+**Quando o bot de tira-dúvidas existir no n8n**, o único ponto que muda é o
+`enviar()` do componente: em vez de abrir `wa.me`, ele chama o agente. O
+resto do desenho (botão, painel, mensagem de boas-vindas) fica.
+
+Depende de peça fora do repositório: o mesmo número de WhatsApp do item
+acima, e — quando for a hora — o agente de tira-dúvidas configurado no n8n.
+
 ## Marca do Club Cut (2026-08-19)
 
 A marca virou componente único em `src/components/MarcaClubCut.tsx`, usado em

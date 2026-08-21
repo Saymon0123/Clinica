@@ -11,6 +11,7 @@ import { Depoimentos } from './landing/Depoimentos'
 import { FaqAccordion } from './landing/FaqAccordion'
 import { Calculadora } from './landing/Calculadora'
 import { CtaFixo } from './landing/CtaFixo'
+import { WhatsAppPopup } from './landing/WhatsAppPopup'
 import { Cta, Reveal, RevealGrupo, RevealItem } from './landing/primitivos'
 import { useRolou } from './landing/useRolou'
 import { FaixaBarbearias } from './landing/FaixaBarbearias'
@@ -957,6 +958,7 @@ export function VendasPage() {
 
       {/* Aparece depois do herói e se apaga perto de qualquer CTA de seção. */}
       <CtaFixo rotulo={CTA} microcopy={MICROCOPY} />
+      <WhatsAppPopup />
     </div>
   )
 }

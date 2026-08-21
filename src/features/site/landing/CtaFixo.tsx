@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { Link } from 'react-router-dom'
 
@@ -20,6 +20,31 @@ import { Link } from 'react-router-dom'
 export function CtaFixo({ rotulo, microcopy }: { rotulo: string; microcopy: string }) {
   const [visivel, setVisivel] = useState(false)
   const semMovimento = useReducedMotion()
+  const barraRef = useRef<HTMLDivElement>(null)
+
+  /*
+    Publica a própria altura como variável CSS. Outro elemento fixo no
+    canto inferior (o popup do WhatsApp) lê essa variável para empurrar a
+    própria posição para cima quando esta barra está na tela — em vez de os
+    dois adivinharem a altura um do outro com números fixos, que quebram no
+    primeiro texto de microcopy mais longo.
+  */
+  useEffect(() => {
+    if (!visivel) {
+      document.documentElement.style.setProperty('--cta-fixo-h', '0px')
+      return
+    }
+    const el = barraRef.current
+    if (!el) return
+    const observer = new ResizeObserver(() => {
+      document.documentElement.style.setProperty('--cta-fixo-h', `${el.offsetHeight}px`)
+    })
+    observer.observe(el)
+    return () => {
+      observer.disconnect()
+      document.documentElement.style.setProperty('--cta-fixo-h', '0px')
+    }
+  }, [visivel])
 
   useEffect(() => {
     const alvos = Array.from(document.querySelectorAll('[data-cta-inline]'))
@@ -57,6 +82,7 @@ export function CtaFixo({ rotulo, microcopy }: { rotulo: string; microcopy: stri
     <AnimatePresence>
       {visivel && (
         <motion.div
+          ref={barraRef}
           initial={semMovimento ? { opacity: 0 } : { opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={semMovimento ? { opacity: 0 } : { opacity: 0, y: 12 }}

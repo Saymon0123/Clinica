@@ -24,14 +24,26 @@ import { DEPOIMENTOS } from './Depoimentos'
  * A lista vem de `DEPOIMENTOS` de propósito. Barbearia só aparece na faixa se
  * ela deu depoimento — sem lista paralela que possa divergir, e sem tentação de
  * encher a faixa com nomes que não autorizaram nada.
+ *
+ * ─── Logo quando existe, nome quando não ────────────────────────────────────
+ *
+ * Nem toda barbearia tem uma logo em arquivo. Em vez de esperar todas
+ * chegarem, a faixa mostra a logo de quem já tem (`d.logo`) e o nome em texto
+ * de quem ainda não — sem inventar marca nenhuma.
  */
+type ItemFaixa = { chave: string; ondeE: string; logo?: string }
+
 export function FaixaBarbearias() {
   const semMovimento = useReducedMotion()
 
-  const nomes = DEPOIMENTOS.map((d) => d.ondeE)
-  if (nomes.length === 0) return null
+  const itens: ItemFaixa[] = DEPOIMENTOS.map((d) => ({
+    chave: d.ondeE,
+    ondeE: d.ondeE,
+    logo: d.logo,
+  }))
+  if (itens.length === 0) return null
 
-  const rotulo = `${nomes.length} barbearias que usam o Club Cut`
+  const rotulo = `${itens.length} barbearias que usam o Club Cut`
 
   /*
     Sem movimento, a faixa não vira uma versão devagar de si mesma: ela vira
@@ -41,10 +53,10 @@ export function FaixaBarbearias() {
   if (semMovimento) {
     return (
       <section aria-label={rotulo} className="border-y border-[var(--l-line)] px-6 py-7">
-        <ul className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-center gap-x-9 gap-y-3">
-          {nomes.map((n) => (
-            <li key={n} className="text-[15px] font-medium text-[var(--l-fg-mute)]">
-              {n}
+        <ul className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-center gap-x-10 gap-y-4">
+          {itens.map((item) => (
+            <li key={item.chave}>
+              <ItemLogo item={item} />
             </li>
           ))}
         </ul>
@@ -75,20 +87,41 @@ export function FaixaBarbearias() {
 
         A cópia é `aria-hidden`: o leitor de tela lê a lista uma vez só.
       */}
-      <div className="faixa-desliza flex w-max gap-x-14 group-hover:[animation-play-state:paused] group-focus-within:[animation-play-state:paused]">
+      <div className="faixa-desliza flex w-max items-center gap-x-14 group-hover:[animation-play-state:paused] group-focus-within:[animation-play-state:paused]">
         {[0, 1].map((copia) => (
-          <ul key={copia} aria-hidden={copia === 1} className="flex shrink-0 gap-x-14">
-            {nomes.map((n) => (
-              <li
-                key={n}
-                className="whitespace-nowrap text-[15px] font-medium text-[var(--l-fg-mute)]"
-              >
-                {n}
+          <ul
+            key={copia}
+            aria-hidden={copia === 1}
+            className="flex shrink-0 items-center gap-x-14"
+          >
+            {itens.map((item) => (
+              <li key={item.chave} className="whitespace-nowrap">
+                <ItemLogo item={item} />
               </li>
             ))}
           </ul>
         ))}
       </div>
     </section>
+  )
+}
+
+/**
+ * Logo em `grayscale`, volta à cor no hover/foco da faixa inteira — o mesmo
+ * tratamento que qualquer "as-featured-in" usa para a marca não competir com
+ * o herói. Sem logo, cai para o nome em texto que já existia.
+ */
+function ItemLogo({ item }: { item: ItemFaixa }) {
+  if (!item.logo) {
+    return <span className="text-[15px] font-medium text-[var(--l-fg-mute)]">{item.ondeE}</span>
+  }
+  return (
+    <img
+      src={item.logo}
+      alt={item.ondeE}
+      className="h-11 w-auto shrink-0 opacity-70 grayscale transition-[opacity,filter] duration-300 group-hover:opacity-100 group-hover:grayscale-0"
+      loading="lazy"
+      decoding="async"
+    />
   )
 }

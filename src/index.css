@@ -377,10 +377,17 @@ body {
    compridos — e ficou visivelmente lento quando o conteudo virou logos
    pequenas: menos largura para percorrer no mesmo tempo. O fallback so
    aparece no instante antes do JS medir.
+
+   A distancia percorrida vem de `--faixa-distancia`, e nao de -50% fixo.
+   -50% da largura total do trilho so fecha o laco sem emenda se o gap ENTRE
+   as duas copias for identico ao gap medio DENTRO de cada copia — o que deixa
+   de ser verdade a cada ajuste de espacamento. `--faixa-distancia` e a
+   largura real de uma copia mais o gap que a separa da proxima, medida em
+   JS, entao a copia 2 sempre pousa exatamente onde a copia 1 comecou.
 --------------------------------------------------------------------------- */
 @keyframes faixa-desliza {
   to {
-    transform: translateX(-50%);
+    transform: translateX(calc(-1 * var(--faixa-distancia, 50%)));
   }
 }
 

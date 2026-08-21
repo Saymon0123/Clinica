@@ -323,6 +323,40 @@ A Meta cria sozinha, de graça:
 - uma **WABA de teste**
 - um **número de teste**, que não é o seu e não custa nada
 
+#### Identificadores do ambiente (2026-08-20)
+
+| | |
+|---|---|
+| Portfólio empresarial | `334664782986386` (MB001) |
+| App ID | `1054189290929803` (CRM barbearia) |
+| WABA de teste | `1623313172733188` |
+| Phone Number ID de teste | `1299462689911188` |
+| Número de teste | +1 555-667-9713 |
+
+> Existe uma segunda WABA no portfólio, **"Samuel"** (`942906481226822`), sem
+> número nenhum. Provavelmente sobra de tentativa anterior. Não atrapalha, mas
+> confunde quem for olhar.
+
+#### A tela da Etapa 1 mente — não confie nela
+
+O painel de **Etapa 1 → Reivindicar número de teste** insistiu em
+*"Nenhum número de telefone disponível para este app"* em quatro cliques
+seguidos, sem erro nenhum. Perdemos tempo achando que faltava configuração:
+testamos janela anônima, trocamos o caso de uso de Messenger para WhatsApp,
+lemos console e rede.
+
+**O número já existia desde o primeiro clique.** Confirmado em dois lugares:
+
+1. Configurações do negócio → Contas do WhatsApp → Test WABA → Phone numbers
+2. Explorador da Graph API, `GET 1623313172733188/phone_numbers`, que devolveu
+   o número **e o `id`** em 632 ms — usando o token do mesmo app que a tela
+   dizia não ter acesso
+
+**Regra prática:** quando o painel da Meta se recusar a mostrar algo sem dar
+erro, pergunte à Graph API antes de mexer em qualquer configuração. O
+Explorador (`developers.facebook.com/tools/explorer`) usa a sessão do
+navegador, então não exige token nenhum guardado em lugar algum.
+
 #### 4. Testar tudo no número de teste, antes de encostar num número real
 
 O número de teste envia para até **5 destinatários** que você cadastra na tela.

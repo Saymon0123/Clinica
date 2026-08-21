@@ -282,8 +282,19 @@ mesma conta do Facebook do portfólio empresarial.
 > e não há escolha de tipo em lugar nenhum. Foi isso que travou o dono do
 > produto no passo 2.
 
-**Meus Apps → Criar aplicativo.** Aparece um aviso sobre "uma nova maneira de
-criar apps"; clique em **Criar app** para seguir.
+**Meus Apps → Criar aplicativo.** Aparece um aviso sobre *"Há uma nova maneira
+de criar apps com a Meta"*, com os botões **Voltar** e **Criar app**.
+
+> **A armadilha que custou um app em 2026-08-20.** Esse aviso parece
+> informativo, mas é uma bifurcação: clicar em **Criar app** (azul) leva ao
+> sistema NOVO, com casos de uso; sair pelo **X** ou por **Voltar** deixa você
+> no sistema ANTIGO, que cria um app **sem tipo**.
+>
+> App sem tipo **nunca** consegue o WhatsApp: ele não aparece em "Adicionar
+> produto", não existe menu "Casos de uso", e a URL `/use_cases/` redireciona
+> para o painel. O sintoma no topo da tela é **"Tipo de aplicativo: Nenhum"**.
+>
+> Não tem conserto: é criar outro app, desta vez pelo botão azul.
 
 O assistente tem cinco etapas, mostradas no topo:
 

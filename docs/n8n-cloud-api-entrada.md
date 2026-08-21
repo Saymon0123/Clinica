@@ -1,80 +1,89 @@
-# Fluxo n8n — entrada da Cloud API
+# Migração do agente para a Cloud API
 
-**Criado e publicado em 2026-08-21.**
+**Feita em 2026-08-21, no próprio fluxo principal.**
 
-- Fluxo: `CRM Salao - WhatsApp Cloud API (entrada)`, id `5PU5WhmMgfGht0pr`
-- URL de produção: `https://n8n-m5uf.srv1833354.hstgr.cloud/webhook/whatsapp-cloud`
-
-É essa URL que vai no segredo `N8N_WHATSAPP_WEBHOOK_URL` do Supabase.
+- Fluxo: `CRM Salão - Atendimento WhatsApp (Supabase Nativo)`, id `rJO1n7cFeNDIJyB5`
+- Estado: **alterações no rascunho, ainda não publicadas** — falta a credencial
 
 ---
 
-## O desenho
+## Por que no fluxo existente, e não num novo
+
+A primeira tentativa criou um fluxo paralelo (`5PU5WhmMgfGht0pr`, arquivado).
+Foi decisão errada, e o dono do produto apontou: os 65 nós do fluxo original —
+o agente, as oito ferramentas, o catálogo, o calendário, o histórico, a espera
+de sequência — **são todos agnósticos de provedor**. Eles falam com o Supabase,
+não com o WhatsApp.
+
+Um fluxo paralelo significaria duplicar tudo aquilo, ou manter **dois cérebros**
+— exatamente o problema das "duas verdades" que este projeto evita em todo
+lugar. Só três coisas mudam entre Evolution e Cloud API: a entrada, a mídia e
+o envio.
+
+## Por que os nodes nativos, e não HTTP na mão
+
+O n8n tem `n8n-nodes-base.whatsApp` com `media/mediaUrlGet` e `message/send` —
+e também `message/sendTemplate`, que é o que a parte 2 vai precisar para o
+lembrete com botões. Montar aquele JSON à mão seria trabalho jogado fora.
+
+## O que mudou, e só
+
+| Nó | Antes | Depois |
+|---|---|---|
+| `Webhook Evolution API` | — | renomeado para **Webhook da Edge Function** (mesmo path `salao-atendimento`) |
+| `Normalizar Payload` | lia `remoteJid`, `pushName`, `base64` | lê o payload plano da edge function |
+| `Buscar Instância Conectada` | filtrava por `instance_name` | filtra por **`phone_number_id`** |
+| `Extrair Salon ID` | repassava `audio_base64` | repassa **`media_id`** e `phone_number_id` |
+| áudio | base64 vinha pronto | **Buscar URL do Áudio → Baixar → Transcrever** |
+| imagem | base64 vinha pronto | **Buscar URL da Imagem → Baixar → Descrever** |
+| envio (2 nós) | HTTP para a Evolution | **node nativo `whatsApp`** |
+
+**Tudo entre `Converge Texto Final` e `Inserir Mensagem do Agente` ficou
+intacto** — agente, prompt, ferramentas, contexto.
+
+## A mídia é a diferença real
+
+Na Evolution o áudio chegava em base64, resolvido. Na Cloud API vem um
+`media_id`, e ouvir exige duas chamadas: `mediaUrlGet` para descobrir a URL, e
+um GET para baixar o arquivo. **A URL vence em poucos minutos** e exige o token
+no cabeçalho, então baixar e transcrever têm que acontecer na mesma execução.
+
+O nó de transcrição também mudou: antes mandava a string base64 no campo `file`
+de um multipart; agora manda o **binário** (`formBinaryData`), que é o que a
+OpenAI espera.
+
+## Verificação estrutural
+
+Feita em 2026-08-21, sobre o rascunho:
+
+- **53 nós alcançáveis** a partir do webhook; **nenhum órfão**
+- os quatro nós nativos de WhatsApp estão na cadeia
+- `phone_number_id` e `media_id` são produzidos em `Normalizar Payload`,
+  repassados por `Extrair Salon ID`, e chegam a `Converge Texto Final` porque
+  todos os `Texto Final (*)` têm `includeOtherFields: true`
+- varredura por `evolution-api`, `remoteJid`, `audio_base64`, `image_base64`,
+  `instance_name` e `pushName`: **zero ocorrências**
+
+## O que falta para publicar
+
+O n8n **recusou a publicação** — e fez certo:
 
 ```
-Mensagem da Edge Function → Tem Mídia?
-                              ├── não → Texto Final (Texto) ─┐
-                              └── sim → Buscar URL da Mídia  │
-                                        → Baixar Mídia       │
-                                        → Transcrever OpenAI │
-                                        → Texto Final (Áudio)┤
-                                                             ↓
-                                              AQUI ENTRA O AGENTE
-                                                             ↓
-                                              Responder pela Cloud API
+Node "Buscar URL do Audio":  Credential not configured: whatsAppApi
+Node "Buscar URL da Imagem": Credential not configured: whatsAppApi
+Node "Responder pela Cloud API": Credential not configured: whatsAppApi
+Node "Responder Padrao pela Cloud API": Credential not configured: whatsAppApi
 ```
 
-**Nenhuma verificação de inquilino aqui, de propósito.** A edge function já
-conferiu a assinatura HMAC e traduziu o número para `salon_id`. Repetir a
-checagem criaria duas versões da mesma regra, e um dia elas discordariam.
+Enquanto isso, **a versão ativa continua sendo a antiga**, e nada quebrou.
 
-## Por que existe o ramo de áudio
+Falta criar no n8n:
 
-Na Evolution o áudio chegava resolvido. **Na Cloud API não**: vem um `media_id`,
-e ouvir exige duas chamadas — uma para descobrir a URL, outra para baixar o
-arquivo, ambas com o token no cabeçalho.
+| Credencial | Tipo | Conteúdo |
+|---|---|---|
+| **WhatsApp Cloud API** | `whatsAppApi` | token permanente do usuário do sistema + Business Account ID |
+| **Meta Graph API** | `httpHeaderAuth` | `Authorization: Bearer <mesmo token>` — usada nos dois downloads |
 
-A URL da mídia **vence em poucos minutos**, então baixar e transcrever têm que
-acontecer na mesma execução. Não dá para guardar o link e resolver depois.
-
-Cliente de barbearia manda áudio o tempo todo — sem este ramo, metade das
-mensagens sumiria.
-
-## O que ainda é provisório
-
-**O nó `AQUI ENTRA O AGENTE`** hoje só devolve `"Recebi: " + texto`. Ele existe
-para provar o caminho de ida e volta, não para conversar.
-
-O agente de verdade é o `rJO1n7cFeNDIJyB5`, que tem o prompt, as oito
-ferramentas e a montagem de contexto. Trocar o nó por ele é o próximo passo —
-e **só depois disso este fluxo pode falar com cliente real**.
-
-## Falta preencher, no n8n
-
-Duas credenciais foram criadas vazias:
-
-| Credencial | O que é |
-|---|---|
-| **Meta Graph API** | Header `Authorization` = `Bearer <token permanente do usuário do sistema>` |
-| **OpenAI Bearer** | Header `Authorization` = `Bearer <chave da OpenAI>` |
-
-Usadas em quatro nós: Buscar URL da Mídia, Baixar Mídia, Transcrever com
-OpenAI e Responder pela Cloud API.
-
-## O que já foi verificado
-
-Execução 8670, com dados simulados: mensagem de texto entra, sai pelo ramo sem
-mídia, chega ao nó do agente com `texto`, `contact_phone`, `phone_number_id` e
-`salon_id` corretos, e monta a resposta. O envio ficou pinado — não tocou na
-Meta.
-
-## A cadeia completa, e onde ela para hoje
-
-| | Estado |
-|---|---|
-| Meta → edge function | ✅ testado, assinatura confere |
-| edge function → n8n | ⬜ falta o segredo `N8N_WHATSAPP_WEBHOOK_URL` |
-| n8n → transcrição | ⬜ falta a credencial da OpenAI |
-| n8n → agente | ⬜ nó provisório |
-| n8n → Meta | ⬜ falta a credencial Meta Graph API |
-| app publicado | ⬜ sem isso, mensagem real não chega |
+Depois: publicar o fluxo, e criar o segredo `N8N_WHATSAPP_WEBHOOK_URL` no
+Supabase apontando para
+`https://n8n-m5uf.srv1833354.hstgr.cloud/webhook/salao-atendimento`.

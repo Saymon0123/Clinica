@@ -15,6 +15,7 @@ import { WhatsAppPopup } from './landing/WhatsAppPopup'
 import { Cta, Reveal, RevealGrupo, RevealItem } from './landing/primitivos'
 import { useRolou } from './landing/useRolou'
 import { FaixaBarbearias } from './landing/FaixaBarbearias'
+import { ReconhecimentoAura } from './landing/ReconhecimentoAura'
 import { ReguaScroll } from './landing/ReguaScroll'
 import { MarcaClubCut } from '../../components/MarcaClubCut'
 
@@ -947,6 +948,7 @@ export function VendasPage() {
         <PorDentro />
         <ComSem />
         <Depoimentos />
+        <ReconhecimentoAura />
         <ComoComeca />
         <SemPromessa />
         <Preco />

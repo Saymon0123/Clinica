@@ -275,19 +275,37 @@ documento. Os rótulos da Meta mudam de tempos em tempos; a sequência, não.
 `developers.facebook.com` → **Começar** → confirmar e-mail e telefone. Usa a
 mesma conta do Facebook do portfólio empresarial.
 
-#### 2. Criar o app
+#### 2. Criar o app — CINCO etapas, verificado na tela em 2026-08-20
 
-**Meus Apps → Criar app**
+> **Correção:** este documento dizia para escolher o tipo **Empresa**. **Esse
+> passo não existe mais.** A Meta trocou o sistema — agora é por *casos de uso*,
+> e não há escolha de tipo em lugar nenhum. Foi isso que travou o dono do
+> produto no passo 2.
 
-- Tipo: **Empresa** (*Business*). Se a tela pedir "caso de uso", escolha
-  **Outro** e depois **Empresa**
-- Nome: algo reconhecível — `Club Cut`
-- **Vincule ao portfólio empresarial** na mesma tela. Isso importa: app solto
-  não enxerga os ativos do negócio depois
+**Meus Apps → Criar aplicativo.** Aparece um aviso sobre "uma nova maneira de
+criar apps"; clique em **Criar app** para seguir.
 
-#### 3. Adicionar o produto WhatsApp
+O assistente tem cinco etapas, mostradas no topo:
 
-No painel do app → **Adicionar produto** → **WhatsApp** → **Configurar**.
+**Detalhes do app → Casos de uso → Empresa → Requisitos → Visão geral**
+
+1. **Detalhes do app** — só dois campos: **Nome do app** (`Club Cut`, até 30
+   caracteres) e o e-mail de contato, que já vem preenchido. O botão
+   **Avançar** fica cinza até o nome ser digitado.
+2. **Casos de uso** — na coluna da esquerda, clique no filtro
+   **Business Messaging (3)**. Aparecem três opções; marque a terceira:
+   **"Conectar-se com clientes pelo WhatsApp"**.
+   > O próprio texto dela avisa: *"É necessário um portfólio empresarial"*.
+3. **Empresa** — é aqui que o app é vinculado ao portfólio empresarial. Se
+   ainda não houver um, dá para criar nesta tela.
+4. **Requisitos** — a Meta lista o que falta.
+5. **Visão geral** — conferir e criar.
+
+#### 3. O produto WhatsApp
+
+No fluxo novo, escolher o caso de uso **"Conectar-se com clientes pelo
+WhatsApp"** já traz o produto WhatsApp junto — não existe mais o passo separado
+de "Adicionar produto".
 
 A Meta cria sozinha, de graça:
 

@@ -731,8 +731,9 @@ Falta, e nesta ordem:
 5. **n8n:** `Buscar Instância do Salão` ainda filtra `status = 'open'`
    (vocabulário da Evolution). Migrar para a view `conexoes_ativas`.
 
-**Ponto de atenção:** a confirmação de chegada de 10 min antes continua sendo
-texto livre. Ela só sai se a janela de 24h estiver aberta — o que agora depende
-de o cliente ter clicado no lembrete. Quando ele não clica, ela some em
-silêncio. Decidir se vira template ou se deixa de existir, já que o lembrete de
-1h30 com botões cobre boa parte do que ela perguntava.
+**Decidido em 2026-08-21:** a confirmação de chegada de 10 min antes deixa de
+existir. O lembrete com botões já pergunta o mesmo, e ela só saia com a janela
+de 24h aberta — chegava a quem já tinha respondido e sumia em silêncio para
+quem não tinha, que era o único caso em que servia. Nós removidos do fluxo;
+`appointments.confirmacao_enviada` fica no schema marcada como morta (migration
+0087), porque `agendamento_local` a lista.

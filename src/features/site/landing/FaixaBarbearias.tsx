@@ -1,5 +1,15 @@
 import { useReducedMotion } from 'motion/react'
+import { useEffect, useRef } from 'react'
 import { DEPOIMENTOS } from './Depoimentos'
+
+/**
+ * Velocidade-alvo da faixa, em pixels por segundo. Ponto médio deliberado:
+ * rápido o bastante para não parecer parado, devagar o bastante para dar
+ * tempo de reconhecer cada logo antes dela sair da tela. Marquee de vitrine
+ * costuma ficar na casa de 40–60px/s; abaixo disso lê como travado, acima
+ * disso vira letreiro de promoção.
+ */
+const VELOCIDADE_PX_S = 46
 
 /**
  * As barbearias que deram depoimento, em faixa.
@@ -37,12 +47,36 @@ type ItemFaixa = { chave: string; ondeE: string; logo: string }
 
 export function FaixaBarbearias() {
   const semMovimento = useReducedMotion()
+  const listaRef = useRef<HTMLUListElement>(null)
 
   const itens: ItemFaixa[] = DEPOIMENTOS.filter((d) => d.logo).map((d) => ({
     chave: d.ondeE,
     ondeE: d.ondeE,
     logo: d.logo as string,
   }))
+
+  /*
+    Mede a largura real de UMA cópia da lista (a outra é o espelho que fecha
+    o laço) e converte em duração pela velocidade-alvo, em vez de uma
+    duração fixa que fica errada toda vez que o conteúdo muda de tamanho.
+    ResizeObserver reage também ao carregamento assíncrono das imagens, que
+    muda a largura depois do primeiro paint.
+  */
+  useEffect(() => {
+    const track = listaRef.current?.parentElement
+    const lista = listaRef.current
+    if (!track || !lista || semMovimento) return
+
+    const observer = new ResizeObserver(() => {
+      const largura = lista.getBoundingClientRect().width
+      if (largura > 0) {
+        track.style.setProperty('--faixa-duration', `${largura / VELOCIDADE_PX_S}s`)
+      }
+    })
+    observer.observe(lista)
+    return () => observer.disconnect()
+  }, [semMovimento, itens.length])
+
   if (itens.length === 0) return null
 
   const rotulo = `${itens.length} barbearias que usam o Club Cut`
@@ -55,7 +89,7 @@ export function FaixaBarbearias() {
   if (semMovimento) {
     return (
       <section aria-label={rotulo} className="border-y border-[var(--l-line)] px-6 py-7">
-        <ul className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-center gap-x-10 gap-y-4">
+        <ul className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-center gap-x-16 gap-y-8">
           {itens.map((item) => (
             <li key={item.chave}>
               <ItemLogo item={item} />
@@ -89,12 +123,13 @@ export function FaixaBarbearias() {
 
         A cópia é `aria-hidden`: o leitor de tela lê a lista uma vez só.
       */}
-      <div className="faixa-desliza flex w-max items-center gap-x-14 group-hover:[animation-play-state:paused] group-focus-within:[animation-play-state:paused]">
+      <div className="faixa-desliza flex w-max items-center gap-x-24 group-hover:[animation-play-state:paused] group-focus-within:[animation-play-state:paused]">
         {[0, 1].map((copia) => (
           <ul
             key={copia}
+            ref={copia === 0 ? listaRef : undefined}
             aria-hidden={copia === 1}
-            className="flex shrink-0 items-center gap-x-14"
+            className="flex shrink-0 items-center gap-x-24"
           >
             {itens.map((item) => (
               <li key={item.chave} className="whitespace-nowrap">
@@ -118,7 +153,7 @@ function ItemLogo({ item }: { item: ItemFaixa }) {
     <img
       src={item.logo}
       alt={item.ondeE}
-      className="h-11 w-auto shrink-0 opacity-70 grayscale transition-[opacity,filter] duration-300 group-hover:opacity-100 group-hover:grayscale-0"
+      className="h-16 w-auto shrink-0 opacity-70 grayscale transition-[opacity,filter] duration-300 group-hover:opacity-100 group-hover:grayscale-0"
       loading="lazy"
       decoding="async"
     />

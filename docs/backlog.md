@@ -729,7 +729,8 @@ Falta, e nesta ordem:
    `N8N_LEMBRETE_RESPOSTA_URL` e só entrega o texto que veio decidido do banco,
    registrando em `whatsapp_messages`. Nenhum agente nele.
 5. **n8n:** `Buscar Instância do Salão` ainda filtra `status = 'open'`
-   (vocabulário da Evolution). Migrar para a view `conexoes_ativas`.
+   (vocabulário da Evolution). Migrar para a view `conexoes_ativas`. As views
+   do banco já foram (migrations 0088 e 0089); os fluxos do n8n não.
 
 **Decidido em 2026-08-21:** a confirmação de chegada de 10 min antes deixa de
 existir. O lembrete com botões já pergunta o mesmo, e ela só saia com a janela
@@ -737,3 +738,30 @@ de 24h aberta — chegava a quem já tinha respondido e sumia em silêncio para
 quem não tinha, que era o único caso em que servia. Nós removidos do fluxo;
 `appointments.confirmacao_enviada` fica no schema marcada como morta (migration
 0087), porque `agendamento_local` a lista.
+
+
+## Views migradas para `conexoes_ativas` — 2026-08-21
+
+Migrations 0088 e 0089. As seis views que perguntavam `status = 'open'` agora
+perguntam `conexoes_ativas.conectado`, e cada uma expõe `provedor`,
+`phone_number_id` e `instance_name` — os fluxos do n8n continuam usando o
+`instance_name` até serem migrados, e o que precisam depois já está lá.
+
+Confirmado depois: a El Guardians voltou a aparecer, e `pg_views` não tem mais
+nenhuma view com `'open'` a não ser a própria `conexoes_ativas`.
+
+**Dois defeitos achados no caminho, ambos corrigidos:**
+
+1. Duas regras da `auditoria_operacao` ("WhatsApp desconectado" e "nunca
+   terminou de conectar") disparavam com `status is distinct from 'open'`.
+   Como barbearia na Cloud API nunca tem status `open`, as duas iriam alertar
+   para toda barbearia migrada e funcionando. Agora o texto muda por provedor.
+2. A etapa 1 da reativação usava o template `reativacao`, que **não tem o
+   botão de opt-out**. Passou para `reativacao_convite`, que tem — e a lista de
+   parâmetros caiu de três para dois junto, porque o corpo dela usa dois.
+
+Criada a view `templates_com_parametros_errados` por causa do segundo: uma
+incompatibilidade entre a lista montada pela view e o corpo do template só
+aparece quando a Meta recusa o envio, e como nada sem `status = 'aprovado'` é
+enviado hoje, o defeito ficaria dormindo até o dia da aprovação — ou seja,
+apareceria junto com todo o resto. Hoje ela está vazia nos 24 templates.

@@ -195,18 +195,70 @@ ao banco em vez de derivação por string.
 Nada disto dá para eu fazer daqui: exige login no Facebook, celular na mão e
 leitura de QR.
 
-### Uma vez só, para você
+### Uma vez só, para você — a verificação do negócio
 
-1. **Meta Business Manager** (`business.facebook.com`) — criar o negócio, se
-   ainda não existir
-2. **Verificação do negócio** (Business Verification) — CNPJ, documento e
-   comprovante de endereço. Demora dias e é pré-requisito para sair dos limites
-   de teste
-3. **Meta for Developers** (`developers.facebook.com`) — criar um app do tipo
+Este é o item que trava tudo o mais. Comece por ele.
+
+#### Antes de abrir o site: o que ter na mão
+
+Tudo em PDF ou foto legível, com o documento inteiro visível (sem cortar bordas):
+
+| Documento | Onde consegue |
+|---|---|
+| **Cartão CNPJ** (Comprovante de Inscrição) | `solucoes.receita.fazenda.gov.br` — grátis, emite na hora |
+| **Contrato social** ou **Certificado MEI** | contador, ou `gov.br` no caso do MEI |
+| **Comprovante de endereço da empresa** | conta de luz, água ou telefone, ou extrato bancário — **dos últimos 90 dias**, no nome da empresa |
+| **Documento com foto** do responsável | RG ou CNH |
+
+**A regra que mais reprova:** os dados que você digitar precisam bater
+**exatamente** com o Cartão CNPJ. Razão social completa, sem abreviar; endereço
+com o mesmo logradouro, número e complemento; CEP igual. "Rua" onde o cartão diz
+"R." já é motivo de recusa.
+
+#### Você também precisa de um site
+
+A Meta confere se o site existe, se menciona a empresa e se tem forma de
+contato. `clubcut.vercel.app` serve, mas domínio próprio passa com menos
+atrito — e isso transforma o item "domínio" do backlog em **pré-requisito**,
+não mais em melhoria.
+
+O site precisa mostrar, em algum lugar visível: nome da empresa, CNPJ e um
+contato.
+
+#### O passo a passo
+
+1. Entre em **`business.facebook.com`** com a sua conta do Facebook
+2. Crie o **portfólio empresarial** (ou selecione o existente)
+3. Vá em **Configurações do negócio → Informações do negócio** e preencha:
+   razão social, CNPJ, endereço, telefone e site — **copiando do Cartão CNPJ**
+4. Vá em **Central de Segurança** (*Security Center*) e clique em
+   **Iniciar verificação**
+5. Escolha **Brasil** e o tipo de empresa
+6. Confira os dados na tela de revisão — é a última chance antes do envio
+7. **Envie os documentos**
+8. **Confirme o telefone** por código (SMS ou ligação). Use o telefone que está
+   no Cartão CNPJ, se possível
+9. Acompanhe o andamento na própria Central de Segurança
+
+#### O que esperar
+
+Normalmente **alguns dias úteis**. Se algum documento for recusado, o ciclo
+recomeça — por isso vale conferir a correspondência dos dados antes de enviar,
+e não depois.
+
+### Depois de verificado
+
+1. **Meta for Developers** (`developers.facebook.com`) — criar um app do tipo
    *Business* e adicionar o produto **WhatsApp**
-4. Pedir acesso a **Tech Provider** / *Embedded Signup*, se for pelo caminho
-   recomendado da seção 3
+2. Pedir acesso a **Tech Provider** / *Embedded Signup*
+3. Cadastrar o **cartão internacional** na conta de faturamento
+4. Submeter os **24 templates** (ver
+   [`templates-para-a-meta.md`](templates-para-a-meta.md))
 5. Guardar **App ID**, **App Secret** e o **token permanente do sistema**
+
+> **O selo verde é outra coisa.** Ele exige volume de mensagens e reputação, não
+> sai junto da verificação, e **não é necessário** para nada do que precisamos.
+> Não perca tempo com ele agora.
 
 ### Para cada barbearia — a alteração no número
 

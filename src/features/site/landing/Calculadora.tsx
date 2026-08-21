@@ -1,23 +1,29 @@
 import { useEffect, useRef, useState } from 'react'
 import { animate, useReducedMotion } from 'motion/react'
-import { PRECO_PRO } from '../../../lib/planos'
+import { PRECO_POR_AGENDAMENTO } from '../../../lib/planos'
 
 /**
  * A conta da cadeira vazia.
  *
- * A página afirma que "uma cadeira vazia por semana já custa mais que isso".
- * Aqui o dono confere isso com os números dele em vez de acreditar na frase.
- * Uma conta que a pessoa faz sozinha convence mais do que qualquer número que
- * a gente escrevesse na tela.
+ * Mostra o tamanho do buraco que já existe hoje, com valores que o próprio
+ * dono move. Uma conta que a pessoa faz sozinha convence mais do que
+ * qualquer número que a gente escrevesse na tela.
  *
  * **Nada aqui é promessa de resultado.** Não diz que o Club Cut evita essas
- * faltas nem quanto ele recupera: mostra o tamanho do buraco que já existe,
- * com valores que o próprio dono move. Prometer "reduza 40% das faltas" sem
+ * faltas nem quanto ele recupera. Prometer "reduza 40% das faltas" sem
  * medição seria número inventado, e é exatamente o que não entra nesta página.
  *
  * Cada controle tem DUAS entradas para o mesmo valor: o slider para explorar e
  * o campo para quem já sabe o número de cabeça. "Meu corte é R$ 70" digitado é
  * mais convincente que R$ 70 arrastado, porque foi a pessoa que afirmou.
+ *
+ * **A comparação mudou com a cobrança por uso (2026-08-21).** Antes o texto
+ * comparava a cadeira vazia com a mensalidade fixa do plano Pro. Sem
+ * mensalidade, não existe mais um número parado pra comparar — o que a
+ * conta mostra agora é quanto custaria, na cobrança por agendamento, se
+ * essas mesmas faltas tivessem virado horário confirmado. `Controle`,
+ * `ValorAnimado` e `moeda`/`moedaComCentavos` são exportados porque a nova
+ * seção "Quanto custa" reaproveita o mesmo padrão de slider + valor animado.
  */
 const MIN_FALTAS = 1
 const MAX_FALTAS = 10
@@ -27,15 +33,22 @@ const MAX_PRECO = 150
 /** Quatro semanas por mês. Redondo de propósito: é uma estimativa, não contabilidade. */
 const SEMANAS_NO_MES = 4
 
-function moeda(v: number) {
+export function moeda(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+}
+
+/** Como {@link moeda}, mas com centavos — para valores abaixo de R$1 como o
+ *  preço por agendamento, arredondar para inteiro mostraria "R$1" em vez de
+ *  "R$0,85". */
+export function moedaComCentavos(v: number) {
+  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
 function limita(v: number, min: number, max: number) {
   return Math.min(max, Math.max(min, v))
 }
 
-function Controle({
+export function Controle({
   rotulo,
   valor,
   min,
@@ -149,7 +162,7 @@ function Controle({
  * crescer. Escreve direto no nó de texto, fora do render do React — são ~60
  * atualizações por segundo durante o arrasto.
  */
-function ValorAnimado({ valor }: { valor: number }) {
+export function ValorAnimado({ valor }: { valor: number }) {
   const ref = useRef<HTMLSpanElement>(null)
   const anterior = useRef(valor)
   const semMovimento = useReducedMotion()
@@ -181,7 +194,16 @@ export function Calculadora() {
   const [preco, setPreco] = useState(55)
 
   const porMes = faltas * preco * SEMANAS_NO_MES
-  const sobra = porMes - PRECO_PRO
+  /*
+    Antes a conta comparava a cadeira vazia com a mensalidade do plano Pro —
+    "é X a mais do que o plano custa no mês". Sem mensalidade fixa, não tem
+    mais um número parado para comparar. O que dá para mostrar sem inventar
+    nada: quanto custaria, na cobrança por agendamento, se cada uma dessas
+    faltas tivesse virado um agendamento confirmado em vez de sumir. A conta
+    de verdade é: qualquer coisa que essas faltas rendessem já paga a
+    plataforma inteira e sobra troco.
+  */
+  const custoSeFossemAgendamentos = faltas * SEMANAS_NO_MES * PRECO_POR_AGENDAMENTO
 
   return (
     <div className="card rounded-[var(--r-md)] p-7 sm:p-10">
@@ -218,17 +240,9 @@ export function Calculadora() {
           </div>
 
           <p className="mt-6 max-w-[34ch] text-[15px] leading-relaxed text-[var(--l-fg-mute)]">
-            {sobra > 0 ? (
-              <>
-                É {moeda(sobra)} a mais do que o plano Pro custa no mês. A conta é com os seus
-                números.
-              </>
-            ) : (
-              <>
-                Ainda abaixo do plano Pro. Mesmo assim, são {moeda(porMes)} que passaram pela porta
-                e não ficaram.
-              </>
-            )}
+            Na cobrança por agendamento, transformar essas mesmas faltas em horário confirmado
+            custaria {moedaComCentavos(custoSeFossemAgendamentos)} no mês. A conta é com os seus
+            números.
           </p>
         </div>
       </div>

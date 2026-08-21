@@ -24,6 +24,12 @@ import { Reveal, RevealGrupo, RevealItem } from './primitivos'
  * que não levava a lugar nenhum. Um link morto é pior que nenhum link — a
  * seção termina na régua de benefícios e deixa o CTA para "como começa",
  * que já vem na sequência.
+ *
+ * **Cada patente soma, não substitui.** A régua listava só o benefício
+ * NOVO de cada patente, sem dizer se ele troca o da anterior ou se acumula.
+ * O rótulo `+` antes de cada benefício e a frase de abertura resolvem isso:
+ * virar General significa ter o que o Capitão tem, mais o que é só do
+ * General — nenhuma barbearia perde o relatório mensal ao subir de patente.
  */
 const PATENTES = [
   {
@@ -86,6 +92,10 @@ export function ReconhecimentoAura() {
             </strong>{' '}
             Cada patente é uma placa de verdade, na parede de verdade da sua barbearia.
           </p>
+          <p className="mt-2 text-[14px] leading-relaxed text-[var(--l-fg-faint)]">
+            E os benefícios sobem junto: cada patente nova soma aos benefícios das anteriores —
+            nada do que veio antes some.
+          </p>
         </Reveal>
 
         {/*
@@ -105,6 +115,11 @@ export function ReconhecimentoAura() {
               <div className="h-full bg-[var(--l-bg)] p-6">
                 <div className={`landing-label mb-3.5 ${p.cor}`}>{p.nome}</div>
                 <p className="text-[14px] leading-relaxed text-[var(--l-fg-mute)]">
+                  {/* O "+" é o que diz "soma", não "troca" — sem ele a régua lê como
+                      quatro planos concorrentes, e não como uma escada. */}
+                  <span aria-hidden="true" className={`mr-1 font-semibold ${p.cor}`}>
+                    +
+                  </span>
                   {p.beneficio}
                 </p>
               </div>

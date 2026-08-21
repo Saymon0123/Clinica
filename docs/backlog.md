@@ -352,6 +352,31 @@ data para voltar**. Este quase virou cobranca de cinco reais por mes.
 Básico 77 / Pro 157 contra 197 / 299 da unidade avulsa. Decisão de preço
 pendente, não defeito.
 
+### ⚠️ A landing promete cobrança por uso; o Asaas continua cobrando mensalidade fixa (2026-08-21)
+
+A seção "Quanto custa" mudou de dois planos com mensalidade (Básico R$197 /
+Pro R$299) para R$0,85 por agendamento confirmado, sem mensalidade e sem
+taxa de setup — mudança pedida e confirmada pelo usuário. **Só a landing
+mudou.** O sistema de assinatura de verdade continua exatamente como está
+documentado acima nesta mesma seção: recorrência mensal fixa no Asaas,
+`preco_unidade_rede`, o ciclo de cobrança provado em sandbox. Nada disso foi
+tocado.
+
+Enquanto durar essa diferença, qualquer pessoa que ler "sem mensalidade" na
+landing e criar conta caminha para um sistema que, quando o teste grátis
+acabar, vai tentar cobrar uma recorrência mensal fixa que a página dela nunca
+mencionou — o oposto exato do que foi prometido.
+
+**Isto não é dívida técnica pequena.** Migrar a cobrança real de mensal para
+por-uso é: trocar o modelo de assinatura recorrente do Asaas por cobrança
+avulsa medida (ou por um evento por vez, ou fechada no fim do mês), instrumentar
+a contagem de agendamentos confirmados por barbearia, decidir o que acontece
+com quem já está na assinatura mensal (migração forçada? os dois modelos
+coexistindo?), e re-testar o ciclo inteiro que já foi provado em sandbox para
+o modelo antigo. Antes disso acontecer, a landing e o produto real prometem
+coisas diferentes — e essa lacuna precisa fechar antes de qualquer campanha
+de tráfego pago apontar para a página nova.
+
 ## Agente de WhatsApp
 
 ### Agendamento fantasma — corrigido em 2026-08-04, falta reconfirmar

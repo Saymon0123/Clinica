@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { CalendarCheck, Check, MessageCircle, Smartphone, Wallet } from 'lucide-react'
 import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'motion/react'
-import { DIAS_DE_TESTE, PRECO_BASICO, PRECO_PRO } from '../../lib/planos'
+import { DIAS_DE_TESTE, PRECO_POR_AGENDAMENTO } from '../../lib/planos'
 import { CONTATO } from '../../lib/contato'
 import { ChatDemo } from './landing/ChatDemo'
 import { ProvaRobo } from './landing/ProvaRobo'
@@ -10,6 +10,7 @@ import { ProdutoDemo } from './landing/ProdutoDemo'
 import { Depoimentos } from './landing/Depoimentos'
 import { FaqAccordion } from './landing/FaqAccordion'
 import { Calculadora } from './landing/Calculadora'
+import { CalculadoraPreco } from './landing/CalculadoraPreco'
 import { CtaFixo } from './landing/CtaFixo'
 import { WhatsAppPopup } from './landing/WhatsAppPopup'
 import { Cta, Reveal, RevealGrupo, RevealItem } from './landing/primitivos'
@@ -657,11 +658,24 @@ function SemPromessa() {
 
 /* -------------------------------------------------------------------------- */
 
-const BASICO = [
+/**
+ * O que está incluso, sem separação de nível.
+ *
+ * Até 2026-08-21 a página vendia dois planos (Básico/Pro) porque a
+ * mensalidade fixa precisava de uma régua para justificar o preço maior.
+ * Cobrando por agendamento, cada barbearia já paga proporcional ao próprio
+ * uso — não tem mais sentido também prender o lembrete de confirmação atrás
+ * de um degrau de preço; unificar os dois planos que existiam num serviço
+ * completo é mais simples e mais honesto do que manter uma divisão que só
+ * fazia sentido com mensalidade.
+ */
+const RECURSOS_INCLUSOS = [
   'Ele atende no WhatsApp que a barbearia já tem',
   'A agenda e quem já cortou com você',
   'O caixa do dia e a comissão de cada um',
   'Seus serviços, seus preços, sua duração',
+  'Lembrete 1h antes, perguntando se o cliente confirma',
+  'Confirmação 10 min antes, para você saber do atraso antes da cadeira esfriar',
 ]
 
 function Preco() {
@@ -670,82 +684,59 @@ function Preco() {
       <div className={CAIXA}>
         <Reveal>
           <h2 className={TITULO_DECISAO}>Quanto <em className="landing-serif">custa</em></h2>
-          {/* A âncora. Vem antes do preço de propósito: comparado com uma
-              cadeira vazia por semana, a mensalidade deixa de ser o número
-              grande da tela. */}
-          <p className="mt-7 max-w-[24ch] text-[clamp(1.4rem,2.8vw,2rem)] font-semibold leading-[1.25] tracking-[-0.02em] text-[var(--l-fg)]">
-            Tem sistema de barbearia por R$ 49. A gente sabe. E uma cadeira vazia por semana
-            custa mais que os dois.
+          {/* A âncora, no lugar da antiga comparação com um concorrente de
+              R$49/mês: essa comparação não sobrevive à mudança de cobrança,
+              porque não tem mais mensalidade nenhuma para comparar. */}
+          <p className="mt-7 max-w-[28ch] text-[clamp(1.4rem,2.8vw,2rem)] font-semibold leading-[1.25] tracking-[-0.02em] text-[var(--l-fg)]">
+            Sem mensalidade. Você paga só quando funciona.
+          </p>
+          <p className="mt-5 max-w-[52ch] text-[17px] leading-relaxed text-[var(--l-fg-mute)]">
+            Mês fraco, quase não paga nada. Mês cheio, você também está faturando mais — o custo
+            acompanha o resultado, não o contrário.
           </p>
         </Reveal>
 
-        <RevealGrupo className="mt-11 grid gap-4 lg:grid-cols-2" intervalo={0.1}>
-          <RevealItem>
-            <div className="card h-full rounded-[var(--r-md)] p-8 transition-transform duration-300 hover:-translate-y-1 sm:p-10">
-              <div className="landing-label text-[var(--l-fg-mute)]">Básico</div>
-              <div className="mt-4 flex items-baseline gap-1">
-                <span className="text-[19px] text-[var(--l-fg-mute)]">R$</span>
-                <span className="landing-num text-[52px] text-[var(--l-fg)]">{PRECO_BASICO}</span>
-                <span className="text-[15px] text-[var(--l-fg-faint)]">/mês</span>
-              </div>
-              <ul className="mt-9 flex flex-col gap-3.5">
-                {BASICO.map((i) => (
-                  <li key={i} className="flex gap-3 text-[15px] text-[var(--l-fg-mute)]">
-                    <Check
-                      size={17}
-                      strokeWidth={2}
-                      aria-hidden="true"
-                      className="mt-0.5 shrink-0 text-[var(--l-accent-ink)]"
-                    />
-                    {i}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </RevealItem>
-
-          {/* O plano recomendado é o único cartão claro da página inteira.
-              É o carimbo, e ele só significa destaque porque não se repete. */}
-          <RevealItem>
-            <div className="card-tinta relative h-full rounded-[var(--r-md)] p-8 transition-transform duration-300 hover:-translate-y-1 sm:p-10">
-              <span className="absolute right-8 top-8 landing-label rounded-full bg-[var(--l-accent)] px-3 py-1.5 text-[var(--l-on-accent)]">
-                O que a gente recomenda
+        <Reveal delay={0.08} className="mt-11">
+          <div className="card rounded-[var(--r-md)] p-8 sm:p-10">
+            <div className="landing-label text-[var(--l-fg-mute)]">Cobrança por uso</div>
+            <div className="mt-4 flex items-baseline gap-1">
+              <span className="text-[19px] text-[var(--l-fg-mute)]">R$</span>
+              <span className="landing-num text-[52px] text-[var(--l-fg)]">
+                {PRECO_POR_AGENDAMENTO.toFixed(2).replace('.', ',')}
               </span>
-              <div className="landing-label opacity-75">Pro</div>
-              <div className="mt-4 flex items-baseline gap-1">
-                <span className="text-[19px] opacity-75">R$</span>
-                <span className="landing-num text-[52px]">{PRECO_PRO}</span>
-                <span className="text-[15px] opacity-70">/mês</span>
-              </div>
-              <ul className="mt-9 flex flex-col gap-3.5 text-[15px]">
-                <li className="flex gap-3">
-                  <Check size={17} strokeWidth={2.4} aria-hidden="true" className="mt-0.5 shrink-0" />
-                  Tudo do Básico
-                </li>
-                <li className="flex gap-3">
-                  <Check size={17} strokeWidth={2.4} aria-hidden="true" className="mt-0.5 shrink-0" />
-                  <span>
-                    <strong className="font-semibold">Lembrete 1h antes</strong>, perguntando se o
-                    cliente confirma
-                  </span>
-                </li>
-                <li className="flex gap-3">
-                  <Check size={17} strokeWidth={2.4} aria-hidden="true" className="mt-0.5 shrink-0" />
-                  <span>
-                    <strong className="font-semibold">Confirmação 10 min antes</strong>, para você
-                    saber do atraso antes da cadeira esfriar
-                  </span>
-                </li>
-              </ul>
+              <span className="text-[15px] text-[var(--l-fg-faint)]">/ agendamento confirmado</span>
             </div>
-          </RevealItem>
-        </RevealGrupo>
+            {/* Sem taxa de setup confirmado: não é uma ressalva escondida em
+                letra miúda, é a segunda coisa que a pessoa lê. */}
+            <p className="mt-3 text-[14px] text-[var(--l-fg-faint)]">
+              Sem mensalidade. Sem taxa de setup.{' '}
+              <span className="landing-serif text-[var(--l-fg-mute)]">
+                Menos que uma navalha.
+              </span>
+            </p>
 
-        <Reveal delay={0.14}>
-          <Cta
-            className="mt-14"
-            microcopy={`${MICROCOPY} No teste você usa o Pro completo.`}
-          >
+            <ul className="mt-9 grid gap-3.5 sm:grid-cols-2">
+              {RECURSOS_INCLUSOS.map((i) => (
+                <li key={i} className="flex gap-3 text-[15px] text-[var(--l-fg-mute)]">
+                  <Check
+                    size={17}
+                    strokeWidth={2}
+                    aria-hidden="true"
+                    className="mt-0.5 shrink-0 text-[var(--l-accent-ink)]"
+                  />
+                  {i}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </Reveal>
+
+        <Reveal delay={0.14} className="mt-9">
+          <CalculadoraPreco />
+        </Reveal>
+
+        <Reveal delay={0.18}>
+          <Cta className="mt-14" microcopy={`${MICROCOPY} No teste você usa tudo, sem custo.`}>
             {CTA}
           </Cta>
         </Reveal>
@@ -771,7 +762,7 @@ const PERGUNTAS = [
   ],
   [
     'Tem fidelidade?',
-    `Não. São ${DIAS_DE_TESTE} dias grátis sem cartão, e depois você cancela quando quiser pelo próprio sistema. Se cancelar, usa até o fim do mês que já pagou.`,
+    `Não. São ${DIAS_DE_TESTE} dias grátis sem cartão, e depois você paga só pelos agendamentos confirmados — sem mensalidade e sem mês a cumprir. Cancela quando quiser, pelo próprio sistema.`,
   ],
   [
     'Funciona com mais de um barbeiro?',

@@ -22,17 +22,21 @@ export const DIAS_DE_TESTE = 14
 export const DIAS_DE_VALIDADE_DO_CONVITE = 10
 
 /**
- * Mensalidade de cada plano, em reais.
+ * Preço por agendamento confirmado, em reais.
  *
- * Mesma história do prazo do teste: o valor estava escrito à mão na página de
- * vendas, nos dois wizards do admin e nos testes de proporcional. A página de
- * vendas passou a ler daqui porque ela agora faz CONTA com o preço — a
- * calculadora compara a cadeira vazia com a mensalidade, e um número
- * desatualizado ali não seria só um texto errado, seria uma conta errada.
+ * A landing trocou de mensalidade fixa (Básico R$197 / Pro R$299) para
+ * cobrança 100% por uso em 2026-08-21. O valor mora aqui pela mesma razão de
+ * sempre: a página de vendas faz CONTA com ele — a calculadora de preço e a
+ * comparação da cadeira vazia — e um número desatualizado ali não seria só
+ * texto errado, seria conta errada.
  *
- * `ConvidarBarbearia` e `SalonWizard` ainda repetem o valor no rótulo do
- * `<option>`; migrar os dois é limpeza para outra hora, e não entra aqui para
- * não misturar a landing com as telas de admin.
+ * **Isto é só a landing.** O sistema de assinatura de verdade
+ * (`src/features/assinatura/`, com `AssinaturaPage`, `TrocarPlano` e o
+ * cálculo de proporcional) continua cobrando mensalidade fixa hoje, com os
+ * próprios valores (R$197/R$299) escritos à parte — ele não importa deste
+ * arquivo e não foi tocado nesta mudança. Migrar a cobrança de verdade de
+ * mensal para por-uso é trabalho de CRM + Supabase + processador de
+ * pagamento, registrado em `docs/backlog.md`, e não acontece sozinho só
+ * porque a landing mudou de discurso.
  */
-export const PRECO_BASICO = 197
-export const PRECO_PRO = 299
+export const PRECO_POR_AGENDAMENTO = 0.85

@@ -706,3 +706,33 @@ Pendências fora do repositório:
   gerar com `npx @aspect-build/resvg` ou pelo próprio navegador.
 - Não existe `site.webmanifest`. Quando existir, apontar os ícones e usar
   `#0D1512` como `theme_color`.
+
+
+## Lembrete de 1h30 com botões — o que falta
+
+Feito em 2026-08-21: janela mudou de 1h para 1h30 (n8n), e a resposta ao botão
+passou a ser aplicada pela RPC `responder_lembrete`, chamada pela edge function
+`whatsapp-webhook` (v6). O agente **não** vê o clique.
+
+Falta, e nesta ordem:
+
+1. **Meta:** aprovar `lembrete_hoje`. É o gargalo — sem template aprovado não
+   há mensagem iniciada por nós na API oficial, e portanto não há lembrete.
+2. **Supabase:** criar o segredo `N8N_LEMBRETE_RESPOSTA_URL` apontando para o
+   novo webhook do n8n. Sem ele o banco é atualizado mas o cliente não recebe
+   resposta nenhuma — confirma e fica no vazio.
+3. **n8n:** trocar `Enviar WhatsApp (Lembrete)` pelo nó nativo com
+   `sendTemplate`, e gravar o `wamid` devolvido em
+   `appointments.lembrete_message_id`. **Sem esse passo o clique nunca é
+   reconhecido** — a RPC casa pelo wamid, e ele não existirá.
+4. **n8n:** fluxo novo, determinístico, que recebe de
+   `N8N_LEMBRETE_RESPOSTA_URL` e só entrega o texto que veio decidido do banco,
+   registrando em `whatsapp_messages`. Nenhum agente nele.
+5. **n8n:** `Buscar Instância do Salão` ainda filtra `status = 'open'`
+   (vocabulário da Evolution). Migrar para a view `conexoes_ativas`.
+
+**Ponto de atenção:** a confirmação de chegada de 10 min antes continua sendo
+texto livre. Ela só sai se a janela de 24h estiver aberta — o que agora depende
+de o cliente ter clicado no lembrete. Quando ele não clica, ela some em
+silêncio. Decidir se vira template ou se deixa de existir, já que o lembrete de
+1h30 com botões cobre boa parte do que ela perguntava.

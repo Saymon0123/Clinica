@@ -27,6 +27,7 @@ const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const VERIFY_TOKEN = Deno.env.get('WHATSAPP_VERIFY_TOKEN') ?? ''
 const APP_SECRET = Deno.env.get('WHATSAPP_APP_SECRET') ?? ''
 const N8N_WEBHOOK_URL = Deno.env.get('N8N_WHATSAPP_WEBHOOK_URL') ?? ''
+const N8N_LEMBRETE_URL = Deno.env.get('N8N_LEMBRETE_RESPOSTA_URL') ?? ''
 
 /** Sempre 200 para a Meta. Ver o cabeçalho do arquivo. */
 function ok(detalhe?: string) {
@@ -69,6 +70,12 @@ type MensagemRecebida = {
   from: string
   id: string
   type: string
+  /**
+   * A qual mensagem esta responde. Para clique em botao de template, traz o
+   * `wamid` do lembrete que enviamos -- e e por ele, e so por ele, que o
+   * clique e reconhecido como resposta de lembrete.
+   */
+  context?: { id?: string }
   text?: { body: string }
   /** Resposta de botão de template — é assim que "Sim, confirmo" chega. */
   button?: { text: string; payload: string }
@@ -182,6 +189,72 @@ Deno.serve(async (req) => {
             continue
           }
 
+          /**
+           * Resposta ao lembrete: decidida pelo banco, nao pelo agente.
+           *
+           * Um clique em "Sim, confirmo" tem tres valores possiveis e um
+           * significado exato em cada um. Passar isso por um modelo de
+           * linguagem troca uma decisao certa por uma provavel -- e ainda
+           * paga uma chamada de LLM por clique, todo dia, em todo
+           * agendamento.
+           *
+           * O reconhecimento e pelo `context.id`, nunca pelo texto: e isso
+           * que impede que um cliente que digitou "cancelar" no meio de uma
+           * conversa tenha o horario cancelado sem falar com ninguem.
+           *
+           * `atendido = false` devolve a mensagem ao caminho normal. Nenhum
+           * caso duvidoso morre aqui em silencio -- na duvida, o agente le.
+           */
+          // Preenchido so quando o cliente pediu reagendamento pelo botao.
+          // O agente precisa saber que ja existe um horario marcado e que a
+          // conversa comeca no meio -- sem isso ele trataria como um pedido
+          // novo e poderia deixar o cliente com dois horarios.
+          let contextoLembrete: string | null = null
+
+          if (tipo === 'botao' && m.context?.id) {
+            const { data: r, error } = await admin.rpc('responder_lembrete', {
+              p_message_id: m.context.id,
+              p_botao: texto,
+            })
+
+            if (error) {
+              // Cai para o caminho normal: o agente atendendo mal e melhor
+              // que o cliente sendo ignorado.
+              console.error('responder_lembrete falhou:', error.message)
+            } else if (r?.atendido) {
+              // Reagendar e a unica das tres que nao termina em si mesma:
+              // escolher outro horario e conversa. O clique ja foi aplicado
+              // no banco; o que segue para o agente e o que vem depois dele.
+              if (r.entregar_ao_agente) {
+                contextoLembrete =
+                  'O cliente clicou em Reagendar no lembrete do agendamento '
+                  + r.appointment_id
+                  + '. Ele JA TEM esse horario marcado: ofereca horarios novos e,'
+                  + ' ao confirmar, REMARQUE o existente em vez de criar outro.'
+              } else {
+                if (r.resposta && N8N_LEMBRETE_URL) {
+                  await fetch(N8N_LEMBRETE_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      salon_id: salonId,
+                      phone_number_id: phoneNumberId,
+                      contact_phone: m.from,
+                      appointment_id: r.appointment_id ?? null,
+                      acao: r.acao,
+                      // O texto ja vem decidido pelo banco. O n8n so entrega
+                      // e registra -- nao ha o que interpretar do outro lado.
+                      resposta: r.resposta,
+                    }),
+                  })
+                } else if (r.resposta && !N8N_LEMBRETE_URL) {
+                  console.error('N8N_LEMBRETE_RESPOSTA_URL nao configurada')
+                }
+                continue
+              }
+            }
+          }
+
           if (!N8N_WEBHOOK_URL) {
             console.error('N8N_WHATSAPP_WEBHOOK_URL nao configurada')
             continue
@@ -207,6 +280,8 @@ Deno.serve(async (req) => {
               // texto | botao | audio | imagem | video | documento. O agente
               // trata diferente uma confirmação vinda de botão e uma frase solta.
               tipo,
+              // Nulo na esmagadora maioria das mensagens. Ver contextoLembrete.
+              contexto: contextoLembrete,
             }),
           })
           if (!resposta.ok) {

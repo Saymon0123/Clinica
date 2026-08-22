@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { Link } from 'react-router-dom'
+import { useCtaInlineVisivel } from './useCtaInlineVisivel'
 
 /**
  * Barra de ação que acompanha o scroll.
@@ -8,19 +9,31 @@ import { Link } from 'react-router-dom'
  * Existe para tirar a pergunta "onde eu clico agora" de quem já se convenceu no
  * meio da página e não quer procurar o botão.
  *
- * **Ela some quando um CTA de seção está na tela.** Duas chamadas para a mesma
- * ação visíveis ao mesmo tempo não somam: dividem a atenção e fazem a pessoa
- * escolher entre botões em vez de escolher o produto. Some também antes de o
- * herói sair, onde o botão grande já está à vista.
- *
- * A observação é por atributo (`data-cta-inline`) e não por prop: assim uma
- * seção nova ganha o comportamento só marcando o botão, sem ter que avisar
- * este componente que ela existe.
+ * **Ela some quando um CTA de seção (ou o rodapé) está na tela.** Duas
+ * chamadas para a mesma ação visíveis ao mesmo tempo não somam: dividem a
+ * atenção e fazem a pessoa escolher entre botões em vez de escolher o
+ * produto. Some também antes de o herói sair, onde o botão grande já está à
+ * vista. A detecção mora em `useCtaInlineVisivel`, compartilhada com o popup
+ * do WhatsApp — ver o porquê lá.
  */
 export function CtaFixo({ rotulo, microcopy }: { rotulo: string; microcopy: string }) {
-  const [visivel, setVisivel] = useState(false)
+  const algumCtaVisivel = useCtaInlineVisivel()
+  const [rolouDoHeroi, setRolouDoHeroi] = useState(false)
+  const visivel = rolouDoHeroi && !algumCtaVisivel
   const semMovimento = useReducedMotion()
   const barraRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    // Passou do herói (uma tela). Complementa `algumCtaVisivel`: aquele diz
+    // se algo já pede para a barra sumir; este diz se ela já tem motivo para
+    // existir.
+    function decidir() {
+      setRolouDoHeroi(window.scrollY > window.innerHeight * 0.9)
+    }
+    window.addEventListener('scroll', decidir, { passive: true })
+    decidir()
+    return () => window.removeEventListener('scroll', decidir)
+  }, [])
 
   /*
     Publica a própria altura como variável CSS. Outro elemento fixo no
@@ -45,38 +58,6 @@ export function CtaFixo({ rotulo, microcopy }: { rotulo: string; microcopy: stri
       document.documentElement.style.setProperty('--cta-fixo-h', '0px')
     }
   }, [visivel])
-
-  useEffect(() => {
-    const alvos = Array.from(document.querySelectorAll('[data-cta-inline]'))
-    const naTela = new Set<Element>()
-
-    function decidir() {
-      // Passou do herói (uma tela) e nenhum CTA de seção à vista.
-      setVisivel(window.scrollY > window.innerHeight * 0.9 && naTela.size === 0)
-    }
-
-    const observador = new IntersectionObserver(
-      (entradas) => {
-        for (const e of entradas) {
-          if (e.isIntersecting) naTela.add(e.target)
-          else naTela.delete(e.target)
-        }
-        decidir()
-      },
-      // Margem generosa: o CTA fixo tem de sumir ANTES de o botão da seção
-      // encostar na borda, senão os dois aparecem juntos por um instante.
-      { rootMargin: '-80px 0px -80px 0px' },
-    )
-
-    alvos.forEach((a) => observador.observe(a))
-    window.addEventListener('scroll', decidir, { passive: true })
-    decidir()
-
-    return () => {
-      observador.disconnect()
-      window.removeEventListener('scroll', decidir)
-    }
-  }, [])
 
   return (
     <AnimatePresence>

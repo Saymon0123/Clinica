@@ -15,6 +15,11 @@ import { useCtaInlineVisivel } from './useCtaInlineVisivel'
  * modelo gratuito da OpenRouter responde com base só no que é real — nunca
  * inventa número, percentual ou recurso que o produto não tem.
  *
+ * **O agente se chama Aurora** — nome derivado da marca "Aura" que já assina
+ * o programa de reconhecimento e o rodapé do site. O nome mora aqui (na
+ * saudação e no cabeçalho do painel) e no `systemMessage` do agente no n8n;
+ * os dois precisam ficar em sincronia se um dia mudar.
+ *
  * **Sem `AGENTE_URL` configurada, o painel avisa isso.** Enquanto o webhook
  * não estiver publicado (a credencial da OpenRouter é configurada à mão no
  * n8n, fora do repo), o campo fica desabilitado com "em breve" em vez de
@@ -37,7 +42,7 @@ import { useCtaInlineVisivel } from './useCtaInlineVisivel'
  */
 const AGENTE_URL = import.meta.env.VITE_AGENTE_IA_URL as string | undefined
 
-const SAUDACAO = 'Oi! Sou o assistente do Club Cut. Pergunta sobre preço, teste grátis ou como funciona — te respondo na hora.'
+const SAUDACAO = 'Oi! Sou a Aurora, do Club Cut. Pergunta sobre preço, teste grátis ou como funciona — te respondo na hora.'
 
 const MENSAGEM_SEM_AGENTE = 'Esse canal ainda não está ativo. Em breve dá para tirar dúvidas por aqui.'
 
@@ -136,8 +141,8 @@ export function WhatsAppPopup() {
                 <WhatsAppGlyph className="h-4 w-4" />
               </span>
               <div className="min-w-0 flex-1">
-                <div className="truncate text-[13px] font-semibold text-white">Club Cut</div>
-                <div className="text-[10.5px] text-white/55">Assistente automático</div>
+                <div className="truncate text-[13px] font-semibold text-white">Aurora</div>
+                <div className="text-[10.5px] text-white/55">Assistente do Club Cut</div>
               </div>
               <button
                 type="button"

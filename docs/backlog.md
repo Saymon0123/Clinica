@@ -98,24 +98,29 @@ percentual.
 
 ## Funcionalidade ausente
 
-### Instância de WhatsApp própria para os alertas do produto
-`canal_de_alertas` (migration `0071`) já centraliza por onde auditoria e
-feedback saem, e os dois fluxos leem de lá — mas a linha **ainda aponta para a
-instância da Curitiba**, que é de uma cliente.
+### ~~Instância de WhatsApp própria para os alertas~~ — RESOLVIDO em 2026-08-21
+Não virou instância própria: virou **e-mail**. Na API oficial, mensagem que o
+sistema inicia exige template aprovado, e alerta de auditoria tem texto
+arbitrário — para caber num template o corpo seria quase todo `{{1}}`, formato
+que a Meta costuma recusar. E nada disso é conversa com cliente: é o produto
+falando com o dono do produto.
 
-Enquanto for assim, se a Curitiba cancelar, trocar de número ou o WhatsApp dela
-cair, você para de receber auditoria e feedback **em silêncio**. É circular: o
-alerta que avisaria da queda depende do que caiu.
+Migrations 0090–0092, fluxos `Auditoria do Agente` e `Feedback dos Donos`
+trocados para `emailSend` e testados com envio real. `canal_de_alertas.email`
+aceita vários destinatários separados por vírgula.
 
-Falta criar a instância na Evolution API, ler o QR com um número seu e rodar um
-`update` de duas colunas. Nenhum fluxo precisa ser editado. Passo a passo no
-painel da área de trabalho.
+`canal_de_alertas_conferido` existe para denunciar se o canal voltar a sair pelo
+WhatsApp de uma barbearia — hoje devolve `e_de_cliente = false`.
 
-### Fidelidade e clube de assinatura do cliente final
-Aparecem na descrição do Trinks e do AppBarber e não temos nenhum dos dois.
-Fidelidade é o que traz o cliente de volta à mesma barbearia; o clube
-("corte ilimitado por R$ X/mês") é receita recorrente **para o barbeiro**, o que
-muda o argumento de venda: o produto deixa de ser custo e vira faturamento.
+### Clube de assinatura do cliente final
+**A fidelidade foi construída** (migrations 0072–0074): carimbos calculados a
+partir de vendas fechadas, resgates e ajustes gravados, recurso `fidelidade`
+ligado por barbearia, com tela no cliente, no caixa e nas configurações. O que
+falta é só o clube.
+
+O clube ("corte ilimitado por R$ X/mês") é receita recorrente **para o
+barbeiro**, o que muda o argumento de venda: o produto deixa de ser custo e vira
+faturamento. Aparece na descrição do Trinks e do AppBarber.
 
 ### Fluxo n8n da política de atraso está construído mas **desligado**
 `CRM Salao - Politica de Atraso` (id `67oZqGOIoKO6pAeQ`) existe e teve o wiring
@@ -140,11 +145,15 @@ espinha da cobrança pelo Asaas, com tela em `/assinatura`.
 Fica registrado como aviso de leitura: item de backlog envelhece, e este ficou
 meses acusando ausência de algo já removido.
 
-### Integração de cobrança (Asaas) não existe
-`subscriptions` tem `asaas_customer_id` e `asaas_subscription_id`, mas nenhuma
-linha de código menciona Asaas — nem no front, nem nas edge functions. Schema
-pronto, integração ausente. Também não há criação de `subscriptions` no
-onboarding.
+### ~~Integração de cobrança (Asaas) não existe~~ — ERRADO desde 2026-08-21
+Este item afirmava que "nenhuma linha de código menciona Asaas". **É falso.**
+Existem as edge functions `asaas` e `asaas-webhook`, a tela `/assinatura` com
+troca de plano e ações, `useAssinatura`, e `asaas_eventos` com 6 eventos
+processados em produção — além de um pagamento registrado.
+
+Segundo item de backlog a acusar ausência de algo que existe (o primeiro foi
+Pacotes, ao contrário). **Conferir no banco e no código antes de planejar em
+cima de um item antigo.**
 
 ---
 
@@ -826,3 +835,30 @@ está quebrado: rejeitado.
 
 Envio real verificado (execução 9047): `accepted` voltou com os dois endereços,
 `rejected` vazio.
+
+
+## Os documentos envelheceram mais rápido que o produto — 2026-08-21
+
+Três itens deste backlog descreviam realidade que não existe mais, e o roadmap
+está no mesmo estado. Registrado aqui porque decidir prioridade com documento
+velho é decidir com informação errada.
+
+**A v3 existe em dois documentos, com listas diferentes:**
+
+| | `mercado-e-roadmap.md` | `jornada-do-cliente.md` |
+|---|---|---|
+| v3 | clube de assinatura, site institucional, recuperação de clientes, permissões configuráveis, fidelidade por pontos | vaga liberada virando oferta, desconto na comanda, fidelidade/pacote |
+
+**E boa parte de v2 e v3 já foi entregue:**
+
+- v2 "agenda pública de autoatendimento" — **feita** (recurso `agenda_publica`)
+- v2 "o balão: check-in, fila, walk-in, política de atraso" — **feito**, menos a
+  política de atraso, que está construída e desligada
+- v2 "registrar a confirmação (`status = 'confirmado'`)" — **feito**, mas pelo
+  botão do lembrete, não por ferramenta do agente
+- v2 "confirmação 10 min antes" — **construída e depois removida de propósito**
+- v3 "recuperação de clientes antigos" — **feita** (`clientes_para_reativar`)
+- v3 "fidelidade" — **feita**, por carimbos e não por pontos
+
+Sobra de v2, de verdade: **tom de voz configurável** e **aviso de estado
+emocional do cliente ao escalar**. Nenhum dos dois tem tabela nem código.

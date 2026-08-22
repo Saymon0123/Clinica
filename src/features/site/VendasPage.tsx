@@ -113,6 +113,13 @@ const TITULO_DECISAO = 'landing-display text-[clamp(2rem,4.6vw,3.4rem)] text-[va
 const TITULO_NARRATIVA = 'landing-display text-[clamp(1.75rem,3.6vw,2.75rem)] text-[var(--l-fg)]'
 const TITULO_APOIO = 'landing-display text-[clamp(1.5rem,2.6vw,2.05rem)] text-[var(--l-fg)]'
 
+/** Atalhos do meio da barra: as três perguntas que fazem alguém rolar. */
+const ATALHOS = [
+  { href: '#recursos', rotulo: 'O que faz' },
+  { href: '#preco', rotulo: 'Preço' },
+  { href: '#duvidas', rotulo: 'Dúvidas' },
+] as const
+
 /**
  * Barra de navegação sem chamada para ação.
  *
@@ -120,6 +127,17 @@ const TITULO_APOIO = 'landing-display text-[clamp(1.5rem,2.6vw,2.05rem)] text-[v
  * mesma dobra fazem a pessoa escolher entre botões em vez de escolher o
  * produto. Quem já é cliente tem o "Entrar", que é outra intenção; quem não é
  * tem o botão grande logo abaixo e a barra fixa depois.
+ *
+ * **Os atalhos do meio não desfazem essa decisão — é o oposto dela.** A barra
+ * tinha a marca colada numa borda e o "Entrar" na outra, com mil pixels de
+ * vazio no meio no desktop; parecia layout quebrado, não layout limpo. O que
+ * entra ali é navegação, não conversão: leva para uma seção da mesma página,
+ * então não disputa o clique com o botão do herói do jeito que um segundo
+ * "testar grátis" disputaria. Numa página longa, "Preço" é o atalho que a
+ * pessoa procura primeiro — e ela procurava rolando.
+ *
+ * **Some abaixo de `md` de propósito.** No celular não existe vazio nenhum
+ * para preencher, e três links a mais só espremeriam a marca.
  */
 function Navbar() {
   const rolou = useRolou(80)
@@ -132,8 +150,8 @@ function Navbar() {
           : 'border-b border-transparent bg-transparent'
       }`}
     >
-      <div className="mx-auto flex h-[72px] max-w-[1180px] items-center justify-between px-6">
-        <Link to="/inicio" className="-my-2 flex min-h-[44px] items-center gap-2.5 py-2">
+      <div className="mx-auto flex h-[72px] max-w-[1180px] items-center gap-6 px-6">
+        <Link to="/inicio" className="-my-2 flex min-h-[44px] shrink-0 items-center gap-2.5 py-2">
           <MarcaClubCut size={32} />
           <span className="text-[17px] font-bold tracking-tight text-[var(--l-fg)]">Club Cut</span>
         </Link>
@@ -141,14 +159,28 @@ function Navbar() {
         {/* O cabecalho tinha links de navegacao sem landmark: leitor de tela
             nao tinha como pular para eles. E o alvo de toque subiu para 44px,
             que e o minimo para o dedo. */}
-        <nav aria-label="Principal">
-          <Link
-            to="/login"
-            className="-mx-3 inline-flex min-h-[44px] items-center px-3 text-[14px] font-medium text-[var(--l-fg-mute)] transition-colors duration-200 hover:text-[var(--l-fg)]"
-          >
-            Entrar
-          </Link>
+        <nav aria-label="Principal" className="hidden flex-1 justify-center gap-1 md:flex">
+          {ATALHOS.map((a) => (
+            <a
+              key={a.href}
+              href={a.href}
+              className="inline-flex min-h-[44px] items-center rounded-full px-3.5 text-[14px] font-medium text-[var(--l-fg-mute)] transition-colors duration-200 hover:bg-[var(--l-bg-lift)] hover:text-[var(--l-fg)]"
+            >
+              {a.rotulo}
+            </a>
+          ))}
         </nav>
+
+        {/* A borda existe porque "Entrar" era texto cinza solto na borda da
+            tela: sem contorno, o único alvo clicável da barra não parecia
+            clicável. Contorno em vez de preenchimento mantém ele visivelmente
+            secundário ao botão do herói. */}
+        <Link
+          to="/login"
+          className="ml-auto inline-flex min-h-[44px] shrink-0 items-center rounded-full border border-[var(--l-line)] px-4 text-[14px] font-medium text-[var(--l-fg-mute)] transition-colors duration-200 hover:border-[var(--l-line-strong)] hover:text-[var(--l-fg)] md:ml-0"
+        >
+          Entrar
+        </Link>
       </div>
     </header>
   )
@@ -288,7 +320,7 @@ const RECURSOS = [
 /** Bento: células de tamanhos diferentes. Quatro cards iguais seriam o template. */
 function Recursos() {
   return (
-    <section className={SECAO}>
+    <section id="recursos" className={`${SECAO} secao-ancora`}>
       <div className={CAIXA}>
         <Reveal>
           <h2 className={TITULO_DECISAO}>O que ele faz enquanto você <em className="landing-serif">corta</em></h2>
@@ -680,7 +712,7 @@ const RECURSOS_INCLUSOS = [
 
 function Preco() {
   return (
-    <section className={SECAO}>
+    <section id="preco" className={`${SECAO} secao-ancora`}>
       <div className={CAIXA}>
         <Reveal>
           <h2 className={TITULO_DECISAO}>Quanto <em className="landing-serif">custa</em></h2>
@@ -791,7 +823,7 @@ const PERGUNTAS = [
 
 function Faq() {
   return (
-    <section className={`${SECAO_APOIO} bg-[var(--l-canvas)]`}>
+    <section id="duvidas" className={`${SECAO_APOIO} secao-ancora bg-[var(--l-canvas)]`}>
       <div className={CAIXA}>
         <Reveal>
           <h2 className={TITULO_APOIO}>Perguntas que todo <em className="landing-serif">dono</em> faz</h2>

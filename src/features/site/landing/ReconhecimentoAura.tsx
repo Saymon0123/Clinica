@@ -86,12 +86,24 @@ function PlacaAura() {
         alt="Quatro placas de reconhecimento em degradê: Recruta, Sargento, Capitão e General, cada uma com uma estrela e a moldura mais nobre conforme a patente sobe."
         onLoad={() => setCarregada(true)}
         /*
+          `width`/`height` com as medidas reais do arquivo não são decoração:
+          sem elas o navegador reserva altura zero até a imagem decodificar e,
+          como ela é `lazy`, isso acontece com a pessoa já rolando — a página
+          inteira abaixo desta seção dá um salto de ~600px. Foi assim que um
+          atalho para "#preço" ia parar no lugar errado: o alvo era calculado
+          antes de a imagem existir. Com as medidas declaradas o espaço já
+          nasce reservado, e o `w-full`/`h-auto` continua mandando no tamanho
+          que aparece na tela.
+        */
+        width={1024}
+        height={572}
+        /*
           O container já tinha `overflow-hidden` — o zoom no hover só usa o
           recorte que já existia. A transição e o zoom moram em `index.css`
           (`.placa-aura`), junto das outras guardas de movimento; ver a nota
           lá sobre por que não dá para fazer isso com variante do Tailwind.
         */
-        className={`placa-aura block w-full ${carregada ? 'opacity-100' : 'opacity-0'}`}
+        className={`placa-aura block h-auto w-full ${carregada ? 'opacity-100' : 'opacity-0'}`}
         loading="lazy"
         decoding="async"
       />

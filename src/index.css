@@ -468,6 +468,29 @@ body {
    nao consegue escalonar o atraso entre os filhos de uma secao, que e o que faz
    a entrada parecer uma sequencia em vez de um bloco piscando de uma vez. */
 
+/* Zoom da foto das placas do Aura no hover.
+
+   Mora aqui, e nao como utilitario do Tailwind, porque a variante empilhada
+   `motion-safe:group-hover:scale-[...]` simplesmente nao gerava regra nenhuma
+   no build — a classe ficava no elemento e o CSS nunca existia, uma falha
+   silenciosa que passa despercebida em revisao de codigo. Em CSS explicito o
+   comportamento fica verificavel e a guarda de movimento fica visivel ao lado
+   das outras.
+
+   O `hover: hover` e o `pointer: fine` evitam que o zoom dispare no toque,
+   onde "hover" fica grudado depois do tap. */
+.placa-aura {
+  transition:
+    opacity 400ms var(--ease-out),
+    transform 400ms var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .placa-aura-alvo:hover .placa-aura {
+    transform: scale(1.03);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .surge,
   .surge-stagger > * {
@@ -475,6 +498,14 @@ body {
   }
   .btn-primary {
     transition: background-color 150ms ease;
+  }
+  /* O fade de carregamento continua — e ele que evita o susto da imagem
+     pipocando. So o zoom decorativo sai. */
+  .placa-aura {
+    transition: opacity 400ms var(--ease-out);
+  }
+  .placa-aura-alvo:hover .placa-aura {
+    transform: none;
   }
 }
 

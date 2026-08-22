@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { motion, useInView, useReducedMotion } from 'motion/react'
+import { AnimatePresence, motion, useInView, useReducedMotion } from 'motion/react'
 
 /**
  * A franqueza, mostrada em vez de só afirmada.
@@ -24,10 +24,18 @@ const PAUSA_MS = 550
 /** Quanto tempo o indicador de "digitando" fica visível antes do balão da resposta. */
 const DIGITANDO_MS = 900
 
-function Bolha({ texto, doAgente }: { texto: string; doAgente: boolean }) {
+function Bolha({
+  texto,
+  doAgente,
+  semMovimento,
+}: {
+  texto: string
+  doAgente: boolean
+  semMovimento: boolean | null
+}) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8, scale: 0.97 }}
+      initial={semMovimento ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
       className={`flex ${doAgente ? 'justify-end' : 'justify-start'}`}
@@ -45,12 +53,13 @@ function Bolha({ texto, doAgente }: { texto: string; doAgente: boolean }) {
   )
 }
 
-function Digitando() {
+function Digitando({ semMovimento }: { semMovimento: boolean | null }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 6 }}
+      initial={semMovimento ? { opacity: 0 } : { opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
       className="flex justify-end"
     >
       <div className="flex gap-1 rounded-2xl rounded-br-md bg-[#10684f] px-3.5 py-3">
@@ -58,7 +67,10 @@ function Digitando() {
           <motion.span
             key={i}
             className="h-1.5 w-1.5 rounded-full bg-current text-[#ecfdf5] opacity-60"
-            animate={{ opacity: [0.25, 0.9, 0.25] }}
+            // Sem o guarda, os três pontos pulsam para sempre mesmo para quem
+            // pediu menos movimento no sistema — o pior tipo de animação nesse
+            // caso, porque é infinita e não tem como "esperar terminar".
+            animate={semMovimento ? undefined : { opacity: [0.25, 0.9, 0.25] }}
             transition={{ duration: 1.05, repeat: Infinity, delay: i * 0.16 }}
           />
         ))}
@@ -114,9 +126,20 @@ export function ProvaRobo() {
       </div>
 
       <div className="mt-4 flex min-h-[104px] flex-col justify-end gap-2">
-        {mostraPergunta && <Bolha texto={CLIENTE} doAgente={false} />}
-        {mostraDigitando && <Digitando />}
-        {mostraResposta && <Bolha texto={AGENTE} doAgente={true} />}
+        {mostraPergunta && <Bolha texto={CLIENTE} doAgente={false} semMovimento={semMovimento} />}
+        {/*
+          `mode="wait"` em vez de deixar os dois se cruzarem: o indicador de
+          "digitando" e a resposta ocupam a mesma linha, ancorada embaixo. Se
+          saíssem ao mesmo tempo, a caixa cresceria por ~200ms e o texto daria
+          um pulo. Esperar o "digitando" sumir antes de a resposta entrar é
+          também como a conversa real se comporta.
+        */}
+        <AnimatePresence mode="wait" initial={false}>
+          {mostraDigitando && <Digitando key="digitando" semMovimento={semMovimento} />}
+          {mostraResposta && (
+            <Bolha key="resposta" texto={AGENTE} doAgente={true} semMovimento={semMovimento} />
+          )}
+        </AnimatePresence>
       </div>
     </div>
   )

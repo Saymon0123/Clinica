@@ -468,6 +468,21 @@ body {
    nao consegue escalonar o atraso entre os filhos de uma secao, que e o que faz
    a entrada parecer uma sequencia em vez de um bloco piscando de uma vez. */
 
+/* Alvos dos atalhos da barra de navegacao.
+
+   Os 88px sao os 72px da barra fixa mais uma folga: sem isso o atalho para
+   dentro da propria pagina para com o titulo da secao debaixo do cabecalho,
+   e a pessoa aterrissa achando que clicou no lugar errado. */
+.secao-ancora {
+  scroll-margin-top: 88px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 /* Zoom da foto das placas do Aura no hover.
 
    Mora aqui, e nao como utilitario do Tailwind, porque a variante empilhada

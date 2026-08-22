@@ -495,19 +495,26 @@ só fatos reais do produto (preço R$0,85/agendamento, sem mensalidade, sem
 setup, teste de 14 dias, lembretes, confirmação, "Aura") e instrução
 explícita de nunca inventar número ou recurso.
 
-**Três coisas fora do repositório, todas obrigatórias antes de funcionar:**
+**Feito em 2026-08-22:** credencial "OpenRouter" criada e conectada ao nó do
+modelo, workflow testado (execução `9148`, resposta correta e sem dado
+inventado) e **publicado**. Testado direto na URL de produção via `curl` —
+responde de verdade:
 
-1. **n8n**: criar a credencial "OpenRouter" no workflow (chave grátis em
-   openrouter.ai/keys) e **publicar** o workflow (rascunho não roda sozinho —
-   ver o item logo acima neste arquivo). Antes de publicar, conferir se
-   `nvidia/nemotron-3-ultra-550b-a55b:free` ainda existe em
-   openrouter.ai/models — modelo `:free` sai de catálogo sem aviso.
-2. **Vercel**: variável `VITE_AGENTE_IA_URL` com a URL de produção do
-   webhook (`https://n8n-m5uf.srv1833354.hstgr.cloud/webhook/popup-agente-ia`)
-   e **redeploy** — o Vite embute a variável em build time.
-3. Depois de ativo, testar uma pergunta real e confirmar que a contagem em
-   `popup_ia_limite_diario` sobe e que a 9ª pergunta do dia recebe a
-   mensagem de limite em vez do agente.
+```
+POST https://n8n-m5uf.srv1833354.hstgr.cloud/webhook/popup-agente-ia
+{"pergunta":"Tem taxa de setup?","sessionId":"..."}
+→ {"resposta":"Não, o Club Cut não cobra taxa de setup..."}
+```
+
+**Só falta a Vercel**, fora do repositório:
+
+1. **Vercel**: variável `VITE_AGENTE_IA_URL` =
+   `https://n8n-m5uf.srv1833354.hstgr.cloud/webhook/popup-agente-ia`
+   (Production, e Preview se quiser testar em PR) e **redeploy** — o Vite
+   embute a variável em build time, salvar sozinho não basta.
+2. Depois do redeploy, testar uma pergunta real no popup do site e
+   confirmar que a contagem em `popup_ia_limite_diario` sobe e que a 9ª
+   pergunta do dia recebe a mensagem de limite em vez do agente.
 
 ## Marca do Club Cut (2026-08-19)
 

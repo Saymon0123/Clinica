@@ -471,26 +471,42 @@ zero: nenhum concorrente copia sem expor que o bot dele mente.
 Depende de peça fora do repositório: um número de WhatsApp com o agente
 rodando, apontado para uma barbearia de demonstração no n8n.
 
-## Popup de WhatsApp na landing, casca para o bot de tira-dúvidas (2026-08-21)
+## Popup de WhatsApp na landing: agente de tira-dúvidas pronto no código, falta ativar (2026-08-22)
 
-`WhatsAppPopup.tsx` — botão flutuante no canto inferior direito, que abre um
-painel de conversa. Hoje ele não responde nada sozinho: a mensagem digitada
-abre o WhatsApp de verdade (`wa.me`) com o texto preenchido, igual ao convite
-da seção de franqueza. Mesma regra dos outros canais: só renderiza quando
-`CONTATO.whatsapp` deixa de ser `null`; sem número real, um botão de WhatsApp
-que não leva a lugar nenhum é pior que não ter o botão.
+`WhatsAppPopup.tsx` já chama o agente de verdade: a mensagem digitada vai via
+`POST` para `VITE_AGENTE_IA_URL` com `{ pergunta, sessionId }` (sessão gerada
+uma vez por navegador e guardada em `localStorage`), e a resposta some no
+painel como uma mensagem do bot — sem depender do `CONTATO.whatsapp` (esse
+continua `null`; esse popup não é mais um atalho pro WhatsApp real, é o
+próprio agente). Sem a variável de ambiente configurada, o painel mostra "em
+breve" e desabilita o campo — a mesma regra de nunca prometer o que ainda
+não existe.
 
-Fica coordenado com o `CtaFixo` (a barra fixa de CTA) por uma variável CSS
-(`--cta-fixo-h`, publicada pelo próprio `CtaFixo`): o popup sobe para não
-colidir quando a barra está na tela, sem números fixos adivinhando a altura
-um do outro.
+Continua coordenado com o `CtaFixo` pela variável CSS `--cta-fixo-h` e por
+`useCtaInlineVisivel` (ver `CtaFixo.tsx`).
 
-**Quando o bot de tira-dúvidas existir no n8n**, o único ponto que muda é o
-`enviar()` do componente: em vez de abrir `wa.me`, ele chama o agente. O
-resto do desenho (botão, painel, mensagem de boas-vindas) fica.
+O workflow do agente já existe no n8n: **"Landing - Agente de Tira-Dúvidas
+(Popup)"** (`j2g3tdLZTlvs8sdP`) — webhook `POST /webhook/popup-agente-ia`,
+limite de 8 perguntas por sessão por dia (tabela `popup_ia_limite_diario`,
+via n8n Data Table, zero custo), modelo OpenRouter `:free`
+(`meta-llama/llama-3.3-70b-instruct:free` no momento da criação), prompt com
+só fatos reais do produto (preço R$0,85/agendamento, sem mensalidade, sem
+setup, teste de 14 dias, lembretes, confirmação, "Aura") e instrução
+explícita de nunca inventar número ou recurso.
 
-Depende de peça fora do repositório: o mesmo número de WhatsApp do item
-acima, e — quando for a hora — o agente de tira-dúvidas configurado no n8n.
+**Três coisas fora do repositório, todas obrigatórias antes de funcionar:**
+
+1. **n8n**: criar a credencial "OpenRouter" no workflow (chave grátis em
+   openrouter.ai/keys) e **publicar** o workflow (rascunho não roda sozinho —
+   ver o item logo acima neste arquivo). Antes de publicar, conferir se
+   `meta-llama/llama-3.3-70b-instruct:free` ainda existe em
+   openrouter.ai/models — modelo `:free` sai de catálogo sem aviso.
+2. **Vercel**: variável `VITE_AGENTE_IA_URL` com a URL de produção do
+   webhook (`https://n8n-m5uf.srv1833354.hstgr.cloud/webhook/popup-agente-ia`)
+   e **redeploy** — o Vite embute a variável em build time.
+3. Depois de ativo, testar uma pergunta real e confirmar que a contagem em
+   `popup_ia_limite_diario` sobe e que a 9ª pergunta do dia recebe a
+   mensagem de limite em vez do agente.
 
 ## Marca do Club Cut (2026-08-19)
 

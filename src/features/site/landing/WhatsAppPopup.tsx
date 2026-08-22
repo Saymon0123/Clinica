@@ -3,6 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { X } from 'lucide-react'
 import { WhatsAppGlyph } from '../../../components/icons/WhatsAppGlyph'
 import { CONTATO } from '../../../lib/contato'
+import { useCtaInlineVisivel } from './useCtaInlineVisivel'
 
 /**
  * O botão flutuante de WhatsApp, com o painel que abre dele.
@@ -26,6 +27,14 @@ import { CONTATO } from '../../../lib/contato'
  * CtaFixo.tsx); este componente lê essa variável para empurrar a própria
  * posição para cima quando a barra de CTA está na tela, em vez de os dois
  * adivinharem a altura um do outro com números fixos.
+ *
+ * **Também some quando um CTA de seção (ou o rodapé) está na tela** — mesmo
+ * sinal do `CtaFixo`, via `useCtaInlineVisivel`. Sem isso, o botão flutuava
+ * por cima de título e texto toda vez que a página tinha um CTA de seção ou
+ * o rodapé perto da borda inferior; nenhum elemento fixo precisa competir
+ * com um botão que já está bem na frente da pessoa. Só se aplica quando o
+ * painel está fechado — abrir o painel e ele sumir embaixo do dedo seria
+ * pior que a sobreposição que resolve.
  */
 const MENSAGEM_COM_NUMERO =
   'Oi! Ainda não temos um assistente automático por aqui, mas dá para falar direto com a gente. Manda sua dúvida que a gente responde.'
@@ -39,6 +48,8 @@ export function WhatsAppPopup() {
   const inputRef = useRef<HTMLInputElement>(null)
   const semMovimento = useReducedMotion()
   const numero = CONTATO.whatsapp
+  const algumCtaVisivel = useCtaInlineVisivel()
+  const oculto = algumCtaVisivel && !aberto
 
   useEffect(() => {
     if (aberto && numero) inputRef.current?.focus()
@@ -54,9 +65,16 @@ export function WhatsAppPopup() {
   }
 
   return (
-    <div
+    <motion.div
       className="fixed right-4 z-50 sm:right-6"
-      style={{ bottom: 'calc(20px + var(--cta-fixo-h, 0px))' }}
+      style={{ bottom: 'calc(20px + var(--cta-fixo-h, 0px))', pointerEvents: oculto ? 'none' : 'auto' }}
+      animate={
+        semMovimento
+          ? { opacity: oculto ? 0 : 1 }
+          : { opacity: oculto ? 0 : 1, y: oculto ? 8 : 0 }
+      }
+      transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
+      aria-hidden={oculto}
     >
       <AnimatePresence>
         {aberto && (
@@ -156,6 +174,6 @@ export function WhatsAppPopup() {
           )}
         </AnimatePresence>
       </motion.button>
-    </div>
+    </motion.div>
   )
 }

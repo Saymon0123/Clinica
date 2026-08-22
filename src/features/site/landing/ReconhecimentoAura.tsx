@@ -48,14 +48,14 @@ const PATENTES = [
     nome: 'Capitão',
     cor: 'text-[var(--l-accent-ink)]',
     beneficio:
-      'Acesso beta a novas automações antes do lançamento geral, e prioridade de voz no roadmap.',
+      'Acesso beta a novas automações antes do lançamento geral, e prioridade pra sugerir o que vem a seguir.',
   },
   {
     nome: 'General',
     // Única cor fora da paleta da página — ver nota no topo do arquivo.
     cor: 'text-[#d4af5a]',
     beneficio:
-      'Consultoria trimestral com os fundadores, case oficial com co-marketing e comissão por indicação.',
+      'Consultoria trimestral com os fundadores, sua barbearia em destaque nas nossas redes, e comissão por indicação.',
   },
 ] as const
 

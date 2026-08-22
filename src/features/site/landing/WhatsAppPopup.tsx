@@ -2,25 +2,24 @@ import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { X } from 'lucide-react'
 import { WhatsAppGlyph } from '../../../components/icons/WhatsAppGlyph'
-import { CONTATO } from '../../../lib/contato'
 import { useCtaInlineVisivel } from './useCtaInlineVisivel'
 
 /**
  * O botão flutuante de WhatsApp, com o painel que abre dele.
  *
- * **É a casca para o bot de tira-dúvidas, não o bot.** Por enquanto ele não
- * responde nada sozinho: com número real em CONTATO, a mensagem que a
- * pessoa digita abre o WhatsApp de verdade, com o texto já preenchido, igual
- * ao link que já existe na seção de franqueza. Quando o agente de
- * tira-dúvidas existir no n8n, só o que acontece ao enviar muda; o resto do
- * desenho fica.
+ * **É o bot de tira-dúvidas**, não um atalho pro WhatsApp real — a barbearia
+ * ainda não tem um número público configurado (ver `lib/contato.ts`), e o
+ * que promete aqui não depende disso: quem abre o painel conversa com um
+ * agente de IA que responde sobre o Club Cut (preço, teste grátis, como
+ * funciona). A pergunta vai pro n8n via `AGENTE_URL`; lá um agente com
+ * modelo gratuito da OpenRouter responde com base só no que é real — nunca
+ * inventa número, percentual ou recurso que o produto não tem.
  *
- * **Fica visível mesmo sem número real.** Diferente da seção de franqueza —
- * lá o convite promete algo específico ("manda mensagem e pergunta se é
- * robô") que sem número vira convite pra um buraco. Aqui o botão promete só
- * "dá para falar com a gente", e sem número diz exatamente isso: o campo
- * fica desabilitado com "em breve" em vez de fingir que envia. É a diferença
- * entre ocultar o que ainda não existe e mentir sobre o que existe.
+ * **Sem `AGENTE_URL` configurada, o painel avisa isso.** Enquanto o webhook
+ * não estiver publicado (a credencial da OpenRouter é configurada à mão no
+ * n8n, fora do repo), o campo fica desabilitado com "em breve" em vez de
+ * fingir que responde — a mesma regra de nunca prometer o que ainda não
+ * existe.
  *
  * **Por que fica ACIMA do CtaFixo.** Os dois são elementos fixos no canto
  * inferior. O CtaFixo publica a própria altura em `--cta-fixo-h` (ver
@@ -36,32 +35,77 @@ import { useCtaInlineVisivel } from './useCtaInlineVisivel'
  * painel está fechado — abrir o painel e ele sumir embaixo do dedo seria
  * pior que a sobreposição que resolve.
  */
-const MENSAGEM_COM_NUMERO =
-  'Oi! Ainda não temos um assistente automático por aqui, mas dá para falar direto com a gente. Manda sua dúvida que a gente responde.'
+const AGENTE_URL = import.meta.env.VITE_AGENTE_IA_URL as string | undefined
 
-const MENSAGEM_SEM_NUMERO =
-  'Esse canal ainda não está ativo. Em breve dá para falar com a gente por aqui.'
+const SAUDACAO = 'Oi! Sou o assistente do Club Cut. Pergunta sobre preço, teste grátis ou como funciona — te respondo na hora.'
+
+const MENSAGEM_SEM_AGENTE = 'Esse canal ainda não está ativo. Em breve dá para tirar dúvidas por aqui.'
+
+const MENSAGEM_ERRO = 'Não consegui responder agora. Tenta de novo em instantes.'
+
+const CHAVE_SESSAO = 'club-cut:popup-sessao'
+
+function lerOuCriarSessao() {
+  try {
+    const existente = localStorage.getItem(CHAVE_SESSAO)
+    if (existente) return existente
+    const nova = crypto.randomUUID()
+    localStorage.setItem(CHAVE_SESSAO, nova)
+    return nova
+  } catch {
+    return crypto.randomUUID()
+  }
+}
+
+type Mensagem = { autor: 'usuario' | 'bot'; texto: string }
 
 export function WhatsAppPopup() {
   const [aberto, setAberto] = useState(false)
   const [rascunho, setRascunho] = useState('')
+  const [mensagens, setMensagens] = useState<Mensagem[]>([])
+  const [enviando, setEnviando] = useState(false)
+  const sessaoRef = useRef<string | undefined>(undefined)
+  if (!sessaoRef.current) sessaoRef.current = lerOuCriarSessao()
   const inputRef = useRef<HTMLInputElement>(null)
+  const listaRef = useRef<HTMLDivElement>(null)
   const semMovimento = useReducedMotion()
-  const numero = CONTATO.whatsapp
   const algumCtaVisivel = useCtaInlineVisivel()
   const oculto = algumCtaVisivel && !aberto
 
   useEffect(() => {
-    if (aberto && numero) inputRef.current?.focus()
-  }, [aberto, numero])
+    if (aberto && AGENTE_URL) inputRef.current?.focus()
+  }, [aberto])
 
-  function enviar() {
-    if (!numero) return
+  useEffect(() => {
+    listaRef.current?.scrollTo({ top: listaRef.current.scrollHeight })
+  }, [mensagens, enviando])
+
+  async function enviar() {
     const texto = rascunho.trim()
-    if (!texto) return
-    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(texto)}`, '_blank', 'noreferrer')
+    if (!texto || enviando) return
     setRascunho('')
-    setAberto(false)
+
+    if (!AGENTE_URL) {
+      setMensagens((m) => [...m, { autor: 'usuario', texto }, { autor: 'bot', texto: MENSAGEM_SEM_AGENTE }])
+      return
+    }
+
+    setMensagens((m) => [...m, { autor: 'usuario', texto }])
+    setEnviando(true)
+    try {
+      const resposta = await fetch(AGENTE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pergunta: texto, sessionId: sessaoRef.current }),
+      })
+      if (!resposta.ok) throw new Error('resposta não ok')
+      const dados = (await resposta.json()) as { resposta?: string }
+      setMensagens((m) => [...m, { autor: 'bot', texto: dados.resposta?.trim() || MENSAGEM_ERRO }])
+    } catch {
+      setMensagens((m) => [...m, { autor: 'bot', texto: MENSAGEM_ERRO }])
+    } finally {
+      setEnviando(false)
+    }
   }
 
   return (
@@ -84,7 +128,7 @@ export function WhatsAppPopup() {
             exit={semMovimento ? { opacity: 0 } : { opacity: 0, y: 10, scale: 0.98 }}
             transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
             role="dialog"
-            aria-label="Falar no WhatsApp"
+            aria-label="Tirar dúvidas com o Club Cut"
             className="absolute bottom-[calc(100%+14px)] right-0 flex w-[min(340px,calc(100vw-32px))] flex-col overflow-hidden rounded-[var(--r-md)] border border-[var(--l-line-strong)] bg-[#121110] shadow-[0_24px_60px_-24px_rgba(0,0,0,0.7)]"
           >
             <div className="flex items-center gap-2.5 bg-[#1c1b19] px-4 py-3">
@@ -93,7 +137,7 @@ export function WhatsAppPopup() {
               </span>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-[13px] font-semibold text-white">Club Cut</div>
-                <div className="text-[10.5px] text-white/55">Responde pelo WhatsApp</div>
+                <div className="text-[10.5px] text-white/55">Assistente automático</div>
               </div>
               <button
                 type="button"
@@ -105,18 +149,38 @@ export function WhatsAppPopup() {
               </button>
             </div>
 
-            <div className="px-3.5 py-4">
+            <div ref={listaRef} className="flex max-h-[min(50vh,360px)] flex-col gap-2 overflow-y-auto px-3.5 py-4">
               <div className="flex justify-start">
                 <p className="max-w-[85%] rounded-2xl rounded-bl-md bg-[#2a2927] px-3.5 py-2.5 text-[13px] leading-snug text-white">
-                  {numero ? MENSAGEM_COM_NUMERO : MENSAGEM_SEM_NUMERO}
+                  {SAUDACAO}
                 </p>
               </div>
+              {mensagens.map((m, i) => (
+                <div key={i} className={`flex ${m.autor === 'usuario' ? 'justify-end' : 'justify-start'}`}>
+                  <p
+                    className={
+                      m.autor === 'usuario'
+                        ? 'max-w-[85%] rounded-2xl rounded-br-md bg-[#25D366] px-3.5 py-2.5 text-[13px] leading-snug text-black'
+                        : 'max-w-[85%] rounded-2xl rounded-bl-md bg-[#2a2927] px-3.5 py-2.5 text-[13px] leading-snug text-white'
+                    }
+                  >
+                    {m.texto}
+                  </p>
+                </div>
+              ))}
+              {enviando && (
+                <div className="flex justify-start">
+                  <p className="rounded-2xl rounded-bl-md bg-[#2a2927] px-3.5 py-2.5 text-[13px] leading-snug text-white/50">
+                    digitando...
+                  </p>
+                </div>
+              )}
             </div>
 
             <form
               onSubmit={(e) => {
                 e.preventDefault()
-                enviar()
+                void enviar()
               }}
               className="flex items-center gap-2 border-t border-white/10 bg-[#1c1b19] p-2.5"
             >
@@ -125,13 +189,13 @@ export function WhatsAppPopup() {
                 type="text"
                 value={rascunho}
                 onChange={(e) => setRascunho(e.target.value)}
-                disabled={!numero}
-                placeholder={numero ? 'Escreva sua dúvida...' : 'Em breve'}
+                disabled={!AGENTE_URL || enviando}
+                placeholder={AGENTE_URL ? 'Escreva sua dúvida...' : 'Em breve'}
                 className="min-w-0 flex-1 rounded-full bg-white/[0.06] px-3.5 py-2.5 text-[13px] text-white placeholder:text-white/40 outline-none focus:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
               />
               <button
                 type="submit"
-                disabled={!numero || !rascunho.trim()}
+                disabled={!AGENTE_URL || !rascunho.trim() || enviando}
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white transition-[opacity,transform] duration-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Enviar"
               >
@@ -146,7 +210,7 @@ export function WhatsAppPopup() {
         type="button"
         onClick={() => setAberto((v) => !v)}
         aria-expanded={aberto}
-        aria-label={aberto ? 'Fechar conversa no WhatsApp' : 'Abrir conversa no WhatsApp'}
+        aria-label={aberto ? 'Fechar conversa com o Club Cut' : 'Abrir conversa com o Club Cut'}
         whileTap={semMovimento ? undefined : { scale: 0.94 }}
         className="flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-[0_16px_36px_-12px_rgba(0,0,0,0.55)] transition-colors duration-200 hover:bg-[#1fb959]"
       >

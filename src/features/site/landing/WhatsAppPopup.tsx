@@ -64,6 +64,74 @@ function lerOuCriarSessao() {
 
 type Mensagem = { autor: 'usuario' | 'bot'; texto: string }
 
+/**
+ * Um balão de mensagem entrando.
+ *
+ * Mesma entrada do `ChatDemo` e do `ProvaRobo` — os três chats da página
+ * falam a mesma língua de propósito. Aqui isso importa mais que nos outros
+ * dois: aquele é uma demonstração, este é a conversa de verdade, e era o
+ * único dos três em que as mensagens apareciam secas, sem transição.
+ */
+function Balao({
+  mensagem,
+  semMovimento,
+}: {
+  mensagem: Mensagem
+  semMovimento: boolean | null
+}) {
+  const doUsuario = mensagem.autor === 'usuario'
+  return (
+    <motion.div
+      initial={semMovimento ? { opacity: 0 } : { opacity: 0, y: 10, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.32, ease: [0.23, 1, 0.32, 1] }}
+      className={`flex ${doUsuario ? 'justify-end' : 'justify-start'}`}
+    >
+      <p
+        className={
+          doUsuario
+            ? 'max-w-[85%] rounded-2xl rounded-br-md bg-[#25D366] px-3.5 py-2.5 text-[13px] leading-snug text-black'
+            : 'max-w-[85%] rounded-2xl rounded-bl-md bg-[#2a2927] px-3.5 py-2.5 text-[13px] leading-snug text-white'
+        }
+      >
+        {mensagem.texto}
+      </p>
+    </motion.div>
+  )
+}
+
+/**
+ * Os três pontinhos enquanto a Aurora pensa.
+ *
+ * Era a palavra "digitando..." em texto estático — a única peça de chat da
+ * página sem o indicador animado que o `ChatDemo` e o `ProvaRobo` já usam.
+ * O laço infinito fica desligado sob `prefers-reduced-motion`: animação que
+ * nunca termina é justamente a que mais incomoda quem pediu menos movimento.
+ */
+function Digitando({ semMovimento }: { semMovimento: boolean | null }) {
+  return (
+    <motion.div
+      initial={semMovimento ? { opacity: 0 } : { opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
+      className="flex justify-start"
+      aria-label="Aurora está digitando"
+    >
+      <div className="flex gap-1 rounded-2xl rounded-bl-md bg-[#2a2927] px-3.5 py-3">
+        {[0, 1, 2].map((i) => (
+          <motion.span
+            key={i}
+            className="h-1.5 w-1.5 rounded-full bg-white/60"
+            animate={semMovimento ? undefined : { opacity: [0.25, 0.9, 0.25] }}
+            transition={{ duration: 1.05, repeat: Infinity, delay: i * 0.16 }}
+          />
+        ))}
+      </div>
+    </motion.div>
+  )
+}
+
 export function WhatsAppPopup() {
   const [aberto, setAberto] = useState(false)
   const [rascunho, setRascunho] = useState('')
@@ -82,8 +150,13 @@ export function WhatsAppPopup() {
   }, [aberto])
 
   useEffect(() => {
-    listaRef.current?.scrollTo({ top: listaRef.current.scrollHeight })
-  }, [mensagens, enviando])
+    // `smooth` porque o balão está entrando animado: rolar seco por baixo de
+    // uma mensagem que ainda está chegando faz o texto parecer que pulou.
+    listaRef.current?.scrollTo({
+      top: listaRef.current.scrollHeight,
+      behavior: semMovimento ? 'auto' : 'smooth',
+    })
+  }, [mensagens, enviando, semMovimento])
 
   async function enviar() {
     const texto = rascunho.trim()
@@ -161,25 +234,11 @@ export function WhatsAppPopup() {
                 </p>
               </div>
               {mensagens.map((m, i) => (
-                <div key={i} className={`flex ${m.autor === 'usuario' ? 'justify-end' : 'justify-start'}`}>
-                  <p
-                    className={
-                      m.autor === 'usuario'
-                        ? 'max-w-[85%] rounded-2xl rounded-br-md bg-[#25D366] px-3.5 py-2.5 text-[13px] leading-snug text-black'
-                        : 'max-w-[85%] rounded-2xl rounded-bl-md bg-[#2a2927] px-3.5 py-2.5 text-[13px] leading-snug text-white'
-                    }
-                  >
-                    {m.texto}
-                  </p>
-                </div>
+                <Balao key={i} mensagem={m} semMovimento={semMovimento} />
               ))}
-              {enviando && (
-                <div className="flex justify-start">
-                  <p className="rounded-2xl rounded-bl-md bg-[#2a2927] px-3.5 py-2.5 text-[13px] leading-snug text-white/50">
-                    digitando...
-                  </p>
-                </div>
-              )}
+              <AnimatePresence>
+                {enviando && <Digitando key="digitando" semMovimento={semMovimento} />}
+              </AnimatePresence>
             </div>
 
             <form

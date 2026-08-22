@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { Reveal, RevealGrupo, RevealItem } from './primitivos'
 
 /**
@@ -59,6 +60,45 @@ const PATENTES = [
   },
 ] as const
 
+/**
+ * A foto das quatro placas, aparecendo em vez de pipocando.
+ *
+ * Com `loading="lazy"`, a imagem decodifica no meio do `Reveal` da seção e
+ * salta na tela já opaca — o único "pop" visível da página. Um fade curto
+ * no `load` resolve, mas ele precisa cobrir o caso da imagem já estar em
+ * cache: aí o evento `load` dispara antes de o React pendurar o handler, e
+ * a imagem ficaria invisível para sempre. Daí a checagem de `complete` na
+ * montagem.
+ */
+function PlacaAura() {
+  const imgRef = useRef<HTMLImageElement>(null)
+  const [carregada, setCarregada] = useState(false)
+
+  useEffect(() => {
+    if (imgRef.current?.complete) setCarregada(true)
+  }, [])
+
+  return (
+    <div className="placa-aura-alvo overflow-hidden rounded-[var(--r-md)] border border-[var(--l-line)]">
+      <img
+        ref={imgRef}
+        src="/patentes-aura.jpg"
+        alt="Quatro placas de reconhecimento em degradê: Recruta, Sargento, Capitão e General, cada uma com uma estrela e a moldura mais nobre conforme a patente sobe."
+        onLoad={() => setCarregada(true)}
+        /*
+          O container já tinha `overflow-hidden` — o zoom no hover só usa o
+          recorte que já existia. A transição e o zoom moram em `index.css`
+          (`.placa-aura`), junto das outras guardas de movimento; ver a nota
+          lá sobre por que não dá para fazer isso com variante do Tailwind.
+        */
+        className={`placa-aura block w-full ${carregada ? 'opacity-100' : 'opacity-0'}`}
+        loading="lazy"
+        decoding="async"
+      />
+    </div>
+  )
+}
+
 export function ReconhecimentoAura() {
   return (
     <section className="relative overflow-hidden bg-[var(--l-canvas)] px-6 py-[64px] lg:py-[84px]">
@@ -77,15 +117,7 @@ export function ReconhecimentoAura() {
         </Reveal>
 
         <Reveal delay={0.1} className="mt-11">
-          <div className="overflow-hidden rounded-[var(--r-md)] border border-[var(--l-line)]">
-            <img
-              src="/patentes-aura.jpg"
-              alt="Quatro placas de reconhecimento em degradê: Recruta, Sargento, Capitão e General, cada uma com uma estrela e a moldura mais nobre conforme a patente sobe."
-              className="block w-full"
-              loading="lazy"
-              decoding="async"
-            />
-          </div>
+          <PlacaAura />
           <p className="mt-4 text-[14px] leading-relaxed text-[var(--l-fg-faint)]">
             <strong className="font-medium text-[var(--l-fg-mute)]">
               Recruta. Sargento. Capitão. General.
@@ -112,7 +144,14 @@ export function ReconhecimentoAura() {
         >
           {PATENTES.map((p) => (
             <RevealItem key={p.nome}>
-              <div className="h-full bg-[var(--l-bg)] p-6">
+              {/*
+                Só a cor de fundo muda no hover, sem deslocamento: as células
+                vivem numa grade de `gap-px` onde o vão é o próprio fundo do
+                container fazendo as vezes de divisória. Qualquer `translate`
+                aqui descolaria a célula e mostraria uma tira da linha por
+                baixo — o efeito pareceria defeito, não resposta.
+              */}
+              <div className="h-full bg-[var(--l-bg)] p-6 transition-colors duration-200 ease-[var(--ease-out)] hover:bg-[var(--l-bg-lift)]">
                 <div className={`landing-label mb-3.5 ${p.cor}`}>{p.nome}</div>
                 <p className="text-[14px] leading-relaxed text-[var(--l-fg-mute)]">
                   {/* O "+" é o que diz "soma", não "troca" — sem ele a régua lê como

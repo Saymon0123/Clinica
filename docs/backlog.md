@@ -553,8 +553,49 @@ certificação nenhuma que não existe), e pedido de humano.
    (Production, e Preview se quiser testar em PR) e **redeploy** — o Vite
    embute a variável em build time, salvar sozinho não basta.
 2. Depois do redeploy, testar uma pergunta real no popup do site e
-   confirmar que a contagem em `popup_ia_limite_diario` sobe e que a 9ª
+   confirmar que a contagem em `popup_ia_limite_diario` sobe e que a 31ª
    pergunta do dia recebe a mensagem de limite em vez do agente.
+
+### ⚠️ Latência alta quando o agente chama as duas ferramentas (2026-08-22)
+
+Descoberto testando em produção: quando a pessoa pede humano e informa o
+contato, o turno que chama `Salvar Pedido de Humano` + `Avisar no Telegram`
+demora **~17 segundos** com o `nvidia/nemotron-3-ultra-550b-a55b:free` (é um
+modelo de 550B parâmetros, mesmo sendo MoE com 55B ativos). Isso já causou
+pelo menos uma falha visível no site ("Não consegui responder agora").
+
+Tentei trocar por modelos `:free` menores pra ganhar velocidade. Nenhum
+funcionou bem:
+
+| Modelo | Resultado |
+|---|---|
+| `nvidia/nemotron-3-nano-30b-a3b:free` | Vazou o raciocínio bruto (chain-of-thought) como resposta final, sem chamar as ferramentas |
+| `nvidia/nemotron-nano-9b-v2:free` | Respondeu vazio, não chamou as ferramentas |
+| `meta-llama/llama-3.3-70b-instruct:free` | **Saiu do catálogo** — não existe mais na OpenRouter |
+| `nvidia/nemotron-3-super-120b-a12b:free` | Erro interno de parsing (`Cannot read properties of undefined (reading 'message')`) |
+| `google/gemma-4-26b-a4b-it:free` / `google/gemma-4-31b-it:free` / `z-ai/glm-5.2:free` | Nunca cheguei a testar o comportamento — bati rate limit da OpenRouter em todas as tentativas |
+
+**Voltei pro `nvidia/nemotron-3-ultra-550b-a55b:free`** (o que já estava
+publicado) — lento, mas o único confirmado confiável pra chamar as duas
+ferramentas corretamente e responder de forma limpa.
+
+**Achado paralelo, sem custo real:** o painel de uso da OpenRouter mostrou
+`GPT-4.1 Mini` — um modelo pago, não `:free` — aparecendo no gráfico de uso
+do dia. Bate com a janela em que uma edição manual no editor do n8n tinha
+apagado o campo `model` do nó (ver o item de escalonamento acima): sem
+`model` explícito, o node cai no padrão do pacote (`openai/gpt-4.1-mini`,
+que a OpenRouter também serve). **Gasto total do dia ficou em $0,00** —
+essas tentativas aparentemente falharam antes de gerar tokens cobráveis, o
+que explica alguns dos erros estranhos vistos durante os testes. Já
+corrigido: o campo `model` está fixo de novo, e a lição do item acima
+(reler o workflow via API depois de editar manualmente no editor) cobre
+isso.
+
+**Em aberto:** achar um modelo `:free` mais rápido que se comporte bem com
+tool-calling, ou aceitar os ~17s do Nemotron Ultra como custo da gratuidade.
+Se for tentar de novo, espaçar os testes (o rate-limit de rajada da
+OpenRouter — provavelmente por minuto — trava rápido em sequência de
+testes, mesmo com o total do dia bem abaixo de qualquer cota diária).
 
 ## Marca do Club Cut (2026-08-19)
 

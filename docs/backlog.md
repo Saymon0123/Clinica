@@ -506,6 +506,14 @@ POST https://n8n-m5uf.srv1833354.hstgr.cloud/webhook/popup-agente-ia
 → {"resposta":"Não, o Club Cut não cobra taxa de setup..."}
 ```
 
+**Prompt reforçado com princípios de customer care/success** (mesmo dia):
+reconhecer objeção antes de responder (nunca discordar de cara), fechar com
+próximo passo só quando fizer sentido (não empurrar "teste grátis" em toda
+mensagem), linguagem de barbeiro em vez de startup, admitir limite com uma
+frase direta em vez de inventar. Testado com objeção real
+("já uso caderno, pra que trocar?") e voltou reconhecendo o ponto antes do
+fato — sem inventar nada. Republicado.
+
 **Só falta a Vercel**, fora do repositório:
 
 1. **Vercel**: variável `VITE_AGENTE_IA_URL` =

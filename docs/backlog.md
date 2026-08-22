@@ -607,6 +607,29 @@ em vez de inventar identidade nova. Aparece no cabeçalho do painel
 inventada). Testado em produção: pergunta "quem é você?" volta "Sou a
 Aurora, do Club Cut. Em que posso ajudar?". Republicado.
 
+### ⚠️ Vazamento de raciocínio bruto em produção, corrigido (2026-08-22)
+
+Um usuário real recebeu como resposta o raciocínio interno cru do modelo
+("The user wants details about the Aura program... I'll use
+'session_419987275895' maybe...") em vez de uma resposta limpa — aconteceu
+no turno em que o agente decide chamar as duas ferramentas de
+escalonamento, exatamente o cenário mais pesado do prompt.
+
+Causa provável: `maxTokens: 400` era baixo demais para esse modelo de
+raciocínio (Nemotron Ultra) terminar de "pensar" e ainda sobrar espaço pra
+resposta final — sem token sobrando, ele devolve o raciocínio truncado como
+se fosse a resposta.
+
+**Corrigido**: `maxTokens` subiu de 400 para 1500 no nó "Modelo OpenRouter
+(grátis)". Testado duas vezes reproduzindo o cenário exato (pedir detalhes
+do Aura + informar contato) — resposta limpa nas duas, ferramentas
+chamadas certo (execução `9233`). Confirmado em produção. Republicado.
+
+**Vale observar nos próximos dias** se o vazamento reaparece — se sim, o
+problema não é só o limite de tokens, e a alternativa é achar um modelo
+`:free` que não seja "reasoning model" por padrão (nenhum dos testados até
+agora se qualificou, ver item acima).
+
 ## Marca do Club Cut (2026-08-19)
 
 A marca virou componente único em `src/components/MarcaClubCut.tsx`, usado em

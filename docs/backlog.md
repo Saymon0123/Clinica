@@ -804,3 +804,25 @@ justamente quando alguém tentasse melhorar a configuração.
 
 **Ainda na Evolution:** o envio dos lembretes, o `Aviso de Fim de Teste` e a
 `Política de Atraso` (desligada).
+
+
+## Vários destinatários nos alertas — 2026-08-21
+
+Migration 0092. `canal_de_alertas.email` aceita lista separada por vírgula:
+
+```sql
+update canal_de_alertas
+   set email = 'castrocollin01@gmail.com, socio@exemplo.com';
+```
+
+Não precisa mexer no n8n — esse é o formato que o cabeçalho To do SMTP já
+espera, então atravessa sem transformação.
+
+**Validado por `canal_de_alertas_email_valido`.** Um endereço malformado no
+meio da lista faz o SMTP recusar o envio **inteiro**, não só o endereço ruim —
+e aí o alerta sumiria calado, que é o único modo de falha que este canal não
+pode ter. Testados sete casos, incluindo `a@b.com, lixo`, onde só um dos dois
+está quebrado: rejeitado.
+
+Envio real verificado (execução 9047): `accepted` voltou com os dois endereços,
+`rejected` vazio.

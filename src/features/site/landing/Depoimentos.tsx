@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useReducedMotion } from 'motion/react'
+import { motion, useReducedMotion } from 'motion/react'
 import { Reveal } from './primitivos'
 
 /**
@@ -231,20 +231,31 @@ export function Depoimentos() {
               <span className="landing-label text-[var(--l-fg-faint)]">Ler outro</span>
               <div className="flex flex-wrap gap-2">
                 {DEPOIMENTOS.map((d, i) => (
-                  <button
+                  /* `whileTap`: são círculos pequenos, e no toque o único sinal
+                     de que o clique pegou era o depoimento trocando lá em cima
+                     — longe do dedo, fácil de não perceber.
+
+                     `transition-[color,border-color,background-color]` no lugar
+                     de `transition-all`: com `all`, o navegador vigia toda
+                     propriedade que possa mudar em sete botões ao mesmo tempo,
+                     inclusive o `transform` do `whileTap`, que ficaria brigando
+                     com a transição de 300ms. */
+                  <motion.button
                     key={d.nome}
                     type="button"
                     onClick={() => setAtivo(i)}
                     aria-label={`Ler o depoimento de ${d.nome}, ${d.ondeE}`}
                     aria-pressed={ativo === i}
-                    className={`landing-num flex h-11 w-11 items-center justify-center rounded-full border text-[13px] transition-all duration-300 ${
+                    whileTap={semMovimento ? undefined : { scale: 0.94 }}
+                    transition={{ duration: 0.16, ease: [0.23, 1, 0.32, 1] }}
+                    className={`landing-num flex h-11 w-11 items-center justify-center rounded-full border text-[13px] transition-[color,border-color,background-color] duration-300 ${
                       ativo === i
                         ? 'border-[var(--l-accent-ink)] bg-[var(--l-accent-pale)] text-[var(--l-accent-ink)]'
                         : 'border-[var(--l-line)] text-[var(--l-fg-faint)] hover:border-[var(--l-line-strong)] hover:text-[var(--l-fg-mute)]'
                     }`}
                   >
                     {d.nome.charAt(0)}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>

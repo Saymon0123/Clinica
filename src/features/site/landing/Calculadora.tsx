@@ -162,7 +162,15 @@ export function Controle({
  * crescer. Escreve direto no nó de texto, fora do render do React — são ~60
  * atualizações por segundo durante o arrasto.
  */
-export function ValorAnimado({ valor }: { valor: number }) {
+export function ValorAnimado({
+  valor,
+  formato = moeda,
+}: {
+  valor: number
+  /** Formatador do número. Existe porque nem todo valor da calculadora é em
+   *  reais inteiros — ver o parágrafo de apoio, que fala de centavos. */
+  formato?: (v: number) => string
+}) {
   const ref = useRef<HTMLSpanElement>(null)
   const anterior = useRef(valor)
   const semMovimento = useReducedMotion()
@@ -171,22 +179,24 @@ export function ValorAnimado({ valor }: { valor: number }) {
     const no = ref.current
     if (!no) return
     if (semMovimento) {
-      no.textContent = moeda(valor)
+      no.textContent = formato(valor)
       anterior.current = valor
       return
     }
     const controle = animate(anterior.current, valor, {
       duration: 0.5,
       ease: [0.23, 1, 0.32, 1],
+      // Sem `Math.round` aqui: os dois formatadores já decidem quantas casas
+      // mostrar, e arredondar antes zerava os centavos de quem precisa deles.
       onUpdate: (v) => {
-        no.textContent = moeda(Math.round(v))
+        no.textContent = formato(v)
       },
     })
     anterior.current = valor
     return () => controle.stop()
-  }, [valor, semMovimento])
+  }, [valor, semMovimento, formato])
 
-  return <span ref={ref}>{moeda(valor)}</span>
+  return <span ref={ref}>{formato(valor)}</span>
 }
 
 export function Calculadora() {
@@ -239,10 +249,14 @@ export function Calculadora() {
             <ValorAnimado valor={porMes} />
           </div>
 
+          {/* Este número também rola. Ele responde ao mesmo arrasto do número
+              grande logo acima e trocava seco enquanto o outro animava — dois
+              valores da mesma conta, no mesmo cartão, discordando sobre como
+              reagir ao mesmo gesto. */}
           <p className="mt-6 max-w-[34ch] text-[15px] leading-relaxed text-[var(--l-fg-mute)]">
             Na cobrança por agendamento, transformar essas mesmas faltas em horário confirmado
-            custaria {moedaComCentavos(custoSeFossemAgendamentos)} no mês. A conta é com os seus
-            números.
+            custaria <ValorAnimado valor={custoSeFossemAgendamentos} formato={moedaComCentavos} /> no
+            mês. A conta é com os seus números.
           </p>
         </div>
       </div>

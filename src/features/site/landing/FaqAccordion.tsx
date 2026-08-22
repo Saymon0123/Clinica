@@ -36,7 +36,10 @@ export function FaqAccordion({ itens }: { itens: Pergunta[] }) {
 
         return (
           <div key={item.pergunta} className="border-t border-[var(--l-line)]">
-            <button
+            {/* Todo o resto desta peça já responde ao mouse com mola — só
+                faltava o toque. No celular, onde o hover nunca dispara, abrir
+                uma pergunta não dava resposta nenhuma sob o dedo. */}
+            <motion.button
               id={idBotao}
               type="button"
               aria-expanded={ativa}
@@ -44,6 +47,8 @@ export function FaqAccordion({ itens }: { itens: Pergunta[] }) {
               onClick={() => setAberta(ativa ? null : i)}
               onMouseEnter={() => setSobre(i)}
               onMouseLeave={() => setSobre(null)}
+              whileTap={semMovimento ? undefined : { scale: 0.99 }}
+              transition={{ duration: 0.16, ease: [0.23, 1, 0.32, 1] }}
               className="group relative w-full cursor-pointer text-left"
             >
               <div className="flex items-center gap-5 py-7 sm:gap-7">
@@ -106,7 +111,7 @@ export function FaqAccordion({ itens }: { itens: Pergunta[] }) {
                 animate={{ scaleX: ativa ? 1 : emFoco ? 0.28 : 0 }}
                 transition={semMovimento ? { duration: 0 } : MOLA}
               />
-            </button>
+            </motion.button>
 
             <AnimatePresence initial={false}>
               {ativa && (

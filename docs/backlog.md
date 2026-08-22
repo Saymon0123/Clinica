@@ -862,3 +862,71 @@ velho é decidir com informação errada.
 
 Sobra de v2, de verdade: **tom de voz configurável** e **aviso de estado
 emocional do cliente ao escalar**. Nenhum dos dois tem tabela nem código.
+
+
+## Primeira conversa real pela Cloud API — 2026-08-22, madrugada
+
+**O marco:** cliente → Meta → edge function → n8n → agente → resposta, com
+número real (`+55 41 98475-4172`, `phone_number_id` `1288009817732005`, WABA
+Club Cut `975811062135581`). Sem Evolution em nenhum ponto do caminho.
+
+O teste destravou depois de inscrever a WABA pela Graph API
+(`POST /975811062135581/subscribed_apps`) — o toggle "Assinar webhooks" do
+painel não gravava e voltava sozinho, pela **terceira** vez que aquela tela
+falha calada.
+
+### O defeito de raiz que o teste revelou
+
+`Converge Texto Final` é o **hub de contexto de todo o fluxo**: nove das dez
+ferramentas do agente e o nó de envio leem `salon_id`, `phone_number_id` e
+`contact_phone` dele.
+
+Ele era um Set vazio com `includeOtherFields`, ou seja, só repassava o que
+chegasse. No caminho de **texto** o payload sobrevive; no de **áudio e imagem**
+o item vira a resposta da OpenAI, e todo o contexto se perde.
+
+Consequências observadas em produção, todas na mesma execução (9140):
+
+1. As dez ferramentas do agente falharam com
+   `invalid input syntax for type uuid: "undefined"` — **oito vezes em
+   looping**, o que explica os 40 segundos de execução.
+2. **O agente inventou dois barbeiros (Rafael e Bruno) e quatro horários.** A
+   El Guardians tem um profissional cadastrado. Sem conseguir ler o banco, ele
+   parafraseou o que sabe de barbearias em geral e ofereceu ao cliente. É
+   exatamente o defeito que as regras de `auditoria_do_agente` existem para
+   pegar.
+3. O envio saiu com `phoneNumberId` e destinatário indefinidos e falhou — mas
+   como o nó tinha `onError: continueRegularOutput`, a execução ficou **verde**,
+   a mensagem entrou em `whatsapp_messages` como enviada, e o cliente nunca
+   recebeu. O histórico passou a conter uma mensagem que não existiu.
+
+**Corrigido:** `Converge Texto Final` agora reanexa explicitamente todo o
+payload de `Extrair Salon ID`, que roda antes da bifurcação e sempre tem os
+dados. E os dois nós de envio passaram de `continueRegularOutput` para
+`stopWorkflow` — falha de envio precisa aparecer como erro, não virar histórico
+falso.
+
+### Ainda por testar (2026-08-22)
+
+Nada disso foi verificado depois da correção. Testar **os quatro caminhos**,
+porque o sucesso do texto escondeu metade do fluxo:
+
+1. Texto, primeira mensagem (cria conversa)
+2. Texto, segunda mensagem (ramo "conversa existe" — estava morto)
+3. Áudio
+4. Imagem
+
+### Duas credenciais quebradas, consertadas pelo dono
+
+- `Authorization` (Header Auth): campo **Name** tinha `Meta Graph API`. Nome de
+  cabeçalho não pode ter espaço.
+- `Header Auth account` (OpenAI): campo **Name** vazio, então a chave ia sem
+  cabeçalho e a OpenAI devolvia 401.
+
+**Atenção:** existem **duas credenciais chamadas "Authorization"** — uma Header
+Auth (`OZEs5UkyhiYZkkan`) e uma SMTP (`Ozsdd8R9j8L9vUJO`), e os IDs se parecem.
+Renomear a de SMTP evita perder tempo editando a errada, como já aconteceu.
+
+**Vale considerar:** trocar os `httpRequest` de transcrição e visão pelos nós
+nativos da OpenAI. Três credenciais de cabeçalho montadas à mão, duas quebradas
+— o nó nativo elimina a classe de erro.

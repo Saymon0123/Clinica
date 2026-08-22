@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { X } from 'lucide-react'
+import { Send, X } from 'lucide-react'
 import { WhatsAppGlyph } from '../../../components/icons/WhatsAppGlyph'
 import { useCtaInlineVisivel } from './useCtaInlineVisivel'
 
@@ -257,14 +257,30 @@ export function WhatsAppPopup() {
                 placeholder={AGENTE_URL ? 'Escreva sua dúvida...' : 'Em breve'}
                 className="min-w-0 flex-1 rounded-full bg-white/[0.06] px-3.5 py-2.5 text-[13px] text-white placeholder:text-white/40 outline-none focus:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
               />
-              <button
+              {/*
+                Avião de papel, e não o glifo do WhatsApp.
+
+                O ícone do WhatsApp aqui prometia a ação errada: num campo de
+                mensagem ele lê como "abrir o WhatsApp", e não é isso que o
+                botão faz — a conversa acontece nesta página, com a Aurora. O
+                avião é o símbolo que todo aplicativo de mensagem usa para
+                "mandar esta mensagem", então não precisa ser aprendido.
+
+                O verde do WhatsApp fica, porque a identidade da peça é essa;
+                o que muda é só a ação que o ícone anuncia.
+              */}
+              <motion.button
                 type="submit"
                 disabled={!AGENTE_URL || !rascunho.trim() || enviando}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white transition-[opacity,transform] duration-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
-                aria-label="Enviar"
+                whileTap={semMovimento ? undefined : { scale: 0.94 }}
+                transition={{ duration: 0.16, ease: [0.23, 1, 0.32, 1] }}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white transition-[opacity,background-color] duration-200 hover:bg-[#1fb959] disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Enviar mensagem"
               >
-                <WhatsAppGlyph className="h-4 w-4" />
-              </button>
+                {/* `translate-x-px` porque o avião do lucide tem o peso visual
+                    à esquerda: centralizado na matemática, ele parece torto. */}
+                <Send className="h-4 w-4 translate-x-px" />
+              </motion.button>
             </form>
           </motion.div>
         )}

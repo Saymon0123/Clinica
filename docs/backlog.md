@@ -781,14 +781,26 @@ razão para pagar pedágio da Meta nem para caber em 1024 caracteres.
 O banco já está correto: `canal_de_alertas_conferido` devolve
 `e_de_cliente = false`.
 
-**Falta, e nesta ordem:**
+**FECHADO em 2026-08-21.** Credencial SMTP criada, e os dois fluxos
+(`Auditoria do Agente` e `Feedback dos Donos`) trocados para `emailSend` e
+publicados. Testado com envio real: execução 9046, Gmail devolveu
+`250 2.0.0 OK` com `accepted: [castrocollin01@gmail.com]`, e o achado foi
+marcado como avisado.
 
-1. **n8n (você):** criar uma credencial SMTP. Sem ela não dá para trocar os
-   nós — e trocar sem credencial quebraria alertas que hoje funcionam.
-2. **n8n (eu):** trocar o nó de envio de `CRM Salao - Auditoria do Agente` e
-   `CRM Salao - Feedback dos Donos` por `emailSend`, lendo `email` de
-   `canal_de_alertas`.
+Duas melhorias que o canal novo trouxe de graça:
 
-**Até o passo 2, os alertas continuam saindo pela instância da Curitiba.** O
-banco diz e-mail, os fluxos ainda não sabem — o defeito descrito na 0090 segue
-vivo na prática até os nós serem trocados.
+- **O limite de 8 achados por relatório sumiu.** Ele existia porque mensagem de
+  WhatsApp não aguenta relatório longo, e foi a origem de um defeito real (por
+  um tempo mostrava 8 e marcava todos, e do nono em diante o achado sumia sem
+  nunca ter sido lido). Hoje todo achado aparece e todo achado é marcado.
+- **`Montar Aviso` do feedback virou código com escape de HTML.** Era um nó Set
+  montando markdown de WhatsApp; `mensagem` é texto livre escrito pelo dono da
+  barbearia, e ia direto para o corpo.
+
+O remetente ficou fixo (`Club Cut <castrocollin01@gmail.com>`) e o destinatário
+vem de `canal_de_alertas.email`. O Gmail exige que o From seja a conta
+autenticada no SMTP — se ele viesse do banco, mudar o destino quebraria o envio
+justamente quando alguém tentasse melhorar a configuração.
+
+**Ainda na Evolution:** o envio dos lembretes, o `Aviso de Fim de Teste` e a
+`Política de Atraso` (desligada).

@@ -597,6 +597,16 @@ Se for tentar de novo, espaçar os testes (o rate-limit de rajada da
 OpenRouter — provavelmente por minuto — trava rápido em sequência de
 testes, mesmo com o total do dia bem abaixo de qualquer cota diária).
 
+### Agente do popup ganhou identidade: Aurora (2026-08-22)
+
+Nome derivado da marca "Aura", que já assina o rodapé ("CRIADO PELA AURA")
+e o programa de reconhecimento das barbearias — reaproveita o que já existe
+em vez de inventar identidade nova. Aparece no cabeçalho do painel
+(`WhatsAppPopup.tsx`), na saudação, e no `systemMessage` do agente no n8n
+(se souber, apresenta-se como Aurora; sem enfeitar com história de origem
+inventada). Testado em produção: pergunta "quem é você?" volta "Sou a
+Aurora, do Club Cut. Em que posso ajudar?". Republicado.
+
 ## Marca do Club Cut (2026-08-19)
 
 A marca virou componente único em `src/components/MarcaClubCut.tsx`, usado em

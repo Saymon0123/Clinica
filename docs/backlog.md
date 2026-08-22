@@ -489,7 +489,8 @@ O workflow do agente já existe no n8n: **"Landing - Agente de Tira-Dúvidas
 (Popup)"** (`j2g3tdLZTlvs8sdP`) — webhook `POST /webhook/popup-agente-ia`,
 limite de 8 perguntas por sessão por dia (tabela `popup_ia_limite_diario`,
 via n8n Data Table, zero custo), modelo OpenRouter `:free`
-(`meta-llama/llama-3.3-70b-instruct:free` no momento da criação), prompt com
+(`nvidia/nemotron-3-ultra-550b-a55b:free`, confirmado `$0` de entrada e
+saída via openrouter.ai/api/v1/models em 2026-08-22), prompt com
 só fatos reais do produto (preço R$0,85/agendamento, sem mensalidade, sem
 setup, teste de 14 dias, lembretes, confirmação, "Aura") e instrução
 explícita de nunca inventar número ou recurso.
@@ -499,7 +500,7 @@ explícita de nunca inventar número ou recurso.
 1. **n8n**: criar a credencial "OpenRouter" no workflow (chave grátis em
    openrouter.ai/keys) e **publicar** o workflow (rascunho não roda sozinho —
    ver o item logo acima neste arquivo). Antes de publicar, conferir se
-   `meta-llama/llama-3.3-70b-instruct:free` ainda existe em
+   `nvidia/nemotron-3-ultra-550b-a55b:free` ainda existe em
    openrouter.ai/models — modelo `:free` sai de catálogo sem aviso.
 2. **Vercel**: variável `VITE_AGENTE_IA_URL` com a URL de produção do
    webhook (`https://n8n-m5uf.srv1833354.hstgr.cloud/webhook/popup-agente-ia`)

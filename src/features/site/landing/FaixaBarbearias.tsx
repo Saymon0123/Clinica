@@ -153,16 +153,22 @@ export function FaixaBarbearias() {
 }
 
 /**
- * Logo em `grayscale`, volta à cor no hover/foco da faixa inteira — o mesmo
- * tratamento que qualquer "as-featured-in" usa para a marca não competir com
- * o herói.
+ * Logo em `grayscale`, que volta à cor no hover **dele**, não no da faixa.
+ *
+ * Antes a cor era devolvida por `group-hover` da faixa inteira: passar o mouse
+ * em uma logo acendia as sete ao mesmo tempo, o que anulava justamente o gesto
+ * de apontar para uma. Agora cada uma responde por si — e a faixa continua
+ * pausando no hover do grupo, que é outra coisa e continua certa.
+ *
+ * Os estilos moram em `index.css` (`.faixa-logo`) porque envolvem `transform`
+ * com guarda de movimento; ver a nota lá.
  */
 function ItemLogo({ item }: { item: ItemFaixa }) {
   return (
     <img
       src={item.logo}
       alt={item.ondeE}
-      className="h-16 w-auto shrink-0 opacity-70 grayscale transition-[opacity,filter] duration-300 group-hover:opacity-100 group-hover:grayscale-0"
+      className="faixa-logo h-16 w-auto shrink-0"
       loading="lazy"
       decoding="async"
     />

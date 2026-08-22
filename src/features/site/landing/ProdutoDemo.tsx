@@ -162,14 +162,27 @@ const CLIENTES = [
 ]
 
 function Clientes() {
+  const semMovimento = useReducedMotion()
   return (
     <div className="card h-full rounded-[var(--r-md)] p-6 sm:p-9">
       <div className="landing-label text-[var(--l-fg-mute)]">Quem já cortou com você</div>
 
       <div className="mt-7 flex flex-col gap-2.5">
-        {CLIENTES.map((c) => (
-          <div
+        {CLIENTES.map((c, i) => (
+          /*
+            Mesma cascata da `Agenda`, que fica colada nesta lista: lá as
+            linhas entram escalonadas e aqui apareciam todas de uma vez, o que
+            fazia o painel parecer menos vivo que o vizinho na mesma tela.
+
+            Sem `useInView` aqui de propósito — este painel monta quando a aba
+            é clicada, não quando entra na tela, então a entrada da montagem já
+            é o momento certo.
+          */
+          <motion.div
             key={c.nome}
+            initial={semMovimento ? { opacity: 0 } : { opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.42, delay: i * 0.07, ease: [0.23, 1, 0.32, 1] }}
             className="flex items-center justify-between gap-3 border-b border-[var(--l-line)] pb-2.5 last:border-0"
           >
             <span className="min-w-0">
@@ -181,7 +194,7 @@ function Clientes() {
             <span className="landing-num shrink-0 text-[13px] text-[var(--l-fg-mute)]">
               {c.cortes} cortes
             </span>
-          </div>
+          </motion.div>
         ))}
       </div>
     </div>
@@ -215,7 +228,10 @@ export function ProdutoDemo() {
             usuário de teclado esperam de abas. */}
         <div role="tablist" aria-label="O que a agenda alimenta" className="flex gap-2">
           {ABAS.map((a, i) => (
-            <button
+            /* `whileTap` porque no celular não existe hover: sem ele, o
+               controle mais clicado desta seção não dava resposta nenhuma ao
+               dedo — o painel simplesmente trocava. */
+            <motion.button
               key={a.id}
               role="tab"
               type="button"
@@ -228,6 +244,8 @@ export function ProdutoDemo() {
                 if (e.key === 'ArrowRight') setAba((n) => (n + 1) % ABAS.length)
                 if (e.key === 'ArrowLeft') setAba((n) => (n - 1 + ABAS.length) % ABAS.length)
               }}
+              whileTap={semMovimento ? undefined : { scale: 0.96 }}
+              transition={{ duration: 0.16, ease: [0.23, 1, 0.32, 1] }}
               className={`landing-label inline-flex min-h-[44px] items-center rounded-full px-4 transition-colors duration-200 ${
                 aba === i
                   ? 'bg-[var(--l-accent-pale)] text-[var(--l-accent-ink)]'
@@ -235,7 +253,7 @@ export function ProdutoDemo() {
               }`}
             >
               {a.rotulo}
-            </button>
+            </motion.button>
           ))}
         </div>
 

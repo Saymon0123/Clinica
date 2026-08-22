@@ -487,13 +487,18 @@ Continua coordenado com o `CtaFixo` pela variável CSS `--cta-fixo-h` e por
 
 O workflow do agente já existe no n8n: **"Landing - Agente de Tira-Dúvidas
 (Popup)"** (`j2g3tdLZTlvs8sdP`) — webhook `POST /webhook/popup-agente-ia`,
-limite de 8 perguntas por sessão por dia (tabela `popup_ia_limite_diario`,
+limite de 30 perguntas por sessão por dia (tabela `popup_ia_limite_diario`,
 via n8n Data Table, zero custo), modelo OpenRouter `:free`
 (`nvidia/nemotron-3-ultra-550b-a55b:free`, confirmado `$0` de entrada e
 saída via openrouter.ai/api/v1/models em 2026-08-22), prompt com
 só fatos reais do produto (preço R$0,85/agendamento, sem mensalidade, sem
 setup, teste de 14 dias, lembretes, confirmação, "Aura") e instrução
 explícita de nunca inventar número ou recurso.
+
+**Limite subiu de 8 para 30/sessão/dia** (2026-08-22, mesmo dia dos testes
+reais): 8 era baixo demais e travou a própria sessão de teste no meio de uma
+conversa real. Como o modelo é `:free` (custo zero), 30 continua seguro
+contra abuso sem incomodar quem está de fato conversando.
 
 **Feito em 2026-08-22:** credencial "OpenRouter" criada e conectada ao nó do
 modelo, workflow testado (execução `9148`, resposta correta e sem dado

@@ -630,6 +630,29 @@ problema não é só o limite de tokens, e a alternativa é achar um modelo
 `:free` que não seja "reasoning model" por padrão (nenhum dos testados até
 agora se qualificou, ver item acima).
 
+### ⚠️ Aviso no Telegram falhando silenciosamente, corrigido (2026-08-22)
+
+Achado revisando a execução real (`9240`) do item acima: o agente confirmou
+"pedido registrado" pro usuário, mas o Telegram nunca chegou. A ferramenta
+`Salvar Pedido de Humano` funcionou (linha gravada na tabela), mas
+`Avisar no Telegram` **falhou** com `400 - can't parse entities: Can't find
+end of the entity starting at byte offset 151` — o node usa `parse_mode`
+HTML por padrão, e algum caractere no texto interpolado (pergunta/contato
+vindos do `$fromAI`) quebrou o parser de entidades do Telegram. Como o erro
+do tool acontece **dentro** do agente, ele segue e responde como se tivesse
+dado certo — daí a resposta "registrado" sem o aviso real ter saído.
+
+**Corrigido**: `parse_mode` do node zerado explicitamente
+(`={{ '' }}`, formato que o validador aceitou — string vazia direta gerava
+aviso de validação). Testado reproduzindo o cenário (execução `9243`):
+Telegram recebeu a mensagem com sucesso (`ok:true`). Confirmado em
+produção. Republicado.
+
+**Lição:** um erro dentro de uma tool call não necessariamente aparece pro
+usuário nem falha a execução do agente — ele pode responder como se tivesse
+dado certo mesmo com uma das duas ferramentas falhando. Vale conferir a
+execução real no n8n (não só a resposta do chat) quando o aviso não chegar.
+
 ## Marca do Club Cut (2026-08-19)
 
 A marca virou componente único em `src/components/MarcaClubCut.tsx`, usado em

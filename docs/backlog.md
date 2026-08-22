@@ -597,6 +597,46 @@ Se for tentar de novo, espaçar os testes (o rate-limit de rajada da
 OpenRouter — provavelmente por minuto — trava rápido em sequência de
 testes, mesmo com o total do dia bem abaixo de qualquer cota diária).
 
+### ⚠️ O agente tem teto de ~50 atendimentos por DIA, na conta inteira (2026-08-22)
+
+Mensagem exata da OpenRouter, capturada na execução `9492`:
+
+> `Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000
+> free model requests per day`
+
+O teto **não é por sessão nem por visitante** — é da conta, somando todo
+mundo que usar o popup no dia. A trava de 30/sessão/dia da tabela
+`popup_ia_limite_diario` protege contra uma pessoa sozinha abusar, mas não
+protege contra o volume somado: ~50 mensagens no dia inteiro e o agente para
+para todos os visitantes seguintes até virar o dia.
+
+**Decisão (do usuário, 2026-08-22): ficar no grátis mesmo assim.** O custo
+contínuo segue zero e o teto serve para a fase atual de testes. A alternativa
+registrada, se um dia o volume justificar: um depósito único de US$ 10 na
+OpenRouter sobe o teto para 1000/dia e **não é consumido** — modelos `:free`
+continuam custando $0; basta existir crédito na conta.
+
+**O que foi feito para a falha não mentir.** Antes, cota estourada derrubava
+a execução, o webhook devolvia 500 e o site mostrava *"Não consegui responder
+agora. Tenta de novo em instantes"* — mandando a pessoa repetir uma ação que
+não ia funcionar por horas. Agora o nó do agente usa
+`onError: continueErrorOutput`, e a saída de erro vai para **"Responder
+Indisponível"**, que devolve 200 com o motivo real:
+
+> "Foi mal — bati o limite de atendimentos automáticos de hoje. Não é você, é
+> cota minha mesmo, e ela só volta amanhã. Enquanto isso, a seção de Dúvidas
+> aqui do site cobre a maioria das perguntas."
+
+Confirmado em produção com a cota de fato estourada: HTTP 200 e a mensagem
+acima, em vez do 500. A mensagem genérica do front (`MENSAGEM_ERRO` em
+`WhatsAppPopup.tsx`) continua existindo, mas agora como último recurso para
+falha de rede de verdade — que é o único caso em que "tenta de novo" é um
+conselho honesto.
+
+**Efeito colateral conhecido, não corrigido:** `Atualizar Contagem` roda
+antes do agente, então uma pergunta que morre na cota ainda consome 1 das 30
+da sessão da pessoa. Injusto, mas pequeno perto de reordenar o fluxo.
+
 ### Agente do popup ganhou identidade: Aurora (2026-08-22)
 
 Nome derivado da marca "Aura", que já assina o rodapé ("CRIADO PELA AURA")

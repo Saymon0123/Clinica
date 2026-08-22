@@ -514,6 +514,33 @@ frase direta em vez de inventar. Testado com objeção real
 ("já uso caderno, pra que trocar?") e voltou reconhecendo o ponto antes do
 fato — sem inventar nada. Republicado.
 
+**Escalonamento para humano, com aviso automático** (mesmo dia): quando a
+pessoa pede pra falar com alguém, parece frustrada, ou a dúvida é específica
+demais, o agente pergunta o contato (WhatsApp/e-mail), e ao receber chama
+duas ferramentas — `Salvar Pedido de Humano` (grava na tabela
+`popup_pedidos_humano`: `session_id`, `pergunta`, `contato`) e
+`Avisar no Telegram` (manda a mesma informação pro bot Telegram do dono, em
+tempo real). Nunca promete prazo que não existe. Testado ponta a ponta
+(execução `9176`): o agente reconheceu o pedido, salvou o contato, mandou a
+mensagem real no Telegram, e confirmou pra pessoa sem inventar prazo.
+Republicado.
+
+Credencial "Telegram account" criada e conectada. Durante a montagem, uma
+edição manual no editor do n8n resetou por baixo dos panos o `model` do nó
+OpenRouter e o `resource`/`operation` dos dois nós de ferramenta, e a
+`sessionKey` da memória perdeu o prefixo `=` de expressão (o que teria
+quebrado o isolamento de sessão entre visitantes diferentes — todo mundo
+cairia na mesma "conversa"). Tudo corrigido antes de publicar. **Lição:**
+depois de qualquer edição manual no editor, reler o workflow via API antes
+de publicar — o editor pode reescrever campos silenciosamente.
+
+**Objeções cobertas no prompt hoje:** preço, "já uso caderno/agenda", "já
+uso WhatsApp comum", desconfiança de automação, "parece complicado",
+"sou só eu, não preciso", "e se travar no meio de um agendamento", fadiga
+de concorrente (Trinks/AppBarber), segurança/LGPD (resposta restrita ao que
+é verificável — isolamento por barbearia no Supabase — sem citar
+certificação nenhuma que não existe), e pedido de humano.
+
 **Só falta a Vercel**, fora do repositório:
 
 1. **Vercel**: variável `VITE_AGENTE_IA_URL` =

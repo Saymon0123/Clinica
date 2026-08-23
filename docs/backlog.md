@@ -930,3 +930,61 @@ Renomear a de SMTP evita perder tempo editando a errada, como já aconteceu.
 **Vale considerar:** trocar os `httpRequest` de transcrição e visão pelos nós
 nativos da OpenAI. Três credenciais de cabeçalho montadas à mão, duas quebradas
 — o nó nativo elimina a classe de erro.
+
+
+## O agente ofereceu e agendou com barbeiro inexistente — 2026-08-23
+
+Em produção, na El Guardians (**um** profissional cadastrado: Saymon Castro
+Collin), o agente ofereceu quatro horários com **"Rafael" e "Bruno"** e fechou
+um agendamento dizendo *"às 14:00 com o Rafael"*.
+
+**O banco ficou certo:** o agendamento foi criado com o profissional real. O que
+era falso era só o texto — o que é pior de detectar, porque nada quebra.
+
+### Três defeitos somados
+
+**1. O contexto dizia que havia quatro barbeiros.**
+`Barbeiros para Contexto` roda uma vez por item de entrada, e a entrada eram os
+4 serviços do catálogo — então devolvia o mesmo profissional 4 vezes:
+
+```
+"barbeiros": "Saymon Castro Collin | Saymon Castro Collin | Saymon Castro Collin | Saymon Castro Collin"
+```
+
+O agente lê uma lista de quatro e conclui que há quatro pessoas. **Corrigido**
+com `executeOnce`.
+
+**2. A trava anti-invenção tinha um buraco escrito no código.**
+`Formatar para WhatsApp` remove linha que cita serviço inexistente, mas tinha:
+
+```js
+// Linha com horario e listagem de barbeiro ou de encaixe, nao de servico.
+if (/\d{1,2}:\d{2}/.test(item)) return true
+```
+
+**Qualquer linha com hora passava sem conferência.** A trava foi escrita só para
+serviço e assumiu que hora era segura. `• 14:00 com Rafael` tem hora, logo
+passou. Pior: o regex de "é item de lista" só aceitava letra depois do marcador,
+então linha começando com dígito nem chegava a ser examinada.
+
+**Corrigido:** linha com hora que nomeia alguém depois de `com` só passa se o
+nome existir na lista de barbeiros. Hora sem nome continua passando.
+
+**3. A alucinação virou memória permanente.**
+A mensagem falsa de 22/08 ficou em `whatsapp_messages` e `Montar Histórico` a
+devolve ao agente como fala dele próprio. Na execução 9926 ele **nem chamou as
+ferramentas** — leu a resposta antiga e repetiu.
+
+**NÃO corrigido.** Enquanto essas linhas estiverem no histórico, o agente tende
+a repeti-las mesmo com as travas novas.
+
+### O que isso ensina sobre o desenho
+
+As travas de conteúdo moram no código (`Formatar para WhatsApp`) e cobrem uma
+categoria por vez — serviço, agora barbeiro. Cada categoria nova de dado que o
+agente pode citar (preço, endereço, horário de funcionamento) é um buraco em
+aberto até alguém escrever a regra.
+
+Vale considerar inverter: em vez de remover o que não casa, **só deixar passar
+lista montada a partir de dado do banco**. É mudança grande e não cabe num
+remendo, mas o padrão atual já falhou duas vezes por motivos diferentes.

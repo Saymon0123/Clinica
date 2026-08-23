@@ -1028,3 +1028,55 @@ testes seguem pelo outro número.
 "Samuel" com `554187275895` — um com DDI, outro sem. Não quebrou nada porque as
 views casam pelos últimos 8 dígitos, mas isso é contorno, não solução.
 Padronizar na criação do cliente pelo agente.
+
+
+## Evolution fora dos fluxos — 2026-08-23
+
+Os três últimos fluxos que mandavam pela Evolution passaram para o nó nativo do
+WhatsApp com `sendTemplate`. **Nenhum fluxo do n8n fala com a Evolution agora.**
+
+| Fluxo | O que mudou | Estado |
+|---|---|---|
+| `Aviso de Fim de Teste` | `httpRequest` → `sendTemplate` | publicado, ativo |
+| `Política de Atraso` | `httpRequest` → `sendTemplate` | **salvo, NÃO publicado** — continua desligado de propósito |
+| `Lembretes` | envio, conexão e gravação do wamid | publicado, ativo |
+
+Migration 0093: `atrasos_para_perguntar` e `vencimentos_a_avisar` passam a
+devolver `template`, `template_idioma` e `template_parametros`, como a
+reativação já fazia.
+
+### Ficam prontos e parados, e isso é o desenho
+
+As duas views fazem **join** com `whatsapp_templates` filtrando
+`status = 'aprovado'`. Enquanto a Meta não aprovar, elas vêm vazias e os fluxos
+não têm o que enviar. O lembrete tem a mesma trava num nó próprio
+(`Buscar Template Aprovado` → `Template Aprovado?`), e quando não encontra
+**não marca `lembrete_enviado`** — no dia da aprovação o próximo ciclo pega.
+
+Conferido depois de aplicar: as cinco views de disparo devolvem 0 linhas, e
+`templates_com_parametros_errados` continua vazia.
+
+### O nó novo mais importante
+
+`Guardar wamid do Lembrete`, no fluxo de lembretes. A RPC `responder_lembrete`
+casa o clique do cliente pelo `context.id` do webhook contra
+`appointments.lembrete_message_id`. **Sem esse nó, o botão "Sim, confirmo" não
+é reconhecido** e a resposta cai no agente como conversa solta — ou seja, os
+três botões existiriam e não fariam nada.
+
+Roda depois do envio porque o wamid só existe na resposta da Meta. A proteção
+contra reenvio continua sendo `Marcar lembrete_enviado`, que roda antes.
+
+### O que sobra da Evolution
+
+Nada mais no n8n. Continuam existindo, sem uso pelos fluxos:
+
+- edge function `whatsapp` (connect/status/disconnect) — **ainda chamada pela
+  tela `/conexao` do CRM**, confirmado em log de produção
+- `_shared/instanceName.ts`, `_shared/evolutionConfig.json`, `scripts/evolution-*.mjs`
+- credencial `Evolution API - CRM Salão` no n8n
+- coluna `instance_name`, ainda exposta pelas views para o caso de alguma
+  barbearia voltar à Evolution
+
+Desligar a Evolution agora só quebraria a tela `/conexao` — que já está mentindo
+de qualquer forma.

@@ -1114,3 +1114,20 @@ Três defeitos caíram juntos:
 Edge function v22 no ar; tela com os dois modos. **Teste manual pendente:** usar
 o convite da El Guardians com `samuel21almeiida@gmail.com` (a órfã) — deve
 pedir a senha existente e vincular.
+
+
+## Funcoes SECURITY DEFINER estavam executaveis por anon — CORRIGIDO 2026-08-23
+
+`revoke ... from anon, authenticated` não fecha nada: toda função nasce com
+EXECUTE concedido a PUBLIC, e anon herda de PUBLIC. As migrations 0084, 0086 e
+0094 fizeram exatamente esse revoke acreditando ter restringido. O advisor do
+Supabase mostrou as cinco executáveis sem login via `/rest/v1/rpc`:
+
+- `user_id_por_email` — oráculo de quais e-mails têm conta;
+- `responder_lembrete` — confirmar/cancelar agendamento alheio com o wamid;
+- `trocar_horarios` — trocar horários de QUALQUER barbearia (definer ignora RLS);
+- `salon_por_phone_number_id`, `horarios_livres` — leitura.
+
+Migration 0095 revoga de `public, anon, authenticated` nas cinco; só
+service_role executa (conferido com `has_function_privilege`). **Regra nova:**
+função definer revoga de PUBLIC primeiro, e o grant é explícito e pontual.

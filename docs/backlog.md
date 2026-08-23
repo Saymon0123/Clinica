@@ -1080,3 +1080,37 @@ Nada mais no n8n. Continuam existindo, sem uso pelos fluxos:
 
 Desligar a Evolution agora só quebraria a tela `/conexao` — que já está mentindo
 de qualquer forma.
+
+
+## Convite aceita quem já tem conta — 2026-08-23
+
+Convidar um e-mail que já tinha login devolvia *"Já existe uma conta com esse
+e-mail. Peça ao dono para trocar o e-mail"* — ou seja, pedia à pessoa um e-mail
+falso para poder trabalhar. Barbeiro em duas barbearias é comum no ramo, o
+schema (`user_salons`) sempre permitiu, e a produção já tinha um dono com duas
+unidades; só o fluxo de convite proibia.
+
+**Agora são dois caminhos:** conta nova cria senha como sempre; conta existente
+**entra com a senha que já possui** e só ganha o vínculo novo. A senha é a prova
+de posse do e-mail — sem ela, um dono que digitasse o e-mail de um terceiro o
+colocaria numa equipe sem consentimento, e o fluxo antigo ainda deixaria quem
+abrisse o link definir senha nova na conta alheia.
+
+Três defeitos caíram juntos:
+
+1. **`listUsers()` sem paginação** — a verificação funcionava com 5 contas e
+   quebraria em silêncio a partir de 50. Virou a RPC `user_id_por_email`
+   (migration 0094), consulta por índice, só para service_role — expô-la a
+   usuários logados viraria um oráculo de quais e-mails têm conta.
+2. **Conta órfã bloqueava o e-mail para sempre** — `samuel21almeiida@` existia
+   no auth sem barbearia nenhuma, invisível em qualquer tela. No fluxo novo ela
+   se resolve sozinha: a pessoa entra com a senha e ganha o vínculo.
+3. **O rollback apagava demais** — o catch fazia `deleteUser` incondicional.
+   Se falhasse no meio do vínculo de uma conta PRÉ-EXISTENTE, apagaria um login
+   com vínculos em outras barbearias. Agora só conta criada agora é desfeita
+   inteira; conta antiga tem desfeitos apenas o profissional e o vínculo deste
+   aceite.
+
+Edge function v22 no ar; tela com os dois modos. **Teste manual pendente:** usar
+o convite da El Guardians com `samuel21almeiida@gmail.com` (a órfã) — deve
+pedir a senha existente e vincular.

@@ -1131,3 +1131,48 @@ Supabase mostrou as cinco executáveis sem login via `/rest/v1/rpc`:
 Migration 0095 revoga de `public, anon, authenticated` nas cinco; só
 service_role executa (conferido com `has_function_privilege`). **Regra nova:**
 função definer revoga de PUBLIC primeiro, e o grant é explícito e pontual.
+
+
+## Rede de barbearias — fase 1 entregue em 2026-08-23
+
+**Decisão de desenho:** rede não é um cadastro, é uma promoção. Todo mundo entra
+criando a primeira barbearia; a rede nasce no primeiro "Adicionar unidade". Não
+há (nem haverá) funil "cadastre sua rede" na landing — dono de barbearia não se
+apresenta como rede, ele abre a segunda loja.
+
+**O que já existia** (mais do que o backlog dizia): `organizations`, seletor de
+unidade no `SalonContext`, painel `/rede` com comparativo, `add-salon-unit`,
+`RequireNetworkOwner`, e uma rede real de teste (El Guardian: Curitiba + SJP).
+O que faltava era **como uma rede passa a existir** — nada criava
+`organizations`; a única nasceu por SQL.
+
+**Feito:**
+
+- `add-salon-unit` (v18) recebe `salonId` de origem em vez de `organizationId`.
+  Origem sem organização → cria a organização com o nome da barbearia, anexa a
+  origem, e só então cria a unidade. O dono nunca vê "organização".
+- **A unidade nasce com assinatura** (herda o plano da origem, 7 dias de
+  teste). Antes não nascia — e unidade sem `subscriptions` some de
+  `salons_com_automacao` e abre `/assinatura` como "cadastrada antes do
+  controle". Buraco achado lendo a função.
+- Horário de funcionamento herdado da origem; catálogo copiado por padrão.
+- `NovaUnidadeModal` extraído da RedePage para arquivo próprio, com dois donos:
+  aba Rede e **Configurações → seção Unidades**, visível para toda barbearia
+  cujo usuário é dono. É ali que a avulsa encontra o botão.
+- Após criar: recarrega unidades (liga `isNetwork`, aparece seletor e aba
+  Rede), entra na unidade nova.
+
+**Fases seguintes (não feitas):**
+
+- Fase 2 — cobrança: `/assinatura` mostrar todas as unidades e o total; desconto
+  de rede; decidir um cartão para tudo (recomendado) vs fatura consolidada.
+- Fase 3 — landing: seção "Para redes" + FAQ de preço por unidade.
+- Fase 4 — papéis: gerente de rede que vê tudo sem ser dono. Hoje dono da rede =
+  owner em cada unidade, e serve.
+- WhatsApp por unidade: mesmo caminho da avulsa (número por unidade na WABA
+  Club Cut, 20 números com empresa verificada); Embedded Signup resolve os dois.
+
+**Teste manual pendente:** com `castrocollin01` (El Guardians, avulsa),
+Configurações → Adicionar unidade. Esperado: organização "El Guardians"
+criada, unidade nova com assinatura em trial, seletor de unidades e aba Rede
+aparecendo.

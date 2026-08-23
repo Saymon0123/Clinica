@@ -988,3 +988,43 @@ aberto até alguém escrever a regra.
 Vale considerar inverter: em vez de remover o que não casa, **só deixar passar
 lista montada a partir de dado do banco**. É mudança grande e não cabe num
 remendo, mas o padrão atual já falhou duas vezes por motivos diferentes.
+
+
+## Validado em produção pela Cloud API — 2026-08-23
+
+Testes com número real (`+55 41 98475-4172`), El Guardians, dois contatos
+diferentes. **Ciclo completo fechado por texto e por áudio.**
+
+| O quê | Evidência |
+|---|---|
+| Recebimento de texto | execuções 9926, 9928, 9942, 9943 |
+| Recebimento de áudio | 9937, 9938, 9941 |
+| Transcrição, com gíria | *"Deu de bola, belezinha?"* transcrito corretamente |
+| Contexto sobrevive ao desvio de mídia | `Converge Texto Final` devolvendo `salon_id` e `phone_number_id` na 9941 |
+| Cadastro de cliente novo | cliente "Samuel" criado pelo agente |
+| Agendamento | 24/08 14:00 (Manuel) e 24/08 16:30 (Samuel) |
+| **Detecção de conflito** | agente recusou 14:00 por estar ocupado e ofereceu alternativa, que o cliente aceitou |
+| Envio confirmado | `wamid` de retorno da Meta na 9941 |
+
+O teste de conflito é o mais valioso: não foi simulado. O horário estava ocupado
+por um agendamento criado noutra conversa, e o agente **nomeou o barbeiro real**
+(Saymon) ao recusar — numa conversa sem histórico envenenado.
+
+### Não testado
+
+- **Imagem.** `Baixar Imagem` usa a mesma credencial que foi consertada, então há
+  boa chance de funcionar, mas ninguém exercitou.
+- **Botões do lembrete.** Depende de template aprovado.
+
+### Aberto
+
+**Histórico envenenado na conversa do "Manuel"** (`a1e86b3c-...`): **cinco**
+mensagens do agente citando "Rafael", de 22 a 23/08, cada uma copiando a
+anterior. As travas novas impedem novas, mas não apagam as existentes. Decidido
+em 23/08 **não apagar por ora** — a conversa fica como espécime do defeito, e os
+testes seguem pelo outro número.
+
+**Telefone gravado sem padrão.** O cliente "Manuel" ficou com `41984729754` e o
+"Samuel" com `554187275895` — um com DDI, outro sem. Não quebrou nada porque as
+views casam pelos últimos 8 dígitos, mas isso é contorno, não solução.
+Padronizar na criação do cliente pelo agente.

@@ -1176,3 +1176,46 @@ O que faltava era **como uma rede passa a existir** — nada criava
 Configurações → Adicionar unidade. Esperado: organização "El Guardians"
 criada, unidade nova com assinatura em trial, seletor de unidades e aba Rede
 aparecendo.
+
+
+## Rede — fase 2: cobrança unificada — 2026-08-23
+
+**O modelo, como decidido:** cada barbearia continua gerando a própria cobrança
+(`subscriptions` por unidade segue sendo a verdade de plano/valor/acesso — e é
+nela que o modelo de preço novo, ainda por definir, vai mexer). O que a rede
+escolhe é só o **formato do boleto**: um por unidade (padrão) ou um único com a
+soma de todas.
+
+**Como funciona por dentro:**
+
+- `organizations` ganhou `cobranca_unificada`, `cpf_cnpj`, `asaas_customer_id`
+  e `asaas_subscription_id` (migration 0096). Sem policy de escrita para
+  authenticated de propósito: ligar a flag por update direto, sem cancelar as
+  recorrências por unidade no Asaas, cobraria a rede em dobro.
+- Ação `assinar-rede` na function `asaas` (v22): valida que quem pediu é dono
+  de TODAS as unidades, cancela as recorrências por unidade (antes de criar a
+  nova — a ordem inversa deixaria janela de cobrança dupla) e cria UMA
+  recorrência da rede com `externalReference: rede:<orgId>`, no valor da soma.
+- Ação `separar-rede`: cancela a recorrência da rede; cada unidade volta a
+  assinar sozinha; `acesso_ate` fica (o que foi pago continua valendo).
+- Webhook (v17): pagamento cuja subscription é a da rede (ou externalReference
+  `rede:`) estende `acesso_ate`/`atendimento_ate` de TODAS as unidades da
+  organização; atraso marca todas como atrasadas.
+- CRM: seção **Cobrança da rede** na `/assinatura` (`CobrancaDaRede.tsx`), só
+  para dono de 2+ unidades: lista as assinaturas, soma o total e oferece
+  unificar/separar. O CPF/CNPJ do pagante da rede é separado do por unidade
+  (rede paga pela matriz/holding).
+- Modal de unidade nova pergunta o **nome da rede** quando é a primeira — senão
+  a rede nasce com o nome da barbearia e não há tela para renomear.
+
+**Limitações conhecidas (aceitas por ora):**
+
+- Troca de plano de uma unidade sob cobrança unificada **não reajusta** o valor
+  da recorrência da rede automaticamente — o ajuste só acontece ao
+  separar/unificar de novo. Resolver quando o modelo de preço novo for definido.
+- Unidade criada depois da unificação não entra sozinha no boleto — mesma
+  janela de decisão.
+
+**Não testado em produção:** o ciclo completo unificar → boleto → webhook →
+todas liberadas. Precisa de uma rede com 2+ assinaturas reais; a El Guardians
+vira o cenário assim que o teste da fase 1 criar a segunda unidade.

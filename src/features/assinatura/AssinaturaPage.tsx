@@ -5,6 +5,7 @@ import { DadosDeCobranca } from './DadosDeCobranca'
 import { AcoesDaAssinatura } from './AcoesDaAssinatura'
 import { RecursosDoPlano } from './RecursosDoPlano'
 import { TrocarPlano } from './TrocarPlano'
+import { CobrancaDaRede } from './CobrancaDaRede'
 
 function moeda(valor: number) {
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -233,6 +234,10 @@ export function AssinaturaPage() {
           )}
         </>
       )}
+
+      {/* Some sozinho fora de rede: o componente devolve null quando o usuário
+          não é dono de duas ou mais unidades. */}
+      <CobrancaDaRede />
     </div>
   )
 }

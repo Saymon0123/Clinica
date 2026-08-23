@@ -180,6 +180,66 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // ----------------------------------------------------------------
+    // Cobranca unificada da REDE.
+    //
+    // Um pagamento so estende TODAS as unidades da organizacao. Resolvida
+    // antes do caminho por unidade porque a recorrencia da rede nao existe em
+    // `subscriptions` -- existe em `organizations` -- e o externalReference
+    // dela carrega o prefixo `rede:`.
+    // ----------------------------------------------------------------
+    {
+      const ref = pagamento?.externalReference as string | undefined
+      const orgPorRef = ref?.startsWith('rede:') ? ref.slice('rede:'.length) : null
+
+      let org: { id: string } | null = null
+      if (pagamento?.subscription) {
+        const { data } = await admin
+          .from('organizations')
+          .select('id')
+          .eq('asaas_subscription_id', pagamento.subscription)
+          .maybeSingle()
+        org = data
+      }
+      if (!org && orgPorRef) {
+        const { data } = await admin
+          .from('organizations')
+          .select('id')
+          .eq('id', orgPorRef)
+          .maybeSingle()
+        org = data
+      }
+
+      if (org) {
+        const { data: unidades } = await admin
+          .from('salons')
+          .select('id')
+          .eq('organization_id', org.id)
+        const ids = (unidades ?? []).map((u) => u.id)
+        if (ids.length === 0) return json({ ok: true, ignorado: 'rede sem unidades' })
+
+        if (ehPagamento) {
+          // Mesma regra do pagamento por unidade: o periodo vai do vencimento
+          // ate um mes depois, para quem paga atrasado nao ganhar o atraso.
+          const base = pagamento?.dueDate ?? new Date().toISOString().slice(0, 10)
+          const acessoAte = somarUmMes(base)
+          await admin
+            .from('subscriptions')
+            .update({
+              status: 'ativa',
+              acesso_ate: acessoAte,
+              atendimento_ate: somarDias(acessoAte, DIAS_DE_TOLERANCIA),
+              proximo_vencimento: acessoAte,
+            })
+            .in('salon_id', ids)
+          return json({ ok: true, aplicado: 'rede liberada', unidades: ids.length, acesso_ate: acessoAte })
+        }
+
+        await admin.from('subscriptions').update({ status: 'atrasada' }).in('salon_id', ids)
+        return json({ ok: true, aplicado: 'rede marcada como atrasada', unidades: ids.length })
+      }
+    }
+
     // A assinatura é encontrada pelo id do Asaas; o `externalReference` é a
     // rede de segurança para cobrança avulsa, criada fora da assinatura.
     const filtro = pagamento?.subscription

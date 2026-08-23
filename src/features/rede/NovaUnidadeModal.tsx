@@ -22,15 +22,23 @@ type Resultado = {
  */
 export function NovaUnidadeModal({
   salonId,
+  primeiraUnidade,
   onClose,
   onCriada,
 }: {
   /** A unidade de onde esta nasce. Serviços e horário vêm dela por padrão. */
   salonId: string
+  /**
+   * A origem ainda não pertence a uma rede: este "Adicionar unidade" é o que
+   * cria a rede, e o dono escolhe o nome dela aqui — senão a rede nasce com o
+   * nome da barbearia e não há tela para renomear.
+   */
+  primeiraUnidade?: boolean
   onClose: () => void
   onCriada: (resultado: Resultado) => Promise<void>
 }) {
   const [nome, setNome] = useState('')
+  const [nomeRede, setNomeRede] = useState('')
   const [endereco, setEndereco] = useState('')
   const [telefone, setTelefone] = useState('')
   const [copiarCatalogo, setCopiarCatalogo] = useState(true)
@@ -52,6 +60,7 @@ export function NovaUnidadeModal({
         body: {
           salonId,
           nome: nome.trim(),
+          nomeRede: primeiraUnidade ? nomeRede.trim() || undefined : undefined,
           endereco: endereco.trim(),
           telefone: telefone.trim(),
           copiarCatalogo,
@@ -86,6 +95,20 @@ export function NovaUnidadeModal({
         </div>
 
         <form onSubmit={criar} className="space-y-3">
+          {primeiraUnidade && (
+            <label className="block">
+              <span className="text-xs font-medium text-muted-foreground">Nome da rede</span>
+              <input
+                value={nomeRede}
+                onChange={(e) => setNomeRede(e.target.value)}
+                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                placeholder="Ex: Barbearia do Zé"
+              />
+              <span className="block text-[11px] text-muted-foreground mt-1">
+                Como o conjunto das unidades se chama. Em branco, usa o nome da barbearia atual.
+              </span>
+            </label>
+          )}
           <label className="block">
             <span className="text-xs font-medium text-muted-foreground">Nome da unidade</span>
             <input

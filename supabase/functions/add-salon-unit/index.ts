@@ -59,6 +59,8 @@ Deno.serve(async (req) => {
   let body: {
     /** A barbearia de onde a unidade nasce. É ela que vira (ou já é) a rede. */
     salonId?: string
+    /** Nome da rede, usado só quando ela nasce aqui. Em branco: o da origem. */
+    nomeRede?: string
     nome?: string
     endereco?: string
     telefone?: string
@@ -115,7 +117,7 @@ Deno.serve(async (req) => {
   if (!organizationId) {
     const { data: org, error: orgError } = await admin
       .from('organizations')
-      .insert({ nome: origem.nome })
+      .insert({ nome: body.nomeRede?.trim() || origem.nome })
       .select('id')
       .single()
     if (orgError || !org) {

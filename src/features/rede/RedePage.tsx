@@ -322,6 +322,7 @@ export function RedePage() {
       {modalAberto && salonId && (
         <NovaUnidadeModal
           salonId={salonId}
+          primeiraUnidade={!organizationId}
           onClose={() => setModalAberto(false)}
           onCriada={async () => {
             await recarregarUnidades()

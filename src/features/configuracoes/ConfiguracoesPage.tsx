@@ -25,7 +25,7 @@ import {
  * não consegue atualizar aqui passa a ter o agente marcando fora da realidade.
  */
 export function ConfiguracoesPage() {
-  const { salonId, salonName, isManager, isOwner, isNetwork, unidades, recarregarUnidades, selecionarUnidade } =
+  const { salonId, salonName, isManager, isOwner, isNetwork, organizationId, unidades, recarregarUnidades, selecionarUnidade } =
     useSalon()
   const navigate = useNavigate()
   const temFidelidade = useRecurso('fidelidade')
@@ -508,6 +508,7 @@ export function ConfiguracoesPage() {
       {modalUnidade && salonId && (
         <NovaUnidadeModal
           salonId={salonId}
+          primeiraUnidade={!organizationId}
           onClose={() => setModalUnidade(false)}
           onCriada={async (r) => {
             // Recarregar primeiro: é o que liga `isNetwork` e faz aparecer o

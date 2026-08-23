@@ -59,6 +59,189 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'Corpo invalido.' }, 400)
   }
 
+  // ------------------------------------------------------------------
+  // Cobranca da REDE: um boleto para todas as unidades.
+  //
+  // A cobranca continua nascendo por unidade -- cada `subscriptions` segue
+  // sendo a verdade de plano, valor e acesso. O que muda aqui e so o formato
+  // do boleto: cancela-se a recorrencia de cada unidade no Asaas e nasce UMA,
+  // da rede, no valor da soma. O webhook, ao ver o pagamento dela, estende o
+  // acesso de todas as unidades de uma vez.
+  //
+  // Vive antes do fluxo por unidade porque nao ha `salonId` aqui: a chave e a
+  // organizacao.
+  // ------------------------------------------------------------------
+  if (body.acao === 'assinar-rede' || body.acao === 'separar-rede') {
+    const organizationId = body.organizationId as string | undefined
+    if (!organizationId) return json({ error: 'Rede nao informada.' }, 400)
+
+    const comoUsuarioRede = createClient(SUPABASE_URL, ANON_KEY, {
+      global: { headers: { Authorization: autorizacao } },
+    })
+
+    // Dono de TODAS as unidades, nao de alguma: unificar o boleto mexe na
+    // cobranca das outras lojas, e so quem responde por todas pode fazer isso.
+    const { data: minhas } = await comoUsuarioRede
+      .from('user_salons')
+      .select('salon_id, role, salons!inner ( organization_id )')
+      .eq('role', 'owner')
+      .eq('salons.organization_id', organizationId)
+
+    const adminRede = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+    const { data: unidades } = await adminRede
+      .from('salons')
+      .select('id, nome')
+      .eq('organization_id', organizationId)
+
+    if (!unidades || unidades.length === 0) return json({ error: 'Rede sem unidades.' }, 404)
+    const donaDeTodas =
+      (minhas?.length ?? 0) >= unidades.length &&
+      unidades.every((u) => minhas?.some((m) => m.salon_id === u.id))
+    if (!donaDeTodas) {
+      return json({ error: 'Apenas quem e dono de todas as unidades pode mudar a cobranca da rede.' }, 403)
+    }
+
+    const { data: org } = await adminRede
+      .from('organizations')
+      .select('id, nome, cobranca_unificada, cpf_cnpj, asaas_customer_id, asaas_subscription_id')
+      .eq('id', organizationId)
+      .maybeSingle()
+    if (!org) return json({ error: 'Rede nao encontrada.' }, 404)
+
+    if (body.acao === 'separar-rede') {
+      if (org.asaas_subscription_id) {
+        const r = await asaas(`/subscriptions/${org.asaas_subscription_id}`, { method: 'DELETE' })
+        if (!r.ok && r.status !== 404) {
+          console.error('Asaas recusou o cancelamento da rede:', r.status, r.data)
+          return json({ error: erroDoAsaas(r.data) ?? 'Nao foi possivel separar agora.' }, 502)
+        }
+      }
+      await adminRede
+        .from('organizations')
+        .update({ cobranca_unificada: false, asaas_subscription_id: null })
+        .eq('id', organizationId)
+      // Cada unidade volta a assinar sozinha. `acesso_ate` fica: o que a rede
+      // ja pagou continua valendo, mesma regra do cancelamento por unidade.
+      await adminRede
+        .from('subscriptions')
+        .update({ status: 'cancelada', asaas_subscription_id: null })
+        .in('salon_id', unidades.map((u) => u.id))
+      return json({ separada: true })
+    }
+
+    // ---------- assinar-rede ----------
+    const { data: assinaturas } = await adminRede
+      .from('subscriptions')
+      .select('salon_id, valor, asaas_subscription_id')
+      .in('salon_id', unidades.map((u) => u.id))
+
+    if (!assinaturas || assinaturas.length < unidades.length) {
+      return json({ error: 'Ha unidade sem plano registrado. Abra a Assinatura dela primeiro.' }, 400)
+    }
+    if (assinaturas.some((a) => a.valor == null)) {
+      return json({ error: 'Ha unidade sem valor de plano definido. Avise o suporte.' }, 400)
+    }
+    // A soma dos valores POR UNIDADE. Quando o modelo de preco mudar, muda em
+    // `subscriptions.valor` -- e esta soma acompanha sem tocar aqui.
+    const total = assinaturas.reduce((acc, a) => acc + Number(a.valor), 0)
+
+    const cpfCnpj = ((body.cpfCnpj as string | undefined)?.trim() || org.cpf_cnpj) ?? null
+    if (!cpfCnpj) return json({ error: 'Informe o CPF ou CNPJ do pagante da rede.' }, 400)
+
+    try {
+      let customerId = org.asaas_customer_id
+      if (!customerId) {
+        const r = await asaas('/customers', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: org.nome,
+            cpfCnpj,
+            externalReference: `rede:${organizationId}`,
+          }),
+        })
+        if (!r.ok) {
+          console.error('Asaas recusou o cliente da rede:', r.status, r.data)
+          return json({ error: erroDoAsaas(r.data) ?? 'Nao foi possivel criar o cadastro da rede.' }, 400)
+        }
+        customerId = r.data.id
+      }
+      await adminRede
+        .from('organizations')
+        .update({ asaas_customer_id: customerId, cpf_cnpj: cpfCnpj })
+        .eq('id', organizationId)
+
+      // As recorrencias por unidade caem ANTES de a da rede nascer -- a ordem
+      // inversa deixaria uma janela em que as duas cobram ao mesmo tempo.
+      for (const a of assinaturas) {
+        if (!a.asaas_subscription_id) continue
+        const r = await asaas(`/subscriptions/${a.asaas_subscription_id}`, { method: 'DELETE' })
+        if (!r.ok && r.status !== 404) {
+          console.error('Asaas recusou cancelar a unidade', a.salon_id, r.status, r.data)
+          return json(
+            { error: 'Nao foi possivel cancelar a cobranca de uma unidade. Nada foi unificado.' },
+            502,
+          )
+        }
+        await adminRede
+          .from('subscriptions')
+          .update({ asaas_subscription_id: null })
+          .eq('salon_id', a.salon_id)
+      }
+
+      let subscriptionId = org.asaas_subscription_id
+      if (!subscriptionId) {
+        const vencimento = new Date()
+        vencimento.setDate(vencimento.getDate() + 3)
+        const r = await asaas('/subscriptions', {
+          method: 'POST',
+          body: JSON.stringify({
+            customer: customerId,
+            billingType: 'UNDEFINED',
+            value: total,
+            nextDueDate: vencimento.toISOString().slice(0, 10),
+            cycle: 'MONTHLY',
+            description: `Club Cut - rede ${org.nome} (${unidades.length} unidades)`,
+            externalReference: `rede:${organizationId}`,
+          }),
+        })
+        if (!r.ok) {
+          console.error('Asaas recusou a assinatura da rede:', r.status, r.data)
+          return json({ error: erroDoAsaas(r.data) ?? 'Nao foi possivel criar a cobranca da rede.' }, 400)
+        }
+        subscriptionId = r.data.id
+      }
+
+      await adminRede
+        .from('organizations')
+        .update({ cobranca_unificada: true, asaas_subscription_id: subscriptionId })
+        .eq('id', organizationId)
+      await adminRede
+        .from('subscriptions')
+        .update({ status: 'pendente' })
+        .in('salon_id', unidades.map((u) => u.id))
+
+      const cobrancas = await asaas(`/subscriptions/${subscriptionId}/payments`)
+      const lista = (cobrancas.data?.data ?? []) as {
+        status: string
+        dueDate: string
+        value: number
+        invoiceUrl: string
+      }[]
+      const emAberto = lista.find((p) => p.status === 'PENDING' || p.status === 'OVERDUE') ?? lista[0]
+
+      return json({
+        unificada: true,
+        total,
+        unidades: unidades.length,
+        invoiceUrl: emAberto?.invoiceUrl ?? null,
+        vencimento: emAberto?.dueDate ?? null,
+      })
+    } catch (err) {
+      console.error('Falha ao unificar a cobranca da rede:', err)
+      return json({ error: 'Nao foi possivel falar com a operadora de pagamento agora.' }, 502)
+    }
+  }
+
   const salonId = body.salonId as string | undefined
   if (!salonId) return json({ error: 'Unidade nao informada.' }, 400)
 

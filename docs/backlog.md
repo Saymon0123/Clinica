@@ -706,3 +706,30 @@ Pendências fora do repositório:
   gerar com `npx @aspect-build/resvg` ou pelo próprio navegador.
 - Não existe `site.webmanifest`. Quando existir, apontar os ícones e usar
   `#0D1512` como `theme_color`.
+
+## Página `/sobre` — o que falta para ela ficar inteira (2026-08-23)
+
+A rota existe e está no ar com três blocos: a tese, as três posições e o
+fechamento. Os outros três (origem, quem faz, prova de existência) estão
+escritos e testados, mas **não renderizam** porque dependem de dado que só o
+dono tem. Tudo isso mora em `src/lib/institucional.ts`, com a mesma regra do
+`CONTATO`: campo vazio não vira layout.
+
+- [ ] **Origem** (`ORIGEM.paragrafos`): 3 a 5 parágrafos com data, número
+      pequeno e pelo menos um erro admitido. É o bloco que mais carrega a
+      página e o que mais afasta a impressão de texto gerado.
+- [ ] **Imagem de ambiente** (`ORIGEM.imagem`): interior de barbearia, bancada,
+      cadeira. Nunca rosto atribuído a um nome — ambiente ninguém audita,
+      pessoa sim. Arquivo em `public/`, com largura e altura declaradas.
+- [ ] **Quem faz** (`QUEM_FAZ`): nome, o que a pessoa faz no dia a dia, bio e
+      links públicos que dão para conferir. Foto real é o ideal; sem foto,
+      com link verificável, funciona. Foto gerada de rosto é o único caminho
+      que pode custar mais do que entrega.
+- [ ] **Prova de existência** (`EMPRESA` + `CONTATO`): razão social, CNPJ,
+      cidade, e-mail em domínio próprio, Instagram. A seção só aparece quando
+      houver pelo menos um dado real além do canal de suporte — e preencher o
+      `CONTATO` acende junto os canais no rodapé do site inteiro, que hoje
+      estão todos vazios.
+
+Fora do repositório: nada. Nenhuma peça de Supabase, Vercel ou n8n é tocada
+por esta página.

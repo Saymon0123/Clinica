@@ -67,6 +67,6 @@ export const QUEM_FAZ = null as null | {
 export const EMPRESA = {
   razaoSocial: null as string | null,
   /** Formatado como se lê: '00.000.000/0001-00'. */
-  cnpj: null as string | null,
+  cnpj: '67.127.614/0001-00' as string | null,
   cidade: null as string | null,
 }

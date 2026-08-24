@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { AlertCircle, Bot, MessageCircle, Search, Send, Sparkles } from 'lucide-react'
+import { ArrowLeft, AlertCircle, Bot, MessageCircle, Search, Send, Sparkles } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
 import { useConversations } from './useConversations'
@@ -209,7 +209,13 @@ export function WhatsAppWebPage() {
 
       <div className="flex-1 flex min-h-0">
         {/* Lista de conversas */}
-        <aside className="w-full sm:w-80 shrink-0 border-r border-border bg-surface overflow-y-auto">
+        {/* No celular só cabe um painel por vez: lista OU conversa. Sem este
+            mestre-detalhe, a lista ocupava 100% da largura e a thread ficava
+            com largura zero — o dono via as conversas mas nunca conseguia LER
+            uma pelo celular. */}
+        <aside
+          className={`${selectedId ? 'hidden sm:block' : 'block'} w-full sm:w-80 shrink-0 border-r border-border bg-surface overflow-y-auto`}
+        >
           {/* Depois de alguns meses a lista tem centenas de linhas e rolar
               deixa de ser opção. Busca client-side porque as conversas já estão
               todas carregadas. */}
@@ -322,7 +328,7 @@ export function WhatsAppWebPage() {
         </aside>
 
         {/* Thread da conversa selecionada */}
-        <main className="flex-1 flex flex-col min-w-0">
+        <main className={`${selectedId ? 'flex' : 'hidden sm:flex'} flex-1 flex-col min-w-0`}>
           {!selectedConversation ? (
             /* É a primeira coisa que o dono vê ao abrir a aba. Uma frase solta
                no meio do vazio parecia tela quebrada. */
@@ -340,11 +346,22 @@ export function WhatsAppWebPage() {
           ) : (
             <>
               <div className="bg-surface border-b border-border px-4 py-3 flex items-center justify-between gap-3">
-                <div>
+                <div className="flex items-center gap-2 min-w-0">
+                  {/* Só no celular: no desktop a lista está sempre visível ao
+                      lado e "voltar" não significa nada. */}
+                  <button
+                    onClick={() => setSelectedId(null)}
+                    aria-label="Voltar para a lista de conversas"
+                    className="sm:hidden shrink-0 text-muted-foreground hover:text-foreground"
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
+                  <div className="min-w-0">
                   <div className="text-sm font-medium text-foreground">
                     {selectedConversation.contact_name ?? formatarTelefone(selectedConversation.contact_phone)}
                   </div>
                   <div className="text-xs text-muted-foreground">{formatarTelefone(selectedConversation.contact_phone)}</div>
+                  </div>
                 </div>
 
                 {selectedConversation.resumo_contexto && (

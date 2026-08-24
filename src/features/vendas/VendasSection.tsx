@@ -82,8 +82,8 @@ export function VendasSection({
               <tr className="border-b border-border text-left text-xs text-muted-foreground">
                 <th className="px-4 py-3 font-medium">Data</th>
                 <th className="px-4 py-3 font-medium">Cliente</th>
-                <th className="px-4 py-3 font-medium hidden sm:table-cell">Profissional</th>
-                <th className="px-4 py-3 font-medium hidden sm:table-cell">Pagamento</th>
+                <th className="px-4 py-3 font-medium">Profissional</th>
+                <th className="px-4 py-3 font-medium">Pagamento</th>
                 <th className="px-4 py-3 font-medium text-right">Total</th>
               </tr>
             </thead>
@@ -94,10 +94,10 @@ export function VendasSection({
                     {formatDateTime(s.closed_at ?? s.created_at)}
                   </td>
                   <td className="px-4 py-3 text-foreground">{s.client_nome ?? '—'}</td>
-                  <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
+                  <td className="px-4 py-3 text-muted-foreground">
                     {s.professional_nome ?? '—'}
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
+                  <td className="px-4 py-3 text-muted-foreground">
                     {s.forma_pagamento ? (PAYMENT_LABELS[s.forma_pagamento] ?? s.forma_pagamento) : '—'}
                   </td>
                   <td className="px-4 py-3 text-right font-medium text-foreground">{formatCurrency(s.total)}</td>

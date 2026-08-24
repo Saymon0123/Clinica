@@ -12,11 +12,24 @@ export function useServicesData(salonId: string | null) {
     setLoading(true)
     setError(null)
 
-    const { data, error: fetchError } = await supabase
-      .from('services')
-      .select('id, nome, duracao_minutos, preco, ativo, created_by')
-      .eq('salon_id', salonId)
-      .order('nome')
+    const inicioDoMes = new Date()
+    inicioDoMes.setDate(1)
+    inicioDoMes.setHours(0, 0, 0, 0)
+
+    const [{ data, error: fetchError }, vendasResult] = await Promise.all([
+      supabase
+        .from('services')
+        .select('id, nome, duracao_minutos, preco, ativo, created_by')
+        .eq('salon_id', salonId)
+        .order('nome'),
+      supabase
+        .from('order_items')
+        .select('service_id, orders!inner(salon_id, status, closed_at)')
+        .eq('orders.salon_id', salonId)
+        .eq('orders.status', 'fechada')
+        .eq('tipo', 'servico')
+        .gte('orders.closed_at', inicioDoMes.toISOString()),
+    ])
 
     if (fetchError) {
       console.error('Erro ao carregar serviços:', fetchError)
@@ -25,7 +38,21 @@ export function useServicesData(salonId: string | null) {
       return
     }
 
-    setServices(data ?? [])
+    const vendasPorServico = new Map<string, number>()
+    for (const item of vendasResult.data ?? []) {
+      if (!item.service_id) continue
+      vendasPorServico.set(item.service_id, (vendasPorServico.get(item.service_id) ?? 0) + 1)
+    }
+
+    // O mais vendido em cima: a lista alfabética escondia o carro-chefe no
+    // meio. Empate (e mês começando) cai no alfabeto.
+    const lista: ServiceItem[] = (data ?? []).map((s) => ({
+      ...s,
+      vendas_mes: vendasPorServico.get(s.id) ?? 0,
+    }))
+    lista.sort((a, b) => b.vendas_mes - a.vendas_mes || a.nome.localeCompare(b.nome))
+
+    setServices(lista)
     setLoading(false)
   }, [salonId])
 

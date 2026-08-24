@@ -1,11 +1,12 @@
-import { useState } from 'react'
-import { Lock, Plus, Power } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Lock, PackagePlus, Plus, Power } from 'lucide-react'
 import { useSalon } from '../auth/useSalon'
 import { useAuth } from '../auth/AuthContext'
 import { useServicesData } from './useServicesData'
 import { useProductsData } from './useProductsData'
 import { NewServiceModal } from './NewServiceModal'
 import { NewProductModal } from './NewProductModal'
+import { ReporEstoqueModal } from './ReporEstoqueModal'
 import { supabase } from '../../lib/supabase'
 import type { ServiceItem, ProductItem } from './types'
 
@@ -26,6 +27,8 @@ export function CatalogoPage() {
 
   const [editingService, setEditingService] = useState<ServiceItem | 'new' | null>(null)
   const [editingProduct, setEditingProduct] = useState<ProductItem | 'new' | null>(null)
+  const [restockingProduct, setRestockingProduct] = useState<ProductItem | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   // Gestor mexe em tudo; barbeiro só no que ele mesmo cadastrou.
   function podeMexer(service: ServiceItem) {
@@ -33,14 +36,55 @@ export function CatalogoPage() {
   }
 
   async function toggleServiceActive(service: ServiceItem) {
-    await supabase.from('services').update({ ativo: !service.ativo }).eq('id', service.id)
+    setActionError(null)
+    const { error } = await supabase
+      .from('services')
+      .update({ ativo: !service.ativo })
+      .eq('id', service.id)
+    if (error) {
+      console.error('Erro ao alterar o serviço:', error)
+      setActionError('Não foi possível alterar o serviço.')
+      return
+    }
     reloadServices()
   }
 
   async function toggleProductActive(product: ProductItem) {
-    await supabase.from('products').update({ ativo: !product.ativo }).eq('id', product.id)
+    setActionError(null)
+    const { error } = await supabase
+      .from('products')
+      .update({ ativo: !product.ativo })
+      .eq('id', product.id)
+    if (error) {
+      console.error('Erro ao alterar o produto:', error)
+      setActionError('Não foi possível alterar o produto.')
+      return
+    }
     reloadProducts()
   }
+
+  // Estoque muda pela venda de qualquer barbeiro (e o catálogo pelo gestor em
+  // outro aparelho); sem isso a tela só atualizava no F5.
+  useEffect(() => {
+    if (!salonId) return
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const agendar = () => {
+      clearTimeout(timer)
+      timer = setTimeout(() => {
+        reloadServices()
+        reloadProducts()
+      }, 2000)
+    }
+    const channel = supabase
+      .channel(`catalogo_${salonId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'services', filter: `salon_id=eq.${salonId}` }, agendar)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products', filter: `salon_id=eq.${salonId}` }, agendar)
+      .subscribe()
+    return () => {
+      clearTimeout(timer)
+      supabase.removeChannel(channel)
+    }
+  }, [salonId, reloadServices, reloadProducts])
 
   if (salonLoading) {
     return <p className="text-sm text-muted-foreground">Carregando...</p>
@@ -88,7 +132,9 @@ export function CatalogoPage() {
             </button>
           </div>
 
-          {servicesError && <p className="text-sm text-danger mb-3">{servicesError}</p>}
+          {(servicesError || actionError) && (
+            <p className="text-sm text-danger mb-3">{servicesError || actionError}</p>
+          )}
 
           <div className="bg-surface rounded-xl border border-border overflow-x-auto">
             <table className="w-full text-sm">
@@ -97,6 +143,9 @@ export function CatalogoPage() {
                   <th className="px-4 py-2 font-medium">Serviço</th>
                   <th className="px-4 py-2 font-medium">Duração</th>
                   <th className="px-4 py-2 font-medium">Preço</th>
+                  <th className="px-4 py-2 font-medium" title="Vendas de comandas fechadas no mês corrente">
+                    Vendas no mês
+                  </th>
                   <th className="px-4 py-2 font-medium">Status</th>
                   <th className="px-4 py-2 font-medium text-right">Ações</th>
                 </tr>
@@ -107,8 +156,9 @@ export function CatalogoPage() {
                     <td className="px-4 py-3 text-foreground font-medium">{s.nome}</td>
                     <td className="px-4 py-3 text-muted-foreground">{s.duracao_minutos} min</td>
                     <td className="px-4 py-3 text-muted-foreground">{formatCurrency(s.preco)}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{s.vendas_mes}</td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${s.ativo ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-400' : 'bg-surface-2 text-muted-foreground'}`}>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${s.ativo ? 'bg-success-soft text-success' : 'bg-surface-2 text-muted-foreground'}`}>
                         {s.ativo ? 'Ativo' : 'Inativo'}
                       </span>
                     </td>
@@ -162,7 +212,9 @@ export function CatalogoPage() {
             </div>
           )}
 
-          {productsError && <p className="text-sm text-danger mb-3">{productsError}</p>}
+          {(productsError || actionError) && (
+            <p className="text-sm text-danger mb-3">{productsError || actionError}</p>
+          )}
 
           <div className="bg-surface rounded-xl border border-border overflow-x-auto">
             <table className="w-full text-sm">
@@ -187,24 +239,43 @@ export function CatalogoPage() {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${p.ativo ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-400' : 'bg-surface-2 text-muted-foreground'}`}>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${p.ativo ? 'bg-success-soft text-success' : 'bg-surface-2 text-muted-foreground'}`}>
                         {p.ativo ? 'Ativo' : 'Inativo'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right space-x-2">
-                      <button
-                        onClick={() => setEditingProduct(p)}
-                        className="text-xs text-muted-foreground underline"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => toggleProductActive(p)}
-                        className="text-xs text-muted-foreground underline inline-flex items-center gap-1"
-                      >
-                        <Power size={12} />
-                        {p.ativo ? 'Desativar' : 'Ativar'}
-                      </button>
+                    <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
+                      {/* Produto é do gestor — RLS bloqueia o barbeiro, então
+                          mostrar os botões para ele era um clique que fingia
+                          funcionar. */}
+                      {isManager ? (
+                        <>
+                          <button
+                            onClick={() => setRestockingProduct(p)}
+                            className="text-xs text-primary underline inline-flex items-center gap-1"
+                          >
+                            <PackagePlus size={12} />
+                            Repor
+                          </button>
+                          <button
+                            onClick={() => setEditingProduct(p)}
+                            className="text-xs text-muted-foreground underline"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => toggleProductActive(p)}
+                            className="text-xs text-muted-foreground underline inline-flex items-center gap-1"
+                          >
+                            <Power size={12} />
+                            {p.ativo ? 'Desativar' : 'Ativar'}
+                          </button>
+                        </>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                          <Lock size={11} />
+                          Da gestão
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -226,6 +297,14 @@ export function CatalogoPage() {
           service={editingService === 'new' ? undefined : editingService}
           onClose={() => setEditingService(null)}
           onSaved={reloadServices}
+        />
+      )}
+
+      {restockingProduct && (
+        <ReporEstoqueModal
+          product={restockingProduct}
+          onClose={() => setRestockingProduct(null)}
+          onSaved={reloadProducts}
         />
       )}
 

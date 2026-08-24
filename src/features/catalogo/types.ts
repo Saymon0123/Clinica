@@ -5,6 +5,8 @@ export type ServiceItem = {
   preco: number
   ativo: boolean
   created_by: string | null
+  /** Vendas do mês corrente (calculado no hook); ordena a lista e orienta preço. */
+  vendas_mes: number
 }
 
 export type ProductItem = {

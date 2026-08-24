@@ -50,6 +50,17 @@ export function NewProductModal({ salonId, product, onClose, onSaved }: Props) {
       if (product) {
         const { error: updateError } = await supabase.from('products').update(payload).eq('id', product.id)
         if (updateError) throw updateError
+        // Mudança de estoque pela edição também vira movimento — sem isso a
+        // reposição entrava "do nada" e a conferência futura perdia o rastro.
+        const delta = atual - product.estoque_atual
+        if (delta !== 0) {
+          await supabase.from('stock_movements').insert({
+            product_id: product.id,
+            tipo: delta > 0 ? 'entrada' : 'saida',
+            quantidade: Math.abs(delta),
+            motivo: 'ajuste manual (edição do produto)',
+          })
+        }
       } else {
         const { error: insertError } = await supabase.from('products').insert({ salon_id: salonId, ...payload })
         if (insertError) throw insertError

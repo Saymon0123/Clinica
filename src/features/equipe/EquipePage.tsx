@@ -589,7 +589,9 @@ function ConviteModal({
               </button>
             </div>
             <p className="text-xs text-muted-foreground">
-              O link vale por 7 dias e só pode ser usado uma vez. Ele vai criar a própria senha.
+              O link vale por 7 dias e só pode ser usado uma vez. Ele vai criar a própria senha —
+              e também enviamos o convite por e-mail em alguns minutos, então mandar o link é
+              opcional.
             </p>
             <button onClick={onClose} className="w-full btn-primary rounded px-3 py-2 text-sm font-medium">
               Fechar

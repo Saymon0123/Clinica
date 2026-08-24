@@ -1275,3 +1275,38 @@ histórico de períodos fechados.
 3. Migrar as assinaturas recorrentes existentes no Asaas para o modelo novo.
 4. Trial: hoje unidade nova nasce com 7 dias; no modelo por uso talvez nem
    precise de trial.
+
+
+## Modelo antigo removido do produto — 2026-08-24
+
+O que o dono vê agora é só o modelo por uso. Saíram do CRM: `TrocarPlano`,
+`RecursosDoPlano`, `AcoesDaAssinatura` (virou `CancelarUso`, o único botão),
+o cálculo de proporcional e seus testes. A `/assinatura` é: medidor de uso →
+situação do acesso + cancelar → CPF/CNPJ do pagante → cobrança da rede.
+
+A edge function `asaas` encolheu de 660 para ~200 linhas (v24): sobraram
+`cancelar` (que derruba recorrência legada se existir e gera a fatura parcial)
+e `unificar-rede`/`separar-rede` — que agora são SÓ uma preferência
+(`organizations.cobranca_unificada`), sem criar nada no Asaas: o boleto é
+manual, e a flag diz ao faturamento para tratar a rede como um pagante só.
+
+A seção da rede mostra **o uso do mês de cada unidade** (agendamentos × preço
+da unidade) e o total — não mais mensalidades.
+
+Migration 0098: `plans.ativo = false` em tudo (tabela aposentada, fica pelo
+histórico/FK) e `salons_com_automacao` **sem filtro de plano** — no modelo por
+uso todo mundo tem as automações; a trava que resta é estar ativa e dentro de
+`atendimento_ate`.
+
+**Pendências que esta remoção revelou:**
+
+1. **Preço da landing ≠ faixas do banco.** A landing vende R$ 0,85 por
+   agendamento (`src/lib/planos.ts`); as faixas cobram 0,75–0,60. Alinhar um
+   dos dois — decisão de negócio.
+2. **Os Termos de Uso descrevem o modelo antigo** (troca de plano, proporcional,
+   mensalidade — `TermosPage`). Precisa de texto novo para o modelo por uso e
+   bump da `VERSAO_DOS_TERMOS` (o aceite é registrado por versão). Junta com a
+   revisão de advogado já pendente.
+3. **Recorrências legadas no Asaas** (ex.: Curitiba) seguem cobrando até serem
+   canceladas — pelo botão de cancelar de cada uma, ou à mão no painel do
+   Asaas, na migração de cada cliente para o modelo novo.

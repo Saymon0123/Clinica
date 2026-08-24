@@ -30,13 +30,13 @@ export const DIAS_DE_VALIDADE_DO_CONVITE = 10
  * comparação da cadeira vazia — e um número desatualizado ali não seria só
  * texto errado, seria conta errada.
  *
- * **Isto é só a landing.** O sistema de assinatura de verdade
- * (`src/features/assinatura/`, com `AssinaturaPage`, `TrocarPlano` e o
- * cálculo de proporcional) continua cobrando mensalidade fixa hoje, com os
- * próprios valores (R$197/R$299) escritos à parte — ele não importa deste
- * arquivo e não foi tocado nesta mudança. Migrar a cobrança de verdade de
- * mensal para por-uso é trabalho de CRM + Supabase + processador de
- * pagamento, registrado em `docs/backlog.md`, e não acontece sozinho só
- * porque a landing mudou de discurso.
+ * **Desde 2026-08-24 o sistema de verdade também cobra por uso** — faixas em
+ * `faixas_de_uso` no banco (0,75 a 0,60 por agendamento, conforme barbeiros),
+ * fechamento mensal na tabela `faturas_de_uso`.
+ *
+ * **ATENÇÃO: este 0,85 da landing NÃO bate com as faixas do banco.** A landing
+ * anuncia um preço e o fechamento cobra outro. Decisão de negócio pendente:
+ * alinhar a landing às faixas, ou as faixas à landing — registrado em
+ * `docs/backlog.md`.
  */
 export const PRECO_POR_AGENDAMENTO = 0.85

@@ -98,24 +98,29 @@ percentual.
 
 ## Funcionalidade ausente
 
-### Instância de WhatsApp própria para os alertas do produto
-`canal_de_alertas` (migration `0071`) já centraliza por onde auditoria e
-feedback saem, e os dois fluxos leem de lá — mas a linha **ainda aponta para a
-instância da Curitiba**, que é de uma cliente.
+### ~~Instância de WhatsApp própria para os alertas~~ — RESOLVIDO em 2026-08-21
+Não virou instância própria: virou **e-mail**. Na API oficial, mensagem que o
+sistema inicia exige template aprovado, e alerta de auditoria tem texto
+arbitrário — para caber num template o corpo seria quase todo `{{1}}`, formato
+que a Meta costuma recusar. E nada disso é conversa com cliente: é o produto
+falando com o dono do produto.
 
-Enquanto for assim, se a Curitiba cancelar, trocar de número ou o WhatsApp dela
-cair, você para de receber auditoria e feedback **em silêncio**. É circular: o
-alerta que avisaria da queda depende do que caiu.
+Migrations 0090–0092, fluxos `Auditoria do Agente` e `Feedback dos Donos`
+trocados para `emailSend` e testados com envio real. `canal_de_alertas.email`
+aceita vários destinatários separados por vírgula.
 
-Falta criar a instância na Evolution API, ler o QR com um número seu e rodar um
-`update` de duas colunas. Nenhum fluxo precisa ser editado. Passo a passo no
-painel da área de trabalho.
+`canal_de_alertas_conferido` existe para denunciar se o canal voltar a sair pelo
+WhatsApp de uma barbearia — hoje devolve `e_de_cliente = false`.
 
-### Fidelidade e clube de assinatura do cliente final
-Aparecem na descrição do Trinks e do AppBarber e não temos nenhum dos dois.
-Fidelidade é o que traz o cliente de volta à mesma barbearia; o clube
-("corte ilimitado por R$ X/mês") é receita recorrente **para o barbeiro**, o que
-muda o argumento de venda: o produto deixa de ser custo e vira faturamento.
+### Clube de assinatura do cliente final
+**A fidelidade foi construída** (migrations 0072–0074): carimbos calculados a
+partir de vendas fechadas, resgates e ajustes gravados, recurso `fidelidade`
+ligado por barbearia, com tela no cliente, no caixa e nas configurações. O que
+falta é só o clube.
+
+O clube ("corte ilimitado por R$ X/mês") é receita recorrente **para o
+barbeiro**, o que muda o argumento de venda: o produto deixa de ser custo e vira
+faturamento. Aparece na descrição do Trinks e do AppBarber.
 
 ### Fluxo n8n da política de atraso está construído mas **desligado**
 `CRM Salao - Politica de Atraso` (id `67oZqGOIoKO6pAeQ`) existe e teve o wiring
@@ -140,11 +145,15 @@ espinha da cobrança pelo Asaas, com tela em `/assinatura`.
 Fica registrado como aviso de leitura: item de backlog envelhece, e este ficou
 meses acusando ausência de algo já removido.
 
-### Integração de cobrança (Asaas) não existe
-`subscriptions` tem `asaas_customer_id` e `asaas_subscription_id`, mas nenhuma
-linha de código menciona Asaas — nem no front, nem nas edge functions. Schema
-pronto, integração ausente. Também não há criação de `subscriptions` no
-onboarding.
+### ~~Integração de cobrança (Asaas) não existe~~ — ERRADO desde 2026-08-21
+Este item afirmava que "nenhuma linha de código menciona Asaas". **É falso.**
+Existem as edge functions `asaas` e `asaas-webhook`, a tela `/assinatura` com
+troca de plano e ações, `useAssinatura`, e `asaas_eventos` com 6 eventos
+processados em produção — além de um pagamento registrado.
+
+Segundo item de backlog a acusar ausência de algo que existe (o primeiro foi
+Pacotes, ao contrário). **Conferir no banco e no código antes de planejar em
+cima de um item antigo.**
 
 ---
 
@@ -748,3 +757,661 @@ por esta página.
       cartão continua de pé.
 - [ ] **WhatsApp de suporte** (`CONTATO.whatsapp`): ainda `null`. E-mail e
       Instagram já estão preenchidos e apareceram no rodapé do site inteiro.
+
+## Lembrete de 1h30 com botões — o que falta
+
+Feito em 2026-08-21: janela mudou de 1h para 1h30 (n8n), e a resposta ao botão
+passou a ser aplicada pela RPC `responder_lembrete`, chamada pela edge function
+`whatsapp-webhook` (v6). O agente **não** vê o clique.
+
+Falta, e nesta ordem:
+
+1. **Meta:** aprovar `lembrete_hoje`. É o gargalo — sem template aprovado não
+   há mensagem iniciada por nós na API oficial, e portanto não há lembrete.
+2. **Supabase:** criar o segredo `N8N_LEMBRETE_RESPOSTA_URL` apontando para o
+   novo webhook do n8n. Sem ele o banco é atualizado mas o cliente não recebe
+   resposta nenhuma — confirma e fica no vazio.
+3. **n8n:** trocar `Enviar WhatsApp (Lembrete)` pelo nó nativo com
+   `sendTemplate`, e gravar o `wamid` devolvido em
+   `appointments.lembrete_message_id`. **Sem esse passo o clique nunca é
+   reconhecido** — a RPC casa pelo wamid, e ele não existirá.
+4. **n8n:** fluxo novo, determinístico, que recebe de
+   `N8N_LEMBRETE_RESPOSTA_URL` e só entrega o texto que veio decidido do banco,
+   registrando em `whatsapp_messages`. Nenhum agente nele.
+5. **n8n:** `Buscar Instância do Salão` ainda filtra `status = 'open'`
+   (vocabulário da Evolution). Migrar para a view `conexoes_ativas`. As views
+   do banco já foram (migrations 0088 e 0089); os fluxos do n8n não.
+
+**Decidido em 2026-08-21:** a confirmação de chegada de 10 min antes deixa de
+existir. O lembrete com botões já pergunta o mesmo, e ela só saia com a janela
+de 24h aberta — chegava a quem já tinha respondido e sumia em silêncio para
+quem não tinha, que era o único caso em que servia. Nós removidos do fluxo;
+`appointments.confirmacao_enviada` fica no schema marcada como morta (migration
+0087), porque `agendamento_local` a lista.
+
+
+## Views migradas para `conexoes_ativas` — 2026-08-21
+
+Migrations 0088 e 0089. As seis views que perguntavam `status = 'open'` agora
+perguntam `conexoes_ativas.conectado`, e cada uma expõe `provedor`,
+`phone_number_id` e `instance_name` — os fluxos do n8n continuam usando o
+`instance_name` até serem migrados, e o que precisam depois já está lá.
+
+Confirmado depois: a El Guardians voltou a aparecer, e `pg_views` não tem mais
+nenhuma view com `'open'` a não ser a própria `conexoes_ativas`.
+
+**Dois defeitos achados no caminho, ambos corrigidos:**
+
+1. Duas regras da `auditoria_operacao` ("WhatsApp desconectado" e "nunca
+   terminou de conectar") disparavam com `status is distinct from 'open'`.
+   Como barbearia na Cloud API nunca tem status `open`, as duas iriam alertar
+   para toda barbearia migrada e funcionando. Agora o texto muda por provedor.
+2. A etapa 1 da reativação usava o template `reativacao`, que **não tem o
+   botão de opt-out**. Passou para `reativacao_convite`, que tem — e a lista de
+   parâmetros caiu de três para dois junto, porque o corpo dela usa dois.
+
+Criada a view `templates_com_parametros_errados` por causa do segundo: uma
+incompatibilidade entre a lista montada pela view e o corpo do template só
+aparece quando a Meta recusa o envio, e como nada sem `status = 'aprovado'` é
+enviado hoje, o defeito ficaria dormindo até o dia da aprovação — ou seja,
+apareceria junto com todo o resto. Hoje ela está vazia nos 24 templates.
+
+
+## Canal de alertas interno — 2026-08-21
+
+Auditoria do agente e feedback dos donos passam a chegar por **e-mail**, não
+por WhatsApp. Migrations 0090 e 0091.
+
+**Por quê:** na API oficial, mensagem que o sistema inicia exige template
+aprovado, e alerta de auditoria tem texto arbitrário — para caber num template
+o corpo seria quase todo `{{1}}`, formato que a Meta costuma recusar. E nada
+disso é conversa com cliente: é o produto falando com o dono do produto. Não há
+razão para pagar pedágio da Meta nem para caber em 1024 caracteres.
+
+O banco já está correto: `canal_de_alertas_conferido` devolve
+`e_de_cliente = false`.
+
+**FECHADO em 2026-08-21.** Credencial SMTP criada, e os dois fluxos
+(`Auditoria do Agente` e `Feedback dos Donos`) trocados para `emailSend` e
+publicados. Testado com envio real: execução 9046, Gmail devolveu
+`250 2.0.0 OK` com `accepted: [castrocollin01@gmail.com]`, e o achado foi
+marcado como avisado.
+
+Duas melhorias que o canal novo trouxe de graça:
+
+- **O limite de 8 achados por relatório sumiu.** Ele existia porque mensagem de
+  WhatsApp não aguenta relatório longo, e foi a origem de um defeito real (por
+  um tempo mostrava 8 e marcava todos, e do nono em diante o achado sumia sem
+  nunca ter sido lido). Hoje todo achado aparece e todo achado é marcado.
+- **`Montar Aviso` do feedback virou código com escape de HTML.** Era um nó Set
+  montando markdown de WhatsApp; `mensagem` é texto livre escrito pelo dono da
+  barbearia, e ia direto para o corpo.
+
+O remetente ficou fixo (`Club Cut <castrocollin01@gmail.com>`) e o destinatário
+vem de `canal_de_alertas.email`. O Gmail exige que o From seja a conta
+autenticada no SMTP — se ele viesse do banco, mudar o destino quebraria o envio
+justamente quando alguém tentasse melhorar a configuração.
+
+**Ainda na Evolution:** o envio dos lembretes, o `Aviso de Fim de Teste` e a
+`Política de Atraso` (desligada).
+
+
+## Vários destinatários nos alertas — 2026-08-21
+
+Migration 0092. `canal_de_alertas.email` aceita lista separada por vírgula:
+
+```sql
+update canal_de_alertas
+   set email = 'castrocollin01@gmail.com, socio@exemplo.com';
+```
+
+Não precisa mexer no n8n — esse é o formato que o cabeçalho To do SMTP já
+espera, então atravessa sem transformação.
+
+**Validado por `canal_de_alertas_email_valido`.** Um endereço malformado no
+meio da lista faz o SMTP recusar o envio **inteiro**, não só o endereço ruim —
+e aí o alerta sumiria calado, que é o único modo de falha que este canal não
+pode ter. Testados sete casos, incluindo `a@b.com, lixo`, onde só um dos dois
+está quebrado: rejeitado.
+
+Envio real verificado (execução 9047): `accepted` voltou com os dois endereços,
+`rejected` vazio.
+
+
+## Os documentos envelheceram mais rápido que o produto — 2026-08-21
+
+Três itens deste backlog descreviam realidade que não existe mais, e o roadmap
+está no mesmo estado. Registrado aqui porque decidir prioridade com documento
+velho é decidir com informação errada.
+
+**A v3 existe em dois documentos, com listas diferentes:**
+
+| | `mercado-e-roadmap.md` | `jornada-do-cliente.md` |
+|---|---|---|
+| v3 | clube de assinatura, site institucional, recuperação de clientes, permissões configuráveis, fidelidade por pontos | vaga liberada virando oferta, desconto na comanda, fidelidade/pacote |
+
+**E boa parte de v2 e v3 já foi entregue:**
+
+- v2 "agenda pública de autoatendimento" — **feita** (recurso `agenda_publica`)
+- v2 "o balão: check-in, fila, walk-in, política de atraso" — **feito**, menos a
+  política de atraso, que está construída e desligada
+- v2 "registrar a confirmação (`status = 'confirmado'`)" — **feito**, mas pelo
+  botão do lembrete, não por ferramenta do agente
+- v2 "confirmação 10 min antes" — **construída e depois removida de propósito**
+- v3 "recuperação de clientes antigos" — **feita** (`clientes_para_reativar`)
+- v3 "fidelidade" — **feita**, por carimbos e não por pontos
+
+Sobra de v2, de verdade: **tom de voz configurável** e **aviso de estado
+emocional do cliente ao escalar**. Nenhum dos dois tem tabela nem código.
+
+
+## Primeira conversa real pela Cloud API — 2026-08-22, madrugada
+
+**O marco:** cliente → Meta → edge function → n8n → agente → resposta, com
+número real (`+55 41 98475-4172`, `phone_number_id` `1288009817732005`, WABA
+Club Cut `975811062135581`). Sem Evolution em nenhum ponto do caminho.
+
+O teste destravou depois de inscrever a WABA pela Graph API
+(`POST /975811062135581/subscribed_apps`) — o toggle "Assinar webhooks" do
+painel não gravava e voltava sozinho, pela **terceira** vez que aquela tela
+falha calada.
+
+### O defeito de raiz que o teste revelou
+
+`Converge Texto Final` é o **hub de contexto de todo o fluxo**: nove das dez
+ferramentas do agente e o nó de envio leem `salon_id`, `phone_number_id` e
+`contact_phone` dele.
+
+Ele era um Set vazio com `includeOtherFields`, ou seja, só repassava o que
+chegasse. No caminho de **texto** o payload sobrevive; no de **áudio e imagem**
+o item vira a resposta da OpenAI, e todo o contexto se perde.
+
+Consequências observadas em produção, todas na mesma execução (9140):
+
+1. As dez ferramentas do agente falharam com
+   `invalid input syntax for type uuid: "undefined"` — **oito vezes em
+   looping**, o que explica os 40 segundos de execução.
+2. **O agente inventou dois barbeiros (Rafael e Bruno) e quatro horários.** A
+   El Guardians tem um profissional cadastrado. Sem conseguir ler o banco, ele
+   parafraseou o que sabe de barbearias em geral e ofereceu ao cliente. É
+   exatamente o defeito que as regras de `auditoria_do_agente` existem para
+   pegar.
+3. O envio saiu com `phoneNumberId` e destinatário indefinidos e falhou — mas
+   como o nó tinha `onError: continueRegularOutput`, a execução ficou **verde**,
+   a mensagem entrou em `whatsapp_messages` como enviada, e o cliente nunca
+   recebeu. O histórico passou a conter uma mensagem que não existiu.
+
+**Corrigido:** `Converge Texto Final` agora reanexa explicitamente todo o
+payload de `Extrair Salon ID`, que roda antes da bifurcação e sempre tem os
+dados. E os dois nós de envio passaram de `continueRegularOutput` para
+`stopWorkflow` — falha de envio precisa aparecer como erro, não virar histórico
+falso.
+
+### Ainda por testar (2026-08-22)
+
+Nada disso foi verificado depois da correção. Testar **os quatro caminhos**,
+porque o sucesso do texto escondeu metade do fluxo:
+
+1. Texto, primeira mensagem (cria conversa)
+2. Texto, segunda mensagem (ramo "conversa existe" — estava morto)
+3. Áudio
+4. Imagem
+
+### Duas credenciais quebradas, consertadas pelo dono
+
+- `Authorization` (Header Auth): campo **Name** tinha `Meta Graph API`. Nome de
+  cabeçalho não pode ter espaço.
+- `Header Auth account` (OpenAI): campo **Name** vazio, então a chave ia sem
+  cabeçalho e a OpenAI devolvia 401.
+
+**Atenção:** existem **duas credenciais chamadas "Authorization"** — uma Header
+Auth (`OZEs5UkyhiYZkkan`) e uma SMTP (`Ozsdd8R9j8L9vUJO`), e os IDs se parecem.
+Renomear a de SMTP evita perder tempo editando a errada, como já aconteceu.
+
+**Vale considerar:** trocar os `httpRequest` de transcrição e visão pelos nós
+nativos da OpenAI. Três credenciais de cabeçalho montadas à mão, duas quebradas
+— o nó nativo elimina a classe de erro.
+
+
+## O agente ofereceu e agendou com barbeiro inexistente — 2026-08-23
+
+Em produção, na El Guardians (**um** profissional cadastrado: Saymon Castro
+Collin), o agente ofereceu quatro horários com **"Rafael" e "Bruno"** e fechou
+um agendamento dizendo *"às 14:00 com o Rafael"*.
+
+**O banco ficou certo:** o agendamento foi criado com o profissional real. O que
+era falso era só o texto — o que é pior de detectar, porque nada quebra.
+
+### Três defeitos somados
+
+**1. O contexto dizia que havia quatro barbeiros.**
+`Barbeiros para Contexto` roda uma vez por item de entrada, e a entrada eram os
+4 serviços do catálogo — então devolvia o mesmo profissional 4 vezes:
+
+```
+"barbeiros": "Saymon Castro Collin | Saymon Castro Collin | Saymon Castro Collin | Saymon Castro Collin"
+```
+
+O agente lê uma lista de quatro e conclui que há quatro pessoas. **Corrigido**
+com `executeOnce`.
+
+**2. A trava anti-invenção tinha um buraco escrito no código.**
+`Formatar para WhatsApp` remove linha que cita serviço inexistente, mas tinha:
+
+```js
+// Linha com horario e listagem de barbeiro ou de encaixe, nao de servico.
+if (/\d{1,2}:\d{2}/.test(item)) return true
+```
+
+**Qualquer linha com hora passava sem conferência.** A trava foi escrita só para
+serviço e assumiu que hora era segura. `• 14:00 com Rafael` tem hora, logo
+passou. Pior: o regex de "é item de lista" só aceitava letra depois do marcador,
+então linha começando com dígito nem chegava a ser examinada.
+
+**Corrigido:** linha com hora que nomeia alguém depois de `com` só passa se o
+nome existir na lista de barbeiros. Hora sem nome continua passando.
+
+**3. A alucinação virou memória permanente.**
+A mensagem falsa de 22/08 ficou em `whatsapp_messages` e `Montar Histórico` a
+devolve ao agente como fala dele próprio. Na execução 9926 ele **nem chamou as
+ferramentas** — leu a resposta antiga e repetiu.
+
+**NÃO corrigido.** Enquanto essas linhas estiverem no histórico, o agente tende
+a repeti-las mesmo com as travas novas.
+
+### O que isso ensina sobre o desenho
+
+As travas de conteúdo moram no código (`Formatar para WhatsApp`) e cobrem uma
+categoria por vez — serviço, agora barbeiro. Cada categoria nova de dado que o
+agente pode citar (preço, endereço, horário de funcionamento) é um buraco em
+aberto até alguém escrever a regra.
+
+Vale considerar inverter: em vez de remover o que não casa, **só deixar passar
+lista montada a partir de dado do banco**. É mudança grande e não cabe num
+remendo, mas o padrão atual já falhou duas vezes por motivos diferentes.
+
+
+## Validado em produção pela Cloud API — 2026-08-23
+
+Testes com número real (`+55 41 98475-4172`), El Guardians, dois contatos
+diferentes. **Ciclo completo fechado por texto e por áudio.**
+
+| O quê | Evidência |
+|---|---|
+| Recebimento de texto | execuções 9926, 9928, 9942, 9943 |
+| Recebimento de áudio | 9937, 9938, 9941 |
+| Transcrição, com gíria | *"Deu de bola, belezinha?"* transcrito corretamente |
+| Contexto sobrevive ao desvio de mídia | `Converge Texto Final` devolvendo `salon_id` e `phone_number_id` na 9941 |
+| Cadastro de cliente novo | cliente "Samuel" criado pelo agente |
+| Agendamento | 24/08 14:00 (Manuel) e 24/08 16:30 (Samuel) |
+| **Detecção de conflito** | agente recusou 14:00 por estar ocupado e ofereceu alternativa, que o cliente aceitou |
+| Envio confirmado | `wamid` de retorno da Meta na 9941 |
+
+O teste de conflito é o mais valioso: não foi simulado. O horário estava ocupado
+por um agendamento criado noutra conversa, e o agente **nomeou o barbeiro real**
+(Saymon) ao recusar — numa conversa sem histórico envenenado.
+
+### Não testado
+
+- **Imagem.** `Baixar Imagem` usa a mesma credencial que foi consertada, então há
+  boa chance de funcionar, mas ninguém exercitou.
+- **Botões do lembrete.** Depende de template aprovado.
+
+### Aberto
+
+**Histórico envenenado na conversa do "Manuel"** (`a1e86b3c-...`): **cinco**
+mensagens do agente citando "Rafael", de 22 a 23/08, cada uma copiando a
+anterior. As travas novas impedem novas, mas não apagam as existentes. Decidido
+em 23/08 **não apagar por ora** — a conversa fica como espécime do defeito, e os
+testes seguem pelo outro número.
+
+**Telefone gravado sem padrão.** O cliente "Manuel" ficou com `41984729754` e o
+"Samuel" com `554187275895` — um com DDI, outro sem. Não quebrou nada porque as
+views casam pelos últimos 8 dígitos, mas isso é contorno, não solução.
+Padronizar na criação do cliente pelo agente.
+
+
+## Evolution fora dos fluxos — 2026-08-23
+
+Os três últimos fluxos que mandavam pela Evolution passaram para o nó nativo do
+WhatsApp com `sendTemplate`. **Nenhum fluxo do n8n fala com a Evolution agora.**
+
+| Fluxo | O que mudou | Estado |
+|---|---|---|
+| `Aviso de Fim de Teste` | `httpRequest` → `sendTemplate` | publicado, ativo |
+| `Política de Atraso` | `httpRequest` → `sendTemplate` | **salvo, NÃO publicado** — continua desligado de propósito |
+| `Lembretes` | envio, conexão e gravação do wamid | publicado, ativo |
+
+Migration 0093: `atrasos_para_perguntar` e `vencimentos_a_avisar` passam a
+devolver `template`, `template_idioma` e `template_parametros`, como a
+reativação já fazia.
+
+### Ficam prontos e parados, e isso é o desenho
+
+As duas views fazem **join** com `whatsapp_templates` filtrando
+`status = 'aprovado'`. Enquanto a Meta não aprovar, elas vêm vazias e os fluxos
+não têm o que enviar. O lembrete tem a mesma trava num nó próprio
+(`Buscar Template Aprovado` → `Template Aprovado?`), e quando não encontra
+**não marca `lembrete_enviado`** — no dia da aprovação o próximo ciclo pega.
+
+Conferido depois de aplicar: as cinco views de disparo devolvem 0 linhas, e
+`templates_com_parametros_errados` continua vazia.
+
+### O nó novo mais importante
+
+`Guardar wamid do Lembrete`, no fluxo de lembretes. A RPC `responder_lembrete`
+casa o clique do cliente pelo `context.id` do webhook contra
+`appointments.lembrete_message_id`. **Sem esse nó, o botão "Sim, confirmo" não
+é reconhecido** e a resposta cai no agente como conversa solta — ou seja, os
+três botões existiriam e não fariam nada.
+
+Roda depois do envio porque o wamid só existe na resposta da Meta. A proteção
+contra reenvio continua sendo `Marcar lembrete_enviado`, que roda antes.
+
+### O que sobra da Evolution
+
+Nada mais no n8n. Continuam existindo, sem uso pelos fluxos:
+
+- edge function `whatsapp` (connect/status/disconnect) — **ainda chamada pela
+  tela `/conexao` do CRM**, confirmado em log de produção
+- `_shared/instanceName.ts`, `_shared/evolutionConfig.json`, `scripts/evolution-*.mjs`
+- credencial `Evolution API - CRM Salão` no n8n
+- coluna `instance_name`, ainda exposta pelas views para o caso de alguma
+  barbearia voltar à Evolution
+
+Desligar a Evolution agora só quebraria a tela `/conexao` — que já está mentindo
+de qualquer forma.
+
+
+## Convite aceita quem já tem conta — 2026-08-23
+
+Convidar um e-mail que já tinha login devolvia *"Já existe uma conta com esse
+e-mail. Peça ao dono para trocar o e-mail"* — ou seja, pedia à pessoa um e-mail
+falso para poder trabalhar. Barbeiro em duas barbearias é comum no ramo, o
+schema (`user_salons`) sempre permitiu, e a produção já tinha um dono com duas
+unidades; só o fluxo de convite proibia.
+
+**Agora são dois caminhos:** conta nova cria senha como sempre; conta existente
+**entra com a senha que já possui** e só ganha o vínculo novo. A senha é a prova
+de posse do e-mail — sem ela, um dono que digitasse o e-mail de um terceiro o
+colocaria numa equipe sem consentimento, e o fluxo antigo ainda deixaria quem
+abrisse o link definir senha nova na conta alheia.
+
+Três defeitos caíram juntos:
+
+1. **`listUsers()` sem paginação** — a verificação funcionava com 5 contas e
+   quebraria em silêncio a partir de 50. Virou a RPC `user_id_por_email`
+   (migration 0094), consulta por índice, só para service_role — expô-la a
+   usuários logados viraria um oráculo de quais e-mails têm conta.
+2. **Conta órfã bloqueava o e-mail para sempre** — `samuel21almeiida@` existia
+   no auth sem barbearia nenhuma, invisível em qualquer tela. No fluxo novo ela
+   se resolve sozinha: a pessoa entra com a senha e ganha o vínculo.
+3. **O rollback apagava demais** — o catch fazia `deleteUser` incondicional.
+   Se falhasse no meio do vínculo de uma conta PRÉ-EXISTENTE, apagaria um login
+   com vínculos em outras barbearias. Agora só conta criada agora é desfeita
+   inteira; conta antiga tem desfeitos apenas o profissional e o vínculo deste
+   aceite.
+
+Edge function v22 no ar; tela com os dois modos. **Teste manual pendente:** usar
+o convite da El Guardians com `samuel21almeiida@gmail.com` (a órfã) — deve
+pedir a senha existente e vincular.
+
+
+## Funcoes SECURITY DEFINER estavam executaveis por anon — CORRIGIDO 2026-08-23
+
+`revoke ... from anon, authenticated` não fecha nada: toda função nasce com
+EXECUTE concedido a PUBLIC, e anon herda de PUBLIC. As migrations 0084, 0086 e
+0094 fizeram exatamente esse revoke acreditando ter restringido. O advisor do
+Supabase mostrou as cinco executáveis sem login via `/rest/v1/rpc`:
+
+- `user_id_por_email` — oráculo de quais e-mails têm conta;
+- `responder_lembrete` — confirmar/cancelar agendamento alheio com o wamid;
+- `trocar_horarios` — trocar horários de QUALQUER barbearia (definer ignora RLS);
+- `salon_por_phone_number_id`, `horarios_livres` — leitura.
+
+Migration 0095 revoga de `public, anon, authenticated` nas cinco; só
+service_role executa (conferido com `has_function_privilege`). **Regra nova:**
+função definer revoga de PUBLIC primeiro, e o grant é explícito e pontual.
+
+
+## Rede de barbearias — fase 1 entregue em 2026-08-23
+
+**Decisão de desenho:** rede não é um cadastro, é uma promoção. Todo mundo entra
+criando a primeira barbearia; a rede nasce no primeiro "Adicionar unidade". Não
+há (nem haverá) funil "cadastre sua rede" na landing — dono de barbearia não se
+apresenta como rede, ele abre a segunda loja.
+
+**O que já existia** (mais do que o backlog dizia): `organizations`, seletor de
+unidade no `SalonContext`, painel `/rede` com comparativo, `add-salon-unit`,
+`RequireNetworkOwner`, e uma rede real de teste (El Guardian: Curitiba + SJP).
+O que faltava era **como uma rede passa a existir** — nada criava
+`organizations`; a única nasceu por SQL.
+
+**Feito:**
+
+- `add-salon-unit` (v18) recebe `salonId` de origem em vez de `organizationId`.
+  Origem sem organização → cria a organização com o nome da barbearia, anexa a
+  origem, e só então cria a unidade. O dono nunca vê "organização".
+- **A unidade nasce com assinatura** (herda o plano da origem, 7 dias de
+  teste). Antes não nascia — e unidade sem `subscriptions` some de
+  `salons_com_automacao` e abre `/assinatura` como "cadastrada antes do
+  controle". Buraco achado lendo a função.
+- Horário de funcionamento herdado da origem; catálogo copiado por padrão.
+- `NovaUnidadeModal` extraído da RedePage para arquivo próprio, com dois donos:
+  aba Rede e **Configurações → seção Unidades**, visível para toda barbearia
+  cujo usuário é dono. É ali que a avulsa encontra o botão.
+- Após criar: recarrega unidades (liga `isNetwork`, aparece seletor e aba
+  Rede), entra na unidade nova.
+
+**Fases seguintes (não feitas):**
+
+- Fase 2 — cobrança: `/assinatura` mostrar todas as unidades e o total; desconto
+  de rede; decidir um cartão para tudo (recomendado) vs fatura consolidada.
+- Fase 3 — landing: seção "Para redes" + FAQ de preço por unidade.
+- Fase 4 — papéis: gerente de rede que vê tudo sem ser dono. Hoje dono da rede =
+  owner em cada unidade, e serve.
+- WhatsApp por unidade: mesmo caminho da avulsa (número por unidade na WABA
+  Club Cut, 20 números com empresa verificada); Embedded Signup resolve os dois.
+
+**Teste manual pendente:** com `castrocollin01` (El Guardians, avulsa),
+Configurações → Adicionar unidade. Esperado: organização "El Guardians"
+criada, unidade nova com assinatura em trial, seletor de unidades e aba Rede
+aparecendo.
+
+
+## Rede — fase 2: cobrança unificada — 2026-08-23
+
+**O modelo, como decidido:** cada barbearia continua gerando a própria cobrança
+(`subscriptions` por unidade segue sendo a verdade de plano/valor/acesso — e é
+nela que o modelo de preço novo, ainda por definir, vai mexer). O que a rede
+escolhe é só o **formato do boleto**: um por unidade (padrão) ou um único com a
+soma de todas.
+
+**Como funciona por dentro:**
+
+- `organizations` ganhou `cobranca_unificada`, `cpf_cnpj`, `asaas_customer_id`
+  e `asaas_subscription_id` (migration 0096). Sem policy de escrita para
+  authenticated de propósito: ligar a flag por update direto, sem cancelar as
+  recorrências por unidade no Asaas, cobraria a rede em dobro.
+- Ação `assinar-rede` na function `asaas` (v22): valida que quem pediu é dono
+  de TODAS as unidades, cancela as recorrências por unidade (antes de criar a
+  nova — a ordem inversa deixaria janela de cobrança dupla) e cria UMA
+  recorrência da rede com `externalReference: rede:<orgId>`, no valor da soma.
+- Ação `separar-rede`: cancela a recorrência da rede; cada unidade volta a
+  assinar sozinha; `acesso_ate` fica (o que foi pago continua valendo).
+- Webhook (v17): pagamento cuja subscription é a da rede (ou externalReference
+  `rede:`) estende `acesso_ate`/`atendimento_ate` de TODAS as unidades da
+  organização; atraso marca todas como atrasadas.
+- CRM: seção **Cobrança da rede** na `/assinatura` (`CobrancaDaRede.tsx`), só
+  para dono de 2+ unidades: lista as assinaturas, soma o total e oferece
+  unificar/separar. O CPF/CNPJ do pagante da rede é separado do por unidade
+  (rede paga pela matriz/holding).
+- Modal de unidade nova pergunta o **nome da rede** quando é a primeira — senão
+  a rede nasce com o nome da barbearia e não há tela para renomear.
+
+**Limitações conhecidas (aceitas por ora):**
+
+- Troca de plano de uma unidade sob cobrança unificada **não reajusta** o valor
+  da recorrência da rede automaticamente — o ajuste só acontece ao
+  separar/unificar de novo. Resolver quando o modelo de preço novo for definido.
+- Unidade criada depois da unificação não entra sozinha no boleto — mesma
+  janela de decisão.
+
+**Não testado em produção:** o ciclo completo unificar → boleto → webhook →
+todas liberadas. Precisa de uma rede com 2+ assinaturas reais; a El Guardians
+vira o cenário assim que o teste da fase 1 criar a segunda unidade.
+
+
+## Modelo de cobrança por uso — 2026-08-24
+
+**Pay-per-booking progressivo**, decidido em 24/08: o cliente paga por
+agendamento criado pelo agente no WhatsApp. Faixas por barbeiros ativos
+(1–3: R$0,75 · 4–7: R$0,70 · 8–10: R$0,65 · 11+: R$0,60), medidos no último
+dia do período. **A faixa nunca aparece para o cliente — só o preço dele.**
+
+Regras travadas:
+- Cobra o agendamento com `origem = 'agente'`, MESMO cancelado depois (o
+  sistema entregou o prometido). Reagendar não duplica (mesma linha). CRM e QR
+  não cobram.
+- Lembrete não cobra. Reativação não cobra por mensagem; o agendamento que ela
+  gerar cobra como qualquer um.
+- Sem mínimo, sem franquia grátis.
+- Boleto gerado À MÃO a partir do e-mail de detalhamento. Sem assinatura pelo
+  sistema; o cliente só cancela.
+
+**Construído (migration 0097):**
+- `faixas_de_uso` (preços em tabela, sem policy — o cliente não lê faixas),
+  `preco_por_uso(n)` (authenticated pode: devolve só o preço unitário).
+- `faturas_de_uso` — fechamentos CONGELADOS com detalhe linha a linha (jsonb).
+  Cancelar agendamento dia 3 não muda fatura fechada dia 1. Idempotente por
+  unique. RLS: dono lê as suas.
+- `gerar_fatura_de_uso`, `fechar_mes_de_uso` (todas as barbearias ativas),
+  `gerar_fatura_de_cancelamento` (último fechamento → hoje). Todas revogadas de
+  PUBLIC (lição da 0095).
+- **pg_cron** roda `fechar_mes_de_uso()` todo dia 1 às 06h de Brasília — o
+  fechamento é do banco, não do n8n.
+- `uso_do_sistema_no_mes` (medidor ao vivo, invoker) e `faturas_a_notificar`
+  (fila do notificador; view porque `is null` no nó do Supabase quebra).
+- Policy de SELECT criada para `reativacao_envios` — não tinha, e a view
+  invoker mostraria zero em silêncio.
+
+**n8n:** `CRM Salao - Detalhamento de Uso` (8Qh33uoFm4VqT1eO), de hora em hora:
+fatura sem `notificada_em` → e-mail para o canal com resumo + tabela linha a
+linha → marca DEPOIS do envio. Testado com envio real (execuções 10463/10464;
+a primeira revelou o mesmo defeito de contexto do Converge — depois do
+emailSend o $json vira resposta SMTP — corrigido com referência explícita).
+
+**Edge `asaas` v23:** cancelar gera a fatura parcial na hora (falha não derruba
+o cancelamento — o fechamento mensal cobre).
+
+**CRM:** `UsoDoSistema` na `/assinatura` — medidor do mês (agendamentos ×
+preço, VALOR GERADO em serviços, lembretes e reativações "sem custo") +
+histórico de períodos fechados.
+
+**Transição pendente (decisões de negócio, não de código):**
+1. Desmontar o fluxo antigo de assinar/trocar plano na `/assinatura` — hoje os
+   dois modelos convivem na tela.
+2. Destino dos planos Básico/Pro e do gating `salons_com_automacao`
+   (`inclui_automacoes`) — no modelo por uso, todo mundo tem tudo.
+3. Migrar as assinaturas recorrentes existentes no Asaas para o modelo novo.
+4. Trial: hoje unidade nova nasce com 7 dias; no modelo por uso talvez nem
+   precise de trial.
+
+
+## Modelo antigo removido do produto — 2026-08-24
+
+O que o dono vê agora é só o modelo por uso. Saíram do CRM: `TrocarPlano`,
+`RecursosDoPlano`, `AcoesDaAssinatura` (virou `CancelarUso`, o único botão),
+o cálculo de proporcional e seus testes. A `/assinatura` é: medidor de uso →
+situação do acesso + cancelar → CPF/CNPJ do pagante → cobrança da rede.
+
+A edge function `asaas` encolheu de 660 para ~200 linhas (v24): sobraram
+`cancelar` (que derruba recorrência legada se existir e gera a fatura parcial)
+e `unificar-rede`/`separar-rede` — que agora são SÓ uma preferência
+(`organizations.cobranca_unificada`), sem criar nada no Asaas: o boleto é
+manual, e a flag diz ao faturamento para tratar a rede como um pagante só.
+
+A seção da rede mostra **o uso do mês de cada unidade** (agendamentos × preço
+da unidade) e o total — não mais mensalidades.
+
+Migration 0098: `plans.ativo = false` em tudo (tabela aposentada, fica pelo
+histórico/FK) e `salons_com_automacao` **sem filtro de plano** — no modelo por
+uso todo mundo tem as automações; a trava que resta é estar ativa e dentro de
+`atendimento_ate`.
+
+**Pendências que esta remoção revelou:**
+
+1. **Preço da landing ≠ faixas do banco.** A landing vende R$ 0,85 por
+   agendamento (`src/lib/planos.ts`); as faixas cobram 0,75–0,60. Alinhar um
+   dos dois — decisão de negócio.
+2. **Os Termos de Uso descrevem o modelo antigo** (troca de plano, proporcional,
+   mensalidade — `TermosPage`). Precisa de texto novo para o modelo por uso e
+   bump da `VERSAO_DOS_TERMOS` (o aceite é registrado por versão). Junta com a
+   revisão de advogado já pendente.
+3. **Recorrências legadas no Asaas** (ex.: Curitiba) seguem cobrando até serem
+   canceladas — pelo botão de cancelar de cada uma, ou à mão no painel do
+   Asaas, na migração de cada cliente para o modelo novo.
+
+
+## Termos de uso atualizados para o modelo por uso — 2026-08-24
+
+`VERSAO_DOS_TERMOS = '2026-08-24'`. O que mudou no texto:
+
+- **§2** “O que cada plano inclui” → “O que está incluído”: sem planos, todo
+  cliente tem tudo; conexão do WhatsApp “feita junto com a nossa equipe” (sem
+  QR code no texto).
+- **§4** reescrita: cobrança por agendamento criado pelo atendimento automático,
+  sem mínimo; cancelado depois cobra (“o serviço de marcar foi prestado”);
+  remarcar não duplica; CRM e QR do balcão não cobram; lembretes e reativações
+  sem custo; fechamento no mês-calendário; reajuste com 30 dias de aviso. O
+  texto fala em “valor unitário informado na contratação” — as faixas
+  continuam fora do texto público, como decidido.
+- **§5** cancelamento: fecha o período em aberto na hora, última cobrança só
+  com o usado até o dia.
+- **§7 antiga (troca de plano) removida**; seções renumeradas (13 → 12).
+- **§8 (antiga 9) WhatsApp**: deixou de descrever “canal não oficial” — a
+  conexão é pela API oficial da Meta desde 22/08; mantém que a Meta pode
+  restringir números pelas políticas dela, e cita os modelos aprovados.
+
+**Consequências em aberto:**
+- Todos os aceites registrados são da versão 2026-08-14 ou anterior — a
+  diferença é detectável por design, mas **não existe fluxo de re-aceite** para
+  usuário já logado. Decidir se o texto novo vale só para entradas novas ou se
+  o CRM deve pedir aceite de novo.
+- `TERMOS_EM_REVISAO` continua true: a revisão por advogado segue pendente, e
+  agora com o texto já no modelo definitivo de cobrança.
+
+
+## Boleto automático do uso — 2026-08-24
+
+O boleto do fechamento nasce sozinho. Ciclo completo:
+
+```
+dia 1  → pg_cron fecha as faturas               (banco)
+hora/hora → n8n: cobrar-uso gera as cobranças no Asaas
+          → detalhamento p/ dono do produto (com link do boleto)
+          → boleto p/ DONO DA BARBEARIA por e-mail
+CRM    → banner “Cobrança em aberto — Pagar (boleto, Pix ou cartão)”
+pago   → webhook estende o acesso E marca a fatura como paga
+```
+
+- **Edge `cobrar-uso` (v1)**: agrupa por rede quando `cobranca_unificada`
+  (externalReference `rede:<id>`), acumula grupos abaixo de R$ 5, pula quem não
+  tem CPF/CNPJ (fatura fica aberta; o CRM pede o documento). Idempotente — só
+  olha fatura sem `asaas_payment_id` — e por isso o gatilho aceita o token anon
+  (público): disparo à toa só faz o trabalho que já ia acontecer.
+- **Migration 0099**: colunas do boleto em `faturas_de_uso`, `email_do_dono()`
+  (definer, service_role — senão vira oráculo de e-mails), views
+  `faturas_a_notificar` (+boleto) e `boletos_a_enviar` (uma linha POR COBRANÇA:
+  boleto acumulado gera UM e-mail, não três).
+- **Webhook v18** marca `paga_em` nas faturas da cobrança paga — é o “pago” do
+  histórico no CRM.
+- **n8n (15 nós)**: Gerar Boletos roda ANTES do notificador (o detalhamento já
+  sai com o link); duas filas independentes de e-mail.
+- **CRM**: banner de cobrança em aberto com botão de pagar; histórico com
+  pago / pagar / acumula.
+
+**Testado ao vivo**: `cobrar-uso` devolveu `acumuladas: 1` para a fatura de
+R$ 1,50 — regra do mínimo funcionando. O caminho ≥ R$ 5 (criação real de
+cobrança + e-mail ao dono) ainda não rodou: acontece no primeiro fechamento
+que somar R$ 5, ou num cancelamento com uso suficiente.

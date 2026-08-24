@@ -1,35 +1,36 @@
-import { CreditCard, CheckCircle2, AlertTriangle, CalendarClock, Clock } from 'lucide-react'
+import { CreditCard, CheckCircle2, AlertTriangle, Clock } from 'lucide-react'
 import { useSalon } from '../auth/useSalon'
 import { useAssinatura, type Assinatura } from './useAssinatura'
 import { DadosDeCobranca } from './DadosDeCobranca'
-import { AcoesDaAssinatura } from './AcoesDaAssinatura'
-import { RecursosDoPlano } from './RecursosDoPlano'
-import { TrocarPlano } from './TrocarPlano'
-
-function moeda(valor: number) {
-  return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-}
+import { CancelarUso } from './CancelarUso'
+import { CobrancaDaRede } from './CobrancaDaRede'
+import { UsoDoSistema } from './UsoDoSistema'
 
 function formatarData(iso: string) {
   const [ano, mes, dia] = iso.split('-')
   return `${dia}/${mes}/${ano}`
 }
 
+/**
+ * A situação do acesso no modelo por uso.
+ *
+ * Os estados do modelo antigo (assinatura ativa, aguardando Pix da
+ * recorrência, troca agendada) morreram em 2026-08-24. O que resta descrever:
+ * teste, em dia, boleto atrasado e vencido — todos derivados de `acesso_ate`,
+ * que o webhook estende quando o boleto manual do fechamento é pago.
+ */
 function Situacao({ assinatura }: { assinatura: Assinatura }) {
-  const { status, diasRestantes, expirada, acessoAte, temRecorrencia } = assinatura
+  const { status, diasRestantes, expirada, acessoAte } = assinatura
 
   if (expirada) {
     return (
       <div className="flex items-start gap-2 text-danger">
         <AlertTriangle size={18} className="shrink-0 mt-0.5" />
         <div>
-          <p className="font-medium">
-            {status === 'cancelada' ? 'Assinatura encerrada' : 'Teste encerrado'} em{' '}
-            {formatarData(acessoAte!)}
-          </p>
+          <p className="font-medium">Acesso vencido em {formatarData(acessoAte!)}</p>
           <p className="text-sm text-muted-foreground">
-            O agente continua atendendo seus clientes no WhatsApp. Para seguir usando o CRM, fale
-            com o suporte para regularizar.
+            O agente continua atendendo seus clientes no WhatsApp por alguns dias. Pague a última
+            cobrança para voltar ao normal.
           </p>
         </div>
       </div>
@@ -45,24 +46,7 @@ function Situacao({ assinatura }: { assinatura: Assinatura }) {
             Período de teste — {diasRestantes === 0 ? 'termina hoje' : `${diasRestantes} dias restantes`}
           </p>
           <p className="text-sm text-muted-foreground">
-            Acesso liberado até {formatarData(acessoAte!)}, com tudo do plano incluído.
-          </p>
-        </div>
-      </div>
-    )
-  }
-
-  // Assinou, falta o Pix cair. Antes deste estado o dono via "Assinatura ativa"
-  // com uma próxima cobrança que ainda dependia de um pagamento não feito.
-  if (status === 'pendente') {
-    return (
-      <div className="flex items-start gap-2">
-        <Clock size={18} className="shrink-0 mt-0.5 text-primary" />
-        <div>
-          <p className="font-medium text-foreground">Aguardando o pagamento</p>
-          <p className="text-sm text-muted-foreground">
-            Assim que o Pix cair, a assinatura é liberada automaticamente
-            {acessoAte ? `. Seu acesso atual vai até ${formatarData(acessoAte)}.` : '.'}
+            Tudo liberado até {formatarData(acessoAte!)}. Depois, você paga só pelo que usar.
           </p>
         </div>
       </div>
@@ -74,38 +58,11 @@ function Situacao({ assinatura }: { assinatura: Assinatura }) {
       <div className="flex items-start gap-2">
         <AlertTriangle size={18} className="shrink-0 mt-0.5 text-warning" />
         <div>
-          <p className="font-medium text-foreground">Pagamento em atraso</p>
+          <p className="font-medium text-foreground">Cobrança em atraso</p>
           <p className="text-sm text-muted-foreground">
             {acessoAte
-              ? `Seu acesso vai até ${formatarData(acessoAte)}. Pague a fatura em aberto para continuar.`
-              : 'Pague a fatura em aberto para continuar.'}
-          </p>
-        </div>
-      </div>
-    )
-  }
-
-  // Sem recorrência: cobre tanto quem cancelou quanto quem nunca assinou.
-  //
-  // Antes havia um estado separado para `status = 'cancelada'`, e ele mentia
-  // depois de uma troca de plano: "Assinatura cancelada" descrevia uma ação
-  // sobre o plano **anterior**, informação velha ocupando o lugar da atual. O
-  // `status` guarda história; a pergunta que a tela precisa responder é se
-  // existe renovação — e quem responde isso é a recorrência.
-  //
-  // O que o texto de cancelamento tinha de essencial fica: as cobranças param,
-  // o acesso não. É a regra de 2026-08-02, e sem dizê-la o dono cancela e fica
-  // sem saber se ainda pode usar o sistema.
-  if (!temRecorrencia) {
-    return (
-      <div className="flex items-start gap-2">
-        <CalendarClock size={18} className="shrink-0 mt-0.5 text-warning" />
-        <div>
-          <p className="font-medium text-foreground">Sem renovação automática</p>
-          <p className="text-sm text-muted-foreground">
-            {acessoAte
-              ? `Não há novas cobranças, e seu acesso segue até ${formatarData(acessoAte)}.`
-              : 'Não há cobrança automática configurada.'}
+              ? `Seu acesso vai até ${formatarData(acessoAte)}. Pague a cobrança em aberto para continuar.`
+              : 'Pague a cobrança em aberto para continuar.'}
           </p>
         </div>
       </div>
@@ -114,13 +71,12 @@ function Situacao({ assinatura }: { assinatura: Assinatura }) {
 
   return (
     <div className="flex items-start gap-2">
-      <CheckCircle2 size={18} className="shrink-0 mt-0.5 text-success" />
+      <Clock size={18} className="shrink-0 mt-0.5 text-success" />
       <div>
-        <p className="font-medium text-foreground">Assinatura ativa</p>
+        <p className="font-medium text-foreground">Acesso em dia</p>
         <p className="text-sm text-muted-foreground">
-          {acessoAte
-            ? `Próxima cobrança em ${formatarData(acessoAte)}.`
-            : 'Sem data de vencimento.'}
+          {acessoAte ? `Pago até ${formatarData(acessoAte)}. ` : ''}A cobrança do mês fecha no dia
+          1º e chega como boleto, só com o que foi usado.
         </p>
       </div>
     </div>
@@ -135,12 +91,12 @@ export function AssinaturaPage() {
     return <p className="text-sm text-muted-foreground">Carregando...</p>
   }
 
-  // Dono de rede sem unidade escolhida: a assinatura é por unidade, então não
-  // há o que mostrar até ele escolher qual.
+  // Dono de rede sem unidade escolhida: o uso é por unidade, então não há o
+  // que mostrar até ele escolher qual.
   if (!salonId) {
     return (
       <p className="text-sm text-muted-foreground">
-        Escolha uma barbearia para ver a assinatura dela.
+        Escolha uma barbearia para ver o uso dela.
       </p>
     )
   }
@@ -157,82 +113,37 @@ export function AssinaturaPage() {
         </div>
       </div>
 
-      {erro ? (
+      {erro && (
         <p className="text-sm text-danger bg-danger-soft border border-danger/30 rounded-lg p-4">
           {erro} Tente recarregar a página. Se continuar, avise o suporte.
         </p>
-      ) : !assinatura ? (
-        <p className="text-sm text-muted-foreground bg-surface-2 border border-border rounded-lg p-4">
-          Esta barbearia foi cadastrada antes do controle de assinatura e ainda não tem um plano
-          registrado. Fale com o suporte para regularizar — o acesso não é afetado.
-        </p>
-      ) : (
-        <>
-          {/* Plano, situação e ações no mesmo bloco. Eram três cartões de peso
-              igual empilhados, e a página não dizia o que era importante — nem
-              deixava claro que os botões agiam sobre aquele plano ali em cima. */}
-          <div className="bg-surface border border-border rounded-xl p-4 space-y-4">
-            <div className="flex items-baseline justify-between gap-3">
-              <div>
-                <p className="text-xs text-muted-foreground">Plano</p>
-                <p className="text-lg font-semibold text-foreground">{assinatura.planoNome}</p>
-                {/* Sem isto o topo mentia por omissão: mostrava só o plano de
-                    hoje enquanto uma mudança já estava agendada, e quem olhasse
-                    apenas aqui sairia com a informação errada. */}
-                {assinatura.planoAgendadoNome && (
-                  <p className="text-xs text-warning mt-0.5">
-                    Muda para {assinatura.planoAgendadoNome}
-                    {assinatura.planoAgendadoPreco != null &&
-                      ` (${moeda(assinatura.planoAgendadoPreco)}/mês)`}
-                    {assinatura.acessoAte && !assinatura.aguardandoPagamentoDaTroca
-                      ? ` em ${formatarData(assinatura.acessoAte)}`
-                      : ''}
-                  </p>
-                )}
-              </div>
-              {assinatura.valor != null && (
-                <p className="text-sm text-muted-foreground tabular-nums">
-                  {moeda(assinatura.valor)} / mês
-                </p>
-              )}
-            </div>
-
-            <div className="pt-3 border-t border-border">
-              <Situacao assinatura={assinatura} />
-            </div>
-
-            {/* Junto da situação, e não no rodapé: assinar é o que a pessoa veio
-                fazer. Antes ficava depois do CPF e da troca de plano, então era
-                preciso rolar a página inteira para achar o botão.
-
-                Só aparece com o documento preenchido — o Asaas exige CPF/CNPJ
-                para criar o pagante, e sem ele o botão devolveria erro. */}
-            {assinatura.cpfCnpj && (
-              <div className="pt-3 border-t border-border">
-                <AcoesDaAssinatura salonId={salonId} assinatura={assinatura} onMudou={reload} />
-              </div>
-            )}
-          </div>
-
-          <RecursosDoPlano assinatura={assinatura} />
-
-          <TrocarPlano salonId={salonId} assinatura={assinatura} onMudou={reload} />
-
-          <DadosDeCobranca
-            salonId={salonId}
-            documentoAtual={assinatura.cpfCnpj}
-            onSalvo={reload}
-          />
-
-          {/* Sem documento não há botão nenhum acima, e a página não diria o que
-              falta fazer. */}
-          {!assinatura.cpfCnpj && (
-            <p className="text-sm text-muted-foreground">
-              Informe o CPF ou CNPJ acima para poder assinar.
-            </p>
-          )}
-        </>
       )}
+
+      {/* O medidor primeiro: é a página inteira agora — o que o mês está
+          custando e o que o agente gerou em troca. */}
+      <UsoDoSistema />
+
+      {assinatura && (
+        <div className="bg-surface border border-border rounded-xl p-4 space-y-4">
+          <Situacao assinatura={assinatura} />
+          {assinatura.status !== 'cancelada' && (
+            <div className="pt-3 border-t border-border">
+              <CancelarUso salonId={salonId} onMudou={reload} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* O CPF/CNPJ é o dado do pagante no boleto manual. */}
+      <DadosDeCobranca
+        salonId={salonId}
+        documentoAtual={assinatura?.cpfCnpj ?? null}
+        onSalvo={reload}
+      />
+
+      {/* Some sozinho fora de rede: o componente devolve null quando o usuário
+          não é dono de duas ou mais unidades. */}
+      <CobrancaDaRede />
     </div>
   )
 }

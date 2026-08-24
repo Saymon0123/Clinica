@@ -11,6 +11,13 @@ type ConviteInfo = {
   role: string
   /** Convite de dono vem sem nome — quem aceita digita o próprio. */
   pedeNome?: boolean
+  /**
+   * O e-mail já tem conta no Club Cut. Muda o modo da tela: em vez de criar
+   * senha, a pessoa ENTRA com a que já possui — a senha é a prova de posse do
+   * e-mail, e é o que impede alguém com o link de sequestrar conta alheia ou
+   * de vincular um terceiro a uma equipe sem consentimento.
+   */
+  contaExiste?: boolean
 }
 
 export function AceitarConvitePage() {
@@ -65,7 +72,9 @@ export function AceitarConvitePage() {
       setErro('A senha precisa ter pelo menos 8 caracteres.')
       return
     }
-    if (senha !== confirmacao) {
+    // Quem já tem conta digita a senha EXISTENTE — repetição não prova nada
+    // nesse caso, só atrapalha.
+    if (!info?.contaExiste && senha !== confirmacao) {
       setErro('As senhas não conferem.')
       return
     }
@@ -103,10 +112,14 @@ export function AceitarConvitePage() {
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-success">
               <Check size={20} />
-              <h1 className="text-base font-semibold">Conta criada!</h1>
+              <h1 className="text-base font-semibold">
+                {info?.contaExiste ? 'Convite aceito!' : 'Conta criada!'}
+              </h1>
             </div>
             <p className="text-sm text-muted-foreground">
-              Agora é só entrar com o seu e-mail e a senha que você acabou de criar.
+              {info?.contaExiste
+                ? 'A barbearia foi adicionada à sua conta. Entre normalmente e escolha a unidade.'
+                : 'Agora é só entrar com o seu e-mail e a senha que você acabou de criar.'}
             </p>
             <Link
               to="/login"
@@ -132,7 +145,13 @@ export function AceitarConvitePage() {
                 {info.nome ? `Olá, ${info.nome}!` : 'Bem-vindo!'}
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
-                {info.role === 'owner' ? (
+                {info.contaExiste ? (
+                  <>
+                    Você foi convidado para a <strong>{info.salao}</strong>. Como você já tem conta
+                    no Club Cut, entre com a sua senha para aceitar — a barbearia é adicionada à
+                    conta que você já usa.
+                  </>
+                ) : info.role === 'owner' ? (
                   <>
                     Seu acesso à <strong>{info.salao}</strong> está pronto. Crie sua senha para
                     entrar.
@@ -170,13 +189,16 @@ export function AceitarConvitePage() {
             )}
 
             <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Crie uma senha</span>
+              <span className="text-xs font-medium text-muted-foreground">
+                {info.contaExiste ? 'Sua senha do Club Cut' : 'Crie uma senha'}
+              </span>
               <div className="relative mt-1">
                 <input
                   type={mostrarSenha ? 'text' : 'password'}
                   value={senha}
                   onChange={(e) => setSenha(e.target.value)}
-                  placeholder="Mínimo 8 caracteres"
+                  placeholder={info.contaExiste ? 'A senha da sua conta' : 'Mínimo 8 caracteres'}
+                  autoComplete={info.contaExiste ? 'current-password' : 'new-password'}
                   className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 pr-10 text-sm"
                 />
                 <button
@@ -190,15 +212,18 @@ export function AceitarConvitePage() {
               </div>
             </label>
 
-            <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Repita a senha</span>
-              <input
-                type={mostrarSenha ? 'text' : 'password'}
-                value={confirmacao}
-                onChange={(e) => setConfirmacao(e.target.value)}
-                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
-              />
-            </label>
+            {/* Repetir só faz sentido quando a senha está sendo INVENTADA. */}
+            {!info.contaExiste && (
+              <label className="block">
+                <span className="text-xs font-medium text-muted-foreground">Repita a senha</span>
+                <input
+                  type={mostrarSenha ? 'text' : 'password'}
+                  value={confirmacao}
+                  onChange={(e) => setConfirmacao(e.target.value)}
+                  className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                />
+              </label>
+            )}
 
             {/* Os links abrem em aba nova: clicar para ler não pode custar a
                 senha já digitada e o convite aberto. */}
@@ -239,7 +264,13 @@ export function AceitarConvitePage() {
               disabled={salvando}
               className="w-full btn-primary rounded px-3 py-2.5 text-sm font-medium disabled:opacity-50"
             >
-              {salvando ? 'Criando conta...' : 'Criar minha conta'}
+              {salvando
+                ? info.contaExiste
+                  ? 'Aceitando convite...'
+                  : 'Criando conta...'
+                : info.contaExiste
+                  ? 'Entrar e aceitar convite'
+                  : 'Criar minha conta'}
             </button>
           </form>
         )}

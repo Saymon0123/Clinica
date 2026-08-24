@@ -136,6 +136,18 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true, ignorado: evento })
     }
 
+    // Fatura de uso coberta por esta cobrança: marca como paga. Antes de
+    // qualquer roteamento porque vale igual para unidade, rede e legado — e
+    // não havendo fatura correspondente, o update simplesmente não acha linha.
+    // É o que faz o CRM mostrar "pago" no histórico de uso.
+    if (ehPagamento && pagamento?.id) {
+      await admin
+        .from('faturas_de_uso')
+        .update({ paga_em: new Date().toISOString() })
+        .eq('asaas_payment_id', pagamento.id)
+        .is('paga_em', null)
+    }
+
     // ----------------------------------------------------------------
     // Cobrança da diferença de troca de plano.
     //
@@ -177,6 +189,66 @@ Deno.serve(async (req: Request) => {
         }
 
         return json({ ok: true, aplicado: 'plano trocado', plano: pendente.plano_agendado })
+      }
+    }
+
+    // ----------------------------------------------------------------
+    // Cobranca unificada da REDE.
+    //
+    // Um pagamento so estende TODAS as unidades da organizacao. Resolvida
+    // antes do caminho por unidade porque a recorrencia da rede nao existe em
+    // `subscriptions` -- existe em `organizations` -- e o externalReference
+    // dela carrega o prefixo `rede:`.
+    // ----------------------------------------------------------------
+    {
+      const ref = pagamento?.externalReference as string | undefined
+      const orgPorRef = ref?.startsWith('rede:') ? ref.slice('rede:'.length) : null
+
+      let org: { id: string } | null = null
+      if (pagamento?.subscription) {
+        const { data } = await admin
+          .from('organizations')
+          .select('id')
+          .eq('asaas_subscription_id', pagamento.subscription)
+          .maybeSingle()
+        org = data
+      }
+      if (!org && orgPorRef) {
+        const { data } = await admin
+          .from('organizations')
+          .select('id')
+          .eq('id', orgPorRef)
+          .maybeSingle()
+        org = data
+      }
+
+      if (org) {
+        const { data: unidades } = await admin
+          .from('salons')
+          .select('id')
+          .eq('organization_id', org.id)
+        const ids = (unidades ?? []).map((u) => u.id)
+        if (ids.length === 0) return json({ ok: true, ignorado: 'rede sem unidades' })
+
+        if (ehPagamento) {
+          // Mesma regra do pagamento por unidade: o periodo vai do vencimento
+          // ate um mes depois, para quem paga atrasado nao ganhar o atraso.
+          const base = pagamento?.dueDate ?? new Date().toISOString().slice(0, 10)
+          const acessoAte = somarUmMes(base)
+          await admin
+            .from('subscriptions')
+            .update({
+              status: 'ativa',
+              acesso_ate: acessoAte,
+              atendimento_ate: somarDias(acessoAte, DIAS_DE_TOLERANCIA),
+              proximo_vencimento: acessoAte,
+            })
+            .in('salon_id', ids)
+          return json({ ok: true, aplicado: 'rede liberada', unidades: ids.length, acesso_ate: acessoAte })
+        }
+
+        await admin.from('subscriptions').update({ status: 'atrasada' }).in('salon_id', ids)
+        return json({ ok: true, aplicado: 'rede marcada como atrasada', unidades: ids.length })
       }
     }
 

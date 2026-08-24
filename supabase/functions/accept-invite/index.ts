@@ -1,8 +1,30 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { jornadaDoHorario } from '../_shared/jornada.ts'
 
+/**
+ * Aceite de convite para a equipe — com DOIS caminhos, e a diferença importa.
+ *
+ * Uma pessoa é um login; barbearias são vínculos (`user_salons`). Barbeiro que
+ * atende em duas casas é comum no ramo, e o schema sempre permitiu — mas este
+ * fluxo tratava "e-mail já tem conta" como beco sem saída, mandando o dono
+ * "trocar o e-mail do convite", isto é, pedindo à pessoa um e-mail falso para
+ * poder trabalhar.
+ *
+ * - **Conta não existe:** cria login + vínculo, como sempre.
+ * - **Conta existe:** pede a senha ATUAL e só vincula. A senha aqui não é
+ *   burocracia — é a prova de posse do e-mail. Sem ela, qualquer dono que
+ *   digitasse o e-mail de um terceiro num convite o colocaria numa equipe sem
+ *   consentimento; e como o fluxo antigo deixava definir senha nova, quem
+ *   abrisse o link poderia sequestrar a conta alheia.
+ *
+ * A verificação de existência é a RPC `user_id_por_email`, não `listUsers()`:
+ * a listagem sem paginação funciona com 5 contas e quebra em silêncio a partir
+ * de 50 — o e-mail some da primeira página e o fluxo tenta criar de novo.
+ */
+
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -63,6 +85,33 @@ Deno.serve(async (req: Request) => {
 
   const salonNome = (convite.salons as { nome?: string } | null)?.nome ?? 'a barbearia'
 
+  // Quem é (se já é alguém). Decide qual dos dois caminhos a tela mostra.
+  const { data: usuarioExistente, error: erroBusca } = await admin.rpc('user_id_por_email', {
+    p_email: convite.email,
+  })
+  if (erroBusca) {
+    console.error('Erro ao buscar usuário por e-mail:', erroBusca)
+    return json({ error: 'Não foi possível carregar o convite. Tente novamente.' }, 500)
+  }
+  const idExistente: string | null = usuarioExistente ?? null
+
+  // Já faz parte DESTA barbearia? Aí não há o que aceitar — e descobrir isso
+  // aqui evita pedir senha para no fim dizer que era à toa.
+  if (idExistente) {
+    const { data: vinculo } = await admin
+      .from('user_salons')
+      .select('user_id')
+      .eq('user_id', idExistente)
+      .eq('salon_id', convite.salon_id)
+      .maybeSingle()
+    if (vinculo) {
+      return json(
+        { error: `Você já faz parte da equipe de ${salonNome}. É só entrar com sua conta.` },
+        409,
+      )
+    }
+  }
+
   // Só consulta os dados do convite (tela mostra antes de pedir a senha).
   if (body.action === 'check') {
     return json({
@@ -73,6 +122,10 @@ Deno.serve(async (req: Request) => {
       // Convite de dono vem sem nome: a tela precisa pedir. Mandar isso
       // explícito evita a tela ter que deduzir da combinação de campos.
       pedeNome: !convite.nome,
+      // Muda a tela: quem já tem conta ENTRA com a senha que possui, em vez
+      // de criar uma. Revela que o e-mail tem cadastro — a mesma informação
+      // que o erro antigo já entregava, só que agora com um caminho adiante.
+      contaExiste: Boolean(idExistente),
     })
   }
 
@@ -97,33 +150,43 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'É preciso aceitar os termos de uso para continuar.' }, 400)
   }
 
-  // E-mail já cadastrado?
-  const { data: existingUsers, error: listError } = await admin.auth.admin.listUsers()
-  if (listError) {
-    console.error('Erro ao listar usuários:', listError)
-    return json({ error: 'Não foi possível concluir o cadastro.' }, 500)
-  }
-  if (existingUsers.users.some((u) => u.email?.toLowerCase() === convite.email.toLowerCase())) {
-    return json(
-      {
-        error:
-          'Já existe uma conta com esse e-mail. Peça ao dono para trocar o e-mail deste convite na aba Equipe.',
-      },
-      409,
-    )
-  }
-
   let userId: string | null = null
+  // Só a conta criada AGORA pode ser desfeita no catch. Apagar uma conta que
+  // já existia — com vínculos em outras barbearias — seria transformar um erro
+  // transitório aqui em desastre lá.
+  let criadaAgora = false
+
   try {
-    const { data: userData, error: createUserError } = await admin.auth.admin.createUser({
-      email: convite.email,
-      password: senha,
-      email_confirm: true,
-    })
-    if (createUserError || !userData.user) {
-      throw createUserError ?? new Error('Falha ao criar a conta.')
+    if (idExistente) {
+      // A prova de posse: entrar com a senha atual. O cliente é o anônimo de
+      // propósito — o admin não valida senha, e é exatamente a validação que
+      // separa "o dono do e-mail aceitou" de "alguém com o link aceitou".
+      const anon = createClient(SUPABASE_URL, ANON_KEY)
+      const { data: login, error: loginError } = await anon.auth.signInWithPassword({
+        email: convite.email,
+        password: senha,
+      })
+      if (loginError || !login.user) {
+        return json(
+          { error: 'Senha incorreta. Use a senha da sua conta Club Cut já existente.' },
+          401,
+        )
+      }
+      userId = login.user.id
+      // Sessão criada só para provar a senha; não é para ficar aberta.
+      await anon.auth.signOut()
+    } else {
+      const { data: userData, error: createUserError } = await admin.auth.admin.createUser({
+        email: convite.email,
+        password: senha,
+        email_confirm: true,
+      })
+      if (createUserError || !userData.user) {
+        throw createUserError ?? new Error('Falha ao criar a conta.')
+      }
+      userId = userData.user.id
+      criadaAgora = true
     }
-    userId = userData.user.id
 
     const { error: vinculoError } = await admin
       .from('user_salons')
@@ -198,8 +261,9 @@ Deno.serve(async (req: Request) => {
     }
 
     // A prova do aceite. Gravada ANTES de marcar o convite como usado: se
-    // falhar, o catch desfaz a conta inteira e a pessoa tenta de novo — pior
-    // seria a conta existir sem registro de que alguém aceitou alguma coisa.
+    // falhar, o catch desfaz e a pessoa tenta de novo — pior seria o vínculo
+    // existir sem registro de que alguém aceitou alguma coisa. Quem já tinha
+    // conta também assina: o aceite é por barbearia, não por login.
     //
     // `ip` e `user_agent` saem do cabeçalho da requisição, não do corpo. Vindo
     // do formulário, quem aceita escolheria o que fica registrado.
@@ -221,10 +285,27 @@ Deno.serve(async (req: Request) => {
       .update({ usado_em: new Date().toISOString() })
       .eq('id', convite.id)
 
-    return json({ ok: true, email: convite.email, salao: salonNome })
+    return json({ ok: true, email: convite.email, salao: salonNome, contaExistia: !criadaAgora })
   } catch (err) {
     console.error('Erro ao aceitar convite, desfazendo:', err)
-    if (userId) await admin.auth.admin.deleteUser(userId)
+    if (userId && criadaAgora) {
+      // Conta nova incompleta: apagar inteira e deixar tentar de novo.
+      await admin.auth.admin.deleteUser(userId)
+    } else if (userId) {
+      // Conta pré-existente: desfazer só o que ESTE aceite criou. A ordem é a
+      // inversa da criação; o profissional leva junto serviços e jornada por
+      // cascata do banco.
+      await admin
+        .from('professionals')
+        .delete()
+        .eq('user_id', userId)
+        .eq('salon_id', convite.salon_id)
+      await admin
+        .from('user_salons')
+        .delete()
+        .eq('user_id', userId)
+        .eq('salon_id', convite.salon_id)
+    }
     return json({ error: 'Não foi possível concluir o cadastro. Tente novamente.' }, 500)
   }
 })

@@ -17,24 +17,21 @@ export function TermosPage() {
       <Secao titulo="1. O que é o Club Cut">
         <p>
           O Club Cut é um sistema de gestão para barbearias, oferecido como serviço pela internet.
-          Você contrata o direito de usar o sistema enquanto a assinatura estiver em dia — não
+          Você contrata o direito de usar o sistema enquanto as cobranças estiverem em dia — não
           compra o software nem recebe uma cópia dele.
         </p>
       </Secao>
 
-      <Secao titulo="2. O que cada plano inclui">
+      <Secao titulo="2. O que está incluído">
         <p>
-          O <strong>Básico</strong> dá acesso ao CRM completo — agenda, clientes, financeiro e
-          catálogo — e ao atendimento automático pelo WhatsApp, que conversa com seus clientes e
-          marca horários.
+          Não há planos nem níveis: <strong>todo cliente tem acesso a tudo</strong> — o CRM completo
+          (agenda, clientes, financeiro e catálogo), o atendimento automático pelo WhatsApp que
+          conversa com seus clientes e marca horários, os lembretes de agendamento e as demais
+          automações que o sistema oferecer.
         </p>
         <p>
-          O <strong>Pro</strong> inclui tudo do Básico e acrescenta o lembrete enviado cerca de uma
-          hora antes do horário e o pedido de confirmação cerca de dez minutos antes.
-        </p>
-        <p>
-          O atendimento pelo WhatsApp depende de você conectar o número da sua barbearia, lendo um
-          QR code. O número é seu e continua sendo seu.
+          O atendimento pelo WhatsApp depende de conectar o número da sua barbearia, o que é feito
+          junto com a nossa equipe na entrada. O número é seu e continua sendo seu.
         </p>
       </Secao>
 
@@ -47,24 +44,37 @@ export function TermosPage() {
         </p>
       </Secao>
 
-      <Secao titulo="4. Preço e reajuste">
+      <Secao titulo="4. Preço: você paga pelo que usa">
         <p>
-          A mensalidade é a do plano contratado e é cobrada mensalmente. O valor que você contratou
-          fica registrado e <strong>não muda quando a tabela de preços muda</strong>: quem assinou
-          antes de um aumento continua pagando o que contratou.
+          A cobrança é{' '}
+          <strong>por agendamento criado pelo atendimento automático do WhatsApp</strong>, pelo
+          valor unitário informado na sua contratação. Não há mensalidade fixa nem valor mínimo:
+          mês sem agendamentos pelo WhatsApp é mês sem cobrança.
         </p>
         <p>
-          O preço é reajustado uma vez por ano pelo IPCA, e você é avisado com pelo menos 30 dias de
-          antecedência.
+          Conta como agendamento cobrável o que o atendimento automático criar,{' '}
+          <strong>mesmo que ele seja cancelado depois</strong> — o serviço de marcar foi prestado.
+          Remarcar um horário já criado não gera nova cobrança, e agendamentos feitos por você
+          direto no sistema ou pelo QR do balcão não são cobrados.
+        </p>
+        <p>
+          Lembretes, confirmações e mensagens de reativação <strong>não têm custo</strong> para
+          você. O painel de Assinatura mostra, a qualquer momento, o uso do mês e quanto ele
+          representa.
+        </p>
+        <p>
+          O período de cobrança é o mês-calendário: fechamos no último dia e a cobrança do que foi
+          usado chega em seguida, com o detalhamento. O valor unitário pode ser reajustado com
+          aviso de pelo menos 30 dias de antecedência.
         </p>
       </Secao>
 
       <Secao titulo="5. Cancelamento">
         <p>
-          Você pode cancelar quando quiser, pelo próprio sistema, sem multa e sem prazo mínimo. As
-          cobranças futuras param na hora, e{' '}
-          <strong>você continua usando até o fim do período que já pagou</strong>. Não há devolução
-          proporcional dos dias não usados, porque o acesso a eles continua disponível.
+          Você pode cancelar quando quiser, pelo próprio sistema, sem multa e sem prazo mínimo. No
+          cancelamento o período em aberto é fechado na hora, e a última cobrança traz{' '}
+          <strong>somente o que foi usado até o dia do cancelamento</strong>. O acesso segue até o
+          fim do período já pago.
         </p>
       </Secao>
 
@@ -82,18 +92,7 @@ export function TermosPage() {
         </p>
       </Secao>
 
-      <Secao titulo="7. Trocar de plano">
-        <p>
-          Ao subir de plano, você paga apenas a diferença proporcional aos dias que faltam no
-          período atual, e o plano novo passa a valer quando esse pagamento é confirmado.
-        </p>
-        <p>
-          Ao descer de plano, você continua no plano atual até o fim do período já pago, e a mudança
-          vale na renovação. Não há devolução.
-        </p>
-      </Secao>
-
-      <Secao titulo="8. O atendimento automático é feito por inteligência artificial">
+      <Secao titulo="7. O atendimento automático é feito por inteligência artificial">
         <p>
           O agente conversa com seus clientes, marca, remarca e cancela horários sozinho. Como
           qualquer sistema automático, ele pode errar — entender mal um pedido, oferecer um horário
@@ -113,18 +112,21 @@ export function TermosPage() {
         </p>
       </Secao>
 
-      <Secao titulo="9. Sobre o WhatsApp">
-        <p className="rounded-lg border border-border-strong bg-surface-2 p-3">
-          <strong>Atenção — leia com cuidado.</strong> A conexão com o WhatsApp é feita por um canal
-          que não é o oficial da Meta. Isso significa que{' '}
-          <strong>o número da sua barbearia pode ser bloqueado ou banido pela Meta</strong>, a
-          qualquer momento e por decisão dela, e que nesse caso o atendimento automático deixa de
-          funcionar. Não temos como impedir nem prever isso, e não respondemos por prejuízos daí
-          decorrentes. Vamos ajudar você a reconectar assim que possível.
+      <Secao titulo="8. Sobre o WhatsApp">
+        <p>
+          A conexão é feita pela <strong>API oficial do WhatsApp (Meta)</strong>. Ainda assim, o
+          WhatsApp é um serviço da Meta, sujeito às políticas dela: a Meta pode restringir ou
+          suspender números que violem as regras dela, a critério dela, e nesse caso o atendimento
+          automático deixa de funcionar até a situação ser resolvida. Não respondemos por decisões
+          da Meta, e vamos ajudar você a regularizar sempre que acontecer.
+        </p>
+        <p>
+          Mensagens que o sistema envia por iniciativa própria (como lembretes) usam modelos
+          aprovados pela Meta, como as regras dela exigem.
         </p>
       </Secao>
 
-      <Secao titulo="10. Disponibilidade, backup e suporte">
+      <Secao titulo="9. Disponibilidade, backup e suporte">
         <p>
           Trabalhamos para manter o sistema no ar o tempo todo, mas ele depende de serviços de
           terceiros e pode ficar indisponível por manutenção ou falha.
@@ -140,7 +142,7 @@ export function TermosPage() {
         </p>
       </Secao>
 
-      <Secao titulo="11. Seus dados e os dados dos seus clientes">
+      <Secao titulo="10. Seus dados e os dados dos seus clientes">
         <p>
           Os dados da sua barbearia e dos seus clientes são <strong>seus</strong>. Nós apenas os
           tratamos para fazer o sistema funcionar. O detalhamento está na{' '}
@@ -159,14 +161,14 @@ export function TermosPage() {
         </p>
       </Secao>
 
-      <Secao titulo="12. O software é nosso">
+      <Secao titulo="11. O software é nosso">
         <p>
           O sistema, seu código e sua identidade visual pertencem ao Club Cut. Você recebe o direito
-          de usá-lo enquanto a assinatura estiver ativa, e nada além disso.
+          de usá-lo enquanto seu acesso estiver ativo, e nada além disso.
         </p>
       </Secao>
 
-      <Secao titulo="13. Mudanças nestes termos">
+      <Secao titulo="12. Mudanças nestes termos">
         <p>
           Se estes termos mudarem, publicamos uma versão nova e avisamos você. O registro do seu
           aceite guarda a versão que você leu, com data e hora — mudar o texto não altera o que você

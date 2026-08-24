@@ -13,6 +13,10 @@ bloquear, e bloqueio derruba o alcance dos lembretes.
 
 ## Antes de cadastrar
 
+**`lembrete_hoje` é o do lembrete de 1h30** — o que sai a cada agendamento, o
+mais usado dos 24, e hoje o único item no caminho crítico. Sem ele aprovado, o
+lembrete simplesmente não existe na API oficial.
+
 **Submeta o `lembrete_agendamento` primeiro e sozinho.** Confira no painel qual
 categoria a Meta aplicou antes de mandar o resto. Se ele voltar como
 *marketing*, alguma palavra contaminou — e é muito mais barato descobrir isso

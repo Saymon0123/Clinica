@@ -13,10 +13,12 @@
  * Formato de data para ordenar sozinho e dizer, de bate-pronto, de quando é o
  * texto que a pessoa viu.
  */
-// 2026-08-14: o prazo do teste passou de 7 para 14 dias, e a cláusula 3 mudou
-// junto. Quem aceitou a versão anterior continua com o registro dela — é essa
-// diferença que permite saber, depois, quem precisa aceitar de novo.
-export const VERSAO_DOS_TERMOS = '2026-08-14'
+// 2026-08-24: o modelo de cobrança mudou de mensalidade por plano para
+// cobrança por agendamento (por uso). Caíram as cláusulas de planos e de troca
+// de plano; a de preço foi reescrita; e a do WhatsApp deixou de descrever um
+// canal não oficial — a conexão passou à API oficial da Meta em 2026-08-22.
+// Quem aceitou a versão anterior continua com o registro dela.
+export const VERSAO_DOS_TERMOS = '2026-08-24'
 
 /**
  * O texto ainda não passou por advogado.

@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Check, Save } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Building2, Check, Plus, Save } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
 import { QrDoBalcao } from '../agendaPublica/QrDoBalcao'
 import { useRecurso } from '../recursos/useRecurso'
 import { AvisoDeJornada } from './AvisoDeJornada'
+import { NovaUnidadeModal } from '../rede/NovaUnidadeModal'
 import {
   desserializarHorario,
   serializarHorario,
@@ -23,8 +25,14 @@ import {
  * não consegue atualizar aqui passa a ter o agente marcando fora da realidade.
  */
 export function ConfiguracoesPage() {
-  const { salonId, salonName, isManager, recarregarUnidades } = useSalon()
+  const { salonId, salonName, isManager, isOwner, isNetwork, organizationId, unidades, recarregarUnidades, selecionarUnidade } =
+    useSalon()
+  const navigate = useNavigate()
   const temFidelidade = useRecurso('fidelidade')
+  const [modalUnidade, setModalUnidade] = useState(false)
+  // Só o que a pessoa é dona: o barbeiro que também trabalha noutra casa tem
+  // vínculo lá, mas isso não faz daquela casa uma unidade desta rede.
+  const proprias = unidades.filter((u) => u.role === 'owner')
 
   const [nome, setNome] = useState('')
   // Guardado para saber se vale recarregar as unidades depois de salvar.
@@ -446,6 +454,72 @@ export function ConfiguracoesPage() {
       {/* Depois do formulário de propósito: o cartaz é uma entrega, não um
           campo para editar. No meio dos campos, o dono procuraria onde salvar. */}
       <QrDoBalcao />
+
+      {/* Rede não é um cadastro, é uma promoção: a barbearia avulsa vira rede
+          no primeiro "Adicionar unidade". Por isso o botão mora AQUI, onde a
+          avulsa chega — a aba Rede só existe para quem já tem duas. */}
+      {isOwner && (
+        <section className="bg-surface border border-border rounded-xl p-5 space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+                <Building2 size={18} />
+                Unidades
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                {isNetwork
+                  ? `Sua rede tem ${proprias.length} unidades. O painel comparativo fica na aba Rede.`
+                  : 'Abrindo a segunda unidade? Adicione aqui e o Club Cut vira um painel só para todas, com agenda, equipe e WhatsApp separados por unidade.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setModalUnidade(true)}
+              className="inline-flex items-center gap-2 btn-primary rounded px-3 py-2 text-sm font-medium shrink-0"
+            >
+              <Plus size={16} />
+              Adicionar unidade
+            </button>
+          </div>
+
+          {isNetwork && (
+            <ul className="divide-y divide-border rounded-lg border border-border">
+              {proprias.map((u) => (
+                <li key={u.salonId} className="flex items-center justify-between gap-3 px-3 py-2">
+                  <span className="text-sm text-foreground truncate">{u.nome}</span>
+                  {u.salonId === salonId ? (
+                    <span className="text-[11px] text-muted-foreground">unidade atual</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => selecionarUnidade(u.salonId)}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      abrir
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
+      {modalUnidade && salonId && (
+        <NovaUnidadeModal
+          salonId={salonId}
+          primeiraUnidade={!organizationId}
+          onClose={() => setModalUnidade(false)}
+          onCriada={async (r) => {
+            // Recarregar primeiro: é o que liga `isNetwork` e faz aparecer o
+            // seletor de unidades e a aba Rede. Depois, entrar na unidade nova
+            // — o dono acabou de criá-la e é nela que ele quer mexer.
+            await recarregarUnidades()
+            selecionarUnidade(r.salonId)
+            navigate('/')
+          }}
+        />
+      )}
     </div>
   )
 }

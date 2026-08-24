@@ -73,9 +73,13 @@ export function CobrancaDaRede() {
         ),
     ])
 
-    if (org.data) {
-      setRede({ cobrancaUnificada: org.data.cobranca_unificada, cpfCnpj: org.data.cpf_cnpj })
-      setCpfCnpj((atual) => atual || org.data.cpf_cnpj || '')
+    // Numa constante antes do callback: dentro dele o TypeScript perde o
+    // estreitamento do if, e `org.data` volta a ser possivelmente nulo — foi o
+    // erro que segurou o build de produção por um dia (TS18047).
+    const dadosDaRede = org.data
+    if (dadosDaRede) {
+      setRede({ cobrancaUnificada: dadosDaRede.cobranca_unificada, cpfCnpj: dadosDaRede.cpf_cnpj })
+      setCpfCnpj((atual) => atual || dadosDaRede.cpf_cnpj || '')
     }
     setLinhas(
       proprias.map((u) => {

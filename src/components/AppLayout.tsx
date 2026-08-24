@@ -54,7 +54,6 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { to: '/catalogo', label: 'Catálogo', icon: Tag },
       { to: '/equipe', label: 'Equipe', icon: UsersRound, somenteGestor: true },
       { to: '/rede', label: 'Rede', icon: Building2, somenteDono: true, semUnidade: true },
-      { to: '/rede/equipe', label: 'Equipe da rede', icon: UsersRound, somenteDono: true, semUnidade: true },
       { to: '/configuracoes', label: 'Configurações', icon: Settings, somenteGestor: true },
       { to: '/assinatura', label: 'Assinatura', icon: CreditCard, somenteGestor: true },
     ],

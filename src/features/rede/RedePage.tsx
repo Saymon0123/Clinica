@@ -73,7 +73,6 @@ export function RedePage() {
       ? (totalCancelamentos / (totalAgendamentos + totalCancelamentos)) * 100
       : 0
   const melhor = resumos[0]
-  const CORES = ['#7c3aed', '#a78bfa', '#c4b5fd', '#8b5cf6', '#ddd6fe']
 
   return (
     <div className="space-y-4">
@@ -176,7 +175,7 @@ export function RedePage() {
                       fontSize: 12,
                     }}
                   />
-                  <Line type="monotone" dataKey="total" stroke="#7c3aed" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="total" stroke="var(--chart-line)" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -206,8 +205,12 @@ export function RedePage() {
                     }}
                   />
                   <Bar dataKey="faturamento" radius={[6, 6, 0, 0]}>
-                    {resumos.map((r, i) => (
-                      <Cell key={r.salonId} fill={CORES[i % CORES.length]} />
+                    {resumos.map((r) => (
+                      <Cell
+                        key={r.salonId}
+                        fill="var(--chart-line)"
+                        fillOpacity={r.salonId === salonId ? 1 : 0.55}
+                      />
                     ))}
                   </Bar>
                 </BarChart>

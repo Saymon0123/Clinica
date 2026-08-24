@@ -23,8 +23,9 @@ export type Periodo = 'mes' | 'semana'
 function inicioDoPeriodo(periodo: Periodo) {
   const d = new Date()
   if (periodo === 'semana') {
-    // Semana começando no domingo.
-    d.setDate(d.getDate() - d.getDay())
+    // Segunda-feira, como nas outras telas (Clientes, agente) — "esta semana"
+    // precisa ser a mesma janela no sistema inteiro.
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
   } else {
     d.setDate(1)
   }
@@ -56,7 +57,7 @@ export function useRedeData(unidades: Unidade[], periodo: Periodo) {
     const desde = inicioDoPeriodo(periodo)
     const salonIds = unidades.map((u) => u.salonId)
 
-    const [vendasRes, agendaRes, clientesRes] = await Promise.all([
+    const [vendasRes, agendaRes, cancelRes, clientesRes] = await Promise.all([
       supabase
         .from('orders')
         .select('salon_id, closed_at, payments(valor)')
@@ -67,12 +68,20 @@ export function useRedeData(unidades: Unidade[], periodo: Periodo) {
         .from('appointments')
         .select('salon_id, status')
         .in('salon_id', salonIds)
-        .gte('data_hora_inicio', desde),
+        .gte('data_hora_inicio', desde)
+        .neq('status', 'bloqueio'),
+      // Cancelamentos pela data em que ACONTECEU o cancelamento (cancelado_em),
+      // mesma regra do Financeiro desde 2026-08-24.
+      supabase
+        .from('appointments')
+        .select('salon_id')
+        .in('salon_id', salonIds)
+        .gte('cancelado_em', desde),
       supabase.from('clients').select('salon_id').in('salon_id', salonIds).gte('created_at', desde),
     ])
 
-    if (vendasRes.error || agendaRes.error || clientesRes.error) {
-      console.error(vendasRes.error ?? agendaRes.error ?? clientesRes.error)
+    if (vendasRes.error || agendaRes.error || cancelRes.error || clientesRes.error) {
+      console.error(vendasRes.error ?? agendaRes.error ?? cancelRes.error ?? clientesRes.error)
       setErro('Não foi possível carregar os números da rede.')
       setLoading(false)
       return
@@ -117,8 +126,11 @@ export function useRedeData(unidades: Unidade[], periodo: Periodo) {
     for (const linha of (agendaRes.data ?? []) as { salon_id: string; status: string }[]) {
       const alvo = porUnidade.get(linha.salon_id)
       if (!alvo) continue
-      if (linha.status === 'cancelado') alvo.cancelamentos += 1
-      else alvo.agendamentos += 1
+      if (linha.status !== 'cancelado') alvo.agendamentos += 1
+    }
+    for (const linha of (cancelRes.data ?? []) as { salon_id: string }[]) {
+      const alvo = porUnidade.get(linha.salon_id)
+      if (alvo) alvo.cancelamentos += 1
     }
     for (const linha of (clientesRes.data ?? []) as { salon_id: string }[]) {
       const alvo = porUnidade.get(linha.salon_id)

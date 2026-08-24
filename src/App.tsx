@@ -64,9 +64,6 @@ const AssinaturaPage = lazy(() =>
   import('./features/assinatura/AssinaturaPage').then((m) => ({ default: m.AssinaturaPage })),
 )
 const RedePage = lazy(() => import('./features/rede/RedePage').then((m) => ({ default: m.RedePage })))
-const EquipeRedePage = lazy(() =>
-  import('./features/rede/EquipeRedePage').then((m) => ({ default: m.EquipeRedePage })),
-)
 
 function Carregando() {
   return <p className="p-6 text-sm text-muted-foreground">Carregando...</p>
@@ -143,14 +140,9 @@ function App() {
                   </RequireNetworkOwner>
                 }
               />
-              <Route
-                path="/rede/equipe"
-                element={
-                  <RequireNetworkOwner>
-                    <EquipeRedePage />
-                  </RequireNetworkOwner>
-                }
-              />
+              {/* A gestão de papéis migrou para /equipe (2026-08-25); o
+                  redirect segura links antigos e o hábito de quem usava. */}
+              <Route path="/rede/equipe" element={<Navigate to="/equipe" replace />} />
               <Route
                 path="/assinatura"
                 element={

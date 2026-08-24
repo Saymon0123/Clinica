@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Building2, Check, Plus, Save } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { formatarTelefone } from '../../lib/telefone'
 import { useSalon } from '../auth/useSalon'
 import { QrDoBalcao } from '../agendaPublica/QrDoBalcao'
 import { useRecurso } from '../recursos/useRecurso'
@@ -226,6 +227,7 @@ export function ConfiguracoesPage() {
                 setTelefone(e.target.value)
                 setSalvo(false)
               }}
+              onBlur={() => setTelefone((t) => (t.trim() ? formatarTelefone(t) : t))}
               placeholder="(11) 90000-0000"
               className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
             />
@@ -468,7 +470,7 @@ export function ConfiguracoesPage() {
               </h2>
               <p className="text-sm text-muted-foreground mt-1">
                 {isNetwork
-                  ? `Sua rede tem ${proprias.length} unidades. O painel comparativo fica na aba Rede.`
+                  ? `Sua rede tem ${proprias.length} unidades. A lista, o comparativo e a troca entre elas ficam na aba Rede.`
                   : 'Abrindo a segunda unidade? Adicione aqui e o Club Cut vira um painel só para todas, com agenda, equipe e WhatsApp separados por unidade.'}
               </p>
             </div>
@@ -482,26 +484,6 @@ export function ConfiguracoesPage() {
             </button>
           </div>
 
-          {isNetwork && (
-            <ul className="divide-y divide-border rounded-lg border border-border">
-              {proprias.map((u) => (
-                <li key={u.salonId} className="flex items-center justify-between gap-3 px-3 py-2">
-                  <span className="text-sm text-foreground truncate">{u.nome}</span>
-                  {u.salonId === salonId ? (
-                    <span className="text-[11px] text-muted-foreground">unidade atual</span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => selecionarUnidade(u.salonId)}
-                      className="text-xs text-primary hover:underline"
-                    >
-                      abrir
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
         </section>
       )}
 

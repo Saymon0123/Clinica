@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Check, Clock, Copy, Link2, Pencil, Percent, Plus, Power, Trash2, UserPlus, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { urlDoConvite } from '../../lib/appUrl'
-import { useSalon } from '../auth/useSalon'
+import { formatarTelefone, linkWhatsApp } from '../../lib/telefone'
+import { useAuth } from '../auth/AuthContext'
+import { useSalon, type Papel } from '../auth/useSalon'
 import { HorarioBarbeiroModal } from './HorarioBarbeiroModal'
 
 type Membro = {
@@ -12,6 +14,14 @@ type Membro = {
   ativo: boolean
   comissao_percentual: number | null
   user_id: string | null
+}
+
+type Vinculo = { id: string; user_id: string; role: Papel }
+
+const LABEL_PAPEL: Record<Papel, string> = {
+  owner: 'Dono',
+  gerente: 'Gerente',
+  barbeiro: 'Barbeiro',
 }
 
 type Convite = {
@@ -27,8 +37,10 @@ type Convite = {
 const linkDoConvite = urlDoConvite
 
 export function EquipePage() {
-  const { salonId, isManager, loading: salonLoading } = useSalon()
+  const { salonId, isManager, isOwner, loading: salonLoading, recarregarUnidades } = useSalon()
+  const { user } = useAuth()
   const [membros, setMembros] = useState<Membro[]>([])
+  const [vinculos, setVinculos] = useState<Vinculo[]>([])
   const [convites, setConvites] = useState<Convite[]>([])
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
@@ -45,7 +57,7 @@ export function EquipePage() {
   const carregar = useCallback(async () => {
     if (!salonId) return
     setLoading(true)
-    const [{ data: profs }, { data: convs }] = await Promise.all([
+    const [{ data: profs }, { data: convs }, { data: vincs }] = await Promise.all([
       supabase
         .from('professionals')
         .select('id, nome, telefone, ativo, comissao_percentual, user_id')
@@ -57,15 +69,57 @@ export function EquipePage() {
         .eq('salon_id', salonId)
         .is('usado_em', null)
         .order('created_at', { ascending: false }),
+      // O papel (dono/gerente/barbeiro) mora em user_salons — é o que as
+      // políticas do banco consultam. Antes ficava numa tela separada
+      // (/rede/equipe); desde 2026-08-25 a gestão é toda aqui.
+      supabase.from('user_salons').select('id, user_id, role').eq('salon_id', salonId),
     ])
     setMembros((profs ?? []) as Membro[])
     setConvites((convs ?? []) as Convite[])
+    setVinculos((vincs ?? []) as Vinculo[])
     setLoading(false)
   }, [salonId])
 
   useEffect(() => {
     carregar()
   }, [carregar])
+
+  /**
+   * Troca de papel, com as travas herdadas da antiga /rede/equipe: unidade sem
+   * dono é bloqueada (porta sem volta), e rebaixar a si mesmo pede confirmação.
+   */
+  async function trocarPapel(v: Vinculo, novo: Papel) {
+    if (novo === v.role) return
+
+    if (v.role === 'owner' && novo !== 'owner') {
+      const outrosDonos = vinculos.filter((x) => x.role === 'owner' && x.id !== v.id)
+      if (outrosDonos.length === 0) {
+        setErro('A barbearia ficaria sem dono. Promova outra pessoa a dono antes de mudar esta.')
+        return
+      }
+    }
+
+    if (v.user_id === user?.id) {
+      const confirmado = window.confirm(
+        'Você vai deixar de ser dono desta unidade e perderá o acesso de gestão dela. Continuar?',
+      )
+      if (!confirmado) return
+    }
+
+    setSalvandoMembro(v.id)
+    setErro(null)
+    const { error } = await supabase.from('user_salons').update({ role: novo }).eq('id', v.id)
+    setSalvandoMembro(null)
+    if (error) {
+      console.error('Erro ao trocar a função:', error)
+      setErro('Não foi possível alterar a função.')
+      return
+    }
+    // O próprio papel mudou: o contexto recarrega para o menu e as permissões
+    // acompanharem sem novo login.
+    if (v.user_id === user?.id) await recarregarUnidades()
+    carregar()
+  }
 
   async function alternarAtivo(m: Membro) {
     const { error } = await supabase.from('professionals').update({ ativo: !m.ativo }).eq('id', m.id)
@@ -158,10 +212,19 @@ export function EquipePage() {
 
   if (salonLoading) return <p className="text-sm text-muted-foreground">Carregando...</p>
 
+  // Dono de rede sem unidade escolhida: a equipe é por unidade.
+  if (isOwner && !salonId) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Escolha uma unidade no topo para gerenciar a equipe dela.
+      </p>
+    )
+  }
+
   if (!isManager) {
     return (
       <p className="text-sm text-muted-foreground">
-        Só o dono da barbearia tem acesso à gestão da equipe.
+        Só o dono ou o gerente da barbearia tem acesso à gestão da equipe.
       </p>
     )
   }
@@ -324,13 +387,57 @@ export function EquipePage() {
                   </div>
                 ) : (
                   <div className="text-xs text-muted-foreground">
-                    {m.comissao_percentual ? `Comissão ${Number(m.comissao_percentual).toFixed(0)}%` : 'Sem comissão definida'}
+                    {(() => {
+                      const vinculo = m.user_id ? vinculos.find((v) => v.user_id === m.user_id) : null
+                      const partes = [
+                        vinculo ? LABEL_PAPEL[vinculo.role] : null,
+                        m.comissao_percentual
+                          ? `Comissão ${Number(m.comissao_percentual).toFixed(0)}%`
+                          : 'Sem comissão definida',
+                      ].filter(Boolean)
+                      return (
+                        <>
+                          {partes.join(' · ')}
+                          {m.telefone && linkWhatsApp(m.telefone) && (
+                            <>
+                              {' · '}
+                              <a
+                                href={linkWhatsApp(m.telefone)!}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary hover:underline"
+                              >
+                                {formatarTelefone(m.telefone)}
+                              </a>
+                            </>
+                          )}
+                        </>
+                      )
+                    })()}
                   </div>
                 )}
               </div>
             </div>
 
             <div className="flex items-center gap-1 shrink-0">
+              {(() => {
+                const vinculo = m.user_id ? vinculos.find((v) => v.user_id === m.user_id) : null
+                // Só o dono promove e rebaixa — gerente vê a função como texto.
+                if (!isOwner || !vinculo) return null
+                return (
+                  <select
+                    value={vinculo.role}
+                    disabled={salvandoMembro === vinculo.id}
+                    onChange={(e) => trocarPapel(vinculo, e.target.value as Papel)}
+                    aria-label={`Função de ${m.nome}`}
+                    className="border border-border-strong bg-surface text-foreground rounded px-2 py-1 text-xs disabled:opacity-50"
+                  >
+                    <option value="barbeiro">Barbeiro</option>
+                    <option value="gerente">Gerente</option>
+                    <option value="owner">Dono</option>
+                  </select>
+                )
+              })()}
               <button
                 onClick={() => {
                   setEditandoComissao(m.id)
@@ -466,7 +573,7 @@ function ConviteModal({
 
         {link ? (
           <div className="space-y-3">
-            <p className="text-sm text-foreground">Convite criado! Mande este link para o barbeiro:</p>
+            <p className="text-sm text-foreground">Convite criado! Mande este link para a pessoa convidada:</p>
             <div className="flex items-center gap-2">
               <code className="flex-1 bg-surface-2 rounded px-3 py-2 text-xs break-all">{link}</code>
               <button

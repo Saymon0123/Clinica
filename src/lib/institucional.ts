@@ -25,7 +25,13 @@ export const ORIGEM = {
    * completa, nossa paixão — são as palavras que fazem o texto parecer
    * gerado.
    */
-  paragrafos: [] as string[],
+  paragrafos: [
+    'Tudo começou observando uma coisa que parecia pequena: barbeiros cortando cabelo enquanto dezenas de clientes mandavam "tem horário hoje?" no WhatsApp. Alguns esperavam. Alguns esqueciam. Alguns simplesmente iam para outra barbearia. A agenda não estava vazia porque faltavam clientes. Estava vazia porque ninguém conseguia atender todos eles.',
+    'Foi aí que começamos a testar uma ideia: e se a barbearia pudesse ter alguém atendendo seus clientes 24 horas por dia? Não um chatbot daqueles que responde "Digite 1 para agendar", mas uma IA capaz de conversar, entender o que o cliente quer, encontrar o horário certo e colocar aquele cliente na agenda.',
+    'A primeira versão foi longe demais. Em um dos primeiros testes, a Aura confirmou um horário errado. O barbeiro ficou irritado, e com razão. A gente poderia esconder essa história, mas foi justamente esse erro que mudou o produto. Percebemos que não estávamos construindo uma IA para "conversar". Estávamos construindo uma IA que precisava ser confiável o suficiente para mexer na agenda de um negócio real. Jogamos aquela versão fora e reconstruímos partes importantes da operação.',
+    'Depois disso, a pergunta mudou. Não queríamos criar mais um sistema para a barbearia administrar. Queríamos criar algo que trabalhasse para a barbearia. Foi assim que nasceu a Aura: uma IA que atende, recupera oportunidades e transforma conversas em agendamentos, enquanto o barbeiro faz o que realmente importa: atender quem está na cadeira.',
+    'E foi daí que veio nossa regra mais importante: se a Aura não gerar resultado, não faz sentido cobrar pelo software. Você não paga para usar a Aura. Você paga quando ela coloca um cliente na sua agenda.',
+  ] as string[],
 
   /**
    * Imagem de AMBIENTE — interior de barbearia, bancada, cadeira, luz.
@@ -50,23 +56,32 @@ export const ORIGEM = {
  * mais do que entrega: quem desconfia do retrato passa a desconfiar dos
  * depoimentos junto.
  *
- * Se o Club Cut é uma pessoa só, dizer que é uma pessoa só. Inventar um time
- * de cinco transmite menos solidez que assumir o tamanho.
+ * Dizer o tamanho que a empresa tem. Inventar um time de cinco transmite
+ * menos solidez que assumir o tamanho real.
  */
-export const QUEM_FAZ = null as null | {
+export type Pessoa = {
   nome: string
-  /** O que a pessoa faz no dia a dia, não o cargo bonito. */
+  /** O que a pessoa faz, não o cargo bonito — mas o cargo serve enquanto for o
+   *  que a pessoa usa para se apresentar. */
   papel: string
-  bio: string
+  /** Duas ou três linhas em primeira pessoa. Opcional: nome e papel já dizem
+   *  quem é, e bio inventada é pior que bio ausente. */
+  bio?: string
   /** Perfis públicos que qualquer um pode abrir e conferir. */
-  links: Array<{ href: string; rotulo: string }>
-  foto: null | { src: string; alt: string }
+  links?: Array<{ href: string; rotulo: string }>
+  /** Foto real. Sem ela o cartão continua de pé. */
+  foto?: { src: string; alt: string }
 }
+
+export const QUEM_FAZ: Pessoa[] = [
+  { nome: 'Samuel Rocha', papel: 'CEO' },
+  { nome: 'Saymon Castro', papel: 'CTO e cofundador' },
+]
 
 /** Dados da empresa. É o que separa "empresa" de "landing page". */
 export const EMPRESA = {
-  razaoSocial: null as string | null,
+  razaoSocial: 'Aura Studio Ltda.' as string | null,
   /** Formatado como se lê: '00.000.000/0001-00'. */
   cnpj: '67.127.614/0001-00' as string | null,
-  cidade: null as string | null,
+  cidade: 'Curitiba, PR' as string | null,
 }

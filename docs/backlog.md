@@ -715,17 +715,17 @@ escritos e testados, mas **não renderizam** porque dependem de dado que só o
 dono tem. Tudo isso mora em `src/lib/institucional.ts`, com a mesma regra do
 `CONTATO`: campo vazio não vira layout.
 
-- [ ] **Origem** (`ORIGEM.paragrafos`): 3 a 5 parágrafos com data, número
+- [x] **Origem** (`ORIGEM.paragrafos`): 3 a 5 parágrafos com data, número
       pequeno e pelo menos um erro admitido. É o bloco que mais carrega a
       página e o que mais afasta a impressão de texto gerado.
 - [ ] **Imagem de ambiente** (`ORIGEM.imagem`): interior de barbearia, bancada,
       cadeira. Nunca rosto atribuído a um nome — ambiente ninguém audita,
       pessoa sim. Arquivo em `public/`, com largura e altura declaradas.
-- [ ] **Quem faz** (`QUEM_FAZ`): nome, o que a pessoa faz no dia a dia, bio e
+- [x] **Quem faz** (`QUEM_FAZ`): nome, o que a pessoa faz no dia a dia, bio e
       links públicos que dão para conferir. Foto real é o ideal; sem foto,
       com link verificável, funciona. Foto gerada de rosto é o único caminho
       que pode custar mais do que entrega.
-- [ ] **Prova de existência** (`EMPRESA` + `CONTATO`): razão social, CNPJ,
+- [x] **Prova de existência** (`EMPRESA` + `CONTATO`): razão social, CNPJ,
       cidade, e-mail em domínio próprio, Instagram. A seção só aparece quando
       houver pelo menos um dado real além do canal de suporte — e preencher o
       `CONTATO` acende junto os canais no rodapé do site inteiro, que hoje
@@ -733,3 +733,18 @@ dono tem. Tudo isso mora em `src/lib/institucional.ts`, com a mesma regra do
 
 Fora do repositório: nada. Nenhuma peça de Supabase, Vercel ou n8n é tocada
 por esta página.
+
+### O que sobrou da `/sobre` (2026-08-23)
+
+- [ ] **Imagem de ambiente** (`ORIGEM.imagem`): é o único item do plano
+      original que continua vazio. Interior de barbearia, bancada, cadeira,
+      luz — nunca rosto atribuído a um nome. Arquivo em `public/`, com largura
+      e altura declaradas.
+- [ ] **Bio e link público de cada fundador** (`QUEM_FAZ[].bio` / `.links`):
+      hoje o cartão mostra só nome e cargo. Um link de Instagram ou LinkedIn
+      que qualquer um possa abrir é o que transforma o nome em pessoa
+      verificável — é ele, e não a foto, que faz o bloco funcionar.
+- [ ] **Foto de cada fundador** (`QUEM_FAZ[].foto`): opcional. Sem ela o
+      cartão continua de pé.
+- [ ] **WhatsApp de suporte** (`CONTATO.whatsapp`): ainda `null`. E-mail e
+      Instagram já estão preenchidos e apareceram no rodapé do site inteiro.

@@ -175,9 +175,19 @@ function Posicoes() {
   )
 }
 
-/** Só aparece com pessoa real e nome real. Ver `lib/institucional.ts`. */
+/**
+ * Quem faz.
+ *
+ * Um cartão por pessoa, e a grade acompanha quantas são: uma pessoa ocupa a
+ * largura inteira, duas dividem. Não existe fileira de retângulos vazios para
+ * "parecer time" — o bloco mostra exatamente quantas pessoas existem.
+ *
+ * Nome e papel bastam. `bio`, `links` e `foto` são opcionais de propósito:
+ * bio inventada é pior que bio ausente, e nome com link que dá para conferir
+ * vale mais que retrato que ninguém consegue checar.
+ */
 function QuemFaz() {
-  if (!QUEM_FAZ) return null
+  if (QUEM_FAZ.length === 0) return null
 
   return (
     <section className={SECAO}>
@@ -186,49 +196,53 @@ function QuemFaz() {
           <span className="landing-label text-[var(--l-fg-faint)]">Quem faz</span>
         </Reveal>
 
-        <Reveal>
-          <div className="card mt-10 grid gap-8 rounded-[var(--r-md)] p-7 sm:grid-cols-[132px_1fr] sm:p-9">
-            {/* Sem foto o cartão continua de pé — a coluna some e o texto ocupa
-                a largura inteira. Nome com link que dá para conferir vale mais
-                que retrato que ninguém consegue checar. */}
-            {QUEM_FAZ.foto && (
-              <img
-                src={QUEM_FAZ.foto.src}
-                alt={QUEM_FAZ.foto.alt}
-                width={264}
-                height={264}
-                loading="lazy"
-                decoding="async"
-                className="h-[132px] w-[132px] rounded-[var(--r-sm)] object-cover"
-              />
-            )}
-            <div>
-              <h2 className="text-[21px] font-semibold tracking-[-0.015em] text-[var(--l-fg)]">
-                {QUEM_FAZ.nome}
-              </h2>
-              <p className="mt-1.5 text-[14px] text-[var(--l-accent-ink)]">{QUEM_FAZ.papel}</p>
-              <p className="mt-5 max-w-[58ch] text-[15.5px] leading-relaxed text-[var(--l-fg-mute)]">
-                {QUEM_FAZ.bio}
-              </p>
-
-              {QUEM_FAZ.links.length > 0 && (
-                <div className="mt-6 flex flex-wrap gap-2.5">
-                  {QUEM_FAZ.links.map((l) => (
-                    <a
-                      key={l.href}
-                      href={l.href}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex min-h-[44px] items-center rounded-full border border-[var(--l-line)] px-4 text-[13px] text-[var(--l-fg-mute)] transition-colors duration-200 hover:border-[var(--l-line-strong)] hover:text-[var(--l-fg)]"
-                    >
-                      {l.rotulo}
-                    </a>
-                  ))}
+        <div
+          className={`mt-10 grid gap-4 ${QUEM_FAZ.length > 1 ? 'sm:grid-cols-2' : ''}`}
+        >
+          {QUEM_FAZ.map((p) => (
+            <Reveal key={p.nome}>
+              <div className="card flex h-full flex-col gap-5 rounded-[var(--r-md)] p-7 sm:flex-row sm:p-8">
+                {p.foto && (
+                  <img
+                    src={p.foto.src}
+                    alt={p.foto.alt}
+                    width={224}
+                    height={224}
+                    loading="lazy"
+                    decoding="async"
+                    className="h-[112px] w-[112px] shrink-0 rounded-[var(--r-sm)] object-cover"
+                  />
+                )}
+                <div>
+                  <h2 className="text-[19px] font-semibold tracking-[-0.015em] text-[var(--l-fg)]">
+                    {p.nome}
+                  </h2>
+                  <p className="mt-1.5 text-[13.5px] text-[var(--l-accent-ink)]">{p.papel}</p>
+                  {p.bio && (
+                    <p className="mt-4 max-w-[46ch] text-[15px] leading-relaxed text-[var(--l-fg-mute)]">
+                      {p.bio}
+                    </p>
+                  )}
+                  {p.links && p.links.length > 0 && (
+                    <div className="mt-5 flex flex-wrap gap-2.5">
+                      {p.links.map((l) => (
+                        <a
+                          key={l.href}
+                          href={l.href}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex min-h-[44px] items-center rounded-full border border-[var(--l-line)] px-4 text-[13px] text-[var(--l-fg-mute)] transition-colors duration-200 hover:border-[var(--l-line-strong)] hover:text-[var(--l-fg)]"
+                        >
+                          {l.rotulo}
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
-        </Reveal>
+              </div>
+            </Reveal>
+          ))}
+        </div>
       </div>
     </section>
   )

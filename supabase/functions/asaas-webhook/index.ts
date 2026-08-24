@@ -136,6 +136,18 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true, ignorado: evento })
     }
 
+    // Fatura de uso coberta por esta cobrança: marca como paga. Antes de
+    // qualquer roteamento porque vale igual para unidade, rede e legado — e
+    // não havendo fatura correspondente, o update simplesmente não acha linha.
+    // É o que faz o CRM mostrar "pago" no histórico de uso.
+    if (ehPagamento && pagamento?.id) {
+      await admin
+        .from('faturas_de_uso')
+        .update({ paga_em: new Date().toISOString() })
+        .eq('asaas_payment_id', pagamento.id)
+        .is('paga_em', null)
+    }
+
     // ----------------------------------------------------------------
     // Cobrança da diferença de troca de plano.
     //

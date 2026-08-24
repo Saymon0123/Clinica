@@ -31,6 +31,10 @@ type Fatura = {
   preco_unitario: number
   valor: number
   valor_gerado: number
+  boleto_url: string | null
+  boleto_valor: number | null
+  boleto_vencimento: string | null
+  paga_em: string | null
 }
 
 /**
@@ -59,7 +63,9 @@ export function UsoDoSistema() {
         supabase.from('uso_do_sistema_no_mes').select('*').eq('salon_id', salonId).maybeSingle(),
         supabase
           .from('faturas_de_uso')
-          .select('id, periodo_inicio, periodo_fim, motivo, agendamentos, preco_unitario, valor, valor_gerado')
+          .select(
+            'id, periodo_inicio, periodo_fim, motivo, agendamentos, preco_unitario, valor, valor_gerado, boleto_url, boleto_valor, boleto_vencimento, paga_em',
+          )
           .eq('salon_id', salonId)
           .order('periodo_fim', { ascending: false })
           .limit(12),
@@ -78,6 +84,9 @@ export function UsoDoSistema() {
   if (!isManager) return null
 
   const valorEstimado = uso ? uso.agendamentos * Number(uso.preco_unitario) : 0
+  // A cobrança mais recente ainda não paga: é o que o dono veio procurar
+  // quando o assunto é boleto, então ganha um banner antes do histórico.
+  const boletoAberto = faturas.find((f) => f.boleto_url && !f.paga_em) ?? null
 
   return (
     <section className="bg-surface border border-border rounded-xl p-5 space-y-4">
@@ -134,6 +143,28 @@ export function UsoDoSistema() {
             e o boleto chega depois disso.
           </p>
 
+          {boletoAberto && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning/40 bg-warning-soft p-3">
+              <div className="text-sm text-foreground">
+                Cobrança em aberto: <strong>{moeda(Number(boletoAberto.boleto_valor))}</strong>
+                {boletoAberto.boleto_vencimento && (
+                  <span className="text-muted-foreground">
+                    {' '}
+                    · vence {dataBr(boletoAberto.boleto_vencimento)}
+                  </span>
+                )}
+              </div>
+              <a
+                href={boletoAberto.boleto_url!}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-primary rounded px-3 py-1.5 text-sm font-medium shrink-0"
+              >
+                Pagar (boleto, Pix ou cartão)
+              </a>
+            </div>
+          )}
+
           {faturas.length > 0 && (
             <div>
               <h3 className="text-sm font-medium text-foreground mb-2">Períodos fechados</h3>
@@ -150,7 +181,23 @@ export function UsoDoSistema() {
                         {moeda(Number(f.preco_unitario))}
                       </span>
                     </div>
-                    <span className="text-sm font-medium text-foreground">{moeda(Number(f.valor))}</span>
+                    <span className="inline-flex items-center gap-2">
+                      {f.paga_em ? (
+                        <span className="text-[11px] text-success">pago</span>
+                      ) : f.boleto_url ? (
+                        <a
+                          href={f.boleto_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] text-primary hover:underline"
+                        >
+                          pagar
+                        </a>
+                      ) : Number(f.valor) > 0 ? (
+                        <span className="text-[11px] text-muted-foreground">acumula</span>
+                      ) : null}
+                      <span className="text-sm font-medium text-foreground">{moeda(Number(f.valor))}</span>
+                    </span>
                   </li>
                 ))}
               </ul>

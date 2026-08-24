@@ -1339,3 +1339,38 @@ uso todo mundo tem as automações; a trava que resta é estar ativa e dentro de
   o CRM deve pedir aceite de novo.
 - `TERMOS_EM_REVISAO` continua true: a revisão por advogado segue pendente, e
   agora com o texto já no modelo definitivo de cobrança.
+
+
+## Boleto automático do uso — 2026-08-24
+
+O boleto do fechamento nasce sozinho. Ciclo completo:
+
+```
+dia 1  → pg_cron fecha as faturas               (banco)
+hora/hora → n8n: cobrar-uso gera as cobranças no Asaas
+          → detalhamento p/ dono do produto (com link do boleto)
+          → boleto p/ DONO DA BARBEARIA por e-mail
+CRM    → banner “Cobrança em aberto — Pagar (boleto, Pix ou cartão)”
+pago   → webhook estende o acesso E marca a fatura como paga
+```
+
+- **Edge `cobrar-uso` (v1)**: agrupa por rede quando `cobranca_unificada`
+  (externalReference `rede:<id>`), acumula grupos abaixo de R$ 5, pula quem não
+  tem CPF/CNPJ (fatura fica aberta; o CRM pede o documento). Idempotente — só
+  olha fatura sem `asaas_payment_id` — e por isso o gatilho aceita o token anon
+  (público): disparo à toa só faz o trabalho que já ia acontecer.
+- **Migration 0099**: colunas do boleto em `faturas_de_uso`, `email_do_dono()`
+  (definer, service_role — senão vira oráculo de e-mails), views
+  `faturas_a_notificar` (+boleto) e `boletos_a_enviar` (uma linha POR COBRANÇA:
+  boleto acumulado gera UM e-mail, não três).
+- **Webhook v18** marca `paga_em` nas faturas da cobrança paga — é o “pago” do
+  histórico no CRM.
+- **n8n (15 nós)**: Gerar Boletos roda ANTES do notificador (o detalhamento já
+  sai com o link); duas filas independentes de e-mail.
+- **CRM**: banner de cobrança em aberto com botão de pagar; histórico com
+  pago / pagar / acumula.
+
+**Testado ao vivo**: `cobrar-uso` devolveu `acumuladas: 1` para a fatura de
+R$ 1,50 — regra do mínimo funcionando. O caminho ≥ R$ 5 (criação real de
+cobrança + e-mail ao dono) ainda não rodou: acontece no primeiro fechamento
+que somar R$ 5, ou num cancelamento com uso suficiente.

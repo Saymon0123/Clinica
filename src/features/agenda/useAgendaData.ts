@@ -35,7 +35,11 @@ export function useAgendaData(salonId: string | null, date: Date) {
         .eq('salon_id', salonId)
         .gte('data_hora_inicio', start)
         .lte('data_hora_inicio', end)
-        .neq('status', 'cancelado')
+        // Cancelado FICA na grade, cinza e riscado — decisão de 2026-08-24: o
+        // barbeiro precisa ver que o horário caiu (e por quê aquele buraco
+        // existe), e é do bloco cancelado que sai o botão de excluir de vez.
+        // As travas de sobreposição e o horarios_livres já ignoram cancelados,
+        // então o horário continua livre de verdade para remarcar por cima.
         .order('data_hora_inicio'),
     ])
 

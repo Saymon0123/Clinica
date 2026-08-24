@@ -79,11 +79,16 @@ function AppointmentBlock({
     (new Date(appt.data_hora_fim).getTime() - new Date(appt.data_hora_inicio).getTime()) / 60000
   const height = Math.max((durationMin / 60) * ROW_HEIGHT, 24)
   const style = BLOCK_STYLES[appt.status] ?? BLOCK_STYLES.default
+  // Cancelado e faltou liberam o horário, então um agendamento novo pode nascer
+  // por cima. O finalizado fica ATRÁS (zIndex menor) para o ativo continuar
+  // clicável — e não arrasta: mover um cancelamento não significa nada.
+  const finalizado = appt.status === 'cancelado' || appt.status === 'faltou' || appt.status === 'concluido'
 
   return (
     <div
-      draggable
+      draggable={!finalizado}
       onDragStart={(e: DragEvent<HTMLDivElement>) => {
+        if (finalizado) return
         e.dataTransfer.setData('text/plain', appt.id)
         e.dataTransfer.effectAllowed = 'move'
         onDragStart()
@@ -93,7 +98,7 @@ function AppointmentBlock({
       className={`absolute inset-x-1 rounded-lg border-l-2 px-2 py-1 overflow-hidden cursor-pointer select-none ${style.container} ${
         dragging ? 'opacity-40' : ''
       }`}
-      style={{ top, height }}
+      style={{ top, height, zIndex: finalizado ? 1 : 2 }}
     >
       <div className={`text-xs font-medium truncate ${style.text}`}>
         {formatTime(appt.data_hora_inicio)} · {appt.client_nome ?? 'Cliente'}

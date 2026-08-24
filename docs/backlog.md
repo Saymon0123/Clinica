@@ -1374,3 +1374,12 @@ pago   → webhook estende o acesso E marca a fatura como paga
 R$ 1,50 — regra do mínimo funcionando. O caminho ≥ R$ 5 (criação real de
 cobrança + e-mail ao dono) ainda não rodou: acontece no primeiro fechamento
 que somar R$ 5, ou num cancelamento com uso suficiente.
+
+## Conexão: bloco legado da Evolution (2026-08-25)
+
+A ConexaoPage agora decide pelo `whatsapp_connections.provedor`: `cloud_api`
+mostra o estado da API oficial (sem QR); `evolution` cai no bloco legado com o
+fluxo de QR code. **Curitiba e São José dos Pinhais ainda são `evolution`** —
+quando a migração delas para a API oficial acontecer, apagar o componente
+`ConexaoEvolutionLegada`, a edge function `whatsapp` (ações connect/status/
+disconnect da Evolution) e este item.

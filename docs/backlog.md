@@ -1219,3 +1219,59 @@ soma de todas.
 **Não testado em produção:** o ciclo completo unificar → boleto → webhook →
 todas liberadas. Precisa de uma rede com 2+ assinaturas reais; a El Guardians
 vira o cenário assim que o teste da fase 1 criar a segunda unidade.
+
+
+## Modelo de cobrança por uso — 2026-08-24
+
+**Pay-per-booking progressivo**, decidido em 24/08: o cliente paga por
+agendamento criado pelo agente no WhatsApp. Faixas por barbeiros ativos
+(1–3: R$0,75 · 4–7: R$0,70 · 8–10: R$0,65 · 11+: R$0,60), medidos no último
+dia do período. **A faixa nunca aparece para o cliente — só o preço dele.**
+
+Regras travadas:
+- Cobra o agendamento com `origem = 'agente'`, MESMO cancelado depois (o
+  sistema entregou o prometido). Reagendar não duplica (mesma linha). CRM e QR
+  não cobram.
+- Lembrete não cobra. Reativação não cobra por mensagem; o agendamento que ela
+  gerar cobra como qualquer um.
+- Sem mínimo, sem franquia grátis.
+- Boleto gerado À MÃO a partir do e-mail de detalhamento. Sem assinatura pelo
+  sistema; o cliente só cancela.
+
+**Construído (migration 0097):**
+- `faixas_de_uso` (preços em tabela, sem policy — o cliente não lê faixas),
+  `preco_por_uso(n)` (authenticated pode: devolve só o preço unitário).
+- `faturas_de_uso` — fechamentos CONGELADOS com detalhe linha a linha (jsonb).
+  Cancelar agendamento dia 3 não muda fatura fechada dia 1. Idempotente por
+  unique. RLS: dono lê as suas.
+- `gerar_fatura_de_uso`, `fechar_mes_de_uso` (todas as barbearias ativas),
+  `gerar_fatura_de_cancelamento` (último fechamento → hoje). Todas revogadas de
+  PUBLIC (lição da 0095).
+- **pg_cron** roda `fechar_mes_de_uso()` todo dia 1 às 06h de Brasília — o
+  fechamento é do banco, não do n8n.
+- `uso_do_sistema_no_mes` (medidor ao vivo, invoker) e `faturas_a_notificar`
+  (fila do notificador; view porque `is null` no nó do Supabase quebra).
+- Policy de SELECT criada para `reativacao_envios` — não tinha, e a view
+  invoker mostraria zero em silêncio.
+
+**n8n:** `CRM Salao - Detalhamento de Uso` (8Qh33uoFm4VqT1eO), de hora em hora:
+fatura sem `notificada_em` → e-mail para o canal com resumo + tabela linha a
+linha → marca DEPOIS do envio. Testado com envio real (execuções 10463/10464;
+a primeira revelou o mesmo defeito de contexto do Converge — depois do
+emailSend o $json vira resposta SMTP — corrigido com referência explícita).
+
+**Edge `asaas` v23:** cancelar gera a fatura parcial na hora (falha não derruba
+o cancelamento — o fechamento mensal cobre).
+
+**CRM:** `UsoDoSistema` na `/assinatura` — medidor do mês (agendamentos ×
+preço, VALOR GERADO em serviços, lembretes e reativações "sem custo") +
+histórico de períodos fechados.
+
+**Transição pendente (decisões de negócio, não de código):**
+1. Desmontar o fluxo antigo de assinar/trocar plano na `/assinatura` — hoje os
+   dois modelos convivem na tela.
+2. Destino dos planos Básico/Pro e do gating `salons_com_automacao`
+   (`inclui_automacoes`) — no modelo por uso, todo mundo tem tudo.
+3. Migrar as assinaturas recorrentes existentes no Asaas para o modelo novo.
+4. Trial: hoje unidade nova nasce com 7 dias; no modelo por uso talvez nem
+   precise de trial.

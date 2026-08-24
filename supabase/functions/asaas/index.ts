@@ -335,6 +335,16 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'Cancelamos no financeiro, mas houve erro ao registrar. Avise o suporte.' }, 500)
     }
 
+    // Fecha a conta na hora: a fatura parcial (ultimo fechamento -> hoje) entra
+    // na fila e o e-mail com o detalhamento sai no proximo ciclo do
+    // notificador, para o boleto final ser gerado a mao. Falha aqui NAO derruba
+    // o cancelamento -- o fechamento mensal do dia 1 cobre o periodo de
+    // qualquer forma.
+    const { error: erroFatura } = await admin.rpc('gerar_fatura_de_cancelamento', {
+      p_salon_id: salonId,
+    })
+    if (erroFatura) console.error('Erro ao gerar a fatura de cancelamento:', erroFatura)
+
     return json({ cancelada: true })
   }
 

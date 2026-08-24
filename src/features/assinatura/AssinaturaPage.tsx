@@ -6,6 +6,7 @@ import { AcoesDaAssinatura } from './AcoesDaAssinatura'
 import { RecursosDoPlano } from './RecursosDoPlano'
 import { TrocarPlano } from './TrocarPlano'
 import { CobrancaDaRede } from './CobrancaDaRede'
+import { UsoDoSistema } from './UsoDoSistema'
 
 function moeda(valor: number) {
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -234,6 +235,11 @@ export function AssinaturaPage() {
           )}
         </>
       )}
+
+      {/* O medidor do modelo por uso (2026-08-23): o que o mês está custando e
+          o que o agente gerou em troca. Convive com o fluxo de assinatura
+          antigo durante a transição de modelo. */}
+      <UsoDoSistema />
 
       {/* Some sozinho fora de rede: o componente devolve null quando o usuário
           não é dono de duas ou mais unidades. */}

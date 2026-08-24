@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { CalendarCheck, Pencil, Receipt, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { formatarTelefone, linkWhatsApp } from '../../lib/telefone'
 import type { Client } from './types'
 
 type HistoryAppointment = {
@@ -52,12 +53,17 @@ export function ClientDetailModal({
 }) {
   const [appointments, setAppointments] = useState<HistoryAppointment[]>([])
   const [orders, setOrders] = useState<HistoryOrder[]>([])
+  const [totalSpent, setTotalSpent] = useState(0)
+  const [completedCount, setCompletedCount] = useState(0)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
       setLoading(true)
-      const [appts, ords] = await Promise.all([
+      // Os totais vêm de consultas SEM limite — somar em cima da lista de
+      // "recentes" (15 linhas) mentia justamente para o cliente fiel, que tem
+      // mais histórico do que cabe na lista.
+      const [appts, ords, concluidos] = await Promise.all([
         supabase
           .from('appointments')
           .select('id, data_hora_inicio, status, services(nome)')
@@ -69,21 +75,28 @@ export function ClientDetailModal({
           .select('id, closed_at, order_items(quantidade, preco_unitario)')
           .eq('client_id', client.id)
           .eq('status', 'fechada')
-          .order('closed_at', { ascending: false })
-          .limit(15),
+          .order('closed_at', { ascending: false }),
+        supabase
+          .from('appointments')
+          .select('id', { count: 'exact', head: true })
+          .eq('client_id', client.id)
+          .eq('status', 'concluido'),
       ])
+      const todasCompras = (ords.data ?? []) as unknown as HistoryOrder[]
       setAppointments((appts.data ?? []) as unknown as HistoryAppointment[])
-      setOrders((ords.data ?? []) as unknown as HistoryOrder[])
+      setOrders(todasCompras.slice(0, 15))
+      setTotalSpent(
+        todasCompras.reduce(
+          (acc, o) =>
+            acc + o.order_items.reduce((a, i) => a + i.quantidade * Number(i.preco_unitario), 0),
+          0,
+        ),
+      )
+      setCompletedCount(concluidos.count ?? 0)
       setLoading(false)
     }
     load()
   }, [client.id])
-
-  const totalSpent = orders.reduce(
-    (acc, o) => acc + o.order_items.reduce((a, i) => a + i.quantidade * Number(i.preco_unitario), 0),
-    0,
-  )
-  const completedCount = appointments.filter((a) => a.status === 'concluido').length
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
@@ -110,7 +123,25 @@ export function ClientDetailModal({
             </button>
           </div>
         </div>
-        <p className="text-sm text-muted-foreground mb-4">{client.telefone ?? 'Sem telefone'}</p>
+        <p className="text-sm text-muted-foreground mb-4">
+          {client.telefone ? (
+            linkWhatsApp(client.telefone) ? (
+              <a
+                href={linkWhatsApp(client.telefone)!}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Abrir conversa no WhatsApp"
+                className="text-primary hover:underline"
+              >
+                {formatarTelefone(client.telefone)}
+              </a>
+            ) : (
+              formatarTelefone(client.telefone)
+            )
+          ) : (
+            'Sem telefone'
+          )}
+        </p>
 
         <div className="grid grid-cols-2 gap-3 mb-5">
           <div className="bg-surface-2 rounded-lg p-3">

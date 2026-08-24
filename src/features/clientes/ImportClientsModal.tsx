@@ -95,24 +95,30 @@ export function ImportClientsModal({
     let inseridos = 0
     let ignorados = 0
 
-    // Insere um a um para que um telefone repetido não derrube o lote inteiro.
-    for (const registro of parsed) {
-      const { error: insertError } = await supabase.from('clients').insert({
-        salon_id: salonId,
-        nome: registro.nome,
-        telefone: registro.telefone,
-        aniversario: registro.aniversario,
-        observacao: registro.observacao,
-      })
-      if (insertError) {
-        // 23505 = telefone já cadastrado neste salão
-        if (insertError.code === '23505') ignorados++
-        else {
-          console.error('Erro ao importar cliente:', insertError)
+    // Lotes de 50: importar um a um levava minutos num CSV grande. Se um lote
+    // falhar (telefone repetido derruba o insert inteiro), refaz aquele lote
+    // linha a linha para pular só as duplicatas.
+    const TAMANHO_DO_LOTE = 50
+    for (let i = 0; i < parsed.length; i += TAMANHO_DO_LOTE) {
+      const lote = parsed.slice(i, i + TAMANHO_DO_LOTE)
+      const { error: loteError } = await supabase
+        .from('clients')
+        .insert(lote.map((r) => ({ salon_id: salonId, ...r })))
+      if (!loteError) {
+        inseridos += lote.length
+        continue
+      }
+      for (const registro of lote) {
+        const { error: insertError } = await supabase
+          .from('clients')
+          .insert({ salon_id: salonId, ...registro })
+        if (insertError) {
+          // 23505 = telefone já cadastrado neste salão
+          if (insertError.code !== '23505') console.error('Erro ao importar cliente:', insertError)
           ignorados++
+        } else {
+          inseridos++
         }
-      } else {
-        inseridos++
       }
     }
 

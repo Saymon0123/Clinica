@@ -6,11 +6,21 @@ import { NewClientModal } from './NewClientModal'
 import { ClientDetailModal } from './ClientDetailModal'
 import { ImportClientsModal } from './ImportClientsModal'
 import { buildCsv, downloadCsv } from '../../lib/csv'
+import { formatarTelefone, linkWhatsApp, somenteDigitos } from '../../lib/telefone'
 import type { Client } from './types'
 
 function formatDate(iso: string | null) {
   if (!iso) return '—'
   return new Date(iso + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+}
+
+/** "há 12 dias" / "ontem" / "hoje" — a pergunta real é "quem sumiu?". */
+function formatUltimaVisita(iso: string | null) {
+  if (!iso) return { texto: 'nunca veio', dias: null as number | null }
+  const dias = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
+  if (dias <= 0) return { texto: 'hoje', dias }
+  if (dias === 1) return { texto: 'ontem', dias }
+  return { texto: `há ${dias} dias`, dias }
 }
 
 export function ClientesPage() {
@@ -22,6 +32,7 @@ export function ClientesPage() {
   const [editClient, setEditClient] = useState<Client | null>(null)
   const [importing, setImporting] = useState(false)
   const [novosPeriodo, setNovosPeriodo] = useState<'mes' | 'semana'>('mes')
+  const [ordem, setOrdem] = useState<'nome' | 'ultima_visita'>('nome')
 
   // Clientes novos no período escolhido
   const novosCount = useMemo(() => {
@@ -54,11 +65,26 @@ export function ClientesPage() {
 
   const filteredClients = useMemo(() => {
     const term = search.trim().toLowerCase()
-    if (!term) return clients
-    return clients.filter(
-      (c) => c.nome.toLowerCase().includes(term) || (c.telefone ?? '').toLowerCase().includes(term),
-    )
-  }, [clients, search])
+    const termDigitos = somenteDigitos(term)
+    let lista = clients
+    if (term) {
+      // Telefone compara por dígitos: "(41) 9..." e "41 9..." são o mesmo número.
+      lista = clients.filter(
+        (c) =>
+          c.nome.toLowerCase().includes(term) ||
+          (termDigitos.length > 0 && somenteDigitos(c.telefone ?? '').includes(termDigitos)),
+      )
+    }
+    if (ordem === 'ultima_visita') {
+      // Quem está há mais tempo sem vir primeiro; quem nunca veio no fim.
+      lista = [...lista].sort((a, b) => {
+        if (!a.ultima_visita) return 1
+        if (!b.ultima_visita) return -1
+        return new Date(a.ultima_visita).getTime() - new Date(b.ultima_visita).getTime()
+      })
+    }
+    return lista
+  }, [clients, search, ordem])
 
   if (salonLoading) {
     return <p className="text-sm text-muted-foreground">Carregando...</p>
@@ -86,6 +112,7 @@ export function ClientesPage() {
               Importar
             </button>
           )}
+          {isManager && (
           <button
             onClick={handleExport}
             disabled={clients.length === 0}
@@ -94,6 +121,7 @@ export function ClientesPage() {
             <Download size={15} />
             Exportar
           </button>
+          )}
           <button
             onClick={() => setShowNewClient(true)}
             className="flex items-center gap-2 btn-primary rounded px-4 py-2 text-sm font-medium"
@@ -175,8 +203,24 @@ export function ClientesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-muted-foreground border-b border-border">
-                  <th className="px-4 py-2 font-medium">Nome</th>
+                  <th className="px-4 py-2 font-medium">
+                    <button
+                      onClick={() => setOrdem('nome')}
+                      className={ordem === 'nome' ? 'text-foreground' : 'hover:text-foreground'}
+                    >
+                      Nome{ordem === 'nome' ? ' ↑' : ''}
+                    </button>
+                  </th>
                   <th className="px-4 py-2 font-medium">Telefone</th>
+                  <th className="px-4 py-2 font-medium">
+                    <button
+                      onClick={() => setOrdem('ultima_visita')}
+                      title="Ordenar por quem está há mais tempo sem vir"
+                      className={ordem === 'ultima_visita' ? 'text-foreground' : 'hover:text-foreground'}
+                    >
+                      Última visita{ordem === 'ultima_visita' ? ' ↑' : ''}
+                    </button>
+                  </th>
                   <th className="px-4 py-2 font-medium">Aniversário</th>
                   <th className="px-4 py-2 font-medium">Observação</th>
                 </tr>
@@ -189,7 +233,42 @@ export function ClientesPage() {
                     className="border-b border-border last:border-0 cursor-pointer hover:bg-surface-2 transition-colors"
                   >
                     <td className="px-4 py-3 text-foreground font-medium">{client.nome}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{client.telefone ?? '—'}</td>
+                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                      {client.telefone ? (
+                        linkWhatsApp(client.telefone) ? (
+                          <a
+                            href={linkWhatsApp(client.telefone)!}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            title="Abrir conversa no WhatsApp"
+                            className="text-primary hover:underline"
+                          >
+                            {formatarTelefone(client.telefone)}
+                          </a>
+                        ) : (
+                          formatarTelefone(client.telefone)
+                        )
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {(() => {
+                        const uv = formatUltimaVisita(client.ultima_visita)
+                        return (
+                          <span
+                            className={
+                              uv.dias !== null && uv.dias >= 45
+                                ? 'text-danger'
+                                : 'text-muted-foreground'
+                            }
+                          >
+                            {uv.texto}
+                          </span>
+                        )
+                      })()}
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground">{formatDate(client.aniversario)}</td>
                     <td className="px-4 py-3 text-muted-foreground max-w-xs truncate">{client.observacao ?? '—'}</td>
                   </tr>

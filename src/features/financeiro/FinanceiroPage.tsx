@@ -13,8 +13,11 @@ import {
   HandCoins,
   ChevronLeft,
   ChevronRight,
+  Wallet,
+  Target,
 } from 'lucide-react'
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
+import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
 import { useFinanceiroData, type MetricKey, type PeriodFilter } from './useFinanceiroData'
 import { StatsCard } from '../../components/StatsCard'
@@ -63,6 +66,7 @@ function ChangeBadge({ pct, invert }: { pct: number | null; invert?: boolean }) 
   const Icon = pct >= 0 ? TrendingUp : TrendingDown
   return (
     <span
+      title={invert ? 'Aqui, queda é bom: verde significa menos cancelamentos que no período anterior.' : undefined}
       className={`inline-flex items-center gap-0.5 text-xs font-medium ${
         positive ? 'text-success' : 'text-danger'
       }`}
@@ -105,7 +109,41 @@ export function FinanceiroPage() {
     }
   }, [searchParams, setSearchParams])
 
-  const metaAtingida = data.revenueGoal > 0 && data.revenueCurrent >= data.revenueGoal
+  // Sem meta definida não há "meta atingida": o padrão de R$ 3.000 é só um
+  // placeholder e comemorar contra ele seria mentira.
+  const metaAtingida = data.goalDefinida && data.revenueGoal > 0 && data.revenueCurrent >= data.revenueGoal
+
+  // Chip do caixa no cabeçalho: a ação operacional do dia não deveria exigir
+  // rolar a página inteira para saber se o caixa está aberto.
+  const [caixaAbertoDesde, setCaixaAbertoDesde] = useState<string | null>(null)
+  useEffect(() => {
+    if (!salonId || !isManager) return
+    let ativo = true
+    const carregarCaixa = async () => {
+      const { data: cx } = await supabase
+        .from('cash_registers')
+        .select('aberto_em')
+        .eq('salon_id', salonId)
+        .eq('status', 'aberto')
+        .order('aberto_em', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (ativo) setCaixaAbertoDesde(cx?.aberto_em ?? null)
+    }
+    carregarCaixa()
+    const channel = supabase
+      .channel(`caixa_chip_${salonId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'cash_registers', filter: `salon_id=eq.${salonId}` },
+        carregarCaixa,
+      )
+      .subscribe()
+    return () => {
+      ativo = false
+      supabase.removeChannel(channel)
+    }
+  }, [salonId, isManager])
 
   // Comemora uma única vez por mês, assim que a meta é batida — só no mês
   // corrente: revisitar julho não deve estourar confete de novo.
@@ -188,15 +226,36 @@ export function FinanceiroPage() {
           </div>
         </div>
 
-        {isManager && (
-          <button
-            onClick={() => setExporting(true)}
-            className="flex items-center gap-2 border border-border-strong rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-surface-2"
-          >
-            <Download size={15} />
-            Exportar
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {isManager && (
+            <button
+              onClick={() => {
+                setTab('visao')
+                document.getElementById('caixa')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              }}
+              title={caixaAbertoDesde ? 'Ir para o caixa' : 'Ir para o caixa para abrir'}
+              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${
+                caixaAbertoDesde
+                  ? 'border-success/40 bg-success-soft text-success'
+                  : 'border-border-strong text-muted-foreground hover:bg-surface-2'
+              }`}
+            >
+              <Wallet size={15} />
+              {caixaAbertoDesde
+                ? `Caixa aberto · ${new Date(caixaAbertoDesde).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+                : 'Caixa fechado'}
+            </button>
+          )}
+          {isManager && (
+            <button
+              onClick={() => setExporting(true)}
+              className="flex items-center gap-2 border border-border-strong rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-surface-2"
+            >
+              <Download size={15} />
+              Exportar
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Abas: visão geral e vendas */}
@@ -329,6 +388,21 @@ export function FinanceiroPage() {
               Alterar
             </button>
           </div>
+          {!data.goalDefinida ? (
+            <div className="flex-1 min-h-52 flex flex-col items-center justify-center gap-3 text-center">
+              <Target size={32} className="text-muted-foreground" />
+              <p className="text-sm text-muted-foreground max-w-48">
+                Você ainda não definiu uma meta mensal de faturamento.
+              </p>
+              <button
+                onClick={() => setEditingGoal(true)}
+                className="btn-primary rounded px-3 py-1.5 text-sm font-medium"
+              >
+                Definir meta
+              </button>
+            </div>
+          ) : (
+            <>
           <div className="relative flex-1 min-h-52 flex items-center justify-center">
             <RadialGoal percent={goalPct} size={176} />
           </div>
@@ -347,6 +421,8 @@ export function FinanceiroPage() {
               </button>
             )}
           </div>
+            </>
+          )}
         </div>
         )}
       </div>
@@ -385,7 +461,11 @@ export function FinanceiroPage() {
         )}
       </div>
 
-      {isManager && <CaixaSection salonId={salonId} />}
+      {isManager && (
+        <div id="caixa">
+          <CaixaSection salonId={salonId} />
+        </div>
+      )}
 
       {/* Comissões do período */}
       <div className="bg-surface border border-border rounded-xl p-5">

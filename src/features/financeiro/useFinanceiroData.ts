@@ -33,6 +33,8 @@ export type FinanceiroData = {
   clientsGrowth: { month: string; total: number; novos: number }[]
   revenueCurrent: number
   revenueGoal: number
+  /** false = o salão nunca definiu meta; a tela pede em vez de inventar uma. */
+  goalDefinida: boolean
   topServices: ServiceShare[]
   commissions: CommissionRow[]
 }
@@ -49,6 +51,7 @@ const EMPTY_DATA: FinanceiroData = {
   clientsGrowth: [],
   revenueCurrent: 0,
   revenueGoal: META_FATURAMENTO_MENSAL,
+  goalDefinida: true,
   topServices: [],
   commissions: [],
 }
@@ -372,6 +375,7 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter, 
       clientsGrowth,
       revenueCurrent,
       revenueGoal: Number(salonResult.data?.meta_faturamento_mensal ?? META_FATURAMENTO_MENSAL),
+      goalDefinida: salonResult.data?.meta_faturamento_mensal != null,
       topServices,
       commissions,
     })
@@ -382,17 +386,25 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter, 
     reload()
   }, [reload])
 
-  // Atualização em tempo real: recarrega quando muda algo em appointments, orders ou clients
+  // Atualização em tempo real, com debounce: o agente do WhatsApp pode criar
+  // vários agendamentos em sequência, e cada evento disparava as 8 consultas
+  // de novo. Espera 2s de silêncio antes de recarregar.
   useEffect(() => {
     if (!salonId) return
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const agendar = () => {
+      clearTimeout(timer)
+      timer = setTimeout(() => reload(), 2000)
+    }
     const channel = supabase
       .channel(`financeiro_${salonId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments', filter: `salon_id=eq.${salonId}` }, () => reload())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `salon_id=eq.${salonId}` }, () => reload())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients', filter: `salon_id=eq.${salonId}` }, () => reload())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments', filter: `salon_id=eq.${salonId}` }, agendar)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `salon_id=eq.${salonId}` }, agendar)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients', filter: `salon_id=eq.${salonId}` }, agendar)
       .subscribe()
 
     return () => {
+      clearTimeout(timer)
       supabase.removeChannel(channel)
     }
   }, [salonId, reload])

@@ -1310,3 +1310,32 @@ uso todo mundo tem as automações; a trava que resta é estar ativa e dentro de
 3. **Recorrências legadas no Asaas** (ex.: Curitiba) seguem cobrando até serem
    canceladas — pelo botão de cancelar de cada uma, ou à mão no painel do
    Asaas, na migração de cada cliente para o modelo novo.
+
+
+## Termos de uso atualizados para o modelo por uso — 2026-08-24
+
+`VERSAO_DOS_TERMOS = '2026-08-24'`. O que mudou no texto:
+
+- **§2** “O que cada plano inclui” → “O que está incluído”: sem planos, todo
+  cliente tem tudo; conexão do WhatsApp “feita junto com a nossa equipe” (sem
+  QR code no texto).
+- **§4** reescrita: cobrança por agendamento criado pelo atendimento automático,
+  sem mínimo; cancelado depois cobra (“o serviço de marcar foi prestado”);
+  remarcar não duplica; CRM e QR do balcão não cobram; lembretes e reativações
+  sem custo; fechamento no mês-calendário; reajuste com 30 dias de aviso. O
+  texto fala em “valor unitário informado na contratação” — as faixas
+  continuam fora do texto público, como decidido.
+- **§5** cancelamento: fecha o período em aberto na hora, última cobrança só
+  com o usado até o dia.
+- **§7 antiga (troca de plano) removida**; seções renumeradas (13 → 12).
+- **§8 (antiga 9) WhatsApp**: deixou de descrever “canal não oficial” — a
+  conexão é pela API oficial da Meta desde 22/08; mantém que a Meta pode
+  restringir números pelas políticas dela, e cita os modelos aprovados.
+
+**Consequências em aberto:**
+- Todos os aceites registrados são da versão 2026-08-14 ou anterior — a
+  diferença é detectável por design, mas **não existe fluxo de re-aceite** para
+  usuário já logado. Decidir se o texto novo vale só para entradas novas ou se
+  o CRM deve pedir aceite de novo.
+- `TERMOS_EM_REVISAO` continua true: a revisão por advogado segue pendente, e
+  agora com o texto já no modelo definitivo de cobrança.

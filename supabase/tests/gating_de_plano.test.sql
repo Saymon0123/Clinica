@@ -1,12 +1,15 @@
--- A trava de plano: só quem paga o Pro recebe automação de WhatsApp.
+-- Quem recebe automação de WhatsApp.
 --
--- Vale um teste porque a falha aqui é **silenciosa nos dois sentidos**. Se a
--- view passar a incluir o Básico, um salão recebe o que não pagou e ninguém
--- percebe — não há erro, log nem tela que denuncie. Se passar a excluir o Pro,
--- os lembretes simplesmente param, e o dono descobre pelos clientes faltando.
+-- **A regra mudou em 2026-08-24 com o modelo por uso (0098):** não há mais
+-- plano — todo salão ativo e dentro do prazo recebe automação, porque é o uso
+-- que cobra. As travas que restam são as que continuam silenciosas quando
+-- falham: salão vencido além da carência, suspenso ou sem assinatura receber
+-- automação seria dar serviço a quem não pode ter; salão em dia perder seria
+-- os lembretes pararem sem ninguém avisar.
 --
 -- O n8n consome `salons_com_automacao` diretamente; estas asserções são o
--- contrato entre o banco e o fluxo.
+-- contrato entre o banco e o fluxo. O salão "Basico" abaixo ficou de
+-- propósito: ele prova que o plano deixou de importar.
 --
 -- Rodar com: supabase test db
 
@@ -40,8 +43,8 @@ select is(
 );
 
 select is(
-  (select count(*) from salons_com_automacao where id = :'salao_basico')::int, 0,
-  'salao Basico nao recebe automacao, mesmo pagando em dia'
+  (select count(*) from salons_com_automacao where id = :'salao_basico')::int, 1,
+  'no modelo por uso o plano nao importa: salao Basico em dia tambem recebe'
 );
 
 select is(
@@ -51,7 +54,7 @@ select is(
 
 select is(
   (select count(*) from salons_com_automacao where id = :'salao_inativo')::int, 0,
-  'salao suspenso nao recebe automacao nem pagando Pro'
+  'salao suspenso nao recebe automacao'
 );
 
 -- A carência é a regra decidida em 2026-08-02: vencer bloqueia o CRM, mas o

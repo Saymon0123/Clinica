@@ -233,7 +233,11 @@ export function FinanceiroPage() {
                 setTab('visao')
                 document.getElementById('caixa')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
               }}
-              title={caixaAbertoDesde ? 'Ir para o caixa' : 'Ir para o caixa para abrir'}
+              title={
+                caixaAbertoDesde
+                  ? 'Ir para o caixa'
+                  : 'O caixa abre sozinho na primeira venda do dia'
+              }
               className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${
                 caixaAbertoDesde
                   ? 'border-success/40 bg-success-soft text-success'
@@ -243,7 +247,7 @@ export function FinanceiroPage() {
               <Wallet size={15} />
               {caixaAbertoDesde
                 ? `Caixa aberto · ${new Date(caixaAbertoDesde).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
-                : 'Caixa fechado'}
+                : 'Caixa · abre na 1ª venda'}
             </button>
           )}
           {isManager && (

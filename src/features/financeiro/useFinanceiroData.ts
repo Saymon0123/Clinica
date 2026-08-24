@@ -79,9 +79,13 @@ type Periods = {
   prevEnd: Date
   windowStart: Date
   sparkDays: Date[]
+  /** Mês do donut da meta: o mês selecionado no filtro "mes", o mês corrente no "dia". */
+  monthStart: Date
+  monthEnd: Date
 }
 
-function computePeriods(filter: PeriodFilter): Periods {
+/** refMonth no formato 'YYYY-MM'; ignorado no filtro "dia" (dia é sempre hoje). */
+function computePeriods(filter: PeriodFilter, refMonth: string): Periods {
   const now = new Date()
 
   if (filter === 'dia') {
@@ -91,18 +95,34 @@ function computePeriods(filter: PeriodFilter): Periods {
     const prevEnd = endOfDay(new Date(now.getTime() - 86400000))
     const sparkDays: Date[] = []
     for (let i = 6; i >= 0; i--) sparkDays.push(startOfDay(new Date(now.getTime() - i * 86400000)))
-    return { currentStart, currentEnd, prevStart, prevEnd, windowStart: sparkDays[0], sparkDays }
+    const monthStart = startOfDay(new Date(now.getFullYear(), now.getMonth(), 1))
+    // A janela precisa cobrir o mês inteiro, senão o donut da meta soma só a
+    // última semana — era exatamente esse o defeito no filtro "Hoje".
+    const windowStart = monthStart < sparkDays[0] ? monthStart : sparkDays[0]
+    return { currentStart, currentEnd, prevStart, prevEnd, windowStart, sparkDays, monthStart, monthEnd: currentEnd }
   }
 
-  const currentStart = startOfDay(new Date(now.getFullYear(), now.getMonth(), 1))
-  const currentEnd = endOfDay(now)
-  const prevStart = startOfDay(new Date(now.getFullYear(), now.getMonth() - 1, 1))
-  const prevEnd = endOfDay(new Date(now.getFullYear(), now.getMonth(), 0))
+  const [ano, mes] = refMonth.split('-').map(Number)
+  const ehMesCorrente = ano === now.getFullYear() && mes === now.getMonth() + 1
+  const currentStart = startOfDay(new Date(ano, mes - 1, 1))
+  const ultimoDia = ehMesCorrente ? now.getDate() : new Date(ano, mes, 0).getDate()
+  const currentEnd = endOfDay(ehMesCorrente ? now : new Date(ano, mes, 0))
+  const prevStart = startOfDay(new Date(ano, mes - 2, 1))
+  const prevEnd = endOfDay(new Date(ano, mes - 1, 0))
   const sparkDays: Date[] = []
-  for (let d = 1; d <= now.getDate(); d++) {
-    sparkDays.push(startOfDay(new Date(now.getFullYear(), now.getMonth(), d)))
+  for (let d = 1; d <= ultimoDia; d++) {
+    sparkDays.push(startOfDay(new Date(ano, mes - 1, d)))
   }
-  return { currentStart, currentEnd, prevStart, prevEnd, windowStart: prevStart, sparkDays }
+  return {
+    currentStart,
+    currentEnd,
+    prevStart,
+    prevEnd,
+    windowStart: prevStart,
+    sparkDays,
+    monthStart: currentStart,
+    monthEnd: currentEnd,
+  }
 }
 
 function changePct(value: number, previous: number): number | null {
@@ -130,7 +150,13 @@ type OrderRow = {
   }[]
 }
 
-export function useFinanceiroData(salonId: string | null, filter: PeriodFilter) {
+/**
+ * As consultas não filtram por profissional de propósito: a RLS (0015) já faz
+ * isso. Gestor enxerga o salão inteiro; barbeiro só as comandas, agendamentos
+ * e comissões dele — os mesmos cards mostram o salão para um e "os seus
+ * números" para o outro, como o subtítulo da página promete.
+ */
+export function useFinanceiroData(salonId: string | null, filter: PeriodFilter, refMonth: string) {
   const [data, setData] = useState<FinanceiroData>(EMPTY_DATA)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -140,7 +166,7 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter) 
     setLoading(true)
     setError(null)
 
-    const p = computePeriods(filter)
+    const p = computePeriods(filter, refMonth)
     const windowStartISO = p.windowStart.toISOString()
     const currentEndISO = p.currentEnd.toISOString()
 
@@ -290,7 +316,6 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter) 
 
     // Crescimento de clientes: 12 linhas prontas da RPC clientes_por_mes —
     // contar no banco em vez de baixar a tabela clients inteira.
-    const now = new Date()
     const monthLabels = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
     const clientsGrowth = clientsMeses.map((m) => ({
       month: monthLabels[Number(m.mes.slice(5, 7)) - 1],
@@ -298,9 +323,9 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter) 
       novos: m.novos,
     }))
 
-    // Faturamento do mês (para o donut da meta), independente do filtro
-    const monthStart = startOfDay(new Date(now.getFullYear(), now.getMonth(), 1))
-    const revenueCurrent = sumFaturamento(ordersIn(monthStart, endOfDay(now)))
+    // Faturamento do mês para o donut da meta: o mês selecionado no seletor,
+    // ou o mês corrente quando o filtro é "Hoje".
+    const revenueCurrent = sumFaturamento(ordersIn(p.monthStart, p.monthEnd))
 
     // Serviços mais vendidos no período selecionado
     const serviceRevenue = new Map<string, number>()
@@ -312,11 +337,13 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter) 
       }
     }
     const topEntries = [...serviceRevenue.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6)
-    const maxRevenue = topEntries.length ? topEntries[0][1] : 0
+    // Share sobre o TOTAL vendido, não sobre o 1º colocado — barra 100% cheia
+    // sugeria "domina tudo" mesmo quando o campeão tinha 30% das vendas.
+    const totalServicos = [...serviceRevenue.values()].reduce((s, v) => s + v, 0)
     const topServices: ServiceShare[] = topEntries.map(([id, revenue]) => ({
       nome: serviceNames.get(id) ?? 'Serviço',
       revenue,
-      share: maxRevenue ? (revenue / maxRevenue) * 100 : 0,
+      share: totalServicos ? (revenue / totalServicos) * 100 : 0,
     }))
 
     // Comissões do período: registros congelados da tabela `commissions`,
@@ -349,7 +376,7 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter) 
       commissions,
     })
     setLoading(false)
-  }, [salonId, filter])
+  }, [salonId, filter, refMonth])
 
   useEffect(() => {
     reload()

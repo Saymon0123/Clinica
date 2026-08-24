@@ -20,15 +20,20 @@ function formatDateTime(iso: string) {
 export function VendasSection({
   salonId,
   period,
+  refMonth,
+  periodLabel,
   prefill,
   onPrefillConsumed,
 }: {
   salonId: string
   period: 'dia' | 'mes'
+  /** 'YYYY-MM' do mês exibido; omitido = mês corrente. */
+  refMonth?: string
+  periodLabel?: string
   prefill?: SalePrefill | null
   onPrefillConsumed?: () => void
 }) {
-  const { sales, loading, error, reload } = useVendasData(salonId, period)
+  const { sales, loading, error, reload } = useVendasData(salonId, period, refMonth)
   const [modalOpen, setModalOpen] = useState(false)
   const [activePrefill, setActivePrefill] = useState<SalePrefill | null>(null)
 
@@ -47,7 +52,7 @@ export function VendasSection({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          {period === 'dia' ? 'Hoje' : 'Este mês'} · {sales.length} venda{sales.length === 1 ? '' : 's'} ·{' '}
+          {periodLabel ?? (period === 'dia' ? 'Hoje' : 'Este mês')} · {sales.length} venda{sales.length === 1 ? '' : 's'} ·{' '}
           <span className="font-medium text-foreground">{formatCurrency(totalPeriod)}</span>
         </p>
 

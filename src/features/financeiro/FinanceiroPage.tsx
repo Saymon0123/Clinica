@@ -11,6 +11,8 @@ import {
   Download,
   PartyPopper,
   HandCoins,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
 import { useSalon } from '../auth/useSalon'
@@ -27,6 +29,25 @@ import { GoalReachedModal } from './GoalReachedModal'
 
 function formatCurrency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+/** 'YYYY-MM' do mês corrente. */
+function mesCorrente() {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+}
+
+function somaMes(refMonth: string, delta: number) {
+  const [ano, mes] = refMonth.split('-').map(Number)
+  const d = new Date(ano, mes - 1 + delta, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+const MESES_LABEL = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+
+function labelDoMes(refMonth: string) {
+  const [ano, mes] = refMonth.split('-').map(Number)
+  return `${MESES_LABEL[mes - 1]} ${ano}`
 }
 
 const CARD_CONFIG: { key: MetricKey; label: string; icon: typeof DollarSign; format: 'currency' | 'number' }[] = [
@@ -55,7 +76,11 @@ function ChangeBadge({ pct, invert }: { pct: number | null; invert?: boolean }) 
 export function FinanceiroPage() {
   const { salonId, isManager, loading: salonLoading } = useSalon()
   const [filter, setFilter] = useState<PeriodFilter>('mes')
-  const { data, loading, error, reload } = useFinanceiroData(salonId, filter)
+  const [refMonth, setRefMonth] = useState(mesCorrente)
+  const ehMesCorrente = refMonth === mesCorrente()
+  // "Este mês" quando é o corrente; "ago 2026" quando navegou para trás.
+  const rotuloPeriodo = filter === 'dia' ? 'Hoje' : ehMesCorrente ? 'Este mês' : labelDoMes(refMonth)
+  const { data, loading, error, reload } = useFinanceiroData(salonId, filter, refMonth)
   const [editingGoal, setEditingGoal] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [showCelebration, setShowCelebration] = useState(false)
@@ -82,9 +107,10 @@ export function FinanceiroPage() {
 
   const metaAtingida = data.revenueGoal > 0 && data.revenueCurrent >= data.revenueGoal
 
-  // Comemora uma única vez por mês, assim que a meta é batida.
+  // Comemora uma única vez por mês, assim que a meta é batida — só no mês
+  // corrente: revisitar julho não deve estourar confete de novo.
   useEffect(() => {
-    if (loading || !metaAtingida || !salonId || !isManager) return
+    if (loading || !metaAtingida || !salonId || !isManager || !ehMesCorrente) return
     const mesAtual = new Date().toISOString().slice(0, 7)
     const chave = `crm_meta_celebrada_${salonId}_${mesAtual}`
     if (localStorage.getItem(chave)) return
@@ -118,23 +144,48 @@ export function FinanceiroPage() {
           </p>
         </div>
 
-        <div className="inline-flex rounded-lg bg-surface-2 border border-border p-1 text-sm">
+        <div className="inline-flex items-center rounded-lg bg-surface-2 border border-border p-1 text-sm">
           <button
-            onClick={() => setFilter('dia')}
+            onClick={() => {
+              setFilter('dia')
+              setRefMonth(mesCorrente())
+            }}
             className={`px-4 py-1.5 rounded-md font-medium transition-colors ${
               filter === 'dia' ? 'bg-surface text-foreground shadow-sm' : 'text-muted-foreground'
             }`}
           >
             Hoje
           </button>
-          <button
-            onClick={() => setFilter('mes')}
-            className={`px-4 py-1.5 rounded-md font-medium transition-colors ${
+          <div
+            className={`inline-flex items-center rounded-md transition-colors ${
               filter === 'mes' ? 'bg-surface text-foreground shadow-sm' : 'text-muted-foreground'
             }`}
           >
-            Este mês
-          </button>
+            <button
+              onClick={() => {
+                setFilter('mes')
+                setRefMonth((m) => somaMes(m, -1))
+              }}
+              aria-label="Mês anterior"
+              className="px-1.5 py-1.5 hover:text-foreground"
+            >
+              <ChevronLeft size={15} />
+            </button>
+            <button onClick={() => setFilter('mes')} className="px-1 py-1.5 font-medium min-w-20 text-center">
+              {filter === 'mes' ? rotuloPeriodo : ehMesCorrente ? 'Este mês' : labelDoMes(refMonth)}
+            </button>
+            <button
+              onClick={() => {
+                setFilter('mes')
+                setRefMonth((m) => somaMes(m, 1))
+              }}
+              disabled={ehMesCorrente}
+              aria-label="Próximo mês"
+              className="px-1.5 py-1.5 hover:text-foreground disabled:opacity-30"
+            >
+              <ChevronRight size={15} />
+            </button>
+          </div>
         </div>
 
         {isManager && (
@@ -176,6 +227,8 @@ export function FinanceiroPage() {
         <VendasSection
           salonId={salonId}
           period={filter}
+          refMonth={refMonth}
+          periodLabel={rotuloPeriodo}
           prefill={salePrefill}
           onPrefillConsumed={clearPrefill}
         />
@@ -213,8 +266,8 @@ export function FinanceiroPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className={`${isManager ? 'lg:col-span-2' : 'lg:col-span-3'} bg-surface border border-border rounded-xl p-5`}>
           <div className="mb-4">
-            <h2 className="text-sm font-semibold text-foreground">Total de clientes</h2>
-            <p className="text-xs text-muted-foreground">Crescimento acumulado nos últimos 12 meses</p>
+            <h2 className="text-sm font-semibold text-foreground">Novos clientes</h2>
+            <p className="text-xs text-muted-foreground">Cadastros por mês nos últimos 12 meses</p>
           </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -240,11 +293,14 @@ export function FinanceiroPage() {
                     color: 'var(--foreground)',
                   }}
                   labelStyle={{ color: 'var(--muted-foreground)' }}
-                  formatter={(v) => [v as number, 'Clientes']}
+                  formatter={(v, _nome, item) => [
+                    `${v as number} (total: ${(item?.payload as { total?: number })?.total ?? '—'})`,
+                    'Novos',
+                  ]}
                 />
                 <Area
                   type="monotone"
-                  dataKey="total"
+                  dataKey="novos"
                   stroke="var(--chart-line)"
                   strokeWidth={2.5}
                   fill="url(#clientsFill)"
@@ -260,7 +316,9 @@ export function FinanceiroPage() {
           <div className="mb-2 flex items-start justify-between gap-2">
             <div>
               <h2 className="text-sm font-semibold text-foreground">Meta de faturamento</h2>
-              <p className="text-xs text-muted-foreground">Mês atual</p>
+              <p className="text-xs text-muted-foreground">
+                {filter === 'mes' && !ehMesCorrente ? labelDoMes(refMonth) : 'Mês atual'}
+              </p>
             </div>
             <button
               onClick={() => setEditingGoal(true)}
@@ -297,9 +355,7 @@ export function FinanceiroPage() {
       <div className="bg-surface border border-border rounded-xl p-5">
         <div className="mb-4">
           <h2 className="text-sm font-semibold text-foreground">Serviços mais vendidos</h2>
-          <p className="text-xs text-muted-foreground">
-            {filter === 'dia' ? 'Hoje' : 'Este mês'} · por faturamento
-          </p>
+          <p className="text-xs text-muted-foreground">{rotuloPeriodo} · por faturamento</p>
         </div>
 
         {data.topServices.length === 0 ? (
@@ -317,8 +373,11 @@ export function FinanceiroPage() {
                     style={{ width: `${s.share}%` }}
                   />
                 </div>
-                <span className="w-24 shrink-0 text-right text-sm font-medium text-foreground">
+                <span className="w-32 shrink-0 text-right text-sm font-medium text-foreground">
                   {formatCurrency(s.revenue)}
+                  <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                    {s.share.toFixed(0)}%
+                  </span>
                 </span>
               </div>
             ))}
@@ -333,9 +392,7 @@ export function FinanceiroPage() {
         <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
           <div>
             <h2 className="text-sm font-semibold text-foreground">Comissões</h2>
-            <p className="text-xs text-muted-foreground">
-              {filter === 'dia' ? 'Hoje' : 'Este mês'} · sobre serviços vendidos
-            </p>
+            <p className="text-xs text-muted-foreground">{rotuloPeriodo} · sobre serviços vendidos</p>
           </div>
           {isManager && (
             <button
@@ -374,7 +431,7 @@ export function FinanceiroPage() {
 
       <p className="text-xs text-muted-foreground">
         Faturamento considera comandas fechadas; clientes atendidos considera agendamentos concluídos. As
-        variações comparam com {filter === 'dia' ? 'ontem' : 'o mês anterior'}.
+        variações comparam com {filter === 'dia' ? 'ontem' : 'o mês anterior ao exibido'}.
       </p>
         </>
       )}

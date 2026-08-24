@@ -20,7 +20,7 @@ function one<T>(rel: T | T[] | null): T | null {
   return Array.isArray(rel) ? (rel[0] ?? null) : rel
 }
 
-export function useVendasData(salonId: string | null, period: Period) {
+export function useVendasData(salonId: string | null, period: Period, refMonth?: string) {
   const [sales, setSales] = useState<Sale[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -30,13 +30,18 @@ export function useVendasData(salonId: string | null, period: Period) {
     setLoading(true)
     setError(null)
 
+    // refMonth ('YYYY-MM') permite navegar para meses anteriores; sem ele,
+    // o comportamento é o de sempre (hoje / mês corrente).
     const now = new Date()
+    const [ano, mes] =
+      period === 'mes' && refMonth ? refMonth.split('-').map(Number) : [now.getFullYear(), now.getMonth() + 1]
     const start =
       period === 'dia'
         ? new Date(now.getFullYear(), now.getMonth(), now.getDate())
-        : new Date(now.getFullYear(), now.getMonth(), 1)
+        : new Date(ano, mes - 1, 1)
+    const end = period === 'dia' ? null : new Date(ano, mes, 1)
 
-    const { data, error: fetchError } = await supabase
+    let query = supabase
       .from('orders')
       .select(
         'id, created_at, closed_at, status, clients(nome), professionals(nome), order_items(quantidade, preco_unitario), payments(forma_pagamento)',
@@ -45,6 +50,9 @@ export function useVendasData(salonId: string | null, period: Period) {
       .neq('status', 'cancelada')
       .gte('created_at', start.toISOString())
       .order('created_at', { ascending: false })
+    if (end) query = query.lt('created_at', end.toISOString())
+
+    const { data, error: fetchError } = await query
 
     if (fetchError) {
       console.error('Erro ao carregar vendas:', fetchError)
@@ -67,7 +75,7 @@ export function useVendasData(salonId: string | null, period: Period) {
       })),
     )
     setLoading(false)
-  }, [salonId, period])
+  }, [salonId, period, refMonth])
 
   useEffect(() => {
     reload()

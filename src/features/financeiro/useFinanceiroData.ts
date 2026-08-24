@@ -30,7 +30,7 @@ export type CommissionRow = {
 
 export type FinanceiroData = {
   metrics: Record<MetricKey, MetricData>
-  clientsGrowth: { month: string; total: number }[]
+  clientsGrowth: { month: string; total: number; novos: number }[]
   revenueCurrent: number
   revenueGoal: number
   topServices: ServiceShare[]
@@ -111,6 +111,13 @@ function changePct(value: number, previous: number): number | null {
 }
 
 type ApptRow = { client_id: string | null; status: string; data_hora_inicio: string }
+type CancelRow = { cancelado_em: string }
+type CommissionDbRow = {
+  professional_id: string
+  percentual_aplicado: number
+  valor_calculado: number
+  order_items: { preco_unitario: number; quantidade: number }
+}
 type OrderRow = {
   closed_at: string | null
   payments: { valor: number }[]
@@ -137,7 +144,16 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter) 
     const windowStartISO = p.windowStart.toISOString()
     const currentEndISO = p.currentEnd.toISOString()
 
-    const [apptResult, ordersResult, clientsResult, servicesResult, professionalsResult, salonResult] =
+    const [
+      apptResult,
+      cancelResult,
+      ordersResult,
+      clientsResult,
+      commissionsResult,
+      servicesResult,
+      professionalsResult,
+      salonResult,
+    ] =
       await Promise.all([
       supabase
         .from('appointments')
@@ -146,6 +162,15 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter) 
         .gte('data_hora_inicio', windowStartISO)
         .lte('data_hora_inicio', currentEndISO)
         .neq('status', 'bloqueio'),
+      // Cancelamentos contam pela data em que ACONTECEU o cancelamento
+      // (cancelado_em, carimbado por trigger), não pela data do horário —
+      // cancelar hoje um horário de setembro é um cancelamento de hoje.
+      supabase
+        .from('appointments')
+        .select('cancelado_em')
+        .eq('salon_id', salonId)
+        .gte('cancelado_em', windowStartISO)
+        .lte('cancelado_em', currentEndISO),
       supabase
         .from('orders')
         .select(
@@ -155,7 +180,19 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter) 
         .eq('status', 'fechada')
         .gte('closed_at', windowStartISO)
         .lte('closed_at', currentEndISO),
-      supabase.from('clients').select('created_at').eq('salon_id', salonId),
+      supabase.rpc('clientes_por_mes', { p_salon_id: salonId }),
+      // Comissões vêm da tabela `commissions`, congeladas no percentual da
+      // época da venda — recalcular com o percentual atual reescreveria o
+      // passado se o dono mudasse a comissão no meio do mês.
+      supabase
+        .from('commissions')
+        .select(
+          'professional_id, percentual_aplicado, valor_calculado, order_items!inner(preco_unitario, quantidade, orders!inner(salon_id, status, closed_at))',
+        )
+        .eq('order_items.orders.salon_id', salonId)
+        .eq('order_items.orders.status', 'fechada')
+        .gte('order_items.orders.closed_at', p.currentStart.toISOString())
+        .lte('order_items.orders.closed_at', currentEndISO),
       supabase.from('services').select('id, nome').eq('salon_id', salonId),
       supabase
         .from('professionals')
@@ -164,9 +201,9 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter) 
       supabase.from('salons').select('meta_faturamento_mensal').eq('id', salonId).maybeSingle(),
     ])
 
-    if (apptResult.error || ordersResult.error || clientsResult.error || servicesResult.error) {
+    if (apptResult.error || cancelResult.error || ordersResult.error || clientsResult.error) {
       console.error(
-        apptResult.error || ordersResult.error || clientsResult.error || servicesResult.error,
+        apptResult.error || cancelResult.error || ordersResult.error || clientsResult.error,
       )
       setError('Não foi possível carregar os dados financeiros.')
       setLoading(false)
@@ -174,8 +211,10 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter) 
     }
 
     const appts = (apptResult.data ?? []) as ApptRow[]
+    const cancels = (cancelResult.data ?? []) as CancelRow[]
     const orders = (ordersResult.data ?? []) as unknown as OrderRow[]
-    const clients = (clientsResult.data ?? []) as { created_at: string }[]
+    const clientsMeses = (clientsResult.data ?? []) as { mes: string; novos: number; total: number }[]
+    const commissionRows = (commissionsResult.data ?? []) as unknown as CommissionDbRow[]
     const serviceNames = new Map(
       (servicesResult.data ?? []).map((s) => [s.id as string, s.nome as string]),
     )
@@ -199,10 +238,17 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter) 
         return t >= start.getTime() && t <= end.getTime()
       })
 
+    // Faturamento = soma dos pagamentos das comandas fechadas. Premissa: todo
+    // payment é receita — se um dia existir estorno/troco como valor negativo,
+    // esta conta o abate sem distinguir.
     const sumFaturamento = (rows: OrderRow[]) =>
       rows.reduce((sum, o) => sum + (o.payments ?? []).reduce((s, pay) => s + Number(pay.valor), 0), 0)
     const countAgendamentos = (rows: ApptRow[]) => rows.filter((a) => a.status !== 'cancelado').length
-    const countCancelamentos = (rows: ApptRow[]) => rows.filter((a) => a.status === 'cancelado').length
+    const cancelsIn = (start: Date, end: Date) =>
+      cancels.filter((c) => {
+        const t = new Date(c.cancelado_em).getTime()
+        return t >= start.getTime() && t <= end.getTime()
+      }).length
     const countClientesAtendidos = (rows: ApptRow[]) =>
       new Set(rows.filter((a) => a.status === 'concluido' && a.client_id).map((a) => a.client_id)).size
 
@@ -235,22 +281,22 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter) 
         spark: buildSpark((s, e) => countAgendamentos(apptsIn(s, e))),
       },
       cancelamentos: {
-        value: countCancelamentos(curAppts),
-        previous: countCancelamentos(prevAppts),
-        changePct: changePct(countCancelamentos(curAppts), countCancelamentos(prevAppts)),
-        spark: buildSpark((s, e) => countCancelamentos(apptsIn(s, e))),
+        value: cancelsIn(p.currentStart, p.currentEnd),
+        previous: cancelsIn(p.prevStart, p.prevEnd),
+        changePct: changePct(cancelsIn(p.currentStart, p.currentEnd), cancelsIn(p.prevStart, p.prevEnd)),
+        spark: buildSpark((s, e) => cancelsIn(s, e)),
       },
     }
 
-    // Crescimento de clientes: total acumulado nos últimos 12 meses
+    // Crescimento de clientes: 12 linhas prontas da RPC clientes_por_mes —
+    // contar no banco em vez de baixar a tabela clients inteira.
     const now = new Date()
-    const clientsGrowth: { month: string; total: number }[] = []
     const monthLabels = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
-    for (let i = 11; i >= 0; i--) {
-      const monthEnd = endOfDay(new Date(now.getFullYear(), now.getMonth() - i + 1, 0))
-      const total = clients.filter((c) => new Date(c.created_at).getTime() <= monthEnd.getTime()).length
-      clientsGrowth.push({ month: monthLabels[monthEnd.getMonth()], total })
-    }
+    const clientsGrowth = clientsMeses.map((m) => ({
+      month: monthLabels[Number(m.mes.slice(5, 7)) - 1],
+      total: m.total,
+      novos: m.novos,
+    }))
 
     // Faturamento do mês (para o donut da meta), independente do filtro
     const monthStart = startOfDay(new Date(now.getFullYear(), now.getMonth(), 1))
@@ -273,29 +319,25 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter) 
       share: maxRevenue ? (revenue / maxRevenue) * 100 : 0,
     }))
 
-    // Comissões do período: serviços vendidos × percentual de cada profissional
-    const commissionByProf = new Map<string, { base: number }>()
-    for (const o of curOrders) {
-      for (const item of o.order_items ?? []) {
-        if (item.tipo !== 'servico' || !item.professional_id) continue
-        const base = Number(item.preco_unitario) * (item.quantidade ?? 1)
-        const acc = commissionByProf.get(item.professional_id) ?? { base: 0 }
-        acc.base += base
-        commissionByProf.set(item.professional_id, acc)
-      }
+    // Comissões do período: registros congelados da tabela `commissions`,
+    // com o percentual aplicado na hora da venda. O percentual exibido é a
+    // média ponderada (valor/base) — cobre o caso de mudar no meio do mês.
+    const commissionByProf = new Map<string, { base: number; valor: number }>()
+    for (const row of commissionRows) {
+      const base = Number(row.order_items.preco_unitario) * (row.order_items.quantidade ?? 1)
+      const acc = commissionByProf.get(row.professional_id) ?? { base: 0, valor: 0 }
+      acc.base += base
+      acc.valor += Number(row.valor_calculado)
+      commissionByProf.set(row.professional_id, acc)
     }
     const commissions: CommissionRow[] = [...commissionByProf.entries()]
-      .map(([profId, { base }]) => {
-        const info = professionalsInfo.get(profId)
-        const pct = info?.pct ?? 0
-        return {
-          professionalNome: info?.nome ?? 'Profissional',
-          percentual: pct,
-          base,
-          valor: (base * pct) / 100,
-        }
-      })
-      .filter((c) => c.percentual > 0)
+      .map(([profId, { base, valor }]) => ({
+        professionalNome: professionalsInfo.get(profId)?.nome ?? 'Profissional',
+        percentual: base > 0 ? (valor / base) * 100 : 0,
+        base,
+        valor,
+      }))
+      .filter((c) => c.valor > 0)
       .sort((a, b) => b.valor - a.valor)
 
     setData({

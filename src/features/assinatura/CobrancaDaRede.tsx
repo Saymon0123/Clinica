@@ -74,8 +74,16 @@ export function CobrancaDaRede() {
     ])
 
     if (org.data) {
-      setRede({ cobrancaUnificada: org.data.cobranca_unificada, cpfCnpj: org.data.cpf_cnpj })
-      setCpfCnpj((atual) => atual || org.data.cpf_cnpj || '')
+      /*
+        `org.data` copiado para uma const antes de entrar no callback do
+        `setCpfCnpj`: o `if` acima estreita o tipo aqui fora, mas o
+        TypeScript descarta esse estreitamento dentro de uma função, porque
+        `data` é propriedade mutável e poderia ter mudado até o callback
+        rodar. Sem a const, o typecheck quebra o build inteiro na Vercel.
+      */
+      const dados = org.data
+      setRede({ cobrancaUnificada: dados.cobranca_unificada, cpfCnpj: dados.cpf_cnpj })
+      setCpfCnpj((atual) => atual || dados.cpf_cnpj || '')
     }
     setLinhas(
       proprias.map((u) => {

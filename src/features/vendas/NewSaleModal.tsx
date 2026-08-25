@@ -276,6 +276,10 @@ export function NewSaleModal({
       return
     }
 
+    // Movimentos de estoque desta venda, para o rollback poder apagá-los —
+    // eles não caem no cascade da comanda.
+    let movimentosInseridos: string[] = []
+
     try {
       // 2. Itens
       const { data: insertedItems, error: itemsError } = await supabase
@@ -302,21 +306,27 @@ export function NewSaleModal({
       })
       if (paymentError) throw paymentError
 
-      // 4. Baixa de estoque dos produtos vendidos
-      for (const i of items.filter((x) => x.tipo === 'produto')) {
-        await supabase.from('stock_movements').insert({
-          product_id: i.refId,
-          tipo: 'saida',
-          quantidade: i.quantidade,
-          motivo: 'venda',
-        })
-        const prod = products.find((p) => p.id === i.refId)
-        if (prod) {
-          await supabase
-            .from('products')
-            .update({ estoque_atual: Math.max(prod.estoque_atual - i.quantidade, 0) })
-            .eq('id', i.refId)
-        }
+      // 4. Baixa de estoque dos produtos vendidos.
+      //
+      // Só o MOVIMENTO é gravado: o saldo em products é atualizado por trigger
+      // no banco (0109), atômico — duas vendas simultâneas não se sobrescrevem
+      // mais. Os ids ficam guardados para o rollback: apagar o movimento faz o
+      // trigger devolver o estoque.
+      const produtosVendidos = items.filter((x) => x.tipo === 'produto')
+      if (produtosVendidos.length > 0) {
+        const { data: movs, error: stockError } = await supabase
+          .from('stock_movements')
+          .insert(
+            produtosVendidos.map((i) => ({
+              product_id: i.refId,
+              tipo: 'saida',
+              quantidade: i.quantidade,
+              motivo: 'venda',
+            })),
+          )
+          .select('id')
+        if (stockError || !movs) throw stockError ?? new Error('Falha na baixa de estoque')
+        movimentosInseridos = movs.map((m) => m.id as string)
       }
 
       // 5. Comissão sobre serviços (se o profissional tiver percentual)
@@ -325,7 +335,7 @@ export function NewSaleModal({
       if (pct && pct > 0) {
         const serviceItems = insertedItems.filter((i) => i.tipo === 'servico')
         if (serviceItems.length > 0) {
-          await supabase.from('commissions').insert(
+          const { error: commError } = await supabase.from('commissions').insert(
             serviceItems.map((i) => ({
               professional_id: professionalId,
               order_item_id: i.id,
@@ -333,6 +343,7 @@ export function NewSaleModal({
               valor_calculado: (Number(i.preco_unitario) * i.quantidade * pct) / 100,
             })),
           )
+          if (commError) throw commError
         }
       }
 
@@ -342,11 +353,12 @@ export function NewSaleModal({
       // `on delete cascade` derruba o resgate e os carimbos voltam. O cliente
       // não recebeu nada, então não pode ter perdido o cartão.
       if (premioAplicado && clientId) {
-        await supabase.from('fidelidade_resgates').insert({
+        const { error: resgateError } = await supabase.from('fidelidade_resgates').insert({
           salon_id: salonId,
           client_id: clientId,
           order_id: order.id,
         })
+        if (resgateError) throw resgateError
       }
 
       // 7. Aviso de retorno: registra a preferência E o momento em que ela foi
@@ -358,27 +370,37 @@ export function NewSaleModal({
       // para que te avisássemos". Sem a data, o default `true` da coluna
       // reivindicaria consentimento da base inteira, retroativamente.
       if (clientId) {
-        await supabase
+        const { error: avisoError } = await supabase
           .from('clients')
           .update({
             quer_aviso_de_retorno: avisarRetorno,
             aviso_de_retorno_em: new Date().toISOString(),
           })
           .eq('id', clientId)
+        // Preferência de aviso não é motivo para desfazer uma venda inteira —
+        // mas também não pode falhar em silêncio absoluto.
+        if (avisoError) console.error('Preferência de aviso não salvou:', avisoError)
       }
 
-      // 8. Se veio de um agendamento, marca como concluído
+      // 8. Se veio de um agendamento, marca como concluído. Fatal de
+      // propósito: venda sem agendamento concluído deixaria o cron cancelar
+      // um horário que foi atendido e pago.
       if (prefill?.appointmentId) {
-        await supabase
+        const { error: apptError } = await supabase
           .from('appointments')
           .update({ status: 'concluido' })
           .eq('id', prefill.appointmentId)
+        if (apptError) throw apptError
       }
 
       onSaved()
     } catch (err) {
       console.error('Erro ao completar venda, desfazendo:', err)
-      // Desfaz a comanda (cascade remove itens/pagamentos)
+      // Desfaz TUDO: a comanda (cascade leva itens, pagamento, comissões e
+      // resgate) e os movimentos de estoque (o trigger devolve o saldo).
+      if (movimentosInseridos.length > 0) {
+        await supabase.from('stock_movements').delete().in('id', movimentosInseridos)
+      }
       await supabase.from('orders').delete().eq('id', order.id)
       setError('Não foi possível completar a venda. Nada foi salvo, tente novamente.')
       setSaving(false)

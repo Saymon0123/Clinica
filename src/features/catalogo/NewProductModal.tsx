@@ -39,30 +39,39 @@ export function NewProductModal({ salonId, product, onClose, onSaved }: Props) {
 
     setSubmitting(true)
     try {
-      const payload = {
-        nome: nome.trim(),
-        preco_venda: vendaValor,
-        preco_custo: custoValor,
-        estoque_atual: atual,
-        estoque_minimo: minimo,
-      }
-
       if (product) {
-        const { error: updateError } = await supabase.from('products').update(payload).eq('id', product.id)
+        // O saldo NÃO entra no update: mudança de estoque vira um movimento, e
+        // o trigger do banco (0109) aplica no saldo — uma fonte de verdade só,
+        // com rastro auditável.
+        const { error: updateError } = await supabase
+          .from('products')
+          .update({
+            nome: nome.trim(),
+            preco_venda: vendaValor,
+            preco_custo: custoValor,
+            estoque_minimo: minimo,
+          })
+          .eq('id', product.id)
         if (updateError) throw updateError
-        // Mudança de estoque pela edição também vira movimento — sem isso a
-        // reposição entrava "do nada" e a conferência futura perdia o rastro.
         const delta = atual - product.estoque_atual
         if (delta !== 0) {
-          await supabase.from('stock_movements').insert({
+          const { error: movError } = await supabase.from('stock_movements').insert({
             product_id: product.id,
             tipo: delta > 0 ? 'entrada' : 'saida',
             quantidade: Math.abs(delta),
             motivo: 'ajuste manual (edição do produto)',
           })
+          if (movError) throw movError
         }
       } else {
-        const { error: insertError } = await supabase.from('products').insert({ salon_id: salonId, ...payload })
+        const { error: insertError } = await supabase.from('products').insert({
+          salon_id: salonId,
+          nome: nome.trim(),
+          preco_venda: vendaValor,
+          preco_custo: custoValor,
+          estoque_atual: atual,
+          estoque_minimo: minimo,
+        })
         if (insertError) throw insertError
       }
 

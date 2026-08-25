@@ -32,27 +32,19 @@ export function ReporEstoqueModal({
     setSalvando(true)
     setErro(null)
 
+    // Um insert só: o saldo em products é atualizado por trigger no banco
+    // (0109) — atômico, sem o risco antigo de gravar o movimento e falhar o
+    // update do saldo.
     const { error: movErro } = await supabase.from('stock_movements').insert({
       product_id: product.id,
       tipo: 'entrada',
       quantidade: qtd,
       motivo: 'reposição',
     })
+    setSalvando(false)
     if (movErro) {
       console.error('Erro ao registrar a reposição:', movErro)
       setErro('Não foi possível registrar a reposição.')
-      setSalvando(false)
-      return
-    }
-
-    const { error: prodErro } = await supabase
-      .from('products')
-      .update({ estoque_atual: product.estoque_atual + qtd })
-      .eq('id', product.id)
-    setSalvando(false)
-    if (prodErro) {
-      console.error('Erro ao atualizar o estoque:', prodErro)
-      setErro('O movimento foi registrado, mas o estoque não atualizou. Tente de novo.')
       return
     }
 

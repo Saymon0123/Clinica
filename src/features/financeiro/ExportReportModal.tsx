@@ -97,8 +97,11 @@ export function ExportReportModal({ salonId, onClose }: { salonId: string; onClo
       }
     }
 
+    // TOTAL soma os PAGAMENTOS, a mesma régua do card "Faturamento" da tela —
+    // somar itens divergia sempre que um prêmio de fidelidade zerava um
+    // serviço, e relatório diferente do dashboard mina a confiança nos dois.
     const total = orders.reduce(
-      (acc, o) => acc + o.order_items.reduce((a, i) => a + i.quantidade * Number(i.preco_unitario), 0),
+      (acc, o) => acc + o.payments.reduce((a, p) => a + Number(p.valor), 0),
       0,
     )
     rows.push([])

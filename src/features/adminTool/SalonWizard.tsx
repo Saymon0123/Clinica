@@ -642,7 +642,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
             setPasso((p) => Math.max(p - 1, 0))
           }}
           disabled={passo === 0}
-          className="flex items-center gap-1 border border-border-strong rounded px-3 py-2 text-sm font-medium text-foreground hover:bg-surface-2 disabled:opacity-40"
+          className="flex items-center gap-1 btn-secondary rounded px-3 py-2 text-sm font-medium disabled:opacity-40"
         >
           <ChevronLeft size={16} />
           Voltar

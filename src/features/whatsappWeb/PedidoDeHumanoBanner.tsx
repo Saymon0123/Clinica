@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Check, Hand, MessageCircle } from 'lucide-react'
 import { formatarTelefone } from '../../lib/telefone'
+import { toast } from '../../components/Toast'
 import type { PedidoDeHumano } from './usePedidosDeHumano'
 
 /**
@@ -55,7 +56,8 @@ export function PedidoDeHumanoBanner({
                 <button
                   onClick={async () => {
                     setResolvendo(p.id)
-                    await onResolver(p.id)
+                    const ok = await onResolver(p.id)
+                    if (ok) toast('Pedido resolvido')
                     setResolvendo(null)
                   }}
                   disabled={resolvendo === p.id}

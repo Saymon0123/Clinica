@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Plus, Trash2, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { toast } from '../../components/Toast'
 import { useAuth } from '../auth/AuthContext'
 import { useSalon } from '../auth/useSalon'
 import { useRecurso } from '../recursos/useRecurso'
@@ -393,6 +394,7 @@ export function NewSaleModal({
         if (apptError) throw apptError
       }
 
+      toast('Venda registrada')
       onSaved()
     } catch (err) {
       console.error('Erro ao completar venda, desfazendo:', err)
@@ -623,7 +625,7 @@ export function NewSaleModal({
             <button
               onClick={onClose}
               type="button"
-              className="flex-1 border border-border-strong rounded px-3 py-2 text-sm font-medium text-foreground hover:bg-surface-2"
+              className="flex-1 btn-secondary rounded px-3 py-2 text-sm font-medium"
             >
               Cancelar
             </button>

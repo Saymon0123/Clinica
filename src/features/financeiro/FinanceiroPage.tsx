@@ -253,7 +253,7 @@ export function FinanceiroPage() {
           {isManager && (
             <button
               onClick={() => setExporting(true)}
-              className="flex items-center gap-2 border border-border-strong rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-surface-2"
+              className="flex items-center gap-2 btn-secondary rounded-lg px-3 py-2 text-sm font-medium"
             >
               <Download size={15} />
               Exportar

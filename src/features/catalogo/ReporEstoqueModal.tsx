@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { PackagePlus, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { toast } from '../../components/Toast'
 import type { ProductItem } from './types'
 
 /**
@@ -48,6 +49,7 @@ export function ReporEstoqueModal({
       return
     }
 
+    toast('Estoque atualizado')
     onSaved()
     onClose()
   }

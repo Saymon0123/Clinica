@@ -106,7 +106,7 @@ export function ClientesPage() {
           {isManager && (
             <button
               onClick={() => setImporting(true)}
-              className="flex items-center gap-2 border border-border-strong rounded px-3 py-2 text-sm font-medium text-foreground hover:bg-surface-2"
+              className="flex items-center gap-2 btn-secondary rounded px-3 py-2 text-sm font-medium"
             >
               <Upload size={15} />
               Importar
@@ -116,7 +116,7 @@ export function ClientesPage() {
           <button
             onClick={handleExport}
             disabled={clients.length === 0}
-            className="flex items-center gap-2 border border-border-strong rounded px-3 py-2 text-sm font-medium text-foreground hover:bg-surface-2 disabled:opacity-50"
+            className="flex items-center gap-2 btn-secondary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
           >
             <Download size={15} />
             Exportar

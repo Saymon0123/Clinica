@@ -303,7 +303,7 @@ function ConexaoEvolutionLegada({ salonId }: { salonId: string }) {
           <button
             onClick={handleDisconnect}
             disabled={loading}
-            className="flex-1 border border-border-strong rounded px-3 py-2 text-sm font-medium text-foreground disabled:opacity-50"
+            className="flex-1 btn-secondary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
           >
             {loading ? 'Desconectando...' : 'Desconectar'}
           </button>

@@ -243,7 +243,7 @@ export function CaixaSection({ salonId }: { salonId: string }) {
               <button
                 onClick={conferirEFechar}
                 disabled={salvando}
-                className="w-full flex items-center justify-center gap-2 border border-border-strong rounded px-3 py-2 text-sm font-medium text-foreground hover:bg-surface-2 disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 btn-secondary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
               >
                 <Lock size={15} />
                 {salvando ? 'Fechando...' : 'Registrar contagem e fechar o dia'}

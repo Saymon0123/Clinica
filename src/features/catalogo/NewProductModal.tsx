@@ -166,7 +166,7 @@ export function NewProductModal({ salonId, product, onClose, onSaved }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 border border-border-strong rounded px-3 py-2 text-sm font-medium text-foreground"
+              className="flex-1 btn-secondary rounded px-3 py-2 text-sm font-medium"
             >
               Cancelar
             </button>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CalendarClock, Trash2, X, XCircle, Receipt } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { toast } from '../../components/Toast'
 import type { Appointment } from './types'
 
 const STATUS_LABELS: Record<string, string> = {
@@ -117,6 +118,7 @@ export function AppointmentDetailModal({
       setError('Não foi possível atualizar o agendamento. Tente novamente.')
       return
     }
+    if (status === 'cancelado') toast('Agendamento cancelado — o horário voltou a ficar livre')
     onChanged()
     onClose()
   }
@@ -223,7 +225,7 @@ export function AppointmentDetailModal({
                       setTimeValue(toTimeInput(appointment.data_hora_inicio))
                       setError(null)
                     }}
-                    className="flex-1 border border-border-strong rounded px-3 py-2 text-sm font-medium text-foreground hover:bg-surface-2"
+                    className="flex-1 btn-secondary rounded px-3 py-2 text-sm font-medium"
                   >
                     Voltar
                   </button>

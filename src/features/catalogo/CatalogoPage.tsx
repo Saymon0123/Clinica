@@ -8,6 +8,7 @@ import { NewServiceModal } from './NewServiceModal'
 import { NewProductModal } from './NewProductModal'
 import { ReporEstoqueModal } from './ReporEstoqueModal'
 import { supabase } from '../../lib/supabase'
+import { toast } from '../../components/Toast'
 import type { ServiceItem, ProductItem } from './types'
 
 type Tab = 'servicos' | 'produtos'
@@ -46,6 +47,7 @@ export function CatalogoPage() {
       setActionError('Não foi possível alterar o serviço.')
       return
     }
+    toast(service.ativo ? 'Serviço desativado' : 'Serviço ativado')
     reloadServices()
   }
 
@@ -60,6 +62,7 @@ export function CatalogoPage() {
       setActionError('Não foi possível alterar o produto.')
       return
     }
+    toast(product.ativo ? 'Produto desativado' : 'Produto ativado')
     reloadProducts()
   }
 
@@ -165,15 +168,12 @@ export function CatalogoPage() {
                     <td className="px-4 py-3 text-right space-x-2">
                       {podeMexer(s) ? (
                         <>
-                          <button
-                            onClick={() => setEditingService(s)}
-                            className="text-xs text-muted-foreground underline"
-                          >
+                          <button onClick={() => setEditingService(s)} className="btn-chip">
                             Editar
                           </button>
                           <button
                             onClick={() => toggleServiceActive(s)}
-                            className="text-xs text-muted-foreground underline inline-flex items-center gap-1"
+                            className={`btn-chip inline-flex items-center gap-1 ${s.ativo ? 'btn-chip-perigo' : ''}`}
                           >
                             <Power size={12} />
                             {s.ativo ? 'Desativar' : 'Ativar'}
@@ -251,20 +251,17 @@ export function CatalogoPage() {
                         <>
                           <button
                             onClick={() => setRestockingProduct(p)}
-                            className="text-xs text-primary underline inline-flex items-center gap-1"
+                            className="btn-chip btn-chip-primario inline-flex items-center gap-1"
                           >
                             <PackagePlus size={12} />
                             Repor
                           </button>
-                          <button
-                            onClick={() => setEditingProduct(p)}
-                            className="text-xs text-muted-foreground underline"
-                          >
+                          <button onClick={() => setEditingProduct(p)} className="btn-chip">
                             Editar
                           </button>
                           <button
                             onClick={() => toggleProductActive(p)}
-                            className="text-xs text-muted-foreground underline inline-flex items-center gap-1"
+                            className={`btn-chip inline-flex items-center gap-1 ${p.ativo ? 'btn-chip-perigo' : ''}`}
                           >
                             <Power size={12} />
                             {p.ativo ? 'Desativar' : 'Ativar'}

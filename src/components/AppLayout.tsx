@@ -21,6 +21,7 @@ import { AppointmentAlertBanner } from '../features/agenda/AppointmentAlertBanne
 import { usePendingConversations } from '../features/whatsappWeb/usePendingConversations'
 import { usePedidosDeHumano } from '../features/whatsappWeb/usePedidosDeHumano'
 import { PedidoDeHumanoBanner } from '../features/whatsappWeb/PedidoDeHumanoBanner'
+import { Toasts } from './Toast'
 import { useAssinatura } from '../features/assinatura/useAssinatura'
 import { AvisoAssinatura } from '../features/assinatura/AvisoAssinatura'
 import { AcessoBloqueado } from '../features/assinatura/AcessoBloqueado'
@@ -296,6 +297,7 @@ export function AppLayout() {
       {/* O /web não usa o AppLayout, então o alerta nunca cobre a própria
           tela de resposta — lá a conversa pendente já fica destacada. */}
       <PedidoDeHumanoBanner pedidos={pedidos} onResolver={resolver} />
+      <Toasts />
     </div>
   )
 }

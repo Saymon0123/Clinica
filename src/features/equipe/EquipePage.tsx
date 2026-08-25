@@ -6,6 +6,7 @@ import { formatarTelefone, linkWhatsApp } from '../../lib/telefone'
 import { useAuth } from '../auth/AuthContext'
 import { useSalon, type Papel } from '../auth/useSalon'
 import { HorarioBarbeiroModal } from './HorarioBarbeiroModal'
+import { toast } from '../../components/Toast'
 
 type Membro = {
   id: string
@@ -127,6 +128,7 @@ export function EquipePage() {
     // O próprio papel mudou: o contexto recarrega para o menu e as permissões
     // acompanharem sem novo login.
     if (v.user_id === user?.id) await recarregarUnidades()
+    toast('Função alterada')
     carregar()
   }
 
@@ -141,6 +143,7 @@ export function EquipePage() {
       setErro('Não foi possível alterar o status.')
       return
     }
+    toast(m.ativo ? 'Barbeiro desativado' : 'Barbeiro reativado')
     carregar()
   }
 
@@ -174,6 +177,7 @@ export function EquipePage() {
       return
     }
     setEditandoComissao(null)
+    toast('Comissão salva')
     carregar()
   }
 
@@ -308,7 +312,7 @@ export function EquipePage() {
                     <div className="flex items-center gap-3 shrink-0">
                       <button
                         onClick={() => copiar(c.token)}
-                        className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                        className="btn-chip btn-chip-primario flex items-center gap-1.5"
                       >
                         {copiado === c.token ? <Check size={13} /> : <Copy size={13} />}
                         {copiado === c.token ? 'Link copiado!' : 'Copiar link'}
@@ -319,7 +323,7 @@ export function EquipePage() {
                           setEmailRascunho(c.email)
                           setErro(null)
                         }}
-                        className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+                        className="btn-chip flex items-center gap-1"
                       >
                         <Pencil size={12} />
                         Trocar e-mail
@@ -327,7 +331,7 @@ export function EquipePage() {
                       <button
                         onClick={() => cancelarConvite(c)}
                         disabled={salvandoConvite === c.id}
-                        className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-danger disabled:opacity-50"
+                        className="btn-chip btn-chip-perigo flex items-center gap-1"
                       >
                         <Trash2 size={12} />
                         Cancelar
@@ -452,33 +456,37 @@ export function EquipePage() {
                   </select>
                 )
               })()}
+              {/* Rótulo embaixo de cada ícone: o `title` (tooltip) não existe
+                  no celular, e %/relógio/power eram hieróglifos para quem
+                  entra no sistema pela primeira vez. */}
               <button
                 onClick={() => {
                   setEditandoComissao(m.id)
                   setComissaoRascunho(m.comissao_percentual != null ? String(Number(m.comissao_percentual)) : '')
                 }}
                 aria-label={`Comissão de ${m.nome}`}
-                title="Comissão"
-                className="p-2 rounded text-muted-foreground hover:text-foreground hover:bg-surface-2"
+                className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-surface-2"
               >
                 <Percent size={16} />
+                <span className="text-[10px] leading-none">Comissão</span>
               </button>
               <button
                 onClick={() => setHorarioDe(m)}
                 aria-label={`Horário de ${m.nome}`}
-                title="Horário de trabalho"
-                className="p-2 rounded text-muted-foreground hover:text-foreground hover:bg-surface-2"
+                className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-surface-2"
               >
                 <Clock size={16} />
+                <span className="text-[10px] leading-none">Horário</span>
               </button>
               <button
                 onClick={() => alternarAtivo(m)}
                 aria-label={m.ativo ? `Desativar ${m.nome}` : `Reativar ${m.nome}`}
-                className={`p-2 rounded hover:bg-surface-2 ${
+                className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded hover:bg-surface-2 ${
                   m.ativo ? 'text-muted-foreground hover:text-danger' : 'text-success'
                 }`}
               >
                 <Power size={16} />
+                <span className="text-[10px] leading-none">{m.ativo ? 'Desativar' : 'Ativar'}</span>
               </button>
             </div>
           </div>

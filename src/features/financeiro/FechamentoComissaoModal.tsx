@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Check, HandCoins, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { toast } from '../../components/Toast'
 
 type LinhaComissao = {
   id: string
@@ -118,6 +119,7 @@ export function FechamentoComissaoModal({
       setErro('Não foi possível registrar o pagamento.')
       return
     }
+    toast('Comissão marcada como paga')
     carregar()
   }
 

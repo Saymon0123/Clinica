@@ -194,6 +194,61 @@ body {
   }
 }
 
+/* As tres irmas do primario (2026-08-25). Antes, cada arquivo reescrevia as
+   mesmas classes Tailwind a mao e o app tinha cinco dialetos de botao — o
+   destrutivo, principalmente, mudava de cara a cada tela e o usuario nunca
+   formava o instinto "vermelho = cuidado". Regra: primario = a acao da tela;
+   secondary = alternativa; ghost = acao de baixo compromisso; danger = tira
+   algo de alguem. */
+.btn-secondary {
+  border: 1px solid var(--border-strong);
+  color: var(--foreground);
+  background: transparent;
+  transition: background-color 150ms ease, transform 150ms ease;
+}
+.btn-secondary:active:not(:disabled) { transform: scale(0.98); }
+.btn-secondary:disabled { cursor: not-allowed; opacity: 0.5; }
+
+.btn-ghost {
+  color: var(--muted-foreground);
+  background: transparent;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+.btn-ghost:disabled { cursor: not-allowed; opacity: 0.5; }
+
+.btn-danger {
+  border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
+  color: var(--danger);
+  background: transparent;
+  transition: background-color 150ms ease, transform 150ms ease;
+}
+.btn-danger:active:not(:disabled) { transform: scale(0.98); }
+.btn-danger:disabled { cursor: not-allowed; opacity: 0.5; }
+
+/* Chip de acao para dentro de tabelas e listas: o mesmo texto que era um link
+   sublinhado de 24px, agora com area de toque digna de dedo (~40px com o
+   padding da celula). */
+.btn-chip {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.4rem 0.65rem;
+  border-radius: 0.5rem;
+  background: var(--surface-2);
+  color: var(--foreground);
+  transition: background-color 150ms ease;
+  white-space: nowrap;
+}
+.btn-chip-primario { background: var(--primary-soft); color: var(--primary-soft-foreground); }
+.btn-chip-perigo { color: var(--danger); }
+.btn-chip:disabled { cursor: not-allowed; opacity: 0.5; }
+
+@media (hover: hover) and (pointer: fine) {
+  .btn-secondary:hover:not(:disabled) { background-color: var(--surface-2); }
+  .btn-ghost:hover:not(:disabled) { background-color: var(--surface-2); color: var(--foreground); }
+  .btn-danger:hover:not(:disabled) { background-color: var(--danger-soft); }
+  .btn-chip:hover:not(:disabled) { filter: brightness(0.96); }
+}
+
 /* ---------------------------------------------------------------------------
    Pagina de vendas.
 
@@ -385,6 +440,11 @@ body {
    largura real de uma copia mais o gap que a separa da proxima, medida em
    JS, entao a copia 2 sempre pousa exatamente onde a copia 1 comecou.
 --------------------------------------------------------------------------- */
+@keyframes toast-sobe {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes faixa-desliza {
   to {
     transform: translateX(calc(-1 * var(--faixa-distancia, 50%)));

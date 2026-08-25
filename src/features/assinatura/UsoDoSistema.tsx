@@ -201,9 +201,9 @@ export function UsoDoSistema() {
                           href={f.boleto_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[11px] text-primary hover:underline"
+                          className="btn-chip btn-chip-primario"
                         >
-                          pagar
+                          Pagar
                         </a>
                       ) : Number(f.valor) > 0 ? (
                         <span className="text-[11px] text-muted-foreground">acumula</span>

@@ -47,7 +47,6 @@ function CampoCopiavel({ label, value }: { label: string; value: string }) {
 export function ConvidarBarbearia({ secret, onCriado }: { secret: string; onCriado: () => void }) {
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
-  const [plano, setPlano] = useState<'basico' | 'pro'>('basico')
   const [liberarTeste, setLiberarTeste] = useState(true)
   const [donoAtende, setDonoAtende] = useState(true)
 
@@ -66,7 +65,6 @@ export function ConvidarBarbearia({ secret, onCriado }: { secret: string; onCria
       body: {
         nome: nome.trim(),
         email: email.trim(),
-        plano,
         dias_de_teste: liberarTeste ? DIAS_DE_TESTE : null,
         dono_atende: donoAtende,
         // Os padrões saem daqui, não de uma cópia dentro da edge function:
@@ -158,17 +156,10 @@ export function ConvidarBarbearia({ secret, onCriado }: { secret: string; onCria
         </span>
       </label>
 
-      <label className="block">
-        <span className="text-xs font-medium text-muted-foreground">Plano</span>
-        <select
-          value={plano}
-          onChange={(e) => setPlano(e.target.value as 'basico' | 'pro')}
-          className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
-        >
-          <option value="basico">Básico — R$ 197</option>
-          <option value="pro">Pro — R$ 299, com lembrete e confirmação de chegada</option>
-        </select>
-      </label>
+      {/* Sem plano desde 2026-08-25: a cobrança é por agendamento do agente. */}
+      <p className="text-xs text-muted-foreground">
+        Cobrança por agendamento feito pelo WhatsApp — sem mensalidade, tudo incluído.
+      </p>
 
       <label className="flex items-start gap-2 cursor-pointer">
         <input

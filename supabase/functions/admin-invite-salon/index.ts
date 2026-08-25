@@ -67,7 +67,6 @@ Deno.serve(async (req: Request) => {
   const servicos = (body.servicos as Servico[]) ?? []
   const horario = body.horario_funcionamento ?? null
   const donoAtende = body.dono_atende !== false
-  const plano = (body.plano as string) === 'pro' ? 'pro' : 'basico'
   const diasDeTeste =
     typeof body.dias_de_teste === 'number' && body.dias_de_teste > 0 ? body.dias_de_teste : null
 
@@ -90,18 +89,6 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'Já existe uma conta com esse e-mail.' }, 409)
   }
 
-  // Preço vem de `plans`, não de constante daqui: a tabela é a fonte de verdade
-  // e muda sem redeploy.
-  const { data: planoRow, error: erroPlano } = await admin
-    .from('plans')
-    .select('preco_unidade')
-    .eq('codigo', plano)
-    .single()
-  if (erroPlano || !planoRow) {
-    console.error('Plano nao encontrado:', erroPlano)
-    return json({ error: 'Plano indisponível.' }, 500)
-  }
-
   let salonId: string | null = null
   try {
     const { data: salon, error: erroSalao } = await admin
@@ -118,11 +105,10 @@ Deno.serve(async (req: Request) => {
     // testaria por quatro; abrindo no décimo dia, encontraria o CRM já
     // bloqueado e teria como primeira impressão do produto uma tela de acesso
     // vencido. Quem grava a data é `accept-invite`.
+    // Sem plano desde 2026-08-25: o modelo e por agendamento (faixas_de_uso).
     const { error: erroAssinatura } = await admin.from('subscriptions').insert({
       salon_id: salon.id,
-      plan_codigo: plano,
       status: 'trial',
-      valor: Number(planoRow.preco_unidade),
       acesso_ate: null,
     })
     if (erroAssinatura) throw erroAssinatura

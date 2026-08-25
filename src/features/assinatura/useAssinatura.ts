@@ -3,11 +3,14 @@ import { supabase } from '../../lib/supabase'
 
 export type StatusAssinatura = 'trial' | 'pendente' | 'ativa' | 'atrasada' | 'cancelada'
 
+/**
+ * O que resta da assinatura no modelo por uso (2026-08-25): a situação do
+ * acesso e o documento do pagante. Os campos de plano, recorrência e troca
+ * morreram junto com o modelo Básico/Pro — nenhuma tela os consumia mais, e a
+ * tabela `plans` foi aposentada (0110).
+ */
 export type Assinatura = {
   status: StatusAssinatura
-  planoCodigo: string
-  planoNome: string
-  valor: number | null
   /** `null` = sem vencimento automático (barbearia que já paga, cobrança por fora). */
   acessoAte: string | null
   /** Dias inteiros até o vencimento. Negativo quando já venceu. `null` sem prazo. */
@@ -16,29 +19,6 @@ export type Assinatura = {
   cpfCnpj: string | null
   /** Até quando o WhatsApp segue atendendo depois do vencimento. */
   atendimentoAte: string | null
-  /**
-   * Já existe recorrência criada no Asaas.
-   *
-   * Não dá para usar o `status` para isso: entre assinar e o pagamento cair, a
-   * assinatura segue como `trial` — não existe estado "aguardando pagamento" na
-   * constraint do banco, e marcar como `atrasada` diria ao dono que ele está
-   * devendo no minuto seguinte a ter assinado.
-   */
-  temRecorrencia: boolean
-  /**
-   * O plano dá direito às automações de WhatsApp (lembrete de 1h e confirmação
-   * de chegada). Vem de `plans.inclui_automacoes`, a mesma coluna que a view
-   * `salons_com_automacao` usa para decidir se o n8n envia — para a tela não
-   * poder prometer o que o fluxo não entrega.
-   */
-  incluiAutomacoes: boolean
-  /** Plano para o qual a assinatura vai mudar, quando há troca pendente. */
-  planoAgendado: string | null
-  /** Nome e preço do plano agendado, para a tela não anunciar mudança sem destino. */
-  planoAgendadoNome: string | null
-  planoAgendadoPreco: number | null
-  /** Há uma cobrança de diferença esperando pagamento. */
-  aguardandoPagamentoDaTroca: boolean
 }
 
 /**
@@ -71,14 +51,7 @@ export function useAssinatura(salonId: string | null) {
 
     const { data, error } = await supabase
       .from('subscriptions')
-      .select(
-        // A chave do join é explícita porque `subscriptions` passou a ter
-        // **duas** FKs para `plans` (`plan_codigo` e `plano_agendado`). Com
-        // `plans(...)` solto o PostgREST não sabe qual usar e recusa a consulta
-        // inteira com PGRST201 — a tela ficava dizendo que a barbearia não tem
-        // plano nenhum.
-        'status, plan_codigo, valor, acesso_ate, cpf_cnpj, atendimento_ate, asaas_subscription_id, plano_agendado, upgrade_payment_id, plans!subscriptions_plan_codigo_fkey(nome, inclui_automacoes), agendado:plans!subscriptions_plano_agendado_fkey(nome, preco_unidade)',
-      )
+      .select('status, acesso_ate, cpf_cnpj, atendimento_ate')
       .eq('salon_id', salonId)
       .maybeSingle()
 
@@ -104,33 +77,15 @@ export function useAssinatura(salonId: string | null) {
       return
     }
 
-    type PlanoJoin = { nome?: string; inclui_automacoes?: boolean; preco_unidade?: number }
-    const umPlano = (bruto: unknown) => {
-      const p = bruto as PlanoJoin | PlanoJoin[] | null
-      return (Array.isArray(p) ? p[0] : p) ?? null
-    }
-
-    const plano = umPlano(data.plans)
-    const agendado = umPlano(data.agendado)
-    const planoNome = plano?.nome ?? data.plan_codigo
     const dias = data.acesso_ate ? diasAte(data.acesso_ate) : null
 
     setAssinatura({
       status: data.status as StatusAssinatura,
-      planoCodigo: data.plan_codigo,
-      planoNome,
-      valor: data.valor != null ? Number(data.valor) : null,
       acessoAte: data.acesso_ate,
       diasRestantes: dias,
       expirada: dias !== null && dias < 0,
       cpfCnpj: data.cpf_cnpj,
       atendimentoAte: data.atendimento_ate,
-      temRecorrencia: Boolean(data.asaas_subscription_id),
-      incluiAutomacoes: Boolean(plano?.inclui_automacoes),
-      planoAgendado: data.plano_agendado,
-      planoAgendadoNome: agendado?.nome ?? null,
-      planoAgendadoPreco: agendado?.preco_unidade != null ? Number(agendado.preco_unidade) : null,
-      aguardandoPagamentoDaTroca: Boolean(data.upgrade_payment_id),
     })
     setLoading(false)
   }, [salonId])

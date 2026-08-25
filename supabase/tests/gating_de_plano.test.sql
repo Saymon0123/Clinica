@@ -30,12 +30,14 @@ insert into salons (id, nome, ativo) values
   (:'salao_vencido', 'Teste Vencido', true),
   (:'salao_inativo', 'Teste Inativo', false);
 
-insert into subscriptions (salon_id, plan_codigo, status, acesso_ate, atendimento_ate) values
-  (:'salao_pro', 'pro', 'ativa', current_date + 30, current_date + 37),
-  (:'salao_basico', 'basico', 'ativa', current_date + 30, current_date + 37),
+-- Sem plan_codigo desde a 0110: a tabela plans foi aposentada e a coluna
+-- virou nullable. Os nomes "pro"/"basico" dos saloes ficam como historia.
+insert into subscriptions (salon_id, status, acesso_ate, atendimento_ate) values
+  (:'salao_pro', 'ativa', current_date + 30, current_date + 37),
+  (:'salao_basico', 'ativa', current_date + 30, current_date + 37),
   -- Venceu de verdade: o prazo de carência do WhatsApp também já passou.
-  (:'salao_vencido', 'pro', 'atrasada', current_date - 10, current_date - 3),
-  (:'salao_inativo', 'pro', 'ativa', current_date + 30, current_date + 37);
+  (:'salao_vencido', 'atrasada', current_date - 10, current_date - 3),
+  (:'salao_inativo', 'ativa', current_date + 30, current_date + 37);
 
 select is(
   (select count(*) from salons_com_automacao where id = :'salao_pro')::int, 1,

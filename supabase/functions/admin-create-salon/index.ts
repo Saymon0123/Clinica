@@ -220,7 +220,6 @@ Deno.serve(async (req: Request) => {
   const assinatura = body.assinatura as
     | { plano?: string; dias_de_teste?: number | null }
     | undefined
-  const planoCodigo = assinatura?.plano === 'pro' ? 'pro' : 'basico'
   const diasDeTeste =
     typeof assinatura?.dias_de_teste === 'number' && assinatura.dias_de_teste > 0
       ? assinatura.dias_de_teste
@@ -297,17 +296,6 @@ Deno.serve(async (req: Request) => {
     }
     userId = userData.user.id
 
-    // Preço vem de `plans`, não de constante daqui: a tabela é a fonte de
-    // verdade e muda sem redeploy. `preco_unidade` porque a v1 só tem unidade
-    // única — o preço de rede entra junto com a rede, na v2.
-    const { data: planoRow, error: planoError } = await admin
-      .from('plans')
-      .select('preco_unidade')
-      .eq('codigo', planoCodigo)
-      .single()
-    if (planoError || !planoRow) throw planoError ?? new Error('Plano não encontrado.')
-    const planoPreco = Number(planoRow.preco_unidade)
-
     // 3. Cada unidade: salão + vínculo de dono + ficha do profissional + catálogo
     const criadas: { id: string; nome: string }[] = []
 
@@ -339,11 +327,10 @@ Deno.serve(async (req: Request) => {
       //
       // `acesso_ate` nulo significa "sem vencimento automático": é o caso da
       // barbearia que já está pagando, com a cobrança controlada por fora.
+      // Sem plano desde 2026-08-25: o modelo e por agendamento (faixas_de_uso).
       const { error: assinaturaError } = await admin.from('subscriptions').insert({
         salon_id: salon.id,
-        plan_codigo: planoCodigo,
         status: diasDeTeste ? 'trial' : 'ativa',
-        valor: planoPreco,
         acesso_ate: diasDeTeste
           ? new Date(Date.now() + diasDeTeste * 86400000).toISOString().slice(0, 10)
           : null,

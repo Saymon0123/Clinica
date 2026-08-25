@@ -37,10 +37,6 @@ const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
  */
 const DIAS_DE_TESTE = 14
 
-/** Plano em que a barbearia nasce. O Pro deixa o dono conhecer o produto
- *  inteiro durante o teste; a escolha real acontece na hora de assinar. */
-const PLANO_INICIAL = 'pro'
-
 /** Teto de barbearias criadas por IP num dia. Não é segurança — é o que evita
  *  que um cadastro em massa vire conta da OpenAI antes de alguém perceber. */
 const LIMITE_POR_IP_POR_DIA = 3
@@ -160,16 +156,6 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  const { data: planoRow, error: erroPlano } = await admin
-    .from('plans')
-    .select('preco_unidade')
-    .eq('codigo', PLANO_INICIAL)
-    .single()
-  if (erroPlano || !planoRow) {
-    console.error('Plano nao encontrado:', erroPlano)
-    return json({ error: 'Nao foi possivel criar a barbearia agora.' }, 500)
-  }
-
   let salonId: string | null = null
   try {
     const { data: salon, error: erroSalao } = await admin
@@ -188,11 +174,11 @@ Deno.serve(async (req: Request) => {
     // O relógio do teste começa agora: diferente do convite, aqui a pessoa
     // está entrando neste exato momento.
     const fim = new Date(Date.now() + DIAS_DE_TESTE * 86400000)
+    // Sem plano desde 2026-08-25: o modelo e por agendamento (faixas_de_uso).
+    // A assinatura guarda so a situacao do acesso.
     const { error: erroAssinatura } = await admin.from('subscriptions').insert({
       salon_id: salon.id,
-      plan_codigo: PLANO_INICIAL,
       status: 'trial',
-      valor: Number(planoRow.preco_unidade),
       acesso_ate: fim.toISOString().slice(0, 10),
     })
     if (erroAssinatura) throw erroAssinatura

@@ -17,7 +17,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
  * **A unidade nasce com assinatura.** A versão anterior não criava
  * `subscriptions`, e uma unidade sem assinatura some de `salons_com_automacao`
  * (sem lembrete, sem agente) e abre `/assinatura` num estado de "cadastrada
- * antes do controle". Herda o plano da origem, em teste curto: dá para operar
+ * antes do controle". Nasce em teste curto: dá para operar
  * a filial antes de pagar, sem virar brecha de teste infinito.
  */
 
@@ -26,7 +26,6 @@ const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
 /** Curto de propósito: a matriz já conhece o produto. */
 const DIAS_DE_TESTE_DA_UNIDADE = 7
-const PLANO_FALLBACK = 'basico'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -175,32 +174,11 @@ Deno.serve(async (req) => {
   }
 
   // ---------- A assinatura ----------
-  // Herda o plano da origem; se a origem (caso raro, cadastro antigo) não
-  // tiver assinatura, entra no plano de entrada pelo preço de tabela.
-  const { data: assinaturaOrigem } = await admin
-    .from('subscriptions')
-    .select('plan_codigo, valor')
-    .eq('salon_id', origem.id)
-    .maybeSingle()
-
-  let planCodigo = assinaturaOrigem?.plan_codigo ?? PLANO_FALLBACK
-  let valor = assinaturaOrigem?.valor ?? null
-  if (valor == null) {
-    const { data: plano } = await admin
-      .from('plans')
-      .select('codigo, preco_unidade')
-      .eq('codigo', planCodigo)
-      .maybeSingle()
-    planCodigo = plano?.codigo ?? PLANO_FALLBACK
-    valor = plano?.preco_unidade ?? null
-  }
-
+  // Sem plano desde 2026-08-25: o modelo e por agendamento (faixas_de_uso).
   const fim = new Date(Date.now() + DIAS_DE_TESTE_DA_UNIDADE * 86400000)
   const { error: assinaturaError } = await admin.from('subscriptions').insert({
     salon_id: novaUnidade.id,
-    plan_codigo: planCodigo,
     status: 'trial',
-    valor,
     acesso_ate: fim.toISOString().slice(0, 10),
   })
   if (assinaturaError) {

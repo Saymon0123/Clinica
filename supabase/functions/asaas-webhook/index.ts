@@ -148,49 +148,9 @@ Deno.serve(async (req: Request) => {
         .is('paga_em', null)
     }
 
-    // ----------------------------------------------------------------
-    // Cobrança da diferença de troca de plano.
-    //
-    // Precisa ser tratada **antes** do caminho comum: ela é avulsa e traz o
-    // `externalReference` do salão, então cairia no filtro de baixo e ganharia
-    // um mês inteiro de acesso de presente — pagando só alguns dias de
-    // diferença.
-    // ----------------------------------------------------------------
-    if (ehPagamento && pagamento?.id && !pagamento.subscription) {
-      const { data: pendente } = await admin
-        .from('subscriptions')
-        .select('id, plano_agendado, asaas_subscription_id')
-        .eq('upgrade_payment_id', pagamento.id)
-        .maybeSingle()
-
-      if (pendente?.plano_agendado) {
-        const { data: planoNovo } = await admin
-          .from('plans')
-          .select('preco_unidade')
-          .eq('codigo', pendente.plano_agendado)
-          .maybeSingle()
-
-        const novoValor = planoNovo ? Number(planoNovo.preco_unidade) : null
-
-        await admin
-          .from('subscriptions')
-          .update({
-            plan_codigo: pendente.plano_agendado,
-            ...(novoValor != null ? { valor: novoValor } : {}),
-            plano_agendado: null,
-            upgrade_payment_id: null,
-          })
-          .eq('id', pendente.id)
-
-        // `acesso_ate` fica como está: o dono pagou a diferença de um período
-        // que já era dele, não um período novo.
-        if (pendente.asaas_subscription_id && novoValor != null) {
-          await ajustarRecorrencia(pendente.asaas_subscription_id, novoValor)
-        }
-
-        return json({ ok: true, aplicado: 'plano trocado', plano: pendente.plano_agendado })
-      }
-    }
+    // (A cobranca de diferenca de troca de plano morreu com o modelo de
+    // planos em 2026-08-25 -- plano_agendado/upgrade_payment_id nao existem
+    // mais no schema.)
 
     // ----------------------------------------------------------------
     // Cobranca unificada da REDE.
@@ -262,7 +222,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: assinatura } = await admin
       .from('subscriptions')
-      .select('id, plano_agendado, upgrade_payment_id')
+      .select('id')
       .eq(filtro.coluna, filtro.valor)
       .maybeSingle()
 
@@ -278,21 +238,6 @@ Deno.serve(async (req: Request) => {
       const base = pagamento?.dueDate ?? new Date().toISOString().slice(0, 10)
       const acessoAte = somarUmMes(base)
 
-      // Descida de plano agendada: é esta renovação que a torna real. Até aqui
-      // o dono usou o plano que tinha pago, como decidido — descer no pedido
-      // tiraria dele algo já pago.
-      let planoAplicado: string | null = null
-      let valorNovo: number | null = null
-      if (assinatura.plano_agendado && !assinatura.upgrade_payment_id) {
-        const { data: planoNovo } = await admin
-          .from('plans')
-          .select('preco_unidade')
-          .eq('codigo', assinatura.plano_agendado)
-          .maybeSingle()
-        planoAplicado = assinatura.plano_agendado
-        valorNovo = planoNovo ? Number(planoNovo.preco_unidade) : null
-      }
-
       await admin
         .from('subscriptions')
         .update({
@@ -300,22 +245,10 @@ Deno.serve(async (req: Request) => {
           acesso_ate: acessoAte,
           atendimento_ate: somarDias(acessoAte, DIAS_DE_TOLERANCIA),
           proximo_vencimento: acessoAte,
-          ...(planoAplicado
-            ? {
-                plan_codigo: planoAplicado,
-                plano_agendado: null,
-                ...(valorNovo != null ? { valor: valorNovo } : {}),
-              }
-            : {}),
         })
         .eq('id', assinatura.id)
 
-      return json({
-        ok: true,
-        aplicado: 'acesso liberado',
-        acesso_ate: acessoAte,
-        ...(planoAplicado ? { plano: planoAplicado } : {}),
-      })
+      return json({ ok: true, aplicado: 'acesso liberado', acesso_ate: acessoAte })
     }
 
     // Atraso não mexe nas datas: o acesso continua valendo até a data já paga,

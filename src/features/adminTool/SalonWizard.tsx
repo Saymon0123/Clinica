@@ -96,7 +96,6 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
   // Assinatura: sem isto a barbearia nascia sem nenhuma linha em
   // `subscriptions`, e não havia como saber quem está testando nem quando
   // vence. A cobrança continua manual na v1 — o que muda é passar a registrar.
-  const [plano, setPlano] = useState<'basico' | 'pro'>('basico')
   const [liberarTeste, setLiberarTeste] = useState(true)
   const [horario, setHorario] = useState<DiaSemana[]>(HORARIO_PADRAO)
   const [servicos, setServicos] = useState<ServicoEscolhido[]>(
@@ -156,7 +155,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
             telefone: donoTelefone,
             comissao_percentual: donoAtendeEmAlguma ? Number(comissao) : null,
           },
-          assinatura: { plano, dias_de_teste: liberarTeste ? DIAS_DE_TESTE : null },
+          assinatura: { dias_de_teste: liberarTeste ? DIAS_DE_TESTE : null },
           unidades: unidades.map((u) => ({
             nome: u.nome,
             endereco: u.endereco,
@@ -470,20 +469,11 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
           <div className="pt-3 mt-1 border-t border-border space-y-2">
             <span className="block text-sm font-medium text-foreground">Assinatura</span>
 
-            <label className="block">
-              <span className="text-sm text-muted-foreground">Plano</span>
-              <select
-                value={plano}
-                onChange={(e) => setPlano(e.target.value as 'basico' | 'pro')}
-                className="w-full mt-1 border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
-              >
-                {/* Sem "recuperação de clientes": está na visão e é vendida
-                    como Pro, mas não existe. Prometer aqui viraria cobrança por
-                    algo que o sistema não entrega. */}
-                <option value="basico">Básico — R$ 197</option>
-                <option value="pro">Pro — R$ 299, com lembrete e confirmação de chegada</option>
-              </select>
-            </label>
+            {/* Sem seleção de plano desde 2026-08-25: a cobrança é por
+                agendamento feito pelo agente (faixas_de_uso). Tudo incluído. */}
+            <p className="text-xs text-muted-foreground">
+              Cobrança por agendamento feito pelo WhatsApp — sem mensalidade, tudo incluído.
+            </p>
 
             <label className="flex items-start gap-2 cursor-pointer">
               <input

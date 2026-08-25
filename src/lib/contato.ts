@@ -12,7 +12,7 @@ export const CONTATO = {
   /** Número do WhatsApp de suporte, só dígitos com DDI (ex.: '5541999990000'). */
   whatsapp: null as string | null,
   /** E-mail de suporte (ex.: 'suporte@clubcut.com.br'). */
-  email: null as string | null,
+  email: 'contato@aurastudioai.com.br' as string | null,
   /** Perfil do Instagram, sem @ (ex.: 'clubcut.app'). */
-  instagram: null as string | null,
+  instagram: 'auraiagency' as string | null,
 }

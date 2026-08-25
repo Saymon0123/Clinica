@@ -139,7 +139,7 @@ const ATALHOS = [
  * **Some abaixo de `md` de propósito.** No celular não existe vazio nenhum
  * para preencher, e três links a mais só espremeriam a marca.
  */
-function Navbar() {
+export function Navbar({ base = '' }: { base?: string }) {
   const rolou = useRolou(80)
 
   return (
@@ -163,7 +163,7 @@ function Navbar() {
           {ATALHOS.map((a) => (
             <a
               key={a.href}
-              href={a.href}
+              href={`${base}${a.href}`}
               className="inline-flex min-h-[44px] items-center rounded-full px-3.5 text-[14px] font-medium text-[var(--l-fg-mute)] transition-colors duration-200 hover:bg-[var(--l-bg-lift)] hover:text-[var(--l-fg)]"
             >
               {a.rotulo}
@@ -872,7 +872,7 @@ function Fecho() {
  * alguém escreve, ninguém responde, e a página que promete "responde na hora"
  * vira piada.
  */
-function Rodape() {
+export function Rodape() {
   /* `min-h-[44px]` e o minimo de alvo de toque. Os links do rodape tinham
      21px de altura -- meio dedo. O recuo negativo mantem o alinhamento
      visual da coluna enquanto a area clicavel cresce. */
@@ -911,6 +911,7 @@ function Rodape() {
           {[
             ['/criar-conta', CTA],
             ['/login', 'Entrar'],
+            ['/sobre', 'Sobre'],
             ['/termos', 'Termos de uso'],
             ['/privacidade', 'Privacidade'],
           ].map(([href, rotulo]) => (

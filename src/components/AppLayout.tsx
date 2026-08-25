@@ -157,7 +157,9 @@ export function AppLayout() {
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-background">
       {/* Topbar (mobile only) */}
-      <header className="md:hidden flex items-center justify-between px-4 h-14 bg-sidebar border-b border-sidebar-border sticky top-0 z-20">
+      {/* z-40: o header cria contexto de empilhamento, e a folha do perfil
+          (dentro dele) precisa vencer o botão do tour (z-30, fora dele). */}
+      <header className="md:hidden flex items-center justify-between px-4 h-14 bg-sidebar border-b border-sidebar-border sticky top-0 z-40">
         <div className="flex items-center gap-2 min-w-0">
           <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary text-primary-foreground shrink-0">
             <MarcaClubCut size={16} />
@@ -251,7 +253,7 @@ export function AppLayout() {
       {/* Folha "Mais": o que não coube na barra. */}
       {maisAberto && (
         <div
-          className="md:hidden fixed inset-0 z-30 bg-black/40 flex items-end"
+          className="md:hidden fixed inset-0 z-40 bg-black/40 flex items-end"
           onClick={() => setMaisAberto(false)}
         >
           <div

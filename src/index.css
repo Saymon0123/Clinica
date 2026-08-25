@@ -440,6 +440,11 @@ body {
    largura real de uma copia mais o gap que a separa da proxima, medida em
    JS, entao a copia 2 sempre pousa exatamente onde a copia 1 comecou.
 --------------------------------------------------------------------------- */
+@keyframes folha-sobe {
+  from { opacity: 0.6; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes toast-sobe {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }

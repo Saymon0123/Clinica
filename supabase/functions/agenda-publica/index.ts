@@ -43,6 +43,30 @@ function normalizar(telefone: string) {
   return telefone.replace(/\D/g, '').slice(-8)
 }
 
+
+/** Limite de tentativas via banco (0111). Erro do limitador deixa passar. */
+async function taxaExcedida(admin: ReturnType<typeof createClient>, chave: string, limite: number, janelaSegundos: number) {
+  const { data, error } = await admin.rpc('taxa_excedida', {
+    p_chave: chave,
+    p_limite: limite,
+    p_janela_segundos: janelaSegundos,
+  })
+  if (error) {
+    console.error('Limitador de taxa indisponivel:', error)
+    return false
+  }
+  return data === true
+}
+
+function ipDe(req: Request) {
+  return (
+    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    req.headers.get('cf-connecting-ip') ??
+    'sem-ip'
+  )
+}
+
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
@@ -129,6 +153,16 @@ Deno.serve(async (req: Request) => {
   // Agendar.
   // ------------------------------------------------------------------
   if (body.acao !== 'agendar') return json({ error: 'Acao invalida.' }, 400)
+
+  // Freio do giro de 2026-08-25: sem ele, um robo criava um cliente novo por
+  // requisicao e ocupava a grade inteira. 8 agendamentos por IP a cada 10 min
+  // cobre a familia inteira marcando do mesmo wi-fi.
+  {
+    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+    if (await taxaExcedida(admin, `agenda:${ipDe(req)}`, 8, 600)) {
+      return json({ error: 'Muitos agendamentos seguidos. Aguarde alguns minutos e tente de novo.' }, 429)
+    }
+  }
 
   const nome = (body.nome as string | undefined)?.trim()
   const telefone = (body.telefone as string | undefined)?.replace(/\D/g, '') ?? ''

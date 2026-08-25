@@ -39,6 +39,33 @@ function json(body: unknown, status = 200) {
   })
 }
 
+
+/**
+ * Limite de tentativas via banco (0111). `fechado=true` => responder 429.
+ * Em erro do proprio limitador, deixa passar: derrubar o fluxo legitimo por
+ * falha do freio seria pior que uma janela sem freio.
+ */
+async function taxaExcedida(admin: ReturnType<typeof createClient>, chave: string, limite: number, janelaSegundos: number) {
+  const { data, error } = await admin.rpc('taxa_excedida', {
+    p_chave: chave,
+    p_limite: limite,
+    p_janela_segundos: janelaSegundos,
+  })
+  if (error) {
+    console.error('Limitador de taxa indisponivel:', error)
+    return false
+  }
+  return data === true
+}
+
+function ipDe(req: Request) {
+  return (
+    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    req.headers.get('cf-connecting-ip') ??
+    'sem-ip'
+  )
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -113,6 +140,13 @@ Deno.serve(async (req: Request) => {
   }
 
   // Só consulta os dados do convite (tela mostra antes de pedir a senha).
+  // Freios do giro de 2026-08-25: o token chega por e-mail/WhatsApp, entao
+  // quem o tiver nao pode ganhar um endpoint de forca bruta de senha.
+  // 30 chamadas por IP a cada 10 min cobre uso real com folga.
+  if (await taxaExcedida(admin, `invite:${ipDe(req)}`, 30, 600)) {
+    return json({ error: 'Muitas tentativas. Aguarde alguns minutos.' }, 429)
+  }
+
   if (body.action === 'check') {
     return json({
       nome: convite.nome,
@@ -162,6 +196,11 @@ Deno.serve(async (req: Request) => {
       // propósito — o admin não valida senha, e é exatamente a validação que
       // separa "o dono do e-mail aceitou" de "alguém com o link aceitou".
       const anon = createClient(SUPABASE_URL, ANON_KEY)
+      // 5 senhas erradas por token a cada 15 min: forca bruta morre aqui.
+      if (await taxaExcedida(admin, `invite-senha:${token}`, 5, 900)) {
+        return json({ error: 'Muitas tentativas de senha. Aguarde 15 minutos.' }, 429)
+      }
+
       const { data: login, error: loginError } = await anon.auth.signInWithPassword({
         email: convite.email,
         password: senha,

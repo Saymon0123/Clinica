@@ -102,6 +102,20 @@ export function AvisoDeJornada({ recarregar }: { recarregar?: number }) {
       })),
     )
 
+    // Limpa antes de inserir: um profissional podia ter linha INATIVA para o
+    // mesmo dia (a verificação só olha ativas), e o insert puro duplicava.
+    const { error: limpaError } = await supabase
+      .from('professional_schedules')
+      .delete()
+      .in('professional_id', profissionais.map((p) => p.id))
+      .in('dia_semana', buracos.map((b) => b.numero))
+    if (limpaError) {
+      console.error('Erro ao limpar jornadas antigas:', limpaError)
+      setErro('Não foi possível aplicar. Ajuste na aba Equipe.')
+      setAplicando(false)
+      return
+    }
+
     const { error } = await supabase.from('professional_schedules').insert(linhas)
     setAplicando(false)
 

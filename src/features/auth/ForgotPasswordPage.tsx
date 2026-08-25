@@ -50,9 +50,12 @@ export function ForgotPasswordPage() {
     try {
       // `redirectTo` continua indo: se o template ainda mandar link, ele
       // funciona pelo caminho antigo.
-      await supabase.auth.resetPasswordForEmail(email.trim(), {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: urlDeRedefinicaoDeSenha(),
       })
+      // Rate limit e afins vêm como `error`, não como throw — sem checar,
+      // a tela avançava para "digite o código" de um e-mail que nunca saiu.
+      if (error) throw error
       // Avança sempre, mesmo se o e-mail não existir: dizer "esse e-mail não
       // tem conta" revelaria quais endereços estão cadastrados.
       setEtapa('codigo')

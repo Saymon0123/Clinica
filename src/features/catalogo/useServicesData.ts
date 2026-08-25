@@ -38,6 +38,10 @@ export function useServicesData(salonId: string | null) {
       return
     }
 
+    // Contagem de vendas falhou? A lista de serviços ainda vale — mas com
+    // aviso no console, não com zeros que parecem verdade.
+    if (vendasResult.error) console.error('Erro ao contar vendas do mês:', vendasResult.error)
+
     const vendasPorServico = new Map<string, number>()
     for (const item of vendasResult.data ?? []) {
       if (!item.service_id) continue

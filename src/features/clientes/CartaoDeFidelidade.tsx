@@ -75,6 +75,13 @@ export function CartaoDeFidelidade({ clientId }: { clientId: string }) {
         .order('quando', { ascending: false })
         .limit(12),
     ])
+    const falha = cli.error ?? card.error ?? hist.error
+    if (falha) {
+      console.error('Erro ao carregar a fidelidade:', falha)
+      setErro('Não foi possível carregar o cartão de fidelidade. Recarregue a página.')
+      setCarregado(true)
+      return
+    }
     setParticipa(cli.data?.fidelidade_participa ?? null)
     setMetaPropria(cli.data?.fidelidade_a_cada != null ? String(cli.data.fidelidade_a_cada) : '')
     setCartao(card.data)

@@ -56,6 +56,7 @@ export function ClientDetailModal({
   const [totalSpent, setTotalSpent] = useState(0)
   const [completedCount, setCompletedCount] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [erro, setErro] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -82,6 +83,13 @@ export function ClientDetailModal({
           .eq('client_id', client.id)
           .eq('status', 'concluido'),
       ])
+      if (appts.error || ords.error || concluidos.error) {
+        console.error('Erro ao carregar o histórico do cliente:', appts.error ?? ords.error ?? concluidos.error)
+        setErro(true)
+        setLoading(false)
+        return
+      }
+      setErro(false)
       const todasCompras = (ords.data ?? []) as unknown as HistoryOrder[]
       setAppointments((appts.data ?? []) as unknown as HistoryAppointment[])
       setOrders(todasCompras.slice(0, 15))
@@ -156,6 +164,10 @@ export function ClientDetailModal({
 
         {loading ? (
           <p className="text-sm text-muted-foreground py-4 text-center">Carregando histórico...</p>
+        ) : erro ? (
+          <p className="text-sm text-danger py-4 text-center">
+            Não foi possível carregar o histórico. Feche e abra a ficha de novo.
+          </p>
         ) : (
           <div className="space-y-5">
             <div>

@@ -53,6 +53,7 @@ export function UsoDoSistema() {
   const [uso, setUso] = useState<Uso | null>(null)
   const [faturas, setFaturas] = useState<Fatura[]>([])
   const [carregando, setCarregando] = useState(true)
+  const [erro, setErro] = useState(false)
 
   useEffect(() => {
     let cancelado = false
@@ -71,6 +72,13 @@ export function UsoDoSistema() {
           .limit(12),
       ])
       if (cancelado) return
+      if (u.error || f.error) {
+        console.error('Erro ao carregar o uso:', u.error ?? f.error)
+        setErro(true)
+        setCarregando(false)
+        return
+      }
+      setErro(false)
       setUso(u.data as Uso | null)
       setFaturas((f.data ?? []) as Fatura[])
       setCarregando(false)
@@ -104,6 +112,10 @@ export function UsoDoSistema() {
 
       {carregando ? (
         <p className="text-sm text-muted-foreground">Carregando...</p>
+      ) : erro ? (
+        <p className="text-sm text-danger">
+          Não foi possível carregar o uso agora. Confira a internet e recarregue a página.
+        </p>
       ) : uso ? (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

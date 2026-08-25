@@ -14,6 +14,8 @@ type Conexao = {
   phone_number_id: string | null
 }
 
+type EstadoConexao = { conexao: Conexao | null; erro: boolean }
+
 async function callWhatsapp(action: 'connect' | 'status' | 'disconnect', salonId: string) {
   // salonId é obrigatório: numa rede, sem ele a função cairia na primeira
   // unidade do usuário em vez da que está selecionada na tela.
@@ -44,7 +46,7 @@ async function callWhatsapp(action: 'connect' | 'status' | 'disconnect', salonId
  */
 export function ConexaoPage() {
   const { salonId, loading: salonLoading } = useSalon()
-  const [conexao, setConexao] = useState<Conexao | null>(null)
+  const [estado, setEstado] = useState<EstadoConexao>({ conexao: null, erro: false })
   const [carregandoConexao, setCarregandoConexao] = useState(true)
 
   useEffect(() => {
@@ -52,13 +54,16 @@ export function ConexaoPage() {
     async function carregar() {
       if (!salonId) return
       setCarregandoConexao(true)
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('whatsapp_connections')
         .select('provedor, status, phone_number_id')
         .eq('salon_id', salonId)
         .maybeSingle()
       if (!ativo) return
-      setConexao((data as Conexao | null) ?? null)
+      // Erro NÃO cai no caminho legado: mostraria QR code a uma barbearia da
+      // API oficial. Erro é erro, com cara de erro.
+      setEstado({ conexao: (data as Conexao | null) ?? null, erro: !!error })
+      if (error) console.error('Erro ao carregar a conexão:', error)
       setCarregandoConexao(false)
     }
     carregar()
@@ -66,6 +71,7 @@ export function ConexaoPage() {
       ativo = false
     }
   }, [salonId])
+  const conexao = estado.conexao
 
   if (salonLoading || carregandoConexao) {
     return <p className="text-sm text-muted-foreground">Carregando...</p>
@@ -80,6 +86,18 @@ export function ConexaoPage() {
   }
 
   const oficial = conexao?.provedor === 'cloud_api'
+
+  if (estado.erro) {
+    return (
+      <div>
+        <h1 className="text-lg font-semibold text-foreground mb-4">Conexão</h1>
+        <p className="text-sm text-danger">
+          Não foi possível verificar a conexão do WhatsApp agora. Confira a internet e recarregue a
+          página.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div>

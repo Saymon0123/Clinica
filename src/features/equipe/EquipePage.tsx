@@ -57,7 +57,7 @@ export function EquipePage() {
   const carregar = useCallback(async () => {
     if (!salonId) return
     setLoading(true)
-    const [{ data: profs }, { data: convs }, { data: vincs }] = await Promise.all([
+    const [profsRes, convsRes, vincsRes] = await Promise.all([
       supabase
         .from('professionals')
         .select('id, nome, telefone, ativo, comissao_percentual, user_id')
@@ -74,9 +74,18 @@ export function EquipePage() {
       // (/rede/equipe); desde 2026-08-25 a gestão é toda aqui.
       supabase.from('user_salons').select('id, user_id, role').eq('salon_id', salonId),
     ])
-    setMembros((profs ?? []) as Membro[])
-    setConvites((convs ?? []) as Convite[])
-    setVinculos((vincs ?? []) as Vinculo[])
+    // Falha de rede NÃO pode parecer "equipe vazia" — é a mentira que faz o
+    // dono achar que perdeu os dados (já aconteceu com a sessão expirada).
+    const falha = profsRes.error ?? convsRes.error ?? vincsRes.error
+    if (falha) {
+      console.error('Erro ao carregar a equipe:', falha)
+      setErro('Não foi possível carregar a equipe. Confira a conexão e recarregue a página.')
+      setLoading(false)
+      return
+    }
+    setMembros((profsRes.data ?? []) as Membro[])
+    setConvites((convsRes.data ?? []) as Convite[])
+    setVinculos((vincsRes.data ?? []) as Vinculo[])
     setLoading(false)
   }, [salonId])
 
@@ -122,7 +131,12 @@ export function EquipePage() {
   }
 
   async function alternarAtivo(m: Membro) {
+    // Trava de clique duplo: dois toques rápidos no power disparavam updates
+    // concorrentes que se anulavam.
+    if (salvandoMembro) return
+    setSalvandoMembro(m.id)
     const { error } = await supabase.from('professionals').update({ ativo: !m.ativo }).eq('id', m.id)
+    setSalvandoMembro(null)
     if (error) {
       setErro('Não foi possível alterar o status.')
       return

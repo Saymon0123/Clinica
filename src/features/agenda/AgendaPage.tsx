@@ -3,7 +3,6 @@ import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
 import { useAgendaData } from './useAgendaData'
-import { FaixaDoBalcao } from './FaixaDoBalcao'
 import { MiniCalendar } from './MiniCalendar'
 import { NewAppointmentModal } from './NewAppointmentModal'
 import { AppointmentDetailModal } from './AppointmentDetailModal'
@@ -238,13 +237,10 @@ export function AgendaPage() {
           </button>
         </div>
 
-        {/* Acima da grade de propósito: entre um corte e outro o barbeiro quer
-            saber quem está aí e quem é o próximo, não caçar bloquinho na
-            grade. Some sozinha quando o dia não é hoje ou não há ninguém. */}
-        <div className="mb-4 empty:mb-0">
-          <FaixaDoBalcao appointments={appointments} data={selectedDate} onChanged={reload} />
-        </div>
-
+        {/* A faixa do balcão (chegou/não veio) saiu em 2026-08-25: a decisão
+            de presença deixou de ser do barbeiro. Quem fecha o ciclo é o
+            banco — 15 min após o fim previsto do serviço, sem comanda fechada,
+            o agendamento cancela sozinho (cancela_agendamentos_sem_comanda). */}
         {error && <p className="text-sm text-danger mb-3">{error}</p>}
 
         {!loading && professionals.length === 0 ? (

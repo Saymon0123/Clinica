@@ -292,9 +292,10 @@ export function ConfiguracoesPage() {
               <span className="text-sm text-muted-foreground">minutos</span>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Passado esse tempo, o botão <strong>Não veio</strong> aparece na agenda e o agente
-              pergunta ao cliente se ele está a caminho. O horário{' '}
-              <strong>nunca é liberado sozinho</strong> — quem decide é você.
+              Passado esse tempo, o agente pergunta ao cliente pelo WhatsApp se ele está a caminho.
+              E se a comanda não for fechada até <strong>15 minutos depois do fim previsto</strong>{' '}
+              do serviço, o agendamento é cancelado sozinho e o horário volta a ficar disponível —
+              fechar a comanda depois desfaz o cancelamento.
             </p>
           </div>
 

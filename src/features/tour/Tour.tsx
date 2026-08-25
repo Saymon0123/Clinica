@@ -142,7 +142,7 @@ export function Tour({ chave, passos }: { chave: string; passos: PassoDoTour[] }
           onClick={() => setIndice(0)}
           aria-label="Ver o tour desta tela"
           title="Ver o tour desta tela"
-          className="fixed bottom-6 left-4 z-30 w-9 h-9 rounded-full bg-surface border border-border text-muted-foreground hover:text-foreground hover:border-border-strong flex items-center justify-center shadow-sm transition-colors"
+          className="fixed bottom-20 md:bottom-6 left-4 z-30 w-9 h-9 rounded-full bg-surface border border-border text-muted-foreground hover:text-foreground hover:border-border-strong flex items-center justify-center shadow-sm transition-colors"
         >
           <HelpCircle size={17} />
         </button>

@@ -39,6 +39,18 @@ export function WhatsAppWebPage() {
   const { conversations: todas, loading, error, reload: reloadConversations } = useConversations(salonId)
 
   const aguardandoDono = todas.filter((c) => c.needs_human)
+
+  // ?conversa=<id> abre direto a conversa certa — é o link do alerta global
+  // "cliente pedindo você". Só na chegada: depois o clique manda.
+  const conversaInicialRef = useRef<string | null>(
+    new URLSearchParams(window.location.search).get('conversa'),
+  )
+  useEffect(() => {
+    const alvo = conversaInicialRef.current
+    if (!alvo || todas.length === 0) return
+    if (todas.some((c) => c.id === alvo)) setSelectedId(alvo)
+    conversaInicialRef.current = null
+  }, [todas])
   const conversations = filtrarEOrdenar(tab === 'precisa_dono' ? aguardandoDono : todas, busca)
   const { messages, reload: reloadMessages } = useMessages(selectedId)
 

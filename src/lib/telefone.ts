@@ -9,12 +9,28 @@ export function somenteDigitos(valor: string) {
   return valor.replace(/\D/g, '')
 }
 
-/** (41) 99999-9999 para números BR; devolve como veio quando não reconhece. */
-export function formatarTelefone(telefone: string) {
-  let d = somenteDigitos(telefone)
-  if (d.length >= 12 && d.startsWith('55')) d = d.slice(2)
+function formatarLocal(d: string) {
   if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
   if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
+  return null
+}
+
+/**
+ * "(41) 98727-5895", com "+55 " na frente quando o valor traz o DDI — é assim
+ * que o número chega do WhatsApp, e esconder o DDI já deslocou a máscara uma
+ * vez ("+5 (54) 18727-..."). Devolve como veio quando não reconhece: melhor o
+ * dono ver o próprio dado mal formatado do que um DDD inventado.
+ */
+export function formatarTelefone(telefone: string) {
+  const d = somenteDigitos(telefone)
+  const local = formatarLocal(d)
+  if (local) return local
+  // 12–13 dígitos: DDI de 2 + número local. Assume padrão brasileiro (55) na
+  // ambiguidade — todo cliente chega pelo WhatsApp de uma barbearia daqui.
+  if (d.length === 12 || d.length === 13) {
+    const resto = formatarLocal(d.slice(2))
+    if (resto) return `+${d.slice(0, 2)} ${resto}`
+  }
   return telefone
 }
 

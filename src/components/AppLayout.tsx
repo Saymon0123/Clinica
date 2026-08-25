@@ -19,6 +19,8 @@ import { useSalon } from '../features/auth/useSalon'
 import { useAppointmentAlerts } from '../features/agenda/useAppointmentAlerts'
 import { AppointmentAlertBanner } from '../features/agenda/AppointmentAlertBanner'
 import { usePendingConversations } from '../features/whatsappWeb/usePendingConversations'
+import { usePedidosDeHumano } from '../features/whatsappWeb/usePedidosDeHumano'
+import { PedidoDeHumanoBanner } from '../features/whatsappWeb/PedidoDeHumanoBanner'
 import { useAssinatura } from '../features/assinatura/useAssinatura'
 import { AvisoAssinatura } from '../features/assinatura/AvisoAssinatura'
 import { AcessoBloqueado } from '../features/assinatura/AcessoBloqueado'
@@ -77,6 +79,7 @@ export function AppLayout() {
   const location = useLocation()
   const { alerts, dismiss } = useAppointmentAlerts(salonId)
   const { hasPending } = usePendingConversations(isManager ? salonId : null)
+  const { pedidos, resolver } = usePedidosDeHumano(isManager ? salonId : null)
   // Carregado para todos, porque o **bloqueio** vale para todos: se o acesso
   // venceu, o barbeiro também não usa o CRM. O que é só do gestor é o **aviso**
   // de vencimento — avisar o barbeiro de uma cobrança que não é dele geraria
@@ -289,6 +292,10 @@ export function AppLayout() {
       )}
 
       <AppointmentAlertBanner alerts={alerts} onDismiss={dismiss} />
+
+      {/* O /web não usa o AppLayout, então o alerta nunca cobre a própria
+          tela de resposta — lá a conversa pendente já fica destacada. */}
+      <PedidoDeHumanoBanner pedidos={pedidos} onResolver={resolver} />
     </div>
   )
 }

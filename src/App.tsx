@@ -65,6 +65,7 @@ const AssinaturaPage = lazy(() =>
   import('./features/assinatura/AssinaturaPage').then((m) => ({ default: m.AssinaturaPage })),
 )
 const RedePage = lazy(() => import('./features/rede/RedePage').then((m) => ({ default: m.RedePage })))
+const AjudaPage = lazy(() => import('./features/ajuda/AjudaPage').then((m) => ({ default: m.AjudaPage })))
 
 function Carregando() {
   return <p className="p-6 text-sm text-muted-foreground">Carregando...</p>
@@ -134,6 +135,7 @@ function App() {
               <Route path="/financeiro" element={<FinanceiroPage />} />
               <Route path="/catalogo" element={<CatalogoPage />} />
               <Route path="/equipe" element={<EquipePage />} />
+              <Route path="/ajuda" element={<AjudaPage />} />
               <Route
                 path="/rede"
                 element={

@@ -8,6 +8,7 @@ import {
   LogOut,
   MessageSquarePlus,
   Store,
+  HelpCircle,
 } from 'lucide-react'
 import { useAuth } from '../features/auth/AuthContext'
 import { useSalon } from '../features/auth/useSalon'
@@ -148,6 +149,17 @@ export function ProfileMenu() {
               sistema, não uma função da barbearia. Aqui está sempre a um clique
               de qualquer tela, que é o que faz alguém escrever no momento em
               que sente o atrito — depois a pessoa esquece. */}
+          {/* A Central de Ajuda mora aqui pelo mesmo motivo do feedback: a
+              dúvida surge em qualquer tela, e o caminho precisa ser um clique. */}
+          <Link
+            to="/ajuda"
+            onClick={() => setAberto(false)}
+            className="w-full flex items-center gap-2 px-3 py-2 text-left text-[13px] text-foreground hover:bg-surface-2"
+          >
+            <HelpCircle size={15} className="text-muted-foreground" />
+            Central de Ajuda
+          </Link>
+
           <button
             onClick={() => {
               setFeedbackAberto(true)

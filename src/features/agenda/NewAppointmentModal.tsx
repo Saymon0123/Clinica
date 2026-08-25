@@ -65,19 +65,37 @@ export function NewAppointmentModal({
     try {
       let clientId: string
 
-      // limit(1) em vez de maybeSingle: dois clientes com o mesmo nome no salão
-      // fariam o maybeSingle estourar, e o usuário veria "não foi possível
-      // criar a reserva" sem entender por quê.
-      const { data: existingClients, error: findError } = await supabase
-        .from('clients')
-        .select('id')
-        .eq('salon_id', salonId)
-        .ilike('nome', clientName.trim())
-        .limit(1)
+      // A identidade real é o TELEFONE (o banco deduplica pelos últimos 8
+      // dígitos): com telefone digitado, o casamento é por ele — dois "João
+      // Silva" diferentes deixam de virar a mesma pessoa. Nome é o último
+      // recurso, só quando não há telefone.
+      const digitos = clientPhone.replace(/\D/g, '')
+      let existingClient: { id: string } | null = null
 
-      if (findError) throw findError
+      if (digitos.length >= 8) {
+        const { data, error: phoneError } = await supabase
+          .from('clients')
+          .select('id')
+          .eq('salon_id', salonId)
+          .eq('telefone_norm', digitos.slice(-8))
+          .limit(1)
+        if (phoneError) throw phoneError
+        existingClient = data?.[0] ?? null
+      }
 
-      const existingClient = existingClients?.[0]
+      if (!existingClient && digitos.length < 8) {
+        // limit(1) em vez de maybeSingle: dois clientes com o mesmo nome no
+        // salão fariam o maybeSingle estourar sem explicação.
+        const { data, error: findError } = await supabase
+          .from('clients')
+          .select('id')
+          .eq('salon_id', salonId)
+          .ilike('nome', clientName.trim())
+          .limit(1)
+        if (findError) throw findError
+        existingClient = data?.[0] ?? null
+      }
+
       if (existingClient) {
         clientId = existingClient.id
       } else {

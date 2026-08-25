@@ -55,6 +55,7 @@ export function AppointmentDetailModal({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirmCancel, setConfirmCancel] = useState(false)
 
   const [editingDate, setEditingDate] = useState(false)
   const [dateValue, setDateValue] = useState(() => toDateInput(appointment.data_hora_inicio))
@@ -258,14 +259,40 @@ export function AppointmentDetailModal({
               <Receipt size={15} />
               Concluir e cobrar
             </button>
-            <button
-              onClick={() => updateStatus('cancelado')}
-              disabled={busy}
-              className="w-full flex items-center justify-center gap-1.5 border border-border-strong rounded px-3 py-2 text-sm font-medium text-danger hover:bg-danger-soft disabled:opacity-50"
-            >
-              <XCircle size={15} />
-              Cancelar agendamento
-            </button>
+            {/* Confirmação inline, como no excluir: cancelar por engano era o
+                toque errado mais provável do modal — e ele libera o horário
+                para o agente vender na hora. */}
+            {confirmCancel ? (
+              <div className="flex items-center justify-between gap-2 border border-border-strong rounded px-3 py-2">
+                <span className="text-xs text-danger">
+                  Cancelar? O horário volta a ficar disponível.
+                </span>
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    onClick={() => setConfirmCancel(false)}
+                    className="text-xs font-medium text-muted-foreground hover:text-foreground"
+                  >
+                    Voltar
+                  </button>
+                  <button
+                    onClick={() => updateStatus('cancelado')}
+                    disabled={busy}
+                    className="text-xs font-medium text-danger hover:underline disabled:opacity-50"
+                  >
+                    Sim, cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmCancel(true)}
+                disabled={busy}
+                className="w-full flex items-center justify-center gap-1.5 border border-border-strong rounded px-3 py-2 text-sm font-medium text-danger hover:bg-danger-soft disabled:opacity-50"
+              >
+                <XCircle size={15} />
+                Cancelar agendamento
+              </button>
+            )}
           </div>
         )}
 

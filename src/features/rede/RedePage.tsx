@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Building2, Plus, TrendingUp, Users, CalendarDays, Receipt, CalendarX } from 'lucide-react'
 import {
   Bar,
@@ -35,6 +36,7 @@ export function RedePage() {
     useSalon()
   const [periodo, setPeriodo] = useState<Periodo>('mes')
   const [modalAberto, setModalAberto] = useState(false)
+  const navigate = useNavigate()
 
   // A rede é do dono: unidades onde ele é só gerente não entram no comparativo.
   const gerenciadas = unidades.filter((u) => u.role === 'owner')
@@ -268,7 +270,13 @@ export function RedePage() {
                     </span>
                     {r.salonId !== salonId && (
                       <button
-                        onClick={() => selecionarUnidade(r.salonId)}
+                        onClick={() => {
+                          // Trocar a unidade E ir para a agenda dela — só
+                          // trocar deixava a tela igual, parecendo que o
+                          // clique não fez nada.
+                          selecionarUnidade(r.salonId)
+                          navigate('/')
+                        }}
                         className="font-medium text-primary hover:underline"
                       >
                         Abrir

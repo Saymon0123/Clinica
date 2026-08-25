@@ -87,7 +87,9 @@ export function WhatsAppWebPage() {
     if (el && pertoDoFim.current) el.scrollTop = el.scrollHeight
   }, [messages])
 
-  const selectedConversation = conversations.find((c) => c.id === selectedId) ?? null
+  // Da lista COMPLETA, não da filtrada: digitar na busca algo que não casa com
+  // a conversa aberta fazia a thread sumir e levava o rascunho junto.
+  const selectedConversation = todas.find((c) => c.id === selectedId) ?? null
   const { contexto, loading: carregandoContexto } = useContatoContexto(
     salonId,
     selectedConversation?.contact_phone ?? null,

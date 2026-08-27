@@ -1424,3 +1424,16 @@ fluxo de QR code. **Curitiba e São José dos Pinhais ainda são `evolution`** �
 quando a migração delas para a API oficial acontecer, apagar o componente
 `ConexaoEvolutionLegada`, a edge function `whatsapp` (ações connect/status/
 disconnect da Evolution) e este item.
+
+## Pacotes — Fase 2 e 3 (2026-08-26)
+
+Fase 1 entregue: tabelas/RLS/view (0112), aba Pacotes no Catalogo, venda e
+consumo no caixa, bloco na ficha, comissao na venda do pacote, carimbo
+aposentado. Prompt do agente corrigido (nao nega mais; orienta ao balcao).
+Pendente:
+- **Fase 2**: agente consultar `saldo_de_pacotes` no contexto e responder
+  "restam N, vence dia X" (mexe no fluxo do n8n, testar com mensagem real).
+- **Fase 3**: template `pacote_vencendo` (utility: credito comprado expirando)
+  no lote da submissao a Meta + fluxo n8n de aviso.
+- Landing ainda anuncia "fidelidade" generica — avisar quem cuida da landing
+  que o modelo agora e pacotes pre-pagos.

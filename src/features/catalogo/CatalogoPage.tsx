@@ -7,11 +7,13 @@ import { useProductsData } from './useProductsData'
 import { NewServiceModal } from './NewServiceModal'
 import { NewProductModal } from './NewProductModal'
 import { ReporEstoqueModal } from './ReporEstoqueModal'
+import { usePacotesData, type Pacote } from './usePacotesData'
+import { NewPacoteModal } from './NewPacoteModal'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../../components/Toast'
 import type { ServiceItem, ProductItem } from './types'
 
-type Tab = 'servicos' | 'produtos'
+type Tab = 'servicos' | 'produtos' | 'pacotes'
 
 function formatCurrency(value: number | null) {
   if (value === null) return '—'
@@ -25,10 +27,12 @@ export function CatalogoPage() {
 
   const { services, loading: loadingServices, error: servicesError, reload: reloadServices } = useServicesData(salonId)
   const { products, loading: loadingProducts, error: productsError, reload: reloadProducts } = useProductsData(salonId)
+  const { pacotes, loading: loadingPacotes, error: pacotesError, reload: reloadPacotes } = usePacotesData(salonId)
 
   const [editingService, setEditingService] = useState<ServiceItem | 'new' | null>(null)
   const [editingProduct, setEditingProduct] = useState<ProductItem | 'new' | null>(null)
   const [restockingProduct, setRestockingProduct] = useState<ProductItem | null>(null)
+  const [editingPacote, setEditingPacote] = useState<Pacote | 'new' | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
   // Gestor mexe em tudo; barbeiro só no que ele mesmo cadastrou.
@@ -64,6 +68,18 @@ export function CatalogoPage() {
     }
     toast(product.ativo ? 'Produto desativado' : 'Produto ativado')
     reloadProducts()
+  }
+
+  async function togglePacoteAtivo(pac: Pacote) {
+    setActionError(null)
+    const { error } = await supabase.from('pacotes').update({ ativo: !pac.ativo }).eq('id', pac.id)
+    if (error) {
+      console.error('Erro ao alterar o pacote:', error)
+      setActionError('Não foi possível alterar o pacote.')
+      return
+    }
+    toast(pac.ativo ? 'Pacote desativado' : 'Pacote ativado')
+    reloadPacotes()
   }
 
   // Estoque muda pela venda de qualquer barbeiro (e o catálogo pelo gestor em
@@ -118,6 +134,12 @@ export function CatalogoPage() {
             className={`px-4 py-2 font-medium border-l border-border-strong ${tab === 'produtos' ? 'btn-primary' : 'bg-surface text-foreground hover:bg-surface-2'}`}
           >
             Produtos
+          </button>
+          <button
+            onClick={() => setTab('pacotes')}
+            className={`px-4 py-2 font-medium border-l border-border-strong ${tab === 'pacotes' ? 'btn-primary' : 'bg-surface text-foreground hover:bg-surface-2'}`}
+          >
+            Pacotes
           </button>
         </div>
       </div>
@@ -194,6 +216,91 @@ export function CatalogoPage() {
             {!loadingServices && services.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-8">
                 Nenhum serviço cadastrado ainda.
+              </p>
+            )}
+          </div>
+        </div>
+      ) : tab === 'pacotes' ? (
+        <div>
+          {isManager && (
+            <div className="flex justify-end mb-3">
+              <button
+                onClick={() => setEditingPacote('new')}
+                className="flex items-center gap-2 btn-primary rounded px-4 py-2 text-sm font-medium"
+              >
+                <Plus size={16} />
+                Novo pacote
+              </button>
+            </div>
+          )}
+
+          {(pacotesError || actionError) && (
+            <p className="text-sm text-danger mb-3">{pacotesError || actionError}</p>
+          )}
+
+          <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-muted-foreground border-b border-border">
+                  <th className="px-4 py-2 font-medium">Pacote</th>
+                  <th className="px-4 py-2 font-medium">Inclui</th>
+                  <th className="px-4 py-2 font-medium">Preço</th>
+                  <th className="px-4 py-2 font-medium">Economia</th>
+                  <th className="px-4 py-2 font-medium">Vendidos no mês</th>
+                  <th className="px-4 py-2 font-medium">Status</th>
+                  <th className="px-4 py-2 font-medium text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pacotes.map((pac) => (
+                  <tr key={pac.id} className="border-b border-border last:border-0">
+                    <td className="px-4 py-3 text-foreground font-medium">{pac.nome}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {pac.itens.map((i) => `${i.quantidade}× ${i.servico}`).join(' + ')}
+                      {pac.validade_dias ? ` · vale ${pac.validade_dias} dias` : ''}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{formatCurrency(pac.preco)}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {pac.valor_avulso > pac.preco
+                        ? `${Math.round(((pac.valor_avulso - pac.preco) / pac.valor_avulso) * 100)}% (avulso ${formatCurrency(pac.valor_avulso)})`
+                        : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{pac.vendidos_mes}</td>
+                    <td className="px-4 py-3">
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${pac.ativo ? 'bg-success-soft text-success' : 'bg-surface-2 text-muted-foreground'}`}>
+                        {pac.ativo ? 'Ativo' : 'Inativo'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
+                      {isManager ? (
+                        <>
+                          <button onClick={() => setEditingPacote(pac)} className="btn-chip">
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => togglePacoteAtivo(pac)}
+                            className={`btn-chip inline-flex items-center gap-1 ${pac.ativo ? 'btn-chip-perigo' : ''}`}
+                          >
+                            <Power size={12} />
+                            {pac.ativo ? 'Desativar' : 'Ativar'}
+                          </button>
+                        </>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                          <Lock size={11} />
+                          Da gestão
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {!loadingPacotes && pacotes.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                Nenhum pacote ainda. Crie o primeiro: "pague adiantado, leve mais barato" — o
+                dinheiro entra na hora e o cliente volta.
               </p>
             )}
           </div>
@@ -294,6 +401,15 @@ export function CatalogoPage() {
           service={editingService === 'new' ? undefined : editingService}
           onClose={() => setEditingService(null)}
           onSaved={reloadServices}
+        />
+      )}
+
+      {editingPacote && salonId && (
+        <NewPacoteModal
+          salonId={salonId}
+          pacote={editingPacote === 'new' ? undefined : editingPacote}
+          onClose={() => setEditingPacote(null)}
+          onSaved={reloadPacotes}
         />
       )}
 

@@ -4,7 +4,6 @@ import { supabase } from '../../lib/supabase'
 import { toast } from '../../components/Toast'
 import { useAuth } from '../auth/AuthContext'
 import { useSalon } from '../auth/useSalon'
-import { useRecurso } from '../recursos/useRecurso'
 import type { SaleItemDraft } from './types'
 import { PAYMENT_LABELS } from './types'
 
@@ -12,6 +11,24 @@ type Option = { id: string; nome: string; preco: number }
 type ClientOption = { id: string; nome: string }
 type ProfessionalOption = { id: string; nome: string; comissao_percentual: number | null }
 type ProductOption = Option & { estoque_atual: number }
+type PacoteOption = {
+  id: string
+  nome: string
+  preco: number
+  validade_dias: number | null
+  itens: { service_id: string; quantidade: number; servico: string }[]
+}
+type SaldoPacote = {
+  pacote_do_cliente_id: string
+  pacote: string
+  service_id: string
+  servico: string
+  contratado: number
+  consumido: number
+  restante: number
+  expira_em: string | null
+  vencido: boolean
+}
 
 export type SalePrefill = {
   appointmentId?: string
@@ -45,7 +62,7 @@ export function NewSaleModal({
   const [items, setItems] = useState<SaleItemDraft[]>([])
   const [payment, setPayment] = useState<string>('pix')
 
-  const [itemType, setItemType] = useState<'servico' | 'produto'>('servico')
+  const [itemType, setItemType] = useState<'servico' | 'produto' | 'pacote'>('servico')
   const [itemRef, setItemRef] = useState('')
   const [itemQty, setItemQty] = useState(1)
 
@@ -56,21 +73,15 @@ export function NewSaleModal({
   const { user } = useAuth()
 
   /**
-   * Cartão de fidelidade do cliente selecionado.
+   * Pacotes pré-pagos (2026-08-26, no lugar do cartão de carimbos).
    *
-   * Os carimbos vêm da view `fidelidade_do_cliente`, que os **conta** das
-   * vendas fechadas em vez de guardar um número. É o mesmo dado que a ficha do
-   * cliente e, depois, o agente do WhatsApp vão ler — o cliente que pergunta
-   * "quantos faltam?" recebe a resposta que está na tela do barbeiro.
+   * `pacotesDoSalao` são os modelos à venda (montados no Catálogo). `saldos`
+   * é o que ESTE cliente ainda tem para usar — contado pela view
+   * `saldo_de_pacotes`, nunca guardado, então desfazer comanda devolve
+   * crédito sozinho.
    */
-  const temFidelidade = useRecurso('fidelidade')
-  const [fidelidade, setFidelidade] = useState<{
-    carimbos: number
-    faltam: number
-    a_cada: number
-    tem_premio: boolean
-  } | null>(null)
-  const [premioAplicado, setPremioAplicado] = useState(false)
+  const [pacotesDoSalao, setPacotesDoSalao] = useState<PacoteOption[]>([])
+  const [saldos, setSaldos] = useState<SaldoPacote[]>([])
 
   /**
    * "Quer que a gente te avise quando der tempo de voltar?"
@@ -90,28 +101,26 @@ export function NewSaleModal({
   const [avisarRetorno, setAvisarRetorno] = useState(true)
 
   useEffect(() => {
-    setPremioAplicado(false)
-    if (!temFidelidade || !clientId) {
-      setFidelidade(null)
+    if (!clientId) {
+      setSaldos([])
       return
     }
     let cancelado = false
     supabase
-      .from('fidelidade_do_cliente')
-      .select('carimbos, faltam, a_cada, tem_premio')
+      .from('saldo_de_pacotes')
+      .select('pacote_do_cliente_id, pacote, service_id, servico, contratado, consumido, restante, expira_em, vencido')
       .eq('client_id', clientId)
-      .maybeSingle()
       .then(({ data }) => {
-        if (!cancelado) setFidelidade(data)
+        if (!cancelado) setSaldos(((data ?? []) as SaldoPacote[]).filter((x) => !x.vencido))
       })
     return () => {
       cancelado = true
     }
-  }, [temFidelidade, clientId])
+  }, [clientId])
 
   useEffect(() => {
     async function load() {
-      const [c, p, s, pr] = await Promise.all([
+      const [c, p, s, pr, pk] = await Promise.all([
         supabase.from('clients').select('id, nome').eq('salon_id', salonId).order('nome'),
         supabase
           .from('professionals')
@@ -128,6 +137,12 @@ export function NewSaleModal({
         supabase
           .from('products')
           .select('id, nome, preco_venda, estoque_atual')
+          .eq('salon_id', salonId)
+          .eq('ativo', true)
+          .order('nome'),
+        supabase
+          .from('pacotes')
+          .select('id, nome, preco, validade_dias, pacote_itens(service_id, quantidade, services(nome))')
           .eq('salon_id', salonId)
           .eq('ativo', true)
           .order('nome'),
@@ -149,6 +164,27 @@ export function NewSaleModal({
           nome: x.nome,
           preco: Number(x.preco_venda ?? 0),
           estoque_atual: x.estoque_atual,
+        })),
+      )
+
+      type LinhaPacote = {
+        id: string
+        nome: string
+        preco: number
+        validade_dias: number | null
+        pacote_itens: { service_id: string; quantidade: number; services: { nome: string } | { nome: string }[] | null }[]
+      }
+      setPacotesDoSalao(
+        ((pk.data ?? []) as unknown as LinhaPacote[]).map((x) => ({
+          id: x.id,
+          nome: x.nome,
+          preco: Number(x.preco),
+          validade_dias: x.validade_dias,
+          itens: (x.pacote_itens ?? []).map((i) => ({
+            service_id: i.service_id,
+            quantidade: i.quantidade,
+            servico: (Array.isArray(i.services) ? i.services[0]?.nome : i.services?.nome) ?? 'Serviço',
+          })),
         })),
       )
 
@@ -181,6 +217,23 @@ export function NewSaleModal({
 
   function addItem() {
     if (!itemRef) return
+    if (itemType === 'pacote') {
+      const pacote = pacotesDoSalao.find((x) => x.id === itemRef)
+      if (!pacote) return
+      // Pacote sem cliente seria crédito sem dono — não há a quem creditar.
+      if (!clientId) {
+        setError('Escolha o cliente antes de vender um pacote — o crédito fica no nome dele.')
+        return
+      }
+      setError(null)
+      setItems((prev) => [
+        ...prev,
+        { tipo: 'pacote', refId: pacote.id, nome: `Pacote: ${pacote.nome}`, quantidade: 1, preco_unitario: pacote.preco },
+      ])
+      setItemRef('')
+      setItemQty(1)
+      return
+    }
     const source = itemType === 'servico' ? services : products
     const opt = source.find((o) => o.id === itemRef)
     if (!opt) return
@@ -210,37 +263,30 @@ export function NewSaleModal({
   }
 
   /**
-   * Dá o serviço mais caro da comanda de graça.
-   *
-   * O mais caro, e não o primeiro, porque cartão de fidelidade é gentileza: o
-   * cliente que juntou dez carimbos e veio fazer corte **e** barba não deve
-   * sair achando que levou o brinde menor.
-   *
-   * Quando a linha tem mais de uma unidade, uma se separa a preço zero em vez
-   * de a linha inteira zerar — senão o prêmio de um corte pagaria três.
+   * Consome 1 crédito do pacote do cliente: o serviço entra na comanda a R$0,
+   * marcado com o pacote que o paga. A comissão foi paga na VENDA do pacote —
+   * o consumo não comissiona de novo (decisão de 26/08).
    */
-  function aplicarPremio() {
-    let alvo = -1
-    items.forEach((it, i) => {
-      if (it.tipo !== 'servico' || it.preco_unitario <= 0) return
-      if (alvo < 0 || it.preco_unitario > items[alvo].preco_unitario) alvo = i
-    })
-    if (alvo < 0) {
-      setError('Adicione o serviço à comanda antes de usar o prêmio.')
+  function usarDoPacote(saldo: SaldoPacote) {
+    const jaUsados = items.filter(
+      (i) => i.viaPacote === saldo.pacote_do_cliente_id && i.refId === saldo.service_id,
+    ).length
+    if (jaUsados >= saldo.restante) {
+      setError(`O pacote só tem ${saldo.restante} de ${saldo.servico} restante${saldo.restante === 1 ? '' : 's'}.`)
       return
     }
-
-    const item = items[alvo]
-    const novos = [...items]
-    if (item.quantidade > 1) {
-      novos[alvo] = { ...item, quantidade: item.quantidade - 1 }
-      novos.splice(alvo + 1, 0, { ...item, quantidade: 1, preco_unitario: 0 })
-    } else {
-      novos[alvo] = { ...item, preco_unitario: 0 }
-    }
     setError(null)
-    setItems(novos)
-    setPremioAplicado(true)
+    setItems((prev) => [
+      ...prev,
+      {
+        tipo: 'servico',
+        refId: saldo.service_id,
+        nome: `${saldo.servico} (pacote)`,
+        quantidade: 1,
+        preco_unitario: 0,
+        viaPacote: saldo.pacote_do_cliente_id,
+      },
+    ])
   }
 
   async function handleSave() {
@@ -334,7 +380,12 @@ export function NewSaleModal({
       const prof = professionals.find((p) => p.id === professionalId)
       const pct = prof?.comissao_percentual != null ? Number(prof.comissao_percentual) : null
       if (pct && pct > 0) {
-        const serviceItems = insertedItems.filter((i) => i.tipo === 'servico')
+        // Comissão na VENDA do pacote (percentual sobre o valor vendido) e
+        // nos serviços avulsos. Consumo de pacote entra a R$0 e cai fora
+        // pelo próprio valor.
+        const serviceItems = insertedItems.filter(
+          (i) => (i.tipo === 'servico' || i.tipo === 'pacote') && Number(i.preco_unitario) > 0,
+        )
         if (serviceItems.length > 0) {
           const { error: commError } = await supabase.from('commissions').insert(
             serviceItems.map((i) => ({
@@ -348,18 +399,42 @@ export function NewSaleModal({
         }
       }
 
-      // 6. Prêmio de fidelidade usado: registra o resgate, que zera a contagem.
+      // 6. Pacotes: a venda cria o crédito do cliente; o consumo debita.
       //
-      // Amarrado a esta comanda de propósito: se a venda for cancelada, o
-      // `on delete cascade` derruba o resgate e os carimbos voltam. O cliente
-      // não recebeu nada, então não pode ter perdido o cartão.
-      if (premioAplicado && clientId) {
-        const { error: resgateError } = await supabase.from('fidelidade_resgates').insert({
+      // Tudo amarrado à comanda: cancelou a venda, o pacote some (cascade via
+      // order_id) e os consumos voltam (cascade via order_item_id).
+      const pacotesVendidos = items
+        .map((item, idx) => ({ item, idx }))
+        .filter(({ item }) => item.tipo === 'pacote')
+      for (const { item } of pacotesVendidos) {
+        const modelo = pacotesDoSalao.find((x) => x.id === item.refId)
+        const expira = modelo?.validade_dias
+          ? new Date(Date.now() + modelo.validade_dias * 86400000).toISOString().slice(0, 10)
+          : null
+        const { error: pacoteError } = await supabase.from('pacotes_do_cliente').insert({
           salon_id: salonId,
           client_id: clientId,
+          pacote_id: item.refId,
           order_id: order.id,
+          preco_pago: item.preco_unitario,
+          expira_em: expira,
         })
-        if (resgateError) throw resgateError
+        if (pacoteError) throw pacoteError
+      }
+
+      const consumos = items
+        .map((item, idx) => ({ item, idx }))
+        .filter(({ item }) => item.viaPacote)
+      if (consumos.length > 0) {
+        // insertedItems volta na ordem do insert — o índice casa item ↔ id.
+        const { error: consumoError } = await supabase.from('pacote_consumos').insert(
+          consumos.map(({ item, idx }) => ({
+            pacote_do_cliente_id: item.viaPacote!,
+            service_id: item.refId,
+            order_item_id: insertedItems[idx].id,
+          })),
+        )
+        if (consumoError) throw consumoError
       }
 
       // 7. Aviso de retorno: registra a preferência E o momento em que ela foi
@@ -409,7 +484,16 @@ export function NewSaleModal({
     }
   }
 
-  const currentOptions = itemType === 'servico' ? services : products
+  const currentOptions =
+    itemType === 'servico'
+      ? services
+      : itemType === 'produto'
+        ? products
+        : pacotesDoSalao.map((x) => ({
+            id: x.id,
+            nome: `${x.nome} (${x.itens.map((i) => `${i.quantidade}× ${i.servico}`).join(' + ')})`,
+            preco: x.preco,
+          }))
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
@@ -461,44 +545,41 @@ export function NewSaleModal({
               </label>
             )}
 
-            {/* Logo abaixo do cliente, e não perto do total: é ao escolher quem
-                está na cadeira que o barbeiro precisa saber do cartão. No fim
-                da comanda ele já cobrou. */}
-            {fidelidade && (
-              <div
-                className={`rounded-lg border p-2.5 text-sm ${
-                  fidelidade.tem_premio
-                    ? 'border-success/40 bg-success-soft'
-                    : 'border-border bg-surface-2'
-                }`}
-              >
-                {premioAplicado ? (
-                  <span className="font-medium text-success">
-                    Prêmio aplicado — o serviço saiu de graça.
-                  </span>
-                ) : fidelidade.tem_premio ? (
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-foreground">
-                      <strong>Fidelidade completa!</strong> {fidelidade.carimbos} de{' '}
-                      {fidelidade.a_cada}.
-                    </span>
-                    <button
-                      type="button"
-                      onClick={aplicarPremio}
-                      className="shrink-0 btn-primary rounded px-3 py-1.5 text-sm font-medium"
+            {/* Logo abaixo do cliente: é ao escolher quem está na cadeira que
+                o barbeiro precisa saber do pacote. */}
+            {saldos.length > 0 && (
+              <div className="rounded-lg border border-primary/40 bg-primary-soft/30 p-2.5 space-y-1.5 text-sm">
+                {saldos.map((sal) => {
+                  const naComanda = items.filter(
+                    (i) => i.viaPacote === sal.pacote_do_cliente_id && i.refId === sal.service_id,
+                  ).length
+                  const disponivel = sal.restante - naComanda
+                  return (
+                    <div
+                      key={`${sal.pacote_do_cliente_id}-${sal.service_id}`}
+                      className="flex items-center justify-between gap-3"
                     >
-                      Usar o prêmio
-                    </button>
-                  </div>
-                ) : (
-                  <span className="text-muted-foreground">
-                    Fidelidade: {fidelidade.carimbos} de {fidelidade.a_cada} —{' '}
-                    {fidelidade.faltam === 1
-                      ? 'falta 1 atendimento'
-                      : `faltam ${fidelidade.faltam} atendimentos`}
-                    .
-                  </span>
-                )}
+                      <span className="text-foreground min-w-0 truncate">
+                        <strong>{sal.pacote}</strong>: restam {disponivel} de {sal.contratado}{' '}
+                        {sal.servico}
+                        {sal.expira_em && (
+                          <span className="text-muted-foreground">
+                            {' '}· vence {sal.expira_em.split('-').reverse().join('/')}
+                          </span>
+                        )}
+                      </span>
+                      {disponivel > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => usarDoPacote(sal)}
+                          className="shrink-0 btn-chip btn-chip-primario"
+                        >
+                          Usar 1 do pacote
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )}
 
@@ -525,13 +606,14 @@ export function NewSaleModal({
               <select
                 value={itemType}
                 onChange={(e) => {
-                  setItemType(e.target.value as 'servico' | 'produto')
+                  setItemType(e.target.value as 'servico' | 'produto' | 'pacote')
                   setItemRef('')
                 }}
                 className="border border-border-strong bg-surface text-foreground rounded px-2 py-2 text-sm"
               >
                 <option value="servico">Serviço</option>
                 <option value="produto">Produto</option>
+                {pacotesDoSalao.length > 0 && <option value="pacote">Pacote</option>}
               </select>
 
               <select

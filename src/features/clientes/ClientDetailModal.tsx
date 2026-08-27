@@ -17,7 +17,7 @@ type HistoryOrder = {
   order_items: { quantidade: number; preco_unitario: number }[]
 }
 
-import { CartaoDeFidelidade } from './CartaoDeFidelidade'
+import { PacotesDoCliente } from './PacotesDoCliente'
 
 const STATUS_LABELS: Record<string, string> = {
   agendado: 'Agendado',
@@ -201,9 +201,9 @@ export function ClientDetailModal({
               )}
             </div>
 
-            {/* Antes das compras: o cartão é o que o barbeiro abre a ficha para
-                ver quando o cliente pergunta "quantos faltam?". */}
-            <CartaoDeFidelidade clientId={client.id} />
+            {/* Antes das compras: é o que o barbeiro abre a ficha para ver
+                quando o cliente pergunta "quantos cortes ainda tenho?". */}
+            <PacotesDoCliente clientId={client.id} />
 
             <div>
               <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">

@@ -79,11 +79,25 @@ const SECOES: Secao[] = [
         ],
       },
       {
-        p: 'Como uso o prêmio de fidelidade de um cliente?',
+        p: 'Como vendo um pacote (ex.: "pague R$120, leve 5 cortes")?',
         passos: [
-          'Na **Nova venda**, escolha o cliente — se ele tiver prêmio, aparece um aviso.',
-          'Adicione o serviço na comanda primeiro.',
-          'Toque em **Usar o prêmio**: o serviço mais caro da comanda sai de graça.',
+          'Na **Nova venda**, escolha o **cliente** (o crédito fica no nome dele).',
+          'Em Adicionar item, escolha o tipo **Pacote** e o pacote desejado.',
+          'Finalize a venda normalmente. Pronto: o cliente ganhou os créditos, com a validade do pacote.',
+        ],
+        dicas: [
+          { t: 'A comissão do barbeiro sai na venda do pacote, sobre o valor cheio. Os cortes usados depois não geram comissão de novo.' },
+        ],
+      },
+      {
+        p: 'Como uso o crédito do pacote de um cliente?',
+        passos: [
+          'Na **Nova venda**, escolha o cliente — se ele tiver pacote, aparece o saldo ("restam 3 de 5 cortes").',
+          'Toque em **Usar 1 do pacote**: o serviço entra na comanda a R$ 0.',
+          'Finalize normal. O crédito é descontado sozinho.',
+        ],
+        dicas: [
+          { t: 'Se a venda for desfeita, o crédito volta sozinho — nada de acertar contagem na mão.' },
         ],
       },
       {
@@ -157,14 +171,9 @@ const SECOES: Secao[] = [
         ],
       },
       {
-        p: 'Como dou carimbos de fidelidade para quem já tinha cartão de papel?',
-        passos: [
-          'Abra a ficha do cliente (clique no nome dele na lista).',
-          'No cartão de fidelidade, escreva o motivo (ex.: "cartão de papel antigo") e use **+1 carimbo** quantas vezes precisar.',
-        ],
-        dicas: [
-          { t: 'Nos atendimentos normais o carimbo é automático: cada venda fechada carimba sozinha.' },
-        ],
+        p: 'Como vejo os pacotes que um cliente ainda tem?',
+        intro:
+          'Abra a ficha do cliente (clique no nome dele na lista): o bloco **Pacotes** mostra cada pacote com a barra de progresso, quantos serviços restam e a validade.',
       },
     ],
   },
@@ -263,14 +272,14 @@ const SECOES: Secao[] = [
           'É o respiro entre um cliente e outro — tempo de limpar a cadeira e receber o próximo. Com 10 minutos de folga, um corte que acaba às 15:00 só deixa o próximo horário disponível às 15:10. Zero encaixa um colado no outro.',
       },
       {
-        p: 'Como ligo o cartão de fidelidade digital?',
+        p: 'Como crio um pacote de fidelidade (ex.: 5 cortes por R$120)?',
         passos: [
-          'Em **Configurações → Cartão de fidelidade**, defina: a cada **quantos atendimentos** o próximo sai de graça (zero desliga).',
-          'Escolha quem participa: **todos os clientes** (e você tira quem não quiser, na ficha) ou **só quem você marcar**.',
-          'Se quiser, defina a validade do carimbo em meses.',
+          'Em **Catálogo → Pacotes**, toque em **Novo pacote**.',
+          'Dê o nome, escolha os serviços e as quantidades do seu catálogo, e defina o **seu preço**.',
+          'A tela mostra na hora quanto o cliente economiza em relação ao avulso. Se quiser, defina uma validade em dias. Salve.',
         ],
         dicas: [
-          { t: 'Os carimbos contam sozinhos a partir das vendas — ninguém precisa marcar nada no meio do corte.' },
+          { t: 'O pacote é a fidelidade de hoje: o cliente paga adiantado com desconto e volta para usar o que já é dele.' },
         ],
       },
       {

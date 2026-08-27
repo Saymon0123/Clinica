@@ -114,6 +114,43 @@ export function AgentDashboard({ salonId }: { salonId: string }) {
         Agendamentos e cancelamentos contam apenas os que passaram pelo agente no WhatsApp — o que você
         faz direto na agenda não entra aqui.
       </p>
+
+      {/* Reativação: o sistema reserva o próximo horário de quem topou o
+          agendamento automático e confirma por WhatsApp. Sempre do mês
+          corrente — é o número que mostra o sistema trazendo gente de volta. */}
+      {stats.reativacao && stats.reativacao.enviados > 0 && (
+        <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Reativação — clientes trazidos de volta</h3>
+            <p className="text-xs text-muted-foreground">
+              Horários que o sistema reservou e confirmou sozinho neste mês
+            </p>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-center">
+            <div className="rounded-lg bg-surface-2 p-2.5">
+              <p className="text-lg font-bold text-foreground">{stats.reativacao.enviados}</p>
+              <p className="text-xs text-muted-foreground">convites enviados</p>
+            </div>
+            <div className="rounded-lg bg-surface-2 p-2.5">
+              <p className="text-lg font-bold text-success">{stats.reativacao.confirmados}</p>
+              <p className="text-xs text-muted-foreground">confirmaram</p>
+            </div>
+            <div className="rounded-lg bg-surface-2 p-2.5">
+              <p className="text-lg font-bold text-foreground">{stats.reativacao.remarcados}</p>
+              <p className="text-xs text-muted-foreground">preferiram remarcar</p>
+            </div>
+            <div className="rounded-lg bg-surface-2 p-2.5">
+              <p className="text-lg font-bold text-foreground">
+                {Number(stats.reativacao.receita_concluida).toLocaleString('pt-BR', {
+                  style: 'currency',
+                  currency: 'BRL',
+                })}
+              </p>
+              <p className="text-xs text-muted-foreground">gerados em cortes concluídos</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

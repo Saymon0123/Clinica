@@ -100,6 +100,34 @@ export function NewSaleModal({
    */
   const [avisarRetorno, setAvisarRetorno] = useState(true)
 
+  /**
+   * Agendamento automático (reativação): o barbeiro pergunta em voz alta
+   * "de quanto em quanto tempo você corta?" e digita em semanas. Preencher
+   * é o opt-in — o sistema passa a reservar o próximo horário sozinho e
+   * confirmar por WhatsApp 1 dia antes. Vazio = fora da base.
+   */
+  const [reativacaoSemanas, setReativacaoSemanas] = useState('')
+
+  useEffect(() => {
+    if (!clientId) {
+      setReativacaoSemanas('')
+      return
+    }
+    let cancelado = false
+    supabase
+      .from('clients')
+      .select('reativacao_semanas')
+      .eq('id', clientId)
+      .single()
+      .then(({ data }) => {
+        if (!cancelado)
+          setReativacaoSemanas(data?.reativacao_semanas ? String(data.reativacao_semanas) : '')
+      })
+    return () => {
+      cancelado = true
+    }
+  }, [clientId])
+
   useEffect(() => {
     if (!clientId) {
       setSaldos([])
@@ -494,12 +522,20 @@ export function NewSaleModal({
       // falar disso" — e é ela que decide se a mensagem pode dizer "você pediu
       // para que te avisássemos". Sem a data, o default `true` da coluna
       // reivindicaria consentimento da base inteira, retroativamente.
+      const semanasNum = parseInt(reativacaoSemanas, 10)
+      const semanasValidas = Number.isInteger(semanasNum) && semanasNum >= 1 && semanasNum <= 8
       if (clientId) {
         const { error: avisoError } = await supabase
           .from('clients')
           .update({
             quer_aviso_de_retorno: avisarRetorno,
             aviso_de_retorno_em: new Date().toISOString(),
+            // Agendamento automático: número novo renova o opt-in e zera
+            // pausa/contadores; campo vazio tira o cliente da base.
+            reativacao_semanas: semanasValidas ? semanasNum : null,
+            ...(semanasValidas
+              ? { reativacao_pausada_em: null, reativacao_sem_resposta: 0, reativacao_no_shows: 0 }
+              : {}),
           })
           .eq('id', clientId)
         // Preferência de aviso não é motivo para desfazer uma venda inteira —
@@ -589,6 +625,30 @@ export function NewSaleModal({
                     Fale com ele agora: <em>“quer que a gente te avise daqui a umas semanas?”</em>{' '}
                     Se ele não quiser, desmarque. Mensagem para quem não foi avisado vira reclamação
                     — e bloqueio derruba o alcance dos lembretes.
+                  </span>
+                </span>
+              </label>
+            )}
+
+            {clientId && (
+              <label className="flex items-start gap-2.5 rounded-lg border border-border bg-surface-2 p-2.5 sm:col-span-2">
+                <input
+                  type="number"
+                  min={1}
+                  max={8}
+                  inputMode="numeric"
+                  value={reativacaoSemanas}
+                  onChange={(e) => setReativacaoSemanas(e.target.value)}
+                  placeholder="—"
+                  className="mt-0.5 w-14 border border-border-strong bg-surface text-foreground rounded px-2 py-1 text-sm text-center"
+                />
+                <span className="text-sm text-foreground">
+                  Agendamento automático: corta a cada quantas semanas?
+                  <span className="block text-xs text-muted-foreground mt-0.5">
+                    Pergunte agora: <em>“de quanto em quanto tempo você corta? Quer que eu já
+                    deixe o próximo horário reservado?”</em> Com o número preenchido, o sistema
+                    reserva o mesmo dia e horário e confirma com ele no WhatsApp 1 dia antes.
+                    Deixe vazio se ele não quiser.
                   </span>
                 </span>
               </label>

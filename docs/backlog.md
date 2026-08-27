@@ -1437,3 +1437,31 @@ Pendente:
   no lote da submissao a Meta + fluxo n8n de aviso.
 - Landing ainda anuncia "fidelidade" generica — avisar quem cuida da landing
   que o modelo agora e pacotes pre-pagos.
+
+## Reativação por agendamento automático — Fase 1 no banco e no CRM (2026-08-27)
+
+O que já existe (migration `0113`, aplicada em produção e testada ponta a ponta
+com a El Guardians):
+- `clients.reativacao_semanas` (opt-in digitado no caixa, 1–8), pausa e
+  contadores de silêncio/no-show; origem `reativacao` em `appointments` com
+  `reativacao_confirmada_em` como marcador de cobrança.
+- Cron `cria-reativacoes` (hora em hora) cria o horário real na janela de
+  24–25h; view `reativacoes_a_enviar` é a fila do n8n; RPC
+  `marcar_reativacao_enviada` guarda o wamid; `responder_lembrete` ganhou os
+  ramos de reativação (Sim = confirma e cobra; Remarcar = cancela a reserva e
+  entrega ao agente; Cancelar = sai da base). Cron `expira-reativacoes`
+  cancela sem resposta até 3h antes e pausa quem ignorou 2 envios; trigger
+  pausa após 2 no-shows. Fatura de uso passou a contar o Sim da reativação.
+- CRM: campo de semanas no fechamento da comanda (NewSaleModal) e bloco
+  "Reativação" no dashboard do agente (view `reativacao_resumo`).
+
+O que falta (bloqueado nos templates da Meta):
+- **n8n**: fluxo que varre `reativacoes_a_enviar`, sorteia a variante aprovada
+  (rotação por cliente — nunca a mesma frase duas vezes seguidas; conferir
+  `templates_recategorizados` antes de cada lote), envia com os 3 botões e
+  chama `marcar_reativacao_enviada`. Construir quando Saymon informar quais
+  das 10 variantes (`agendamento_automatico_v2`…`v10` + a original) a Meta
+  aprovou.
+- **n8n**: lembrete de 1h antes para quem confirmou — sai pela janela de 24h
+  aberta pelo clique (grátis) e cai no template de lembrete só se a janela
+  fechou.

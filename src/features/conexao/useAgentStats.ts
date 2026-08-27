@@ -3,6 +3,14 @@ import { supabase } from '../../lib/supabase'
 
 export type AgentPeriod = 'semana' | 'mes'
 
+export type ReativacaoResumo = {
+  enviados: number
+  confirmados: number
+  remarcados: number
+  cancelados: number
+  receita_concluida: number
+}
+
 export type AgentStats = {
   conversas: number
   mensagensAgente: number
@@ -10,6 +18,8 @@ export type AgentStats = {
   agendamentos: number
   cancelamentos: number
   pedidosDono: number
+  // Sempre do mês corrente (a view agrega por mês), independente do período.
+  reativacao: ReativacaoResumo | null
 }
 
 const EMPTY: AgentStats = {
@@ -19,6 +29,7 @@ const EMPTY: AgentStats = {
   agendamentos: 0,
   cancelamentos: 0,
   pedidosDono: 0,
+  reativacao: null,
 }
 
 function startOf(period: AgentPeriod): Date {
@@ -71,7 +82,7 @@ export function useAgentStats(salonId: string | null, period: AgentPeriod) {
       return
     }
 
-    const [msgResult, apptResult] = await Promise.all([
+    const [msgResult, apptResult, reatResult] = await Promise.all([
       supabase
         .from('whatsapp_messages')
         .select('conversation_id, direction, sender, created_at')
@@ -84,6 +95,11 @@ export function useAgentStats(salonId: string | null, period: AgentPeriod) {
         .eq('salon_id', salonId)
         .eq('origem', 'agente')
         .gte('created_at', startISO),
+      supabase
+        .from('reativacao_resumo')
+        .select('enviados, confirmados, remarcados, cancelados, receita_concluida')
+        .eq('salon_id', salonId)
+        .maybeSingle(),
     ])
 
     if (msgResult.error || apptResult.error) {
@@ -129,6 +145,9 @@ export function useAgentStats(salonId: string | null, period: AgentPeriod) {
       agendamentos: appointments.filter((a) => a.status !== 'cancelado').length,
       cancelamentos: appointments.filter((a) => a.status === 'cancelado').length,
       pedidosDono: (convData ?? []).filter((c) => c.needs_human).length,
+      reativacao: reatResult.error
+        ? null
+        : ((reatResult.data as ReativacaoResumo | null) ?? null),
     })
     setLoading(false)
   }, [salonId, period])

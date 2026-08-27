@@ -228,7 +228,14 @@ export function NewSaleModal({
       setError(null)
       setItems((prev) => [
         ...prev,
-        { tipo: 'pacote', refId: pacote.id, nome: `Pacote: ${pacote.nome}`, quantidade: 1, preco_unitario: pacote.preco },
+        {
+          tipo: 'pacote',
+          refId: pacote.id,
+          nome: `Pacote: ${pacote.nome}`,
+          quantidade: 1,
+          preco_unitario: pacote.preco,
+          uid: crypto.randomUUID(),
+        },
       ])
       setItemRef('')
       setItemQty(1)
@@ -259,7 +266,14 @@ export function NewSaleModal({
   }
 
   function removeItem(index: number) {
-    setItems((prev) => prev.filter((_, i) => i !== index))
+    setItems((prev) => {
+      const alvo = prev[index]
+      // Tirar um pacote da comanda leva junto os consumos que dependiam dele.
+      if (alvo?.tipo === 'pacote' && alvo.uid) {
+        return prev.filter((it, i) => i !== index && it.viaPacoteNovo !== alvo.uid)
+      }
+      return prev.filter((_, i) => i !== index)
+    })
   }
 
   /**
@@ -285,6 +299,34 @@ export function NewSaleModal({
         quantidade: 1,
         preco_unitario: 0,
         viaPacote: saldo.pacote_do_cliente_id,
+      },
+    ])
+  }
+
+  /**
+   * Consome um crédito de um pacote que está sendo COMPRADO nesta comanda —
+   * o caso clássico do balcão: "então já fecha o pacote e desconta o corte de
+   * hoje". O vínculo é pelo uid local; ao finalizar, o consumo aponta para o
+   * pacote recém-criado.
+   */
+  function usarDoPacoteDaComanda(uidPacote: string, servico: { service_id: string; servico: string; quantidade: number }) {
+    const jaUsados = items.filter(
+      (i) => i.viaPacoteNovo === uidPacote && i.refId === servico.service_id,
+    ).length
+    if (jaUsados >= servico.quantidade) {
+      setError(`Esse pacote só tem ${servico.quantidade} de ${servico.servico}.`)
+      return
+    }
+    setError(null)
+    setItems((prev) => [
+      ...prev,
+      {
+        tipo: 'servico',
+        refId: servico.service_id,
+        nome: `${servico.servico} (pacote)`,
+        quantidade: 1,
+        preco_unitario: 0,
+        viaPacoteNovo: uidPacote,
       },
     ])
   }
@@ -406,30 +448,37 @@ export function NewSaleModal({
       const pacotesVendidos = items
         .map((item, idx) => ({ item, idx }))
         .filter(({ item }) => item.tipo === 'pacote')
+      // uid local → id real do pacote criado, para os consumos da mesma comanda.
+      const pacoteCriadoPorUid = new Map<string, string>()
       for (const { item } of pacotesVendidos) {
         const modelo = pacotesDoSalao.find((x) => x.id === item.refId)
         const expira = modelo?.validade_dias
           ? new Date(Date.now() + modelo.validade_dias * 86400000).toISOString().slice(0, 10)
           : null
-        const { error: pacoteError } = await supabase.from('pacotes_do_cliente').insert({
-          salon_id: salonId,
-          client_id: clientId,
-          pacote_id: item.refId,
-          order_id: order.id,
-          preco_pago: item.preco_unitario,
-          expira_em: expira,
-        })
-        if (pacoteError) throw pacoteError
+        const { data: criado, error: pacoteError } = await supabase
+          .from('pacotes_do_cliente')
+          .insert({
+            salon_id: salonId,
+            client_id: clientId,
+            pacote_id: item.refId,
+            order_id: order.id,
+            preco_pago: item.preco_unitario,
+            expira_em: expira,
+          })
+          .select('id')
+          .single()
+        if (pacoteError || !criado) throw pacoteError ?? new Error('Falha ao criar o pacote do cliente.')
+        if (item.uid) pacoteCriadoPorUid.set(item.uid, criado.id)
       }
 
       const consumos = items
         .map((item, idx) => ({ item, idx }))
-        .filter(({ item }) => item.viaPacote)
+        .filter(({ item }) => item.viaPacote || item.viaPacoteNovo)
       if (consumos.length > 0) {
         // insertedItems volta na ordem do insert — o índice casa item ↔ id.
         const { error: consumoError } = await supabase.from('pacote_consumos').insert(
           consumos.map(({ item, idx }) => ({
-            pacote_do_cliente_id: item.viaPacote!,
+            pacote_do_cliente_id: item.viaPacote ?? pacoteCriadoPorUid.get(item.viaPacoteNovo!)!,
             service_id: item.refId,
             order_item_id: insertedItems[idx].id,
           })),
@@ -547,6 +596,43 @@ export function NewSaleModal({
 
             {/* Logo abaixo do cliente: é ao escolher quem está na cadeira que
                 o barbeiro precisa saber do pacote. */}
+            {/* Pacotes sendo comprados NESTA comanda: os créditos já podem
+                pagar o atendimento de hoje — "fecha o pacote e desconta o
+                corte de agora". */}
+            {items.filter((i) => i.tipo === 'pacote' && i.uid).map((pacItem) => {
+              const modelo = pacotesDoSalao.find((x) => x.id === pacItem.refId)
+              if (!modelo) return null
+              return (
+                <div
+                  key={pacItem.uid}
+                  className="rounded-lg border border-success/40 bg-success-soft p-2.5 space-y-1.5 text-sm"
+                >
+                  {modelo.itens.map((sv) => {
+                    const usados = items.filter(
+                      (i) => i.viaPacoteNovo === pacItem.uid && i.refId === sv.service_id,
+                    ).length
+                    return (
+                      <div key={sv.service_id} className="flex items-center justify-between gap-3">
+                        <span className="text-foreground min-w-0 truncate">
+                          <strong>{modelo.nome}</strong> (nesta venda): {sv.quantidade - usados} de{' '}
+                          {sv.quantidade} {sv.servico}
+                        </span>
+                        {sv.quantidade - usados > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => usarDoPacoteDaComanda(pacItem.uid!, sv)}
+                            className="shrink-0 btn-chip btn-chip-primario"
+                          >
+                            Descontar o de hoje
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })}
+
             {saldos.length > 0 && (
               <div className="rounded-lg border border-primary/40 bg-primary-soft/30 p-2.5 space-y-1.5 text-sm">
                 {saldos.map((sal) => {

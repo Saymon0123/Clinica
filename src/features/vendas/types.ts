@@ -6,6 +6,10 @@ export type SaleItemDraft = {
   preco_unitario: number
   /** Consumo de crédito: id do pacote do cliente que paga este item (preço 0). */
   viaPacote?: string
+  /** Identidade local de um pacote na comanda, para consumo na MESMA venda. */
+  uid?: string
+  /** Consumo pago por um pacote que está sendo comprado NESTA comanda (uid). */
+  viaPacoteNovo?: string
 }
 
 export type Sale = {

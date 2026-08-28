@@ -135,9 +135,12 @@ export function Comparativo() {
             arquivo). 120 × 0,75 = 90. */}
         <p className="max-w-[62ch] text-[14px] leading-relaxed text-[var(--l-fg-mute)]">
           Na prática: uma barbearia com 3 barbeiros e 120 agendamentos no mês paga{' '}
-          <span className="landing-num text-[var(--l-fg)]">R$ 164,50</span> num sistema típico por
-          mensalidade — e{' '}
-          <span className="landing-num text-[var(--l-accent-ink)]">
+          {/* `whitespace-nowrap` nos valores: sem ele o parágrafo quebrava a
+              linha entre o "R$" e o número — e um preço partido ao meio, em
+              negrito, lia como texto riscado. Dinheiro não quebra de linha. */}
+          <span className="landing-num whitespace-nowrap text-[var(--l-fg)]">R$ 164,50</span> num
+          sistema típico por mensalidade — e{' '}
+          <span className="landing-num whitespace-nowrap text-[var(--l-accent-ink)]">
             {moedaComCentavos(120 * PRECO_POR_AGENDAMENTO).replace(',00', '')}
           </span>{' '}
           aqui.

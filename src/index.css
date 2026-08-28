@@ -553,18 +553,18 @@ body {
    O realce e por logo, nao pela faixa: com `group-hover` no container, apontar
    para uma acendia as sete de uma vez. */
 .faixa-logo {
-  opacity: 0.7;
-  filter: grayscale(1);
+  /* Em cor, e nao mais grayscale: prova social apagada le como prova fraca.
+     A opacidade leve segura a faixa atras do conteudo; o hover acende de
+     vez. (Auditoria 2026-08-28, gargalo 1 de conversao.) */
+  opacity: 0.85;
   transition:
     opacity 300ms var(--ease-out),
-    filter 300ms var(--ease-out),
     transform 300ms var(--ease-out);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .faixa-logo:hover {
     opacity: 1;
-    filter: grayscale(0);
     transform: scale(1.04);
   }
 }
@@ -608,11 +608,9 @@ body {
   .placa-aura-alvo:hover .placa-aura {
     transform: none;
   }
-  /* A cor volta no hover; so o crescimento sai. */
+  /* O brilho volta no hover; so o crescimento sai. */
   .faixa-logo {
-    transition:
-      opacity 300ms var(--ease-out),
-      filter 300ms var(--ease-out);
+    transition: opacity 300ms var(--ease-out);
   }
   .faixa-logo:hover {
     transform: none;

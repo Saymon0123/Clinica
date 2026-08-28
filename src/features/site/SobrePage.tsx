@@ -363,8 +363,14 @@ export function SobrePage() {
     <div className="landing min-h-[100dvh]">
       {/* `base` manda os atalhos do menu para as âncoras da landing: aqui elas
           não existem, e um `#preco` nesta página não leva a lugar nenhum. */}
+      <a
+        href="#conteudo"
+        className="fixed left-4 top-4 z-[60] -translate-y-24 rounded-full bg-[var(--l-accent)] px-5 py-3 text-[14px] font-semibold text-[var(--l-on-accent)] transition-transform focus:translate-y-0"
+      >
+        Pular para o conteúdo
+      </a>
       <Navbar base="/inicio" />
-      <main>
+      <main id="conteudo">
         <Tese />
         <Origem />
         <Posicoes />

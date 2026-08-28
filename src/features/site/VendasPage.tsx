@@ -11,6 +11,7 @@ import { Depoimentos } from './landing/Depoimentos'
 import { FaqAccordion } from './landing/FaqAccordion'
 import { Calculadora } from './landing/Calculadora'
 import { CalculadoraPreco } from './landing/CalculadoraPreco'
+import { Comparativo } from './landing/Comparativo'
 import { CtaFixo } from './landing/CtaFixo'
 import { WhatsAppPopup } from './landing/WhatsAppPopup'
 import { Cta, Reveal, RevealGrupo, RevealItem } from './landing/primitivos'
@@ -169,6 +170,16 @@ export function Navbar({ base = '' }: { base?: string }) {
               {a.rotulo}
             </a>
           ))}
+          {/* "Sobre" é <Link>, não âncora: os atalhos rolam dentro da mesma
+              página e este navega para outra rota — misturá-lo no ATALHOS
+              faria o `base` transformá-lo em "/inicio/sobre". Continua
+              navegação, não conversão: a decisão de CTA zero na barra fica. */}
+          <Link
+            to="/sobre"
+            className="inline-flex min-h-[44px] items-center rounded-full px-3.5 text-[14px] font-medium text-[var(--l-fg-mute)] transition-colors duration-200 hover:bg-[var(--l-bg-lift)] hover:text-[var(--l-fg)]"
+          >
+            Sobre
+          </Link>
         </nav>
 
         {/* A borda existe porque "Entrar" era texto cinza solto na borda da
@@ -746,6 +757,13 @@ function Preco() {
                 Menos que uma navalha.
               </span>
             </p>
+            {/* A escada anda na direção OPOSTA à da categoria: nos sistemas
+                por mensalidade cada profissional a mais sobe o plano; aqui a
+                equipe maior paga MENOS por agendamento. É o argumento do
+                comparativo logo abaixo, anunciado onde o preço aparece. */}
+            <p className="mt-2 text-[14px] text-[var(--l-fg-faint)]">
+              Equipe maior paga menos: o preço cai por faixa, até R$ 0,60 por agendamento.
+            </p>
 
             <ul className="mt-9 grid gap-3.5 sm:grid-cols-2">
               {RECURSOS_INCLUSOS.map((i) => (
@@ -765,6 +783,10 @@ function Preco() {
 
         <Reveal delay={0.14} className="mt-9">
           <CalculadoraPreco />
+        </Reveal>
+
+        <Reveal delay={0.16} className="mt-9">
+          <Comparativo />
         </Reveal>
 
         <Reveal delay={0.18}>

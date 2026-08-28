@@ -31,12 +31,29 @@ export const DIAS_DE_VALIDADE_DO_CONVITE = 10
  * texto errado, seria conta errada.
  *
  * **Desde 2026-08-24 o sistema de verdade também cobra por uso** — faixas em
- * `faixas_de_uso` no banco (0,75 a 0,60 por agendamento, conforme barbeiros),
- * fechamento mensal na tabela `faturas_de_uso`.
+ * `faixas_de_uso` no banco, fechamento mensal na tabela `faturas_de_uso`.
  *
- * **ATENÇÃO: este 0,85 da landing NÃO bate com as faixas do banco.** A landing
- * anuncia um preço e o fechamento cobra outro. Decisão de negócio pendente:
- * alinhar a landing às faixas, ou as faixas à landing — registrado em
- * `docs/backlog.md`.
+ * **Alinhado às faixas do banco em 2026-08-25.** Este é o preço da PRIMEIRA
+ * faixa (1 a 3 barbeiros) da migration 0097 — o que um cliente novo paga de
+ * fato. A landing fala "a partir de" porque as faixas DESCEM com o tamanho
+ * da equipe (ver `FAIXAS_DE_USO`); anunciar o menor preço como se fosse o
+ * de todo mundo seria o "até 70%" que esta página recusa.
  */
-export const PRECO_POR_AGENDAMENTO = 0.85
+export const PRECO_POR_AGENDAMENTO = 0.75
+
+/**
+ * As faixas por tamanho de equipe, como a landing pode contá-las.
+ *
+ * CÓPIA da tabela `faixas_de_uso` (migration 0097): quem cobra é o banco,
+ * isto aqui só deixa a página mostrar a escada sem chutar. Se a migration
+ * mudar as faixas, mudar aqui junto.
+ */
+export const FAIXAS_DE_USO = [
+  { rotulo: '1 a 3 barbeiros', preco: 0.75 },
+  { rotulo: '4 a 7', preco: 0.7 },
+  { rotulo: '8 a 10', preco: 0.65 },
+  { rotulo: '11 ou mais', preco: 0.6 },
+] as const
+
+/** O piso da escada, para o texto "cai até R$0,60" não repetir número solto. */
+export const PRECO_MINIMO_POR_AGENDAMENTO = FAIXAS_DE_USO[FAIXAS_DE_USO.length - 1].preco

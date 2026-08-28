@@ -39,7 +39,7 @@ export function moeda(v: number) {
 
 /** Como {@link moeda}, mas com centavos — para valores abaixo de R$1 como o
  *  preço por agendamento, arredondar para inteiro mostraria "R$1" em vez de
- *  "R$0,85". */
+ *  "R$0,75". */
 export function moedaComCentavos(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }

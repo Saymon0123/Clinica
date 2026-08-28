@@ -1,5 +1,6 @@
 import { useState, type ChangeEvent } from 'react'
-import { Upload, X } from 'lucide-react'
+import { Upload } from 'lucide-react'
+import { Modal } from '../../components/Modal'
 import { supabase } from '../../lib/supabase'
 import { parseCsv } from '../../lib/csv'
 
@@ -128,18 +129,7 @@ export function ImportClientsModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-sm p-5 space-y-4"
-      >
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-foreground">Importar clientes</h2>
-          <button onClick={onClose} aria-label="Fechar" className="text-muted-foreground hover:text-foreground">
-            <X size={18} />
-          </button>
-        </div>
-
+    <Modal onClose={onClose} titulo="Importar clientes" tamanho="sm">
         {result ? (
           <div className="space-y-3">
             <p className="text-sm text-foreground">
@@ -196,7 +186,6 @@ export function ImportClientsModal({
             </button>
           </>
         )}
-      </div>
-    </div>
+    </Modal>
   )
 }

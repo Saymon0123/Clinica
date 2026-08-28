@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CalendarCheck, Pencil, Receipt, X } from 'lucide-react'
+import { Modal } from '../../components/Modal'
 import { supabase } from '../../lib/supabase'
 import { formatarTelefone, linkWhatsApp } from '../../lib/telefone'
 import type { Client } from './types'
@@ -107,11 +108,7 @@ export function ClientDetailModal({
   }, [client.id])
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div
-        className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-md max-h-[90vh] overflow-y-auto p-5"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal onClose={onClose} tamanho="md">
         <div className="flex items-center justify-between mb-1">
           <h2 className="text-base font-semibold text-foreground">{client.nome}</h2>
           <div className="flex items-center gap-1">
@@ -229,7 +226,6 @@ export function ClientDetailModal({
             </div>
           </div>
         )}
-      </div>
-    </div>
+    </Modal>
   )
 }

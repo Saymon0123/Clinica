@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, Trash2, X } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
+import { Modal } from '../../components/Modal'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../../components/Toast'
 import { useAuth } from '../auth/AuthContext'
@@ -581,18 +582,7 @@ export function NewSaleModal({
           }))
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div
-        className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-lg max-h-[90vh] overflow-y-auto p-5"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-semibold text-foreground">Nova venda</h2>
-          <button onClick={onClose} aria-label="Fechar" className="text-muted-foreground hover:text-foreground">
-            <X size={18} />
-          </button>
-        </div>
-
+    <Modal onClose={onClose} titulo="Nova venda" tamanho="lg">
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label className="block">
@@ -867,7 +857,6 @@ export function NewSaleModal({
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

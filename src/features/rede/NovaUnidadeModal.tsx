@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
-import { Building2, X } from 'lucide-react'
+import { Building2 } from 'lucide-react'
+import { Modal } from '../../components/Modal'
 import { invokeFunction } from '../../lib/invokeFunction'
 
 type Resultado = {
@@ -79,21 +80,16 @@ export function NovaUnidadeModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-sm p-5 space-y-4"
-      >
-        <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
-            <Building2 size={18} />
-            Nova unidade
-          </h2>
-          <button onClick={onClose} aria-label="Fechar" className="text-muted-foreground hover:text-foreground">
-            <X size={18} />
-          </button>
-        </div>
-
+    <Modal
+      onClose={onClose}
+      titulo={
+        <span className="flex items-center gap-2">
+          <Building2 size={18} />
+          Nova unidade
+        </span>
+      }
+      tamanho="sm"
+    >
         <form onSubmit={criar} className="space-y-3">
           {primeiraUnidade && (
             <label className="block">
@@ -160,7 +156,6 @@ export function NovaUnidadeModal({
             vem desta unidade; os barbeiros são convidados depois, pela aba Equipe.
           </p>
         </form>
-      </div>
-    </div>
+    </Modal>
   )
 }

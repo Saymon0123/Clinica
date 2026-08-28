@@ -450,6 +450,23 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Entrada de modal: overlay em fade, painel em fade + escala sutil. Curta
+   (150ms) e sem saída animada — fechar deve ser instantâneo, quem fecha já
+   decidiu ir embora. Usa a curva forte padrão do produto. */
+@keyframes modal-veu {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes modal-surge {
+  from { opacity: 0; transform: scale(0.96) translateY(6px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal-veu { animation: modal-veu 120ms ease-out; }
+.modal-painel { animation: modal-surge 150ms var(--ease-out); }
+@media (prefers-reduced-motion: reduce) {
+  .modal-veu, .modal-painel { animation: none; }
+}
+
 @keyframes faixa-desliza {
   to {
     transform: translateX(calc(-1 * var(--faixa-distancia, 50%)));

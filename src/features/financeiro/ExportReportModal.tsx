@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Download, X } from 'lucide-react'
+import { Download } from 'lucide-react'
+import { Modal } from '../../components/Modal'
 import { supabase } from '../../lib/supabase'
 import { buildCsv, downloadCsv } from '../../lib/csv'
 import { PAYMENT_LABELS } from '../vendas/types'
@@ -129,18 +130,7 @@ export function ExportReportModal({ salonId, onClose }: { salonId: string; onClo
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-sm p-5 space-y-4"
-      >
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-foreground">Exportar relatório</h2>
-          <button onClick={onClose} aria-label="Fechar" className="text-muted-foreground hover:text-foreground">
-            <X size={18} />
-          </button>
-        </div>
-
+    <Modal onClose={onClose} titulo="Exportar relatório" tamanho="sm">
         <div>
           <span className="text-xs font-medium text-muted-foreground">Período</span>
           <div className="mt-1.5 grid grid-cols-2 gap-2">
@@ -182,7 +172,6 @@ export function ExportReportModal({ salonId, onClose }: { salonId: string; onClo
           <Download size={15} />
           {busy ? 'Gerando...' : 'Baixar relatório'}
         </button>
-      </div>
-    </div>
+    </Modal>
   )
 }

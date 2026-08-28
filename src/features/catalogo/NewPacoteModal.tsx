@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Plus, Trash2, X } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
+import { Modal } from '../../components/Modal'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../../components/Toast'
 import type { Pacote } from './usePacotesData'
@@ -131,20 +132,7 @@ export function NewPacoteModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-md max-h-[90vh] overflow-y-auto p-5 space-y-4"
-      >
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-foreground">
-            {pacote ? 'Editar pacote' : 'Novo pacote'}
-          </h2>
-          <button onClick={onClose} aria-label="Fechar" className="text-muted-foreground hover:text-foreground">
-            <X size={18} />
-          </button>
-        </div>
-
+    <Modal onClose={onClose} titulo={pacote ? 'Editar pacote' : 'Novo pacote'} tamanho="md">
         <form onSubmit={salvar} className="space-y-4">
           <label className="block">
             <span className="text-xs font-medium text-muted-foreground">Nome do pacote</span>
@@ -274,7 +262,6 @@ export function NewPacoteModal({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   )
 }

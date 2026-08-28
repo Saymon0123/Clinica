@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { X } from 'lucide-react'
+import { Modal } from '../../components/Modal'
 import { supabase } from '../../lib/supabase'
 
 export function EditGoalModal({
@@ -43,24 +43,8 @@ export function EditGoalModal({
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <form
-        onSubmit={handleSubmit}
-        onClick={(e) => e.stopPropagation()}
-        className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-xs p-5 space-y-4"
-      >
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-foreground">Meta de faturamento</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fechar"
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <X size={18} />
-          </button>
-        </div>
-
+    <Modal onClose={onClose} titulo="Meta de faturamento" tamanho="xs">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <label className="block">
           <span className="text-xs font-medium text-muted-foreground">Meta mensal (R$)</span>
           <input
@@ -93,6 +77,6 @@ export function EditGoalModal({
           </button>
         </div>
       </form>
-    </div>
+    </Modal>
   )
 }

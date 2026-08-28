@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
-import { PackagePlus, X } from 'lucide-react'
+import { PackagePlus } from 'lucide-react'
+import { Modal } from '../../components/Modal'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../../components/Toast'
 import type { ProductItem } from './types'
@@ -55,18 +56,7 @@ export function ReporEstoqueModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-xs p-5 space-y-4"
-      >
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-foreground">Repor {product.nome}</h2>
-          <button onClick={onClose} aria-label="Fechar" className="text-muted-foreground hover:text-foreground">
-            <X size={18} />
-          </button>
-        </div>
-
+    <Modal onClose={onClose} titulo={`Repor ${product.nome}`} tamanho="xs">
         <form onSubmit={handleSubmit} className="space-y-3">
           <label className="block">
             <span className="text-xs font-medium text-muted-foreground">Quantas unidades chegaram?</span>
@@ -97,7 +87,6 @@ export function ReporEstoqueModal({
             {salvando ? 'Salvando...' : 'Somar ao estoque'}
           </button>
         </form>
-      </div>
-    </div>
+    </Modal>
   )
 }

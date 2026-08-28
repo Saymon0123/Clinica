@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Building2, Check, MessageCircle, Pencil, Power, RefreshCw, X } from 'lucide-react'
+import { Building2, Check, MessageCircle, Pencil, Power, RefreshCw } from 'lucide-react'
+import { Modal } from '../../components/Modal'
 import { supabase } from '../../lib/supabase'
 
 type SalonRow = {
@@ -164,25 +165,7 @@ export function SalonList({ secret, refreshKey }: { secret: string; refreshKey: 
 
       {/* Edição */}
       {editando && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={() => setEditando(null)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-sm p-5 space-y-3"
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-foreground">Editar barbearia</h2>
-              <button
-                onClick={() => setEditando(null)}
-                aria-label="Fechar"
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
+        <Modal onClose={() => setEditando(null)} titulo="Editar barbearia" tamanho="sm">
             <input
               value={editando.nome}
               onChange={(e) => setEditando({ ...editando, nome: e.target.value })}
@@ -210,8 +193,7 @@ export function SalonList({ secret, refreshKey }: { secret: string; refreshKey: 
               <Check size={15} />
               {busy ? 'Salvando...' : 'Salvar'}
             </button>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

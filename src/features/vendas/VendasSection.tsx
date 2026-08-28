@@ -61,7 +61,7 @@ export function VendasSection({
             setActivePrefill(null)
             setModalOpen(true)
           }}
-          className="flex items-center gap-2 btn-primary rounded px-4 py-2 text-sm font-medium"
+          className="flex items-center gap-2 btn-primary rounded-lg px-4 py-2 text-sm font-medium"
         >
           <Plus size={16} />
           Nova venda

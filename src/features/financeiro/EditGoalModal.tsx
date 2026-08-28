@@ -47,7 +47,7 @@ export function EditGoalModal({
       <form
         onSubmit={handleSubmit}
         onClick={(e) => e.stopPropagation()}
-        className="bg-surface rounded-xl border border-border w-full max-w-xs p-5 space-y-4"
+        className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-xs p-5 space-y-4"
       >
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-foreground">Meta de faturamento</h2>
@@ -70,7 +70,7 @@ export function EditGoalModal({
             value={value}
             onChange={(e) => setValue(e.target.value)}
             autoFocus
-            className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+            className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
           />
         </label>
 
@@ -80,14 +80,14 @@ export function EditGoalModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 btn-secondary rounded px-3 py-2 text-sm font-medium"
+            className="flex-1 btn-secondary rounded-lg px-3 py-2 text-sm font-medium"
           >
             Cancelar
           </button>
           <button
             type="submit"
             disabled={saving}
-            className="flex-1 btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+            className="flex-1 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
           >
             {saving ? 'Salvando...' : 'Salvar'}
           </button>

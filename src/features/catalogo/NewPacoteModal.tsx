@@ -134,7 +134,7 @@ export function NewPacoteModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-surface rounded-xl border border-border w-full max-w-md max-h-[90vh] overflow-y-auto p-5 space-y-4"
+        className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-md max-h-[90vh] overflow-y-auto p-5 space-y-4"
       >
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-foreground">
@@ -152,7 +152,7 @@ export function NewPacoteModal({
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               placeholder="5 cortes"
-              className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             />
           </label>
 
@@ -162,7 +162,7 @@ export function NewPacoteModal({
               {itens.map((i) => {
                 const svc = servicos.find((x) => x.id === i.service_id)
                 return (
-                  <div key={i.service_id} className="flex items-center gap-2 bg-surface-2 rounded px-3 py-2 text-sm">
+                  <div key={i.service_id} className="flex items-center gap-2 bg-surface-2 rounded-lg px-3 py-2 text-sm">
                     <span className="flex-1 min-w-0 truncate text-foreground">
                       {i.quantidade}× {svc?.nome ?? '...'}
                     </span>
@@ -185,7 +185,7 @@ export function NewPacoteModal({
               <select
                 value={novoServico}
                 onChange={(e) => setNovoServico(e.target.value)}
-                className="flex-1 min-w-0 border border-border-strong bg-surface text-foreground rounded px-2 py-2 text-sm"
+                className="flex-1 min-w-0 border border-border-strong bg-surface text-foreground rounded-lg px-2 py-2 text-sm"
               >
                 <option value="">Serviço...</option>
                 {servicos
@@ -202,12 +202,12 @@ export function NewPacoteModal({
                 value={novaQtd}
                 onChange={(e) => setNovaQtd(parseInt(e.target.value, 10) || 1)}
                 aria-label="Quantidade"
-                className="w-16 border border-border-strong bg-surface text-foreground rounded px-2 py-2 text-sm"
+                className="w-16 border border-border-strong bg-surface text-foreground rounded-lg px-2 py-2 text-sm"
               />
               <button
                 type="button"
                 onClick={adicionarItem}
-                className="btn-secondary rounded px-3 py-2 text-sm font-medium inline-flex items-center gap-1"
+                className="btn-secondary rounded-lg px-3 py-2 text-sm font-medium inline-flex items-center gap-1"
               >
                 <Plus size={14} />
                 Incluir
@@ -223,7 +223,7 @@ export function NewPacoteModal({
                 value={preco}
                 onChange={(e) => setPreco(e.target.value)}
                 placeholder="120,00"
-                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               />
             </label>
             <label className="block">
@@ -234,7 +234,7 @@ export function NewPacoteModal({
                 value={validade}
                 onChange={(e) => setValidade(e.target.value)}
                 placeholder="90"
-                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               />
             </label>
           </div>
@@ -262,13 +262,13 @@ export function NewPacoteModal({
           {erro && <p className="text-sm text-danger">{erro}</p>}
 
           <div className="flex gap-2 pt-1">
-            <button type="button" onClick={onClose} className="flex-1 btn-secondary rounded px-3 py-2 text-sm font-medium">
+            <button type="button" onClick={onClose} className="flex-1 btn-secondary rounded-lg px-3 py-2 text-sm font-medium">
               Cancelar
             </button>
             <button
               type="submit"
               disabled={salvando}
-              className="flex-1 btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+              className="flex-1 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
               {salvando ? 'Salvando...' : 'Salvar pacote'}
             </button>

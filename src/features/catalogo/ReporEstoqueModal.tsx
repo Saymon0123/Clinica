@@ -58,7 +58,7 @@ export function ReporEstoqueModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-surface rounded-xl border border-border w-full max-w-xs p-5 space-y-4"
+        className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-xs p-5 space-y-4"
       >
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-foreground">Repor {product.nome}</h2>
@@ -76,7 +76,7 @@ export function ReporEstoqueModal({
               autoFocus
               value={quantidade}
               onChange={(e) => setQuantidade(e.target.value)}
-              className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             />
           </label>
           <p className="text-xs text-muted-foreground">
@@ -91,7 +91,7 @@ export function ReporEstoqueModal({
           <button
             type="submit"
             disabled={salvando}
-            className="w-full flex items-center justify-center gap-2 btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
           >
             <PackagePlus size={15} />
             {salvando ? 'Salvando...' : 'Somar ao estoque'}

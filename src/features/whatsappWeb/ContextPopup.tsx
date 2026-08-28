@@ -17,7 +17,7 @@ export function ContextPopup({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-surface rounded-xl border border-border w-full max-w-sm p-5 space-y-4 shadow-xl"
+        className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-sm p-5 space-y-4 shadow-xl"
       >
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -44,7 +44,7 @@ export function ContextPopup({
           Resumo escrito pelo atendimento automático no momento em que o cliente pediu para falar com você.
         </p>
 
-        <button onClick={onClose} className="w-full btn-primary rounded px-3 py-2 text-sm font-medium">
+        <button onClick={onClose} className="w-full btn-primary rounded-lg px-3 py-2 text-sm font-medium">
           Entendi, ver conversa
         </button>
       </div>

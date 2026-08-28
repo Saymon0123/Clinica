@@ -105,7 +105,7 @@ export function NewProductModal({ salonId, product, onClose, onSaved }: Props) {
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               required
-              className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               placeholder="Pomada modeladora"
             />
           </div>
@@ -118,7 +118,7 @@ export function NewProductModal({ salonId, product, onClose, onSaved }: Props) {
                 inputMode="decimal"
                 value={precoVenda}
                 onChange={(e) => setPrecoVenda(e.target.value)}
-                className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
                 placeholder="35,00"
               />
             </div>
@@ -129,7 +129,7 @@ export function NewProductModal({ salonId, product, onClose, onSaved }: Props) {
                 inputMode="decimal"
                 value={precoCusto}
                 onChange={(e) => setPrecoCusto(e.target.value)}
-                className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
                 placeholder="18,00"
               />
             </div>
@@ -144,7 +144,7 @@ export function NewProductModal({ salonId, product, onClose, onSaved }: Props) {
                 min={0}
                 value={estoqueAtual}
                 onChange={(e) => setEstoqueAtual(e.target.value)}
-                className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               />
             </div>
             <div>
@@ -155,7 +155,7 @@ export function NewProductModal({ salonId, product, onClose, onSaved }: Props) {
                 min={0}
                 value={estoqueMinimo}
                 onChange={(e) => setEstoqueMinimo(e.target.value)}
-                className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               />
             </div>
           </div>
@@ -166,14 +166,14 @@ export function NewProductModal({ salonId, product, onClose, onSaved }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 btn-secondary rounded px-3 py-2 text-sm font-medium"
+              className="flex-1 btn-secondary rounded-lg px-3 py-2 text-sm font-medium"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+              className="flex-1 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
               {submitting ? 'Salvando...' : 'Salvar'}
             </button>

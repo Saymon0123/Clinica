@@ -102,7 +102,7 @@ export function RedePage() {
           {redeId && (
             <button
               onClick={() => setModalAberto(true)}
-              className="flex items-center gap-2 btn-primary rounded px-3 py-2 text-sm font-medium"
+              className="flex items-center gap-2 btn-primary rounded-lg px-3 py-2 text-sm font-medium"
             >
               <Plus size={15} />
               Nova unidade

@@ -121,7 +121,7 @@ export function ForgotPasswordPage() {
         </h1>
 
         {avisoDoLink && etapa === 'email' && (
-          <p className="text-sm text-warning bg-warning/10 border border-warning/30 rounded px-3 py-2">
+          <p className="text-sm text-warning bg-warning/10 border border-warning/30 rounded-lg px-3 py-2">
             {avisoDoLink}
           </p>
         )}
@@ -144,7 +144,7 @@ export function ForgotPasswordPage() {
                 inputMode="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-3 text-base"
+                className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-3 text-base"
               />
             </div>
 
@@ -153,7 +153,7 @@ export function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={enviando}
-              className="w-full btn-primary rounded px-3 py-3 text-sm font-medium disabled:opacity-50"
+              className="w-full btn-primary rounded-lg px-3 py-3 text-sm font-medium disabled:opacity-50"
             >
               {enviando ? 'Enviando...' : 'Enviar código'}
             </button>
@@ -185,7 +185,7 @@ export function ForgotPasswordPage() {
                 placeholder="000000"
                 value={codigo}
                 onChange={(e) => setCodigo(e.target.value)}
-                className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-3 text-base tracking-[0.3em] text-center"
+                className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-3 text-base tracking-[0.3em] text-center"
               />
             </div>
 
@@ -200,7 +200,7 @@ export function ForgotPasswordPage() {
                   autoComplete="new-password"
                   value={senha}
                   onChange={(e) => setSenha(e.target.value)}
-                  className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-3 pr-11 text-base"
+                  className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-3 pr-11 text-base"
                 />
                 <button
                   type="button"
@@ -225,7 +225,7 @@ export function ForgotPasswordPage() {
                 autoComplete="new-password"
                 value={confirmar}
                 onChange={(e) => setConfirmar(e.target.value)}
-                className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-3 text-base"
+                className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-3 text-base"
               />
             </div>
 
@@ -234,7 +234,7 @@ export function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={enviando}
-              className="w-full btn-primary rounded px-3 py-3 text-sm font-medium disabled:opacity-50"
+              className="w-full btn-primary rounded-lg px-3 py-3 text-sm font-medium disabled:opacity-50"
             >
               {enviando ? 'Salvando...' : 'Salvar nova senha'}
             </button>

@@ -61,7 +61,7 @@ export function ResetPasswordPage() {
               autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-3 pr-11 text-base"
+              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-3 pr-11 text-base"
             />
             <button
               type="button"
@@ -84,7 +84,7 @@ export function ResetPasswordPage() {
             autoComplete="new-password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-3 text-base"
+            className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-3 text-base"
           />
         </div>
 
@@ -93,7 +93,7 @@ export function ResetPasswordPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full btn-primary rounded px-3 py-3 text-sm font-medium disabled:opacity-50"
+          className="w-full btn-primary rounded-lg px-3 py-3 text-sm font-medium disabled:opacity-50"
         >
           {submitting ? 'Salvando...' : 'Salvar nova senha'}
         </button>

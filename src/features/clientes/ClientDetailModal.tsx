@@ -109,7 +109,7 @@ export function ClientDetailModal({
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
-        className="bg-surface rounded-xl border border-border w-full max-w-md max-h-[90vh] overflow-y-auto p-5"
+        className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-md max-h-[90vh] overflow-y-auto p-5"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-1">
@@ -118,14 +118,14 @@ export function ClientDetailModal({
             <button
               onClick={onEdit}
               aria-label="Editar cliente"
-              className="p-1.5 text-muted-foreground hover:text-foreground rounded hover:bg-surface-2"
+              className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-surface-2"
             >
               <Pencil size={15} />
             </button>
             <button
               onClick={onClose}
               aria-label="Fechar"
-              className="p-1.5 text-muted-foreground hover:text-foreground rounded hover:bg-surface-2"
+              className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-surface-2"
             >
               <X size={17} />
             </button>
@@ -180,7 +180,7 @@ export function ClientDetailModal({
               ) : (
                 <div className="space-y-1.5">
                   {appointments.map((a) => (
-                    <div key={a.id} className="flex items-center justify-between text-sm bg-surface-2 rounded px-3 py-2">
+                    <div key={a.id} className="flex items-center justify-between text-sm bg-surface-2 rounded-lg px-3 py-2">
                       <span className="text-foreground truncate">
                         {formatDate(a.data_hora_inicio)} · {one(a.services)?.nome ?? 'Serviço'}
                       </span>
@@ -215,7 +215,7 @@ export function ClientDetailModal({
               ) : (
                 <div className="space-y-1.5">
                   {orders.map((o) => (
-                    <div key={o.id} className="flex items-center justify-between text-sm bg-surface-2 rounded px-3 py-2">
+                    <div key={o.id} className="flex items-center justify-between text-sm bg-surface-2 rounded-lg px-3 py-2">
                       <span className="text-foreground">{o.closed_at ? formatDate(o.closed_at) : '—'}</span>
                       <span className="font-medium text-foreground">
                         {formatCurrency(

@@ -159,7 +159,7 @@ export function AvisoDeJornada({ recarregar }: { recarregar?: number }) {
       <button
         onClick={aplicar}
         disabled={aplicando}
-        className="w-full btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+        className="w-full btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
       >
         {aplicando
           ? 'Aplicando...'

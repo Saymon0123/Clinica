@@ -400,7 +400,7 @@ export function FinanceiroPage() {
               </p>
               <button
                 onClick={() => setEditingGoal(true)}
-                className="btn-primary rounded px-3 py-1.5 text-sm font-medium"
+                className="btn-primary rounded-lg px-3 py-1.5 text-sm font-medium"
               >
                 Definir meta
               </button>

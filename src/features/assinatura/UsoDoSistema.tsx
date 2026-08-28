@@ -170,7 +170,7 @@ export function UsoDoSistema() {
                 href={boletoAberto.boleto_url!}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn-primary rounded px-3 py-1.5 text-sm font-medium shrink-0"
+                className="btn-primary rounded-lg px-3 py-1.5 text-sm font-medium shrink-0"
               >
                 Pagar (boleto, Pix ou cartão)
               </a>

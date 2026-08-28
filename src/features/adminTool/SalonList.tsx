@@ -128,7 +128,7 @@ export function SalonList({ secret, refreshKey }: { secret: string; refreshKey: 
               <button
                 onClick={() => setEditando(s)}
                 aria-label={`Editar ${s.nome}`}
-                className="p-1.5 text-muted-foreground hover:text-foreground rounded hover:bg-surface-2"
+                className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-surface-2"
               >
                 <Pencil size={15} />
               </button>
@@ -136,7 +136,7 @@ export function SalonList({ secret, refreshKey }: { secret: string; refreshKey: 
                 onClick={() => alternarAtivo(s)}
                 disabled={busy}
                 aria-label={s.ativo ? `Desativar ${s.nome}` : `Reativar ${s.nome}`}
-                className={`p-1.5 rounded hover:bg-surface-2 ${
+                className={`p-1.5 rounded-md hover:bg-surface-2 ${
                   s.ativo ? 'text-muted-foreground hover:text-danger' : 'text-success'
                 }`}
               >
@@ -170,7 +170,7 @@ export function SalonList({ secret, refreshKey }: { secret: string; refreshKey: 
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-surface rounded-xl border border-border w-full max-w-sm p-5 space-y-3"
+            className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-sm p-5 space-y-3"
           >
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold text-foreground">Editar barbearia</h2>
@@ -187,25 +187,25 @@ export function SalonList({ secret, refreshKey }: { secret: string; refreshKey: 
               value={editando.nome}
               onChange={(e) => setEditando({ ...editando, nome: e.target.value })}
               placeholder="Nome"
-              className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             />
             <input
               value={editando.endereco ?? ''}
               onChange={(e) => setEditando({ ...editando, endereco: e.target.value })}
               placeholder="Endereço"
-              className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             />
             <input
               value={editando.telefone ?? ''}
               onChange={(e) => setEditando({ ...editando, telefone: e.target.value })}
               placeholder="Telefone"
-              className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             />
 
             <button
               onClick={salvarEdicao}
               disabled={busy}
-              className="w-full flex items-center justify-center gap-1.5 btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-1.5 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
               <Check size={15} />
               {busy ? 'Salvando...' : 'Salvar'}

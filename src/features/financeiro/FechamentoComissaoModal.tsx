@@ -130,7 +130,7 @@ export function FechamentoComissaoModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-surface rounded-xl border border-border w-full max-w-md p-5 space-y-4 max-h-[90vh] overflow-y-auto"
+        className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-md p-5 space-y-4 max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
@@ -148,7 +148,7 @@ export function FechamentoComissaoModal({
             type="month"
             value={mes}
             onChange={(e) => setMes(e.target.value)}
-            className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+            className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
           />
         </label>
 
@@ -188,7 +188,7 @@ export function FechamentoComissaoModal({
                   <button
                     onClick={() => marcarPago(l)}
                     disabled={pagando === l.professionalId}
-                    className="shrink-0 btn-primary rounded px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+                    className="shrink-0 btn-primary rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
                   >
                     {pagando === l.professionalId ? 'Salvando...' : 'Marcar como pago'}
                   </button>

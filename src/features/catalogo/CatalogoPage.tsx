@@ -120,7 +120,10 @@ export function CatalogoPage() {
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <h1 className="text-xl font-bold tracking-tight text-foreground">Catálogo</h1>
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">Catálogo</h1>
+          <p className="text-sm text-muted-foreground">Serviços, produtos e pacotes à venda</p>
+        </div>
 
         <div className="inline-flex rounded-lg border border-border-strong overflow-hidden text-sm">
           <button
@@ -150,7 +153,7 @@ export function CatalogoPage() {
           <div className="flex justify-end mb-3">
             <button
               onClick={() => setEditingService('new')}
-              className="flex items-center gap-2 btn-primary rounded px-4 py-2 text-sm font-medium"
+              className="flex items-center gap-2 btn-primary rounded-lg px-4 py-2 text-sm font-medium"
             >
               <Plus size={16} />
               Novo serviço
@@ -161,7 +164,7 @@ export function CatalogoPage() {
             <p className="text-sm text-danger mb-3">{servicesError || actionError}</p>
           )}
 
-          <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+          <div className="bg-surface rounded-xl border border-border shadow-sm overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-muted-foreground border-b border-border">
@@ -226,7 +229,7 @@ export function CatalogoPage() {
             <div className="flex justify-end mb-3">
               <button
                 onClick={() => setEditingPacote('new')}
-                className="flex items-center gap-2 btn-primary rounded px-4 py-2 text-sm font-medium"
+                className="flex items-center gap-2 btn-primary rounded-lg px-4 py-2 text-sm font-medium"
               >
                 <Plus size={16} />
                 Novo pacote
@@ -238,7 +241,7 @@ export function CatalogoPage() {
             <p className="text-sm text-danger mb-3">{pacotesError || actionError}</p>
           )}
 
-          <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+          <div className="bg-surface rounded-xl border border-border shadow-sm overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-muted-foreground border-b border-border">
@@ -311,7 +314,7 @@ export function CatalogoPage() {
             <div className="flex justify-end mb-3">
               <button
                 onClick={() => setEditingProduct('new')}
-                className="flex items-center gap-2 btn-primary rounded px-4 py-2 text-sm font-medium"
+                className="flex items-center gap-2 btn-primary rounded-lg px-4 py-2 text-sm font-medium"
               >
                 <Plus size={16} />
                 Novo produto
@@ -323,7 +326,7 @@ export function CatalogoPage() {
             <p className="text-sm text-danger mb-3">{productsError || actionError}</p>
           )}
 
-          <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+          <div className="bg-surface rounded-xl border border-border shadow-sm overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-muted-foreground border-b border-border">

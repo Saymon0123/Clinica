@@ -131,7 +131,7 @@ export function ImportClientsModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-surface rounded-xl border border-border w-full max-w-sm p-5 space-y-4"
+        className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-sm p-5 space-y-4"
       >
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-foreground">Importar clientes</h2>
@@ -154,7 +154,7 @@ export function ImportClientsModal({
             )}
             <button
               onClick={onClose}
-              className="w-full btn-primary rounded px-3 py-2 text-sm font-medium"
+              className="w-full btn-primary rounded-lg px-3 py-2 text-sm font-medium"
             >
               Fechar
             </button>
@@ -172,7 +172,7 @@ export function ImportClientsModal({
                 type="file"
                 accept=".csv,text/csv"
                 onChange={handleFile}
-                className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded file:border-0 file:bg-primary-soft file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary-soft-foreground"
+                className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary-soft file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary-soft-foreground"
               />
             </label>
 
@@ -189,7 +189,7 @@ export function ImportClientsModal({
             <button
               onClick={handleImport}
               disabled={!parsed || busy}
-              className="w-full flex items-center justify-center gap-2 btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
               <Upload size={15} />
               {busy ? 'Importando...' : 'Importar'}

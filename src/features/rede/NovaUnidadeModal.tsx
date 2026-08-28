@@ -82,7 +82,7 @@ export function NovaUnidadeModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-surface rounded-xl border border-border w-full max-w-sm p-5 space-y-4"
+        className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-sm p-5 space-y-4"
       >
         <div className="flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
@@ -101,7 +101,7 @@ export function NovaUnidadeModal({
               <input
                 value={nomeRede}
                 onChange={(e) => setNomeRede(e.target.value)}
-                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
                 placeholder="Ex: Barbearia do Zé"
               />
               <span className="block text-[11px] text-muted-foreground mt-1">
@@ -114,7 +114,7 @@ export function NovaUnidadeModal({
             <input
               value={nome}
               onChange={(e) => setNome(e.target.value)}
-              className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               placeholder="Ex: Unidade Centro"
               autoFocus
             />
@@ -124,7 +124,7 @@ export function NovaUnidadeModal({
             <input
               value={endereco}
               onChange={(e) => setEndereco(e.target.value)}
-              className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             />
           </label>
           <label className="block">
@@ -132,7 +132,7 @@ export function NovaUnidadeModal({
             <input
               value={telefone}
               onChange={(e) => setTelefone(e.target.value)}
-              className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             />
           </label>
 
@@ -151,7 +151,7 @@ export function NovaUnidadeModal({
           <button
             type="submit"
             disabled={salvando}
-            className="w-full btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+            className="w-full btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
           >
             {salvando ? 'Criando...' : 'Criar unidade'}
           </button>

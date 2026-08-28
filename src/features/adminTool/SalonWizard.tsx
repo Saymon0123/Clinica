@@ -43,7 +43,7 @@ function CopyField({ label, value }: { label: string; value: string }) {
     <div>
       <div className="text-xs text-muted-foreground mb-1">{label}</div>
       <div className="flex items-center gap-2">
-        <code className="flex-1 bg-surface-2 rounded px-3 py-2 text-sm break-all">{value}</code>
+        <code className="flex-1 bg-surface-2 rounded-lg px-3 py-2 text-sm break-all">{value}</code>
         <button
           type="button"
           onClick={async () => {
@@ -52,7 +52,7 @@ function CopyField({ label, value }: { label: string; value: string }) {
             setTimeout(() => setCopied(false), 1500)
           }}
           aria-label={`Copiar ${label}`}
-          className="p-2 border border-border-strong rounded text-muted-foreground hover:bg-surface-2 shrink-0"
+          className="p-2 border border-border-strong rounded-md text-muted-foreground hover:bg-surface-2 shrink-0"
         >
           {copied ? <Check size={16} className="text-success" /> : <Copy size={16} />}
         </button>
@@ -231,7 +231,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
             setRedeNome('')
             setRedeCnpj('')
           }}
-          className="w-full btn-primary rounded px-3 py-2 text-sm font-medium"
+          className="w-full btn-primary rounded-lg px-3 py-2 text-sm font-medium"
         >
           Cadastrar outra
         </button>
@@ -242,7 +242,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
   const grupos = [...new Set(servicos.map((s) => s.grupo))]
 
   return (
-    <div className="bg-surface rounded-xl border border-border p-6">
+    <div className="bg-surface rounded-xl border border-border shadow-sm p-6">
       {/* Progresso */}
       <div className="flex items-center gap-1 mb-6">
         {PASSOS.map((nome, i) => (
@@ -308,7 +308,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
                   value={redeNome}
                   onChange={(e) => setRedeNome(e.target.value)}
                   placeholder="Ex.: Barbearia do Zé"
-                  className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                  className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
                 />
               </label>
               <label className="block">
@@ -316,7 +316,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
                 <input
                   value={redeCnpj}
                   onChange={(e) => setRedeCnpj(e.target.value)}
-                  className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                  className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
                 />
               </label>
             </div>
@@ -353,7 +353,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
                   setUnidades((prev) => prev.map((x, idx) => (idx === i ? { ...x, nome: e.target.value } : x)))
                 }
                 placeholder="Nome da barbearia"
-                className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               />
               <input
                 value={u.endereco}
@@ -363,7 +363,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
                   )
                 }
                 placeholder="Endereço completo"
-                className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               />
               <input
                 value={u.telefone}
@@ -373,7 +373,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
                   )
                 }
                 placeholder="Telefone da unidade (opcional)"
-                className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               />
 
               {perguntaSeDonoAtende && (
@@ -429,20 +429,20 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
             value={donoNome}
             onChange={(e) => setDonoNome(e.target.value)}
             placeholder="Nome completo"
-            className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+            className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
           />
           <input
             type="email"
             value={donoEmail}
             onChange={(e) => setDonoEmail(e.target.value)}
             placeholder="E-mail de acesso"
-            className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+            className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
           />
           <input
             value={donoTelefone}
             onChange={(e) => setDonoTelefone(e.target.value)}
             placeholder="Telefone (opcional)"
-            className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+            className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
           />
 
           {donoAtendeEmAlguma && (
@@ -455,7 +455,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
                   max={100}
                   value={comissao}
                   onChange={(e) => setComissao(e.target.value)}
-                  className="w-28 border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                  className="w-28 border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
                 />
                 <span className="text-sm text-muted-foreground">% de cada serviço que ele fizer</span>
               </div>
@@ -529,7 +529,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
                           prev.map((x, idx) => (idx === i ? { ...x, abre: e.target.value } : x)),
                         )
                       }
-                      className="border border-border-strong bg-surface text-foreground rounded px-2 py-1.5 text-sm"
+                      className="border border-border-strong bg-surface text-foreground rounded-lg px-2 py-1.5 text-sm"
                     />
                     <span className="text-xs text-muted-foreground">às</span>
                     <input
@@ -540,7 +540,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
                           prev.map((x, idx) => (idx === i ? { ...x, fecha: e.target.value } : x)),
                         )
                       }
-                      className="border border-border-strong bg-surface text-foreground rounded px-2 py-1.5 text-sm"
+                      className="border border-border-strong bg-surface text-foreground rounded-lg px-2 py-1.5 text-sm"
                     />
                   </>
                 ) : (
@@ -604,7 +604,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
                             )
                           }
                           aria-label={`Preço de ${s.nome}`}
-                          className="w-20 border border-border-strong bg-surface text-foreground rounded px-2 py-1 text-sm"
+                          className="w-20 border border-border-strong bg-surface text-foreground rounded-lg px-2 py-1 text-sm"
                         />
                         <input
                           type="number"
@@ -619,7 +619,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
                             )
                           }
                           aria-label={`Duração de ${s.nome}`}
-                          className="w-16 border border-border-strong bg-surface text-foreground rounded px-2 py-1 text-sm"
+                          className="w-16 border border-border-strong bg-surface text-foreground rounded-lg px-2 py-1 text-sm"
                         />
                         <span className="text-xs text-muted-foreground">min</span>
                       </div>
@@ -642,7 +642,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
             setPasso((p) => Math.max(p - 1, 0))
           }}
           disabled={passo === 0}
-          className="flex items-center gap-1 btn-secondary rounded px-3 py-2 text-sm font-medium disabled:opacity-40"
+          className="flex items-center gap-1 btn-secondary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-40"
         >
           <ChevronLeft size={16} />
           Voltar
@@ -651,7 +651,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
         {passo < PASSOS.length - 1 ? (
           <button
             onClick={avancar}
-            className="flex-1 flex items-center justify-center gap-1 btn-primary rounded px-3 py-2 text-sm font-medium"
+            className="flex-1 flex items-center justify-center gap-1 btn-primary rounded-lg px-3 py-2 text-sm font-medium"
           >
             Continuar
             <ChevronRight size={16} />
@@ -660,7 +660,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
           <button
             onClick={criar}
             disabled={salvando}
-            className="flex-1 btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+            className="flex-1 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
           >
             {salvando
               ? 'Cadastrando...'

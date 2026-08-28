@@ -91,7 +91,7 @@ export function CriarBarbeariaPage() {
               onChange={(e) => setNome(e.target.value)}
               placeholder="Como os clientes te chamam"
               autoComplete="name"
-              className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             />
           </label>
 
@@ -101,7 +101,7 @@ export function CriarBarbeariaPage() {
               value={nomeSalao}
               onChange={(e) => setNomeSalao(e.target.value)}
               placeholder="Ex.: Barbearia do Zé"
-              className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             />
             <span className="block text-[11px] text-muted-foreground mt-1">
               É assim que o atendimento automático se apresenta aos seus clientes.
@@ -116,7 +116,7 @@ export function CriarBarbeariaPage() {
               placeholder="(41) 99999-9999"
               inputMode="tel"
               autoComplete="tel"
-              className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             />
             <span className="block text-[11px] text-muted-foreground mt-1">
               É por aqui que avisamos você sobre o teste e o pagamento. Não vai para seus clientes.
@@ -159,7 +159,7 @@ export function CriarBarbeariaPage() {
           <button
             type="submit"
             disabled={salvando}
-            className="w-full btn-primary rounded px-3 py-2.5 text-sm font-medium disabled:opacity-50"
+            className="w-full btn-primary rounded-lg px-3 py-2.5 text-sm font-medium disabled:opacity-50"
           >
             {salvando ? 'Criando...' : 'Criar minha barbearia'}
           </button>

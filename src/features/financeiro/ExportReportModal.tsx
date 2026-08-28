@@ -132,7 +132,7 @@ export function ExportReportModal({ salonId, onClose }: { salonId: string; onClo
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-surface rounded-xl border border-border w-full max-w-sm p-5 space-y-4"
+        className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-sm p-5 space-y-4"
       >
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-foreground">Exportar relatório</h2>
@@ -177,7 +177,7 @@ export function ExportReportModal({ salonId, onClose }: { salonId: string; onClo
         <button
           onClick={handleExport}
           disabled={busy}
-          className="w-full flex items-center justify-center gap-2 btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+          className="w-full flex items-center justify-center gap-2 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
         >
           <Download size={15} />
           {busy ? 'Gerando...' : 'Baixar relatório'}

@@ -183,7 +183,7 @@ export function ConfiguracoesPage() {
                 setSalvo(false)
               }}
               required
-              className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             />
           </div>
 
@@ -199,7 +199,7 @@ export function ConfiguracoesPage() {
                 setSalvo(false)
               }}
               placeholder="Rua, número, bairro"
-              className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             />
           </div>
 
@@ -216,7 +216,7 @@ export function ConfiguracoesPage() {
               }}
               onBlur={() => setTelefone((t) => (t.trim() ? formatarTelefone(t) : t))}
               placeholder="(11) 90000-0000"
-              className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             />
           </div>
         </div>
@@ -247,7 +247,7 @@ export function ConfiguracoesPage() {
                   setFolga(e.target.value)
                   setSalvo(false)
                 }}
-                className="w-24 border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                className="w-24 border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               />
               <span className="text-sm text-muted-foreground">minutos</span>
             </div>
@@ -274,7 +274,7 @@ export function ConfiguracoesPage() {
                   setAtraso(e.target.value)
                   setSalvo(false)
                 }}
-                className="w-24 border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                className="w-24 border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               />
               <span className="text-sm text-muted-foreground">minutos</span>
             </div>
@@ -306,7 +306,7 @@ export function ConfiguracoesPage() {
                     value={d.abre}
                     onChange={(e) => alterarDia(d.chave, { abre: e.target.value })}
                     aria-label={`${d.label} abre às`}
-                    className="border border-border-strong bg-surface text-foreground rounded px-2 py-1 text-sm"
+                    className="border border-border-strong bg-surface text-foreground rounded-lg px-2 py-1 text-sm"
                   />
                   <span className="text-xs text-muted-foreground">às</span>
                   <input
@@ -314,7 +314,7 @@ export function ConfiguracoesPage() {
                     value={d.fecha}
                     onChange={(e) => alterarDia(d.chave, { fecha: e.target.value })}
                     aria-label={`${d.label} fecha às`}
-                    className="border border-border-strong bg-surface text-foreground rounded px-2 py-1 text-sm"
+                    className="border border-border-strong bg-surface text-foreground rounded-lg px-2 py-1 text-sm"
                   />
                 </div>
               ) : (
@@ -334,7 +334,7 @@ export function ConfiguracoesPage() {
           <button
             type="submit"
             disabled={salvando}
-            className="inline-flex items-center gap-2 bg-primary text-primary-foreground rounded px-4 py-2 text-sm font-medium disabled:opacity-50"
+            className="inline-flex items-center gap-2 bg-primary text-primary-foreground rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50"
           >
             <Save size={16} />
             {salvando ? 'Salvando...' : 'Salvar alterações'}
@@ -377,7 +377,7 @@ export function ConfiguracoesPage() {
             <button
               type="button"
               onClick={() => setModalUnidade(true)}
-              className="inline-flex items-center gap-2 btn-primary rounded px-3 py-2 text-sm font-medium shrink-0"
+              className="inline-flex items-center gap-2 btn-primary rounded-lg px-3 py-2 text-sm font-medium shrink-0"
             >
               <Plus size={16} />
               Adicionar unidade

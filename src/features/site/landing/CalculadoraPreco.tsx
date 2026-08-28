@@ -13,7 +13,7 @@ import { Controle, ValorAnimado, moeda, moedaComCentavos } from './Calculadora'
  * **Só um controle, e não dois.** A calculadora da cadeira vazia tem duas
  * variáveis porque o dono não sabe de cabeça o total; aqui só uma entra —
  * quantos agendamentos por mês — porque o preço por unidade é fixo e
- * conhecido (R$0,85), então o segundo controle seria redundante.
+ * conhecido (R$0,75, a primeira faixa), então o segundo controle seria redundante.
  *
  * **A referência de "corte simples" é nomeada, não flutuante.** Dizer
  * "menos que 2% de um corte" sem dizer de quanto é o corte seria o mesmo

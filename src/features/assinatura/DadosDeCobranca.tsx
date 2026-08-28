@@ -119,7 +119,7 @@ export function DadosDeCobranca({
         <button
           type="submit"
           disabled={salvando}
-          className="btn-primary rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50"
+          className="btn-primary rounded-full px-5 py-2 text-sm font-medium disabled:opacity-50"
         >
           {salvando ? 'Salvando...' : 'Salvar'}
         </button>

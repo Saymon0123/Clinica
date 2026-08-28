@@ -177,18 +177,11 @@ export function AppLayout() {
       {/* Sidebar (desktop only) */}
       <aside className="hidden md:flex w-60 border-r border-sidebar-border bg-sidebar flex-col shrink-0">
         {/* Marca no topo, como um produto assina (referência CheckinOs). */}
-        <div className="px-4 pt-5 pb-1 flex items-center gap-2">
-          <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary text-primary-foreground shrink-0">
+        <div className="px-4 pt-6 pb-5 flex items-center gap-2.5">
+          <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-primary-foreground shrink-0">
             <MarcaClubCut size={16} />
           </span>
-          <span className="text-[15px] font-bold tracking-tight text-foreground">Club Cut</span>
-        </div>
-
-        <div className="px-3 py-3">
-          <div className="flex items-center justify-between gap-2">
-            <ProfileMenu />
-            <ThemeToggle />
-          </div>
+          <span className="text-base font-bold tracking-tight text-foreground">Club Cut</span>
         </div>
 
         <nav className="flex-1 px-3 py-2 space-y-5 overflow-y-auto">
@@ -209,6 +202,13 @@ export function AppLayout() {
           ))}
         </nav>
 
+        {/* Perfil no rodapé da sidebar (leva B, referência): quem sou eu e em
+            qual unidade estou fecham a coluna, como o usuário da referência.
+            Mesmo ProfileMenu de sempre — só mudou de lugar e abre para cima. */}
+        <div className="px-3 py-3 border-t border-sidebar-border flex items-center justify-between gap-2">
+          <ProfileMenu direcao="cima" />
+          <ThemeToggle />
+        </div>
       </aside>
 
       {/* Content */}

@@ -26,7 +26,7 @@ const LABEL_PAPEL: Record<string, string> = {
  * Fica no topo em qualquer tamanho de tela — a versão anterior vivia só
  * dentro da sidebar de desktop e sumia no celular.
  */
-export function ProfileMenu() {
+export function ProfileMenu({ direcao = 'baixo' }: { direcao?: 'baixo' | 'cima' } = {}) {
   const { user, signOut } = useAuth()
   const { unidades, salonId, salonName, role, isOwner, selecionarUnidade } = useSalon()
   const [aberto, setAberto] = useState(false)
@@ -205,8 +205,11 @@ export function ProfileMenu() {
         <div
           role="menu"
           // Dropdown do desktop. Na sidebar (240px) ancora à esquerda para o
-          // menu de 288px não sair da tela.
-          className="hidden md:block absolute right-0 md:right-auto md:left-0 mt-1 w-72 max-w-[calc(100vw-1.5rem)] z-40 bg-surface border border-border rounded-lg shadow-lg py-1 max-h-[70vh] overflow-y-auto"
+          // menu de 288px não sair da tela. No rodapé da sidebar (leva B),
+          // `direcao="cima"` abre o menu para cima, senão ele estoura a tela.
+          className={`hidden md:block absolute right-0 md:right-auto md:left-0 ${
+            direcao === 'cima' ? 'bottom-full mb-1' : 'mt-1'
+          } w-72 max-w-[calc(100vw-1.5rem)] z-40 bg-surface border border-border rounded-lg shadow-lg py-1 max-h-[70vh] overflow-y-auto`}
         >
           <div className="px-3 py-2 border-b border-border">
             <p className="text-[11px] text-muted-foreground truncate">{user?.email}</p>

@@ -20,7 +20,7 @@ export function PageHeader({
   return (
     <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
       <div>
-        <h1 className="text-xl font-bold tracking-tight text-foreground">{titulo}</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{titulo}</h1>
         {subtitulo && <p className="text-sm text-muted-foreground mt-0.5">{subtitulo}</p>}
       </div>
       {acoes && <div className="flex items-center gap-2">{acoes}</div>}

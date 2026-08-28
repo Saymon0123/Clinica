@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type DragEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Building2, CalendarDays, ChevronLeft, ChevronRight, Plus, Users } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -150,7 +150,7 @@ export function AgendaPage() {
   const { salonId, loading: salonLoading } = useSalon()
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [visibleMonth, setVisibleMonth] = useState(new Date())
-  const { professionals, services, appointments, loading, error, reload } = useAgendaData(salonId, selectedDate)
+  const { professionals, services, appointments, jornadas, loading, error, reload } = useAgendaData(salonId, selectedDate)
 
   const [modalState, setModalState] = useState<{ professionalId?: string; time?: string } | null>(null)
   const [detailAppt, setDetailAppt] = useState<Appointment | null>(null)
@@ -163,6 +163,47 @@ export function AgendaPage() {
     [],
   )
   const gridHeight = (HOUR_END - HOUR_START) * ROW_HEIGHT
+
+  // Abre a grade já rolada perto da hora atual quando o dia exibido é hoje.
+  // Antes ela abria sempre às 06:00 — de tarde, meio dia de vazio até o que
+  // interessa. Só no primeiro carregamento de cada dia, para não roubar o
+  // scroll de quem já está navegando.
+  const scrollRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (loading || !scrollRef.current) return
+    const agora = new Date()
+    const ehHoje =
+      agora.getFullYear() === selectedDate.getFullYear() &&
+      agora.getMonth() === selectedDate.getMonth() &&
+      agora.getDate() === selectedDate.getDate()
+    if (!ehHoje) return
+    const minutos = (agora.getHours() - HOUR_START) * 60 + agora.getMinutes()
+    // 90 min de contexto acima da linha de agora.
+    const alvo = Math.max(0, ((minutos - 90) / 60) * ROW_HEIGHT)
+    scrollRef.current.scrollTop = alvo
+    // selectedDate na dependência: trocar de dia e voltar re-ancora.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, selectedDate])
+
+  /**
+   * Sombras de fora-da-jornada da coluna: pares [topo, altura] em px.
+   * Sem registro para o dia = grade neutra (jornada nunca configurada);
+   * registro inativo = folga, coluna inteira sombreada. Só visual — o clique
+   * continua livre, encaixe fora do expediente sempre foi permitido.
+   */
+  function sombrasDaColuna(professionalId: string): [number, number][] {
+    if (!(professionalId in jornadas)) return []
+    const j = jornadas[professionalId]
+    if (j === null) return [[0, gridHeight]]
+    const paraPx = (min: number) =>
+      Math.min(Math.max(((min - HOUR_START * 60) / 60) * ROW_HEIGHT, 0), gridHeight)
+    const inicio = paraPx(j.inicioMin)
+    const fim = paraPx(j.fimMin)
+    const sombras: [number, number][] = []
+    if (inicio > 0) sombras.push([0, inicio])
+    if (fim < gridHeight) sombras.push([fim, gridHeight - fim])
+    return sombras
+  }
 
   function appointmentsFor(professionalId: string) {
     return appointments.filter((a) => a.professional_id === professionalId)
@@ -302,6 +343,7 @@ export function AgendaPage() {
           />
         ) : (
           <div
+            ref={scrollRef}
             className="bg-surface rounded-xl border border-border shadow-sm overflow-auto"
             style={{ maxHeight: 'calc(100vh - 260px)' }}
           >
@@ -320,6 +362,21 @@ export function AgendaPage() {
                 </div>
               ))}
             </div>
+
+            {/* Dia sem nenhuma reserva: aviso flutuante discreto, colado sob o
+                cabeçalho (sticky acompanha o scroll). O CTA é o mesmo botão
+                Nova reserva de sempre. */}
+            {!loading && appointments.length === 0 && (
+              <div className="sticky top-[52px] z-[5] h-0 flex justify-center pointer-events-none">
+                <div className="translate-y-5 pointer-events-auto flex items-center gap-3 bg-surface border border-border shadow-sm rounded-full pl-4 pr-1.5 py-1.5 text-sm text-muted-foreground">
+                  Nenhuma reserva {WEEKDAY_FULL[selectedDate.getDay()] === 'sábado' || WEEKDAY_FULL[selectedDate.getDay()] === 'domingo' ? 'neste' : 'nesta'}{' '}
+                  {WEEKDAY_FULL[selectedDate.getDay()]}
+                  <button onClick={() => setModalState({})} className="btn-chip btn-chip-primario">
+                    Nova reserva
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Grade */}
             <div className="flex min-w-fit pt-3 pb-3 relative">
@@ -344,14 +401,36 @@ export function AgendaPage() {
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => handleDrop(e, p.id)}
                 >
+                  {/* Fora da jornada fica cinza; branco = disponível. */}
+                  {sombrasDaColuna(p.id).map(([topo, altura], i) => (
+                    <div
+                      key={`sombra-${i}`}
+                      aria-hidden
+                      className="absolute inset-x-0 bg-surface-2/70 pointer-events-none"
+                      style={{ top: topo, height: altura }}
+                    />
+                  ))}
+
                   {hours.slice(0, -1).map((h) => (
                     <button
                       key={h}
                       onClick={() => handleSlotClick(p.id, h)}
-                      className="absolute inset-x-0 border-t border-border hover:bg-surface-2 text-left"
+                      className="group absolute inset-x-0 border-t border-border hover:bg-surface-2/80 text-left"
                       style={{ top: (h - HOUR_START) * ROW_HEIGHT, height: ROW_HEIGHT }}
                       aria-label={`Adicionar horário às ${h}:00 com ${p.nome}`}
-                    />
+                    >
+                      {/* Meia hora tracejada: o arrasto encaixa de 15 em 15,
+                          mas a régua só marca horas cheias. */}
+                      <span
+                        aria-hidden
+                        className="absolute inset-x-0 top-1/2 border-t border-dashed border-border/50 pointer-events-none"
+                      />
+                      {/* Convite de clique: só no hover, e some no toque. */}
+                      <span className="hidden group-hover:inline-flex items-center gap-1 text-[11px] text-muted-foreground px-2 pt-1 tabular-nums">
+                        <Plus size={12} />
+                        {String(h).padStart(2, '0')}:00
+                      </span>
+                    </button>
                   ))}
 
                   {appointmentsFor(p.id).map((appt) => (

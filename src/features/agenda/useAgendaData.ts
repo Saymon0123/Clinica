@@ -10,10 +10,22 @@ function dayBounds(date: Date) {
   return { start: start.toISOString(), end: end.toISOString() }
 }
 
+/** Janela de trabalho do profissional no dia exibido, em minutos desde 00:00. */
+export type Jornada = { inicioMin: number; fimMin: number }
+
+function minutosDe(hora: string) {
+  const [h, m] = String(hora).slice(0, 5).split(':').map(Number)
+  return h * 60 + m
+}
+
 export function useAgendaData(salonId: string | null, date: Date) {
   const [professionals, setProfessionals] = useState<Professional[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [appointments, setAppointments] = useState<Appointment[]>([])
+  // null = folga naquele dia; ausente do mapa = jornada nunca configurada
+  // (aí a grade fica neutra, sem sombrear nada — sombrear tudo assustaria
+  // exatamente quem acabou de criar a conta).
+  const [jornadas, setJornadas] = useState<Record<string, Jornada | null>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -24,7 +36,7 @@ export function useAgendaData(salonId: string | null, date: Date) {
 
     const { start, end } = dayBounds(date)
 
-    const [profResult, servResult, apptResult] = await Promise.all([
+    const [profResult, servResult, apptResult, jornadaResult] = await Promise.all([
       supabase.from('professionals').select('id, nome, ativo').eq('salon_id', salonId).eq('ativo', true).order('nome'),
       supabase.from('services').select('id, nome, duracao_minutos, preco').eq('salon_id', salonId).eq('ativo', true).order('nome'),
       supabase
@@ -41,6 +53,13 @@ export function useAgendaData(salonId: string | null, date: Date) {
         // As travas de sobreposição e o horarios_livres já ignoram cancelados,
         // então o horário continua livre de verdade para remarcar por cima.
         .order('data_hora_inicio'),
+      // Jornada do dia exibido, só para SOMBREAR a grade (fora da jornada =
+      // cinza). Não trava clique nenhum: encaixe fora do expediente continua
+      // possível, como sempre foi — quem valida é o fluxo de criação.
+      supabase
+        .from('professional_schedules')
+        .select('professional_id, hora_inicio, hora_fim, ativo')
+        .eq('dia_semana', date.getDay()),
     ])
 
     if (profResult.error || servResult.error || apptResult.error) {
@@ -49,6 +68,15 @@ export function useAgendaData(salonId: string | null, date: Date) {
       setLoading(false)
       return
     }
+
+    // Falha aqui não derruba a agenda: sem jornada, a grade só fica sem sombra.
+    const mapaJornadas: Record<string, Jornada | null> = {}
+    for (const j of jornadaResult.data ?? []) {
+      mapaJornadas[j.professional_id] = j.ativo
+        ? { inicioMin: minutosDe(j.hora_inicio), fimMin: minutosDe(j.hora_fim) }
+        : null
+    }
+    setJornadas(mapaJornadas)
 
     setProfessionals(profResult.data ?? [])
     setServices(servResult.data ?? [])
@@ -78,5 +106,5 @@ export function useAgendaData(salonId: string | null, date: Date) {
     reload()
   }, [reload])
 
-  return { professionals, services, appointments, loading, error, reload }
+  return { professionals, services, appointments, jornadas, loading, error, reload }
 }

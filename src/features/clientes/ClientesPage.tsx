@@ -101,7 +101,7 @@ export function ClientesPage() {
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <h1 className="text-lg font-semibold text-foreground">Clientes</h1>
+        <h1 className="text-xl font-bold tracking-tight text-foreground">Clientes</h1>
         <div className="flex flex-wrap items-center gap-2">
           {isManager && (
             <button

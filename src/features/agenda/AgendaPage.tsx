@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type DragEvent } from 'react'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
 import { useAgendaData } from './useAgendaData'
@@ -8,6 +8,7 @@ import { NewAppointmentModal } from './NewAppointmentModal'
 import { AppointmentDetailModal } from './AppointmentDetailModal'
 import type { Appointment } from './types'
 import { CardAtivacao } from '../ativacao/CardAtivacao'
+import { PageHeader } from '../../components/PageHeader'
 
 const HOUR_START = 6
 const HOUR_END = 22
@@ -235,6 +236,7 @@ export function AgendaPage() {
   return (
     <div className="flex flex-col lg:flex-row gap-4">
       <div className="flex-1 min-w-0">
+        <PageHeader titulo="Agenda" subtitulo="As reservas do dia, por profissional" />
         <CardAtivacao />
 
         {/* Toolbar */}
@@ -287,7 +289,7 @@ export function AgendaPage() {
           </p>
         ) : (
           <div
-            className="bg-surface rounded-xl border border-border overflow-auto"
+            className="bg-surface rounded-xl border border-border shadow-sm overflow-auto"
             style={{ maxHeight: 'calc(100vh - 260px)' }}
           >
             {/* Header com nomes dos profissionais */}
@@ -366,15 +368,22 @@ export function AgendaPage() {
       </div>
 
       <div className="w-full lg:w-72 shrink-0 space-y-4">
-        <div className="bg-surface rounded-xl border border-border p-4">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-            Reservas
+        {/* Card-herói preenchido (referência CheckinOs, "Occupancy Rate"):
+            o único bloco de cor cheia da tela, para o número do dia. */}
+        <div className="bg-primary text-primary-foreground rounded-xl p-4 shadow-md shadow-primary/20">
+          <div className="flex items-start justify-between">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-primary-foreground/70">
+              Reservas
+            </div>
+            <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary-foreground/15">
+              <CalendarDays size={15} />
+            </span>
           </div>
           <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-3xl font-semibold text-foreground tabular-nums leading-none">
+            <span className="text-3xl font-bold tabular-nums leading-none">
               {appointments.length}
             </span>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-primary-foreground/70">
               {selectedDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}
             </span>
           </div>

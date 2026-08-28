@@ -90,7 +90,7 @@ export function ConexaoPage() {
   if (estado.erro) {
     return (
       <div>
-        <h1 className="text-lg font-semibold text-foreground mb-4">Conexão</h1>
+        <h1 className="text-xl font-bold tracking-tight text-foreground mb-4">Conexão</h1>
         <p className="text-sm text-danger">
           Não foi possível verificar a conexão do WhatsApp agora. Confira a internet e recarregue a
           página.
@@ -101,7 +101,7 @@ export function ConexaoPage() {
 
   return (
     <div>
-      <h1 className="text-lg font-semibold text-foreground mb-4">Conexão</h1>
+      <h1 className="text-xl font-bold tracking-tight text-foreground mb-4">Conexão</h1>
 
       {oficial ? (
         <div className="bg-surface rounded-xl border border-border p-6 max-w-md">

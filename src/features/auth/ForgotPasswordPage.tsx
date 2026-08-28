@@ -116,7 +116,7 @@ export function ForgotPasswordPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm bg-surface p-6 sm:p-8 rounded-xl border border-border space-y-4">
-        <h1 className="text-xl font-semibold text-foreground">
+        <h1 className="text-xl font-bold tracking-tight text-foreground">
           {etapa === 'email' ? 'Esqueci minha senha' : 'Criar nova senha'}
         </h1>
 

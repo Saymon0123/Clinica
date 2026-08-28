@@ -176,7 +176,7 @@ export function FinanceiroPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">Financeiro</h1>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">Financeiro</h1>
           <p className="text-sm text-muted-foreground">
             {isManager ? 'Desempenho e vendas da sua barbearia' : 'Seus atendimentos e sua comissão'}
           </p>

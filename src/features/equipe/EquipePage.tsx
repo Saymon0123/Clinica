@@ -251,7 +251,7 @@ export function EquipePage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold text-foreground">Equipe</h1>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">Equipe</h1>
           <p className="text-sm text-muted-foreground">Barbeiros que atendem nesta barbearia</p>
         </div>
         <button

@@ -120,7 +120,7 @@ export function CatalogoPage() {
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <h1 className="text-lg font-semibold text-foreground">Catálogo</h1>
+        <h1 className="text-xl font-bold tracking-tight text-foreground">Catálogo</h1>
 
         <div className="inline-flex rounded-lg border border-border-strong overflow-hidden text-sm">
           <button

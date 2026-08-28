@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { Reveal, RevealGrupo, RevealItem } from './primitivos'
 
 /**
- * O programa de patentes Aura.
+ * O programa de patentes do Club Cut.
+ *
+ * Chamava-se "Reconhecimento Aura", o que dava à feature o nome da empresa
+ * (Aura Studio) e somava um quarto nome à página — Club Cut, Aura, Aurora,
+ * Aura Studio. O programa é do produto, então leva o nome do produto.
+ * (Auditoria 2026-08-28, P0 de marca.)
  *
  * Adaptado de um mockup de referência (não é a página original) para os
  * tokens e o vocabulário visual já em uso aqui: fundo `--l-canvas` que já
@@ -43,7 +48,7 @@ const PATENTES = [
     nome: 'Sargento',
     cor: 'text-[var(--l-fg-mute)]',
     beneficio:
-      'De 3 em 3 meses, o time Aura olha sua agenda com você e mostra onde está vazando dinheiro.',
+      'De 3 em 3 meses, o time do Club Cut olha sua agenda com você e mostra onde está vazando dinheiro.',
   },
   {
     nome: 'Capitão',
@@ -116,14 +121,14 @@ export function ReconhecimentoAura() {
     <section className="relative overflow-hidden bg-[var(--l-canvas)] px-6 py-[64px] lg:py-[84px]">
       <div className="relative z-[1] mx-auto max-w-[1100px]">
         <Reveal>
-          <p className="landing-label text-[var(--l-accent-ink)]">Reconhecimento Aura</p>
+          <p className="landing-label text-[var(--l-accent-ink)]">Patentes Club Cut</p>
           <h2 className="landing-display mt-4 max-w-[18ch] text-[clamp(1.75rem,3.6vw,2.75rem)] text-[var(--l-fg)]">
             Sua barbearia tem um nome.
             <br />
             Agora ela também tem <em className="landing-serif">uma patente.</em>
           </h2>
           <p className="mt-6 max-w-[56ch] text-[17px] leading-relaxed text-[var(--l-fg-mute)]">
-            Cada barbearia que evolui com a Aura sobe de patente — e ganha uma placa física pra
+            Cada barbearia que evolui com o Club Cut sobe de patente — e ganha uma placa física pra
             provar. Não é sobre quem fatura mais. É sobre quem cresce de verdade.
           </p>
         </Reveal>

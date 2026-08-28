@@ -1,13 +1,13 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarCheck, Check, MessageCircle, Smartphone, Wallet } from 'lucide-react'
+import { CalendarCheck, Check, Menu, MessageCircle, Smartphone, Wallet, X } from 'lucide-react'
 import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'motion/react'
 import { DIAS_DE_TESTE, PRECO_POR_AGENDAMENTO } from '../../lib/planos'
 import { CONTATO } from '../../lib/contato'
 import { ChatDemo } from './landing/ChatDemo'
 import { ProvaRobo } from './landing/ProvaRobo'
 import { ProdutoDemo } from './landing/ProdutoDemo'
-import { Depoimentos } from './landing/Depoimentos'
+import { DEPOIMENTOS, Depoimentos } from './landing/Depoimentos'
 import { FaqAccordion } from './landing/FaqAccordion'
 import { Calculadora } from './landing/Calculadora'
 import { CalculadoraPreco } from './landing/CalculadoraPreco'
@@ -142,12 +142,19 @@ const ATALHOS = [
  */
 export function Navbar({ base = '' }: { base?: string }) {
   const rolou = useRolou(80)
+  /*
+    O menu do celular. Abaixo de `md` os atalhos eram `display:none` sem
+    hambúrguer nenhum — quem chegava por anúncio no celular e queria "Preço"
+    não tinha como chegar lá sem rolar a página inteira. (Auditoria
+    2026-08-28, P1.) O painel fecha ao escolher, porque escolher É fechar.
+  */
+  const [aberto, setAberto] = useState(false)
 
   return (
     <header
       className={`fixed inset-x-0 top-0 z-50 transition-[background-color,backdrop-filter,border-color] duration-300 ${
-        rolou
-          ? 'border-b border-[var(--l-line)] bg-[rgba(13,21,18,0.78)] backdrop-blur-xl'
+        rolou || aberto
+          ? 'border-b border-[var(--l-line)] bg-[rgba(13,21,18,0.92)] backdrop-blur-xl'
           : 'border-b border-transparent bg-transparent'
       }`}
     >
@@ -192,7 +199,45 @@ export function Navbar({ base = '' }: { base?: string }) {
         >
           Entrar
         </Link>
+
+        <button
+          type="button"
+          aria-label={aberto ? 'Fechar menu' : 'Abrir menu'}
+          aria-expanded={aberto}
+          aria-controls="menu-celular"
+          onClick={() => setAberto((v) => !v)}
+          className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-full text-[var(--l-fg)] md:hidden"
+        >
+          {aberto ? <Menu className="hidden" /> : null}
+          {aberto ? <X size={22} strokeWidth={2} /> : <Menu size={22} strokeWidth={2} />}
+        </button>
       </div>
+
+      {aberto && (
+        <nav
+          id="menu-celular"
+          aria-label="Menu"
+          className="border-t border-[var(--l-line)] bg-[var(--l-canvas)] px-6 py-3 md:hidden"
+        >
+          {ATALHOS.map((a) => (
+            <a
+              key={a.href}
+              href={`${base}${a.href}`}
+              onClick={() => setAberto(false)}
+              className="flex min-h-[48px] items-center text-[16px] font-medium text-[var(--l-fg)]"
+            >
+              {a.rotulo}
+            </a>
+          ))}
+          <Link
+            to="/sobre"
+            onClick={() => setAberto(false)}
+            className="flex min-h-[48px] items-center text-[16px] font-medium text-[var(--l-fg)]"
+          >
+            Sobre
+          </Link>
+        </nav>
+      )}
     </header>
   )
 }
@@ -232,6 +277,12 @@ function Hero() {
             <Cta className="mt-11" microcopy={MICROCOPY}>
               {CTA}
             </Cta>
+            {/* Prova encostada no pedido, que é onde ela trabalha. O número
+                sai de DEPOIMENTOS.length — se um depoimento sair da lista, a
+                linha desce junto, nunca anuncia mais do que a página prova. */}
+            <p className="mt-4 text-[13.5px] text-[var(--l-fg-faint)]">
+              Usado por {DEPOIMENTOS.length} barbearias que contam a experiência aqui embaixo.
+            </p>
           </Reveal>
         </div>
 
@@ -875,6 +926,26 @@ function Fecho() {
             cliente aparecer na cadeira.
           </p>
         </Reveal>
+        {/* O caminho de baixo compromisso, para quem não decide hoje: falar
+            com uma pessoa. Só existe com número real no CONTATO — a mesma
+            regra do rodapé: link para lugar nenhum é pior que nenhum link.
+            (Auditoria 2026-08-28, gargalo 2 de conversão.) */}
+        {CONTATO.whatsapp && (
+          <Reveal delay={0.12}>
+            <p className="mt-6 text-[14.5px] text-[var(--l-fg-mute)]">
+              Prefere conversar antes?{' '}
+              <a
+                href={`https://wa.me/${CONTATO.whatsapp}`}
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium text-[var(--l-accent-ink)] underline underline-offset-4"
+              >
+                Me chama no WhatsApp
+              </a>
+              . Quem responde é gente.
+            </p>
+          </Reveal>
+        )}
         <Reveal delay={0.16}>
           <Cta className="mt-12" microcopy={MICROCOPY}>
             {CTA}
@@ -968,7 +1039,10 @@ export function Rodape() {
         <span className="landing-label text-[var(--l-fg-faint)]">
           © {new Date().getFullYear()} Club Cut
         </span>
-        <span className="landing-label text-[var(--l-fg-faint)]">criado pela Aura</span>
+        {/* "criado pela Aura" contradizia a própria página: Aura era o nome
+            do programa de patentes, e a empresa é Aura Studio. Uma marca, uma
+            assinatura. (Auditoria 2026-08-28, P0 de marca.) */}
+        <span className="landing-label text-[var(--l-fg-faint)]">um produto Aura Studio</span>
       </div>
     </footer>
   )
@@ -979,9 +1053,17 @@ export function Rodape() {
 export function VendasPage() {
   return (
     <div className="landing min-h-[100dvh]">
+      {/* Invisível até receber foco por Tab: quem navega por teclado ou
+          leitor de tela pula a barra e cai direto no conteúdo. */}
+      <a
+        href="#conteudo"
+        className="fixed left-4 top-4 z-[60] -translate-y-24 rounded-full bg-[var(--l-accent)] px-5 py-3 text-[14px] font-semibold text-[var(--l-on-accent)] transition-transform focus:translate-y-0"
+      >
+        Pular para o conteúdo
+      </a>
       <ReguaScroll />
       <Navbar />
-      <main>
+      <main id="conteudo">
         <Hero />
         {/* Fecha o heroi. Marca onde a barbearia comeca. */}
         <div className="regua-poste" aria-hidden="true" />
@@ -993,10 +1075,13 @@ export function VendasPage() {
         <PorDentro />
         <ComSem />
         <Depoimentos />
-        <ReconhecimentoAura />
         <ComoComeca />
         <SemPromessa />
         <Preco />
+        {/* Depois do preço, de propósito: é benefício de quem JÁ decidiu
+            ("e ainda tem isso"), e no meio do funil era a seção mais longa
+            interrompendo o corredor prova → preço. (Auditoria 2026-08-28.) */}
+        <ReconhecimentoAura />
         <Faq />
         <Fecho />
       </main>

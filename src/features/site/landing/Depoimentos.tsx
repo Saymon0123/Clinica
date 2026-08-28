@@ -76,7 +76,7 @@ export const DEPOIMENTOS: Depoimento[] = [
   {
     nome: 'Bruno Santos',
     ondeE: 'Imperial Barber Club',
-    logo: '/logos-parceiros/imperial-barber.png',
+    logo: '/logos-parceiros/imperial-barber.webp',
     titulo: 'Hoje eu consigo ficar 100% focado no cliente que está na cadeira.',
     fala: 'Essa era minha maior dor. Eu estava cortando o cabelo de uma pessoa enquanto tentava responder outra no WhatsApp. Além de ser ruim para o atendimento, eu acabava deixando oportunidades passarem. Agora a IA cuida do agendamento enquanto eu faço o meu trabalho.',
   },
@@ -89,21 +89,21 @@ export const DEPOIMENTOS: Depoimento[] = [
   {
     nome: 'Matheus Oliveira',
     ondeE: 'Cavalheiro Barbearia',
-    logo: '/logos-parceiros/cavalheiro.png',
+    logo: '/logos-parceiros/cavalheiro.webp',
     titulo: 'Eu achava que precisava contratar uma recepcionista.',
     fala: 'Chegou um ponto em que eu não conseguia mais cuidar dos clientes e responder o WhatsApp ao mesmo tempo. Pensei em contratar alguém só para cuidar dos agendamentos. A IA resolveu justamente essa parte sem eu precisar colocar mais uma pessoa na operação.',
   },
   {
     nome: 'André Costa',
     ondeE: 'Barbearia 013',
-    logo: '/logos-parceiros/barbearia-013.png',
+    logo: '/logos-parceiros/barbearia-013.webp',
     titulo: 'A diferença não foi ter mais mensagens. Foi ter mais horários preenchidos.',
     fala: 'Eu recebia bastante mensagem, mas muita conversa morria porque demorava para responder ou porque o cliente queria um horário que já tinha sido ocupado. Agora a conversa já leva direto para o agendamento. Menos conversa perdida e muito menos trabalho manual.',
   },
   {
     nome: 'Gabriel Costa',
     ondeE: 'Old School Barbearia',
-    logo: '/logos-parceiros/old-school.png',
+    logo: '/logos-parceiros/old-school.webp',
     titulo: 'Eu não queria mais uma ferramenta. Queria parar de perder agendamento.',
     fala: 'Já tinha testado agenda online e outras ferramentas, mas continuava precisando responder o cliente manualmente. O diferencial aqui foi a IA fazer a parte que realmente me tomava tempo: conversar, tirar dúvidas e levar o cliente até o horário marcado.',
   },
@@ -112,7 +112,7 @@ export const DEPOIMENTOS: Depoimento[] = [
     // ("o cliente nem percebe que está falando com uma IA") não entrou.
     nome: 'Lucas Ferreira',
     ondeE: 'Black Beard Barbearia',
-    logo: '/logos-parceiros/black-beard.png',
+    logo: '/logos-parceiros/black-beard.webp',
     titulo: 'Meu celular parou de ser meu segundo emprego.',
     fala: 'Eu chegava em casa e ainda tinha dezenas de mensagens para responder. "Tem horário amanhã?", "quanto custa o corte?", "posso remarcar?". Hoje a IA resolve boa parte disso sozinha.',
   },

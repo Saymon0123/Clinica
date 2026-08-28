@@ -281,7 +281,7 @@ function Hero() {
                 sai de DEPOIMENTOS.length — se um depoimento sair da lista, a
                 linha desce junto, nunca anuncia mais do que a página prova. */}
             <p className="mt-4 text-[13.5px] text-[var(--l-fg-faint)]">
-              Usado por {DEPOIMENTOS.length} barbearias que contam a experiência aqui embaixo.
+              Já roda em {DEPOIMENTOS.length} barbearias — e os donos contam como é.
             </p>
           </Reveal>
         </div>

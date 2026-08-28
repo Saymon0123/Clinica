@@ -7,7 +7,7 @@ import { CONTATO } from '../../lib/contato'
 import { ChatDemo } from './landing/ChatDemo'
 import { ProvaRobo } from './landing/ProvaRobo'
 import { ProdutoDemo } from './landing/ProdutoDemo'
-import { DEPOIMENTOS, Depoimentos } from './landing/Depoimentos'
+import { Depoimentos } from './landing/Depoimentos'
 import { FaqAccordion } from './landing/FaqAccordion'
 import { Calculadora } from './landing/Calculadora'
 import { CalculadoraPreco } from './landing/CalculadoraPreco'
@@ -277,12 +277,6 @@ function Hero() {
             <Cta className="mt-11" microcopy={MICROCOPY}>
               {CTA}
             </Cta>
-            {/* Prova encostada no pedido, que é onde ela trabalha. O número
-                sai de DEPOIMENTOS.length — se um depoimento sair da lista, a
-                linha desce junto, nunca anuncia mais do que a página prova. */}
-            <p className="mt-4 text-[13.5px] text-[var(--l-fg-faint)]">
-              Usado por {DEPOIMENTOS.length} barbearias que contam a experiência aqui embaixo.
-            </p>
           </Reveal>
         </div>
 
@@ -444,33 +438,20 @@ function Franqueza() {
           </p>
 
           {/*
-            Prova falsificavel, e a unica prova que esta pagina pode dar hoje:
-            em vez de AFIRMAR que ele assume ser robo, deixa a pessoa testar.
-            Custa nada e nenhum concorrente copia sem expor que o bot dele mente.
-
-            So aparece com numero real em CONTATO. Convite para conversar com um
-            numero que nao existe seria pior que nao convidar.
+            Aqui morava o convite "manda mensagem pro nosso número e pergunta"
+            (a prova falsificável). Saiu por decisão do dono (2026-08-28): o
+            número real do CONTATO é o suporte, atendido por gente — convidar
+            a testar o robô num número onde o robô não atende prometeria o que
+            o número não entrega. Se um dia o agente atender o número público,
+            o convite volta a valer a pena. A prova encenada do ProvaRobo
+            logo abaixo faz esse papel enquanto isso.
           */}
-          {CONTATO.whatsapp && (
-            <p className="mt-7 text-[17px] leading-relaxed text-[var(--l-fg)]">
-              Não acredita?{' '}
-              <a
-                href={`https://wa.me/${CONTATO.whatsapp}`}
-                target="_blank"
-                rel="noreferrer"
-                className="underline decoration-[var(--l-accent-ink)] decoration-2 underline-offset-4 transition-colors duration-200 hover:text-[var(--l-accent-ink)]"
-              >
-                Manda mensagem pro nosso número e pergunta.
-              </a>
-            </p>
-          )}
         </Reveal>
 
         {/*
-          Enquanto o numero real de CONTATO nao existe, esta e a prova que dá
-          para mostrar: a mesma pergunta e a mesma resposta, encenadas — não
-          um convite para testar um numero que nao existe, mas também não a
-          frase sozinha sobre metade da tela vazia.
+          A prova encenada: a mesma pergunta e a mesma resposta que o agente
+          dá de verdade. É o que sustenta a seção sem convidar ninguém a
+          testar um número onde quem atende é o suporte humano.
         */}
         <Reveal delay={0.1}>
           <ProvaRobo />

@@ -15,6 +15,7 @@ import { Tabela, Th, Linha, Td } from '../../components/Tabela'
 import { Badge } from '../../components/Badge'
 import { EstadoVazio } from '../../components/EstadoVazio'
 import { SkeletonPagina } from '../../components/Skeleton'
+import { PageHeader } from '../../components/PageHeader'
 import type { ServiceItem, ProductItem } from './types'
 
 type Tab = 'servicos' | 'produtos' | 'pacotes'
@@ -123,12 +124,10 @@ export function CatalogoPage() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">Catálogo</h1>
-          <p className="text-sm text-muted-foreground">Serviços, produtos e pacotes à venda</p>
-        </div>
-
+      <PageHeader
+        titulo="Catálogo"
+        subtitulo="Serviços, produtos e pacotes à venda"
+        acoes={
         <div className="inline-flex rounded-lg border border-border-strong overflow-hidden text-sm">
           <button
             onClick={() => setTab('servicos')}
@@ -149,7 +148,8 @@ export function CatalogoPage() {
             Pacotes
           </button>
         </div>
-      </div>
+        }
+      />
 
       {tab === 'servicos' ? (
         <div>
@@ -223,7 +223,7 @@ export function CatalogoPage() {
                         </>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                          <Lock size={11} />
+                          <Lock size={12} />
                           Da gestão
                         </span>
                       )}
@@ -323,7 +323,7 @@ export function CatalogoPage() {
                         </>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                          <Lock size={11} />
+                          <Lock size={12} />
                           Da gestão
                         </span>
                       )}
@@ -422,7 +422,7 @@ export function CatalogoPage() {
                         </>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                          <Lock size={11} />
+                          <Lock size={12} />
                           Da gestão
                         </span>
                       )}

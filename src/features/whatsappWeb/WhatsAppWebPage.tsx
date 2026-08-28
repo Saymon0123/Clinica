@@ -389,7 +389,7 @@ export function WhatsAppWebPage() {
                     }
                     className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline shrink-0"
                   >
-                    <Sparkles size={13} />
+                    <Sparkles size={14} />
                     Ver resumo
                   </button>
                 )}

@@ -119,14 +119,14 @@ export function ClientDetailModal({
               aria-label="Editar cliente"
               className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-surface-2"
             >
-              <Pencil size={15} />
+              <Pencil size={16} />
             </button>
             <button
               onClick={onClose}
               aria-label="Fechar"
               className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-surface-2"
             >
-              <X size={17} />
+              <X size={18} />
             </button>
           </div>
         </div>
@@ -171,7 +171,7 @@ export function ClientDetailModal({
           <div className="space-y-5">
             <div>
               <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-                <CalendarCheck size={13} />
+                <CalendarCheck size={14} />
                 Agendamentos recentes
               </h3>
               {appointments.length === 0 ? (
@@ -208,7 +208,7 @@ export function ClientDetailModal({
 
             <div>
               <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-                <Receipt size={13} />
+                <Receipt size={14} />
                 Compras recentes
               </h3>
               {orders.length === 0 ? (

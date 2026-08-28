@@ -179,7 +179,7 @@ export function AppLayout() {
         {/* Marca no topo, como um produto assina (referência CheckinOs). */}
         <div className="px-4 pt-5 pb-1 flex items-center gap-2">
           <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary text-primary-foreground shrink-0">
-            <MarcaClubCut size={15} />
+            <MarcaClubCut size={16} />
           </span>
           <span className="text-[15px] font-bold tracking-tight text-foreground">Club Cut</span>
         </div>

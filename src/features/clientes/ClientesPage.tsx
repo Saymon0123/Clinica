@@ -11,6 +11,7 @@ import { Tabela, Th, Td } from '../../components/Tabela'
 import { EstadoVazio } from '../../components/EstadoVazio'
 import { SkeletonPagina } from '../../components/Skeleton'
 import { Input } from '../../components/Campo'
+import { PageHeader } from '../../components/PageHeader'
 import type { Client } from './types'
 
 function formatDate(iso: string | null) {
@@ -104,18 +105,13 @@ export function ClientesPage() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">Clientes</h1>
-          <p className="text-sm text-muted-foreground">Quem já passou pela sua cadeira</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+      <PageHeader titulo="Clientes" subtitulo="Quem já passou pela sua cadeira" acoes={<>
           {isManager && (
             <button
               onClick={() => setImporting(true)}
               className="flex items-center gap-2 btn-secondary rounded-lg px-3 py-2 text-sm font-medium"
             >
-              <Upload size={15} />
+              <Upload size={16} />
               Importar
             </button>
           )}
@@ -125,7 +121,7 @@ export function ClientesPage() {
             disabled={clients.length === 0}
             className="flex items-center gap-2 btn-secondary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
           >
-            <Download size={15} />
+            <Download size={16} />
             Exportar
           </button>
           )}
@@ -136,14 +132,13 @@ export function ClientesPage() {
             <Plus size={16} />
             Adicionar
           </button>
-        </div>
-      </div>
+      </>} />
 
       {clients.length > 0 && (
-        <div className="bg-surface border border-border rounded-xl shadow-sm p-4 mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="bg-surface border border-border rounded-xl shadow-sm p-5 mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary-soft text-primary-soft-foreground">
-              <UserPlus size={17} />
+              <UserPlus size={18} />
             </span>
             <div>
               <div className="text-xl font-semibold text-foreground leading-tight">{novosCount}</div>

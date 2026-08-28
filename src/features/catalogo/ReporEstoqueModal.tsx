@@ -83,7 +83,7 @@ export function ReporEstoqueModal({
             disabled={salvando}
             className="w-full flex items-center justify-center gap-2 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
           >
-            <PackagePlus size={15} />
+            <PackagePlus size={16} />
             {salvando ? 'Salvando...' : 'Somar ao estoque'}
           </button>
         </form>

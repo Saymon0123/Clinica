@@ -169,7 +169,7 @@ export function ExportReportModal({ salonId, onClose }: { salonId: string; onClo
           disabled={busy}
           className="w-full flex items-center justify-center gap-2 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
         >
-          <Download size={15} />
+          <Download size={16} />
           {busy ? 'Gerando...' : 'Baixar relatório'}
         </button>
     </Modal>

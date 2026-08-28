@@ -89,7 +89,7 @@ export function DadosDeCobranca({
   }
 
   return (
-    <form onSubmit={salvar} className="bg-surface border border-border rounded-xl shadow-sm p-4">
+    <form onSubmit={salvar} className="bg-surface border border-border rounded-xl shadow-sm p-5">
       <div className="flex items-center gap-2 mb-1">
         <CreditCard size={16} className="text-muted-foreground" />
         <h2 className="text-sm font-semibold text-foreground">Dados de cobrança</h2>
@@ -137,7 +137,7 @@ export function DadosDeCobranca({
         )}
         {salvo && (
           <span className="flex items-center gap-1.5 text-sm text-success">
-            <Check size={15} />
+            <Check size={16} />
             Salvo
           </span>
         )}

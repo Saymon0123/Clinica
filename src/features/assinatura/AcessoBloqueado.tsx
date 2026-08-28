@@ -25,7 +25,7 @@ export function AcessoBloqueado({ assinatura }: { assinatura: Assinatura }) {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md bg-surface border border-border rounded-xl shadow-sm p-6">
+      <div className="w-full max-w-md bg-surface border border-border rounded-xl shadow-sm p-5">
         <span className="flex items-center justify-center w-11 h-11 rounded-full bg-danger-soft text-danger mb-4">
           <Lock size={20} />
         </span>

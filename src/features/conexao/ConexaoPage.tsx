@@ -5,6 +5,7 @@ import { useSalon } from '../auth/useSalon'
 import { AgentDashboard } from './AgentDashboard'
 import { EstadoVazio } from '../../components/EstadoVazio'
 import { SkeletonPagina } from '../../components/Skeleton'
+import { PageHeader } from '../../components/PageHeader'
 import { Tour } from '../tour/Tour'
 import { PASSOS_CONEXAO } from '../tour/passos'
 
@@ -94,7 +95,7 @@ export function ConexaoPage() {
   if (estado.erro) {
     return (
       <div>
-        <h1 className="text-xl font-bold tracking-tight text-foreground mb-4">Conexão</h1>
+        <PageHeader titulo="Conexão" />
         <p className="text-sm text-danger">
           Não foi possível verificar a conexão do WhatsApp agora. Confira a internet e recarregue a
           página.
@@ -105,13 +106,10 @@ export function ConexaoPage() {
 
   return (
     <div>
-      <div className="mb-4">
-        <h1 className="text-xl font-bold tracking-tight text-foreground">Conexão</h1>
-        <p className="text-sm text-muted-foreground">O WhatsApp que o agente usa para atender</p>
-      </div>
+      <PageHeader titulo="Conexão" subtitulo="O WhatsApp que o agente usa para atender" />
 
       {oficial ? (
-        <div className="bg-surface rounded-xl border border-border shadow-sm p-6 max-w-md">
+        <div className="bg-surface rounded-xl border border-border shadow-sm p-5 max-w-md">
           {/* Sem data-tour aqui: as âncoras do tour vivem no fluxo legado da
               Evolution (QR), e âncora repetida quebra o passo a passo. */}
           <div className="flex items-center gap-3 mb-4">
@@ -121,7 +119,7 @@ export function ConexaoPage() {
             <div>
               <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
                 WhatsApp
-                <BadgeCheck size={15} className="text-success" />
+                <BadgeCheck size={16} className="text-success" />
               </div>
               <div className="text-xs text-muted-foreground">
                 {conexao?.phone_number_id ? 'Conectado pela API oficial da Meta' : 'Registro em andamento'}
@@ -252,7 +250,7 @@ function ConexaoEvolutionLegada({ salonId }: { salonId: string }) {
   }
 
   return (
-    <div className="bg-surface rounded-xl border border-border shadow-sm p-6 max-w-md">
+    <div className="bg-surface rounded-xl border border-border shadow-sm p-5 max-w-md">
       <div data-tour="conexao-status" className="flex items-center gap-3 mb-4">
         <div className="w-10 h-10 rounded-full bg-success-soft flex items-center justify-center text-success">
           <MessageCircle size={20} />

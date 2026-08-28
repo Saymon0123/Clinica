@@ -388,7 +388,7 @@ export function AgendaPage() {
               Reservas
             </div>
             <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary-foreground/15">
-              <CalendarDays size={15} />
+              <CalendarDays size={16} />
             </span>
           </div>
           <div className="mt-1 flex items-baseline gap-2">

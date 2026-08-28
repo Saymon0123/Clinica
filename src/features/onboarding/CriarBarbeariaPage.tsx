@@ -67,7 +67,7 @@ export function CriarBarbeariaPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4 py-10">
-      <div className="w-full max-w-sm bg-surface border border-border rounded-xl shadow-sm p-6 space-y-4">
+      <div className="w-full max-w-sm bg-surface border border-border rounded-xl shadow-sm p-5 space-y-4">
         <div className="flex items-center gap-2.5">
           <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary text-primary-foreground">
             <MarcaClubCut size={18} />

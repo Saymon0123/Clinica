@@ -5,6 +5,7 @@ import { SalonWizard } from './SalonWizard'
 import { SalonList } from './SalonList'
 import { ConvidarBarbearia } from './ConvidarBarbearia'
 import { MetricasDoProduto } from './MetricasDoProduto'
+import { PageHeader } from '../../components/PageHeader'
 
 const SECRET_STORAGE_KEY = 'admin_tool_secret'
 
@@ -44,7 +45,7 @@ function AccessGate({ onUnlock }: { onUnlock: (secret: string) => void }) {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm bg-surface border border-border p-6 rounded-xl space-y-4">
+      <form onSubmit={handleSubmit} className="w-full max-w-sm bg-surface border border-border p-5 rounded-xl space-y-4">
         <div className="flex items-center gap-2 text-foreground">
           <Lock size={18} />
           <h1 className="text-lg font-semibold">Acesso restrito</h1>
@@ -87,10 +88,10 @@ export function NovaBarbeariaPage() {
   return (
     <div className="min-h-screen bg-background px-4 py-8">
       <div className="w-full max-w-2xl mx-auto space-y-4">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">Painel administrativo</h1>
-          <p className="text-sm text-muted-foreground">Barbearias e redes cadastradas no sistema</p>
-        </div>
+        <PageHeader
+          titulo="Painel administrativo"
+          subtitulo="Barbearias e redes cadastradas no sistema"
+        />
 
         <div className="flex gap-1 border-b border-border">
           <button
@@ -101,7 +102,7 @@ export function NovaBarbeariaPage() {
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Store size={15} />
+            <Store size={16} />
             Barbearias
           </button>
           <button
@@ -112,7 +113,7 @@ export function NovaBarbeariaPage() {
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Plus size={15} />
+            <Plus size={16} />
             Nova barbearia
           </button>
           <button
@@ -123,7 +124,7 @@ export function NovaBarbeariaPage() {
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Send size={15} />
+            <Send size={16} />
             Convidar
           </button>
         </div>

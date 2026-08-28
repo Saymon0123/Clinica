@@ -91,7 +91,7 @@ export function ConvidarBarbearia({ secret, onCriado }: { secret: string; onCria
   if (resultado) {
     const vence = new Date(resultado.expiraEm).toLocaleDateString('pt-BR')
     return (
-      <div className="bg-surface rounded-xl border border-success/40 p-6 space-y-4">
+      <div className="bg-surface rounded-xl border border-success/40 p-5 space-y-4">
         <div className="flex items-center gap-2 text-success">
           <Check size={20} />
           <h2 className="text-base font-semibold">Convite pronto!</h2>
@@ -124,7 +124,7 @@ export function ConvidarBarbearia({ secret, onCriado }: { secret: string; onCria
   }
 
   return (
-    <div className="bg-surface rounded-xl border border-border shadow-sm p-6 space-y-4">
+    <div className="bg-surface rounded-xl border border-border shadow-sm p-5 space-y-4">
       <div>
         <h2 className="text-base font-semibold text-foreground">Convidar barbearia</h2>
         <p className="text-xs text-muted-foreground mt-1">
@@ -200,7 +200,7 @@ export function ConvidarBarbearia({ secret, onCriado }: { secret: string; onCria
         disabled={enviando}
         className="w-full flex items-center justify-center gap-1.5 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
       >
-        <Send size={15} />
+        <Send size={16} />
         {enviando ? 'Gerando...' : 'Gerar convite'}
       </button>
     </div>

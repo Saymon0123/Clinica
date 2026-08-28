@@ -33,7 +33,7 @@ export function ContatoContextoBar({
   if (!contexto) {
     return (
       <div className="flex items-center gap-2 px-4 py-2 bg-surface-2 border-b border-border text-xs text-muted-foreground">
-        <UserPlus size={13} className="shrink-0" />
+        <UserPlus size={14} className="shrink-0" />
         <span>Este número ainda não está cadastrado como cliente.</span>
       </div>
     )
@@ -44,7 +44,7 @@ export function ContatoContextoBar({
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2 bg-surface-2 border-b border-border text-xs text-muted-foreground">
       <span className="flex items-center gap-1.5">
-        <UserRound size={13} className="shrink-0" />
+        <UserRound size={14} className="shrink-0" />
         Cliente desde {data(clienteDesde)}
       </span>
 
@@ -59,7 +59,7 @@ export function ContatoContextoBar({
           porque muda o que o dono responde. */}
       {proximoAgendamento && (
         <span className="flex items-center gap-1.5 font-medium text-primary">
-          <CalendarClock size={13} className="shrink-0" />
+          <CalendarClock size={14} className="shrink-0" />
           Tem horário em {dataHora(proximoAgendamento)}
         </span>
       )}

@@ -123,7 +123,7 @@ export function UsoDoSistema() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="bg-surface-2 rounded-lg p-3">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <CalendarCheck size={13} /> Agendamentos cobráveis
+                <CalendarCheck size={14} /> Agendamentos cobráveis
               </div>
               <div className="text-xl font-semibold text-foreground mt-1">{uso.agendamentos}</div>
               <div className="text-[11px] text-muted-foreground">
@@ -139,14 +139,14 @@ export function UsoDoSistema() {
             </div>
             <div className="bg-surface-2 rounded-lg p-3">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <MessageSquareText size={13} /> Lembretes
+                <MessageSquareText size={14} /> Lembretes
               </div>
               <div className="text-xl font-semibold text-foreground mt-1">{uso.lembretes}</div>
               <div className="text-[11px] text-muted-foreground">sem custo</div>
             </div>
             <div className="bg-surface-2 rounded-lg p-3">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <RotateCcw size={13} /> Reativações
+                <RotateCcw size={14} /> Reativações
               </div>
               <div className="text-xl font-semibold text-foreground mt-1">{uso.reativacoes}</div>
               <div className="text-[11px] text-muted-foreground">sem custo</div>

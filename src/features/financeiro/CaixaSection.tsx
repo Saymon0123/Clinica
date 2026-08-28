@@ -246,7 +246,7 @@ export function CaixaSection({ salonId }: { salonId: string }) {
                 disabled={salvando}
                 className="w-full flex items-center justify-center gap-2 btn-secondary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
               >
-                <Lock size={15} />
+                <Lock size={16} />
                 {salvando ? 'Fechando...' : 'Registrar contagem e fechar o dia'}
               </button>
             </div>

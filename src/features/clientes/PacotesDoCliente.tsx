@@ -76,7 +76,7 @@ export function PacotesDoCliente({ clientId }: { clientId: string }) {
   return (
     <div>
       <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-        <Package size={13} />
+        <Package size={14} />
         Pacotes
       </h3>
       <div className="space-y-2">

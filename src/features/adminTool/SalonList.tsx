@@ -132,7 +132,7 @@ export function SalonList({ secret, refreshKey }: { secret: string; refreshKey: 
                 aria-label={`Editar ${s.nome}`}
                 className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-surface-2"
               >
-                <Pencil size={15} />
+                <Pencil size={16} />
               </button>
               <button
                 onClick={() => alternarAtivo(s)}
@@ -142,7 +142,7 @@ export function SalonList({ secret, refreshKey }: { secret: string; refreshKey: 
                   s.ativo ? 'text-muted-foreground hover:text-danger' : 'text-success'
                 }`}
               >
-                <Power size={15} />
+                <Power size={16} />
               </button>
             </div>
           </div>
@@ -186,7 +186,7 @@ export function SalonList({ secret, refreshKey }: { secret: string; refreshKey: 
               disabled={busy}
               className="w-full flex items-center justify-center gap-1.5 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
-              <Check size={15} />
+              <Check size={16} />
               {busy ? 'Salvando...' : 'Salvar'}
             </button>
         </Modal>

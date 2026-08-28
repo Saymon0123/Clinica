@@ -1,6 +1,7 @@
 import { CreditCard, CheckCircle2, AlertTriangle, Clock } from 'lucide-react'
 import { useSalon } from '../auth/useSalon'
 import { SkeletonPagina } from '../../components/Skeleton'
+import { PageHeader } from '../../components/PageHeader'
 import { useAssinatura, type Assinatura } from './useAssinatura'
 import { DadosDeCobranca } from './DadosDeCobranca'
 import { CancelarUso } from './CancelarUso'
@@ -104,15 +105,17 @@ export function AssinaturaPage() {
 
   return (
     <div className="space-y-5 max-w-2xl">
-      <div className="flex items-start gap-3">
-        <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary-soft text-primary-soft-foreground shrink-0">
-          <CreditCard size={18} />
-        </span>
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">Assinatura</h1>
-          <p className="text-sm text-muted-foreground">{salonName ?? 'Sua barbearia'}</p>
-        </div>
-      </div>
+      <PageHeader
+        titulo={
+          <span className="flex items-center gap-3">
+            <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary-soft text-primary-soft-foreground shrink-0">
+              <CreditCard size={18} />
+            </span>
+            Assinatura
+          </span>
+        }
+        subtitulo={salonName ?? 'Sua barbearia'}
+      />
 
       {erro && (
         <p className="text-sm text-danger bg-danger-soft border border-danger/30 rounded-lg p-4">
@@ -125,7 +128,7 @@ export function AssinaturaPage() {
       <UsoDoSistema />
 
       {assinatura && (
-        <div className="bg-surface border border-border rounded-xl shadow-sm p-4 space-y-4">
+        <div className="bg-surface border border-border rounded-xl shadow-sm p-5 space-y-4">
           <Situacao assinatura={assinatura} />
           {assinatura.status !== 'cancelada' && (
             <div className="pt-3 border-t border-border">

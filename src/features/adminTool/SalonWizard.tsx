@@ -188,7 +188,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
   // ---------- Tela de sucesso ----------
   if (resultado) {
     return (
-      <div className="bg-surface rounded-xl border border-success/40 p-6 space-y-4">
+      <div className="bg-surface rounded-xl border border-success/40 p-5 space-y-4">
         <div className="flex items-center gap-2 text-success">
           <Check size={20} />
           <h2 className="text-base font-semibold">
@@ -243,7 +243,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
   const grupos = [...new Set(servicos.map((s) => s.grupo))]
 
   return (
-    <div className="bg-surface rounded-xl border border-border shadow-sm p-6">
+    <div className="bg-surface rounded-xl border border-border shadow-sm p-5">
       {/* Progresso */}
       <div className="flex items-center gap-1 mb-6">
         {PASSOS.map((nome, i) => (
@@ -397,7 +397,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
               onClick={() => setUnidades((prev) => [...prev, unidadeVazia(false)])}
               className="flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
             >
-              <Plus size={15} />
+              <Plus size={16} />
               Adicionar unidade
             </button>
           )}

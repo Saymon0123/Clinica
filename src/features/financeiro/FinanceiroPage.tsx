@@ -24,6 +24,7 @@ import { StatsCard } from '../../components/StatsCard'
 import { EstadoVazio } from '../../components/EstadoVazio'
 import { SkeletonPagina } from '../../components/Skeleton'
 import { RadialGoal } from '../../components/RadialGoal'
+import { PageHeader } from '../../components/PageHeader'
 import { VendasSection } from '../vendas/VendasSection'
 import { FechamentoComissaoModal } from './FechamentoComissaoModal'
 import { CaixaSection } from './CaixaSection'
@@ -86,7 +87,7 @@ function ChangeBadge({
             : 'text-danger'
       }`}
     >
-      <Icon size={13} />
+      <Icon size={14} />
       {Math.abs(pct).toFixed(1)}%
     </span>
   )
@@ -189,14 +190,10 @@ export function FinanceiroPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">Financeiro</h1>
-          <p className="text-sm text-muted-foreground">
-            {isManager ? 'Desempenho e vendas da sua barbearia' : 'Seus atendimentos e sua comissão'}
-          </p>
-        </div>
-
+      <PageHeader
+        titulo="Financeiro"
+        subtitulo={isManager ? 'Desempenho e vendas da sua barbearia' : 'Seus atendimentos e sua comissão'}
+        acoes={<>
         <div className="inline-flex items-center rounded-lg bg-surface-2 border border-border p-1 text-sm">
           <button
             onClick={() => {
@@ -222,7 +219,7 @@ export function FinanceiroPage() {
               aria-label="Mês anterior"
               className="px-1.5 py-1.5 hover:text-foreground"
             >
-              <ChevronLeft size={15} />
+              <ChevronLeft size={16} />
             </button>
             <button onClick={() => setFilter('mes')} className="px-1 py-1.5 font-medium min-w-20 text-center">
               {filter === 'mes' ? rotuloPeriodo : ehMesCorrente ? 'Este mês' : labelDoMes(refMonth)}
@@ -236,7 +233,7 @@ export function FinanceiroPage() {
               aria-label="Próximo mês"
               className="px-1.5 py-1.5 hover:text-foreground disabled:opacity-30"
             >
-              <ChevronRight size={15} />
+              <ChevronRight size={16} />
             </button>
           </div>
         </div>
@@ -259,7 +256,7 @@ export function FinanceiroPage() {
                   : 'border-border-strong text-muted-foreground hover:bg-surface-2'
               }`}
             >
-              <Wallet size={15} />
+              <Wallet size={16} />
               {caixaAbertoDesde
                 ? `Caixa aberto · ${new Date(caixaAbertoDesde).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
                 : 'Caixa · abre na 1ª venda'}
@@ -270,12 +267,13 @@ export function FinanceiroPage() {
               onClick={() => setExporting(true)}
               className="flex items-center gap-2 btn-secondary rounded-lg px-3 py-2 text-sm font-medium"
             >
-              <Download size={15} />
+              <Download size={16} />
               Exportar
             </button>
           )}
         </div>
-      </div>
+        </>}
+      />
 
       {/* Abas: visão geral e vendas */}
       <div className="flex gap-1 border-b border-border">
@@ -327,7 +325,7 @@ export function FinanceiroPage() {
           return (
             <StatsCard
               key={key}
-              icon={<Icon size={15} />}
+              icon={<Icon size={16} />}
               label={label}
               value={loading ? 0 : metric.value}
               formattedValue={(n) => (format === 'currency' ? formatCurrency(n) : Math.round(n).toString())}
@@ -448,7 +446,7 @@ export function FinanceiroPage() {
                 onClick={() => setShowCelebration(true)}
                 className="inline-flex items-center gap-1.5 rounded-full bg-success-soft px-3 py-1 text-xs font-medium text-success"
               >
-                <PartyPopper size={13} />
+                <PartyPopper size={14} />
                 Meta atingida!
               </button>
             )}

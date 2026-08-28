@@ -236,7 +236,7 @@ export function AppointmentDetailModal({
                 onClick={() => setEditingDate(true)}
                 className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline pt-1"
               >
-                <CalendarClock size={13} />
+                <CalendarClock size={14} />
                 Alterar data/horário
               </button>
             ))}
@@ -251,7 +251,7 @@ export function AppointmentDetailModal({
               disabled={busy}
               className="w-full flex items-center justify-center gap-2 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
-              <Receipt size={15} />
+              <Receipt size={16} />
               Concluir e cobrar
             </button>
             {/* Confirmação inline, como no excluir: cancelar por engano era o
@@ -284,7 +284,7 @@ export function AppointmentDetailModal({
                 disabled={busy}
                 className="w-full flex items-center justify-center gap-1.5 border border-border-strong rounded-lg px-3 py-2 text-sm font-medium text-danger hover:bg-danger-soft disabled:opacity-50"
               >
-                <XCircle size={15} />
+                <XCircle size={16} />
                 Cancelar agendamento
               </button>
             )}
@@ -316,7 +316,7 @@ export function AppointmentDetailModal({
               onClick={() => setConfirmDelete(true)}
               className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-danger"
             >
-              <Trash2 size={13} />
+              <Trash2 size={14} />
               Excluir agendamento
             </button>
           )}

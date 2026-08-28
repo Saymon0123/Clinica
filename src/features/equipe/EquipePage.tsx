@@ -12,6 +12,7 @@ import { Badge } from '../../components/Badge'
 import { EstadoVazio } from '../../components/EstadoVazio'
 import { SkeletonPagina, SkeletonLinhas } from '../../components/Skeleton'
 import { Campo, Input, Select } from '../../components/Campo'
+import { PageHeader } from '../../components/PageHeader'
 
 type Membro = {
   id: string
@@ -254,25 +255,25 @@ export function EquipePage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">Equipe</h1>
-          <p className="text-sm text-muted-foreground">Barbeiros que atendem nesta barbearia</p>
-        </div>
-        <button
-          onClick={() => setModalAberto(true)}
-          className="flex items-center gap-2 btn-primary rounded-lg px-4 py-2 text-sm font-medium"
-        >
-          <Plus size={16} />
-          Convidar para a equipe
-        </button>
-      </div>
+      <PageHeader
+        titulo="Equipe"
+        subtitulo="Barbeiros que atendem nesta barbearia"
+        acoes={
+          <button
+            onClick={() => setModalAberto(true)}
+            className="flex items-center gap-2 btn-primary rounded-lg px-4 py-2 text-sm font-medium"
+          >
+            <Plus size={16} />
+            Convidar para a equipe
+          </button>
+        }
+      />
 
       {erro && <p className="text-sm text-danger">{erro}</p>}
 
       {/* Convites pendentes */}
       {convites.length > 0 && (
-        <div className="bg-surface border border-border rounded-xl shadow-sm p-4">
+        <div className="bg-surface border border-border rounded-xl shadow-sm p-5">
           <h2 className="text-sm font-semibold text-foreground mb-2">Convites aguardando</h2>
           <div className="divide-y divide-border">
             {convites.map((c) => (
@@ -319,7 +320,7 @@ export function EquipePage() {
                         onClick={() => copiar(c.token)}
                         className="btn-chip btn-chip-primario flex items-center gap-1.5"
                       >
-                        {copiado === c.token ? <Check size={13} /> : <Copy size={13} />}
+                        {copiado === c.token ? <Check size={14} /> : <Copy size={14} />}
                         {copiado === c.token ? 'Link copiado!' : 'Copiar link'}
                       </button>
                       <button
@@ -672,7 +673,7 @@ function ConviteModal({
               disabled={salvando}
               className="w-full flex items-center justify-center gap-2 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
-              <Link2 size={15} />
+              <Link2 size={16} />
               {salvando ? 'Gerando...' : 'Gerar link de convite'}
             </button>
           </form>

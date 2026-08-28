@@ -8,6 +8,7 @@ import { QrDoBalcao } from '../agendaPublica/QrDoBalcao'
 import { AvisoDeJornada } from './AvisoDeJornada'
 import { Campo, Input } from '../../components/Campo'
 import { SkeletonPagina } from '../../components/Skeleton'
+import { PageHeader } from '../../components/PageHeader'
 import { NovaUnidadeModal } from '../rede/NovaUnidadeModal'
 import {
   desserializarHorario,
@@ -164,12 +165,10 @@ export function ConfiguracoesPage() {
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight text-foreground">Configurações</h1>
-        <p className="text-sm text-muted-foreground">
-          Dados de {salonName ?? 'sua barbearia'} e horário de funcionamento
-        </p>
-      </div>
+      <PageHeader
+        titulo="Configurações"
+        subtitulo={`Dados de ${salonName ?? 'sua barbearia'} e horário de funcionamento`}
+      />
 
       <form onSubmit={salvar} className="space-y-6">
         <div className="bg-surface border border-border rounded-xl shadow-sm p-5 space-y-4">

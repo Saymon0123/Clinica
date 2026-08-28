@@ -144,7 +144,7 @@ export function Tour({ chave, passos }: { chave: string; passos: PassoDoTour[] }
           title="Ver o tour desta tela"
           className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] md:bottom-6 left-4 z-30 w-9 h-9 rounded-full bg-surface border border-border text-muted-foreground hover:text-foreground hover:border-border-strong flex items-center justify-center shadow-sm transition-colors"
         >
-          <HelpCircle size={17} />
+          <HelpCircle size={18} />
         </button>
       )}
 

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Check, CreditCard } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { apenasDigitos, formatarDocumento, problemaNoDocumento } from '../../lib/documento'
+import { Campo, Input } from '../../components/Campo'
 
 /**
  * Coleta o CPF/CNPJ de quem paga a plataforma.
@@ -97,9 +98,9 @@ export function DadosDeCobranca({
         Precisamos do CPF ou CNPJ de quem vai pagar para emitir a cobrança.
       </p>
 
-      <label className="block">
-        <span className="text-sm text-muted-foreground">CPF ou CNPJ</span>
-        <input
+      <Campo rotulo="CPF ou CNPJ" htmlFor="cobranca-documento">
+        <Input
+          id="cobranca-documento"
           value={documento}
           onChange={(e) => {
             setDocumento(formatarDocumento(e.target.value))
@@ -108,9 +109,8 @@ export function DadosDeCobranca({
           }}
           inputMode="numeric"
           placeholder="000.000.000-00"
-          className="w-full mt-1 rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-foreground"
         />
-      </label>
+      </Campo>
 
       {erro && <p className="text-sm text-danger mt-2">{erro}</p>}
 

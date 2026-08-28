@@ -3,6 +3,8 @@ import { Building2, Receipt } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { invokeFunction } from '../../lib/invokeFunction'
 import { useSalon } from '../auth/useSalon'
+import { Campo, Input } from '../../components/Campo'
+import { SkeletonLinhas } from '../../components/Skeleton'
 
 function moeda(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -109,7 +111,7 @@ export function CobrancaDaRede() {
       </div>
 
       {carregando ? (
-        <p className="text-sm text-muted-foreground">Carregando...</p>
+        <SkeletonLinhas />
       ) : (
         <>
           <ul className="divide-y divide-border rounded-lg border border-border">
@@ -151,17 +153,16 @@ export function CobrancaDaRede() {
             </div>
           ) : (
             <div className="space-y-3">
-              <label className="block max-w-xs">
-                <span className="text-xs font-medium text-muted-foreground">
-                  CPF ou CNPJ do pagante da rede
-                </span>
-                <input
-                  value={cpfCnpj}
-                  onChange={(e) => setCpfCnpj(e.target.value)}
-                  placeholder="00.000.000/0000-00"
-                  className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
-                />
-              </label>
+              <div className="max-w-xs">
+                <Campo rotulo="CPF ou CNPJ do pagante da rede" htmlFor="rede-cpf-cnpj">
+                  <Input
+                    id="rede-cpf-cnpj"
+                    value={cpfCnpj}
+                    onChange={(e) => setCpfCnpj(e.target.value)}
+                    placeholder="00.000.000/0000-00"
+                  />
+                </Campo>
+              </div>
               <button
                 type="button"
                 onClick={alternar}

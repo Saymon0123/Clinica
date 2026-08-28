@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Check, Eye, EyeOff, Scissors } from 'lucide-react'
 import { invokeFunction } from '../../lib/invokeFunction'
+import { Input } from '../../components/Campo'
 import { VERSAO_DOS_TERMOS } from '../../lib/termos'
 
 type ConviteInfo = {
@@ -175,12 +176,12 @@ export function AceitarConvitePage() {
             {info.pedeNome && (
               <label className="block">
                 <span className="text-xs font-medium text-muted-foreground">Como você se chama?</span>
-                <input
+                <Input
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
                   placeholder="Seu nome"
                   autoComplete="name"
-                  className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
+                  className="mt-1"
                 />
                 <span className="block text-[11px] text-muted-foreground mt-1">
                   É o nome que aparece na agenda e que o atendimento no WhatsApp usa.
@@ -193,13 +194,13 @@ export function AceitarConvitePage() {
                 {info.contaExiste ? 'Sua senha do Club Cut' : 'Crie uma senha'}
               </span>
               <div className="relative mt-1">
-                <input
+                <Input
                   type={mostrarSenha ? 'text' : 'password'}
                   value={senha}
                   onChange={(e) => setSenha(e.target.value)}
                   placeholder={info.contaExiste ? 'A senha da sua conta' : 'Mínimo 8 caracteres'}
                   autoComplete={info.contaExiste ? 'current-password' : 'new-password'}
-                  className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 pr-10 text-sm"
+                  className="pr-10"
                 />
                 <button
                   type="button"
@@ -216,11 +217,11 @@ export function AceitarConvitePage() {
             {!info.contaExiste && (
               <label className="block">
                 <span className="text-xs font-medium text-muted-foreground">Repita a senha</span>
-                <input
+                <Input
                   type={mostrarSenha ? 'text' : 'password'}
                   value={confirmacao}
                   onChange={(e) => setConfirmacao(e.target.value)}
-                  className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
+                  className="mt-1"
                 />
               </label>
             )}

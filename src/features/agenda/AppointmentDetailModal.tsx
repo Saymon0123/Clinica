@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CalendarClock, Trash2, XCircle, Receipt } from 'lucide-react'
 import { Modal } from '../../components/Modal'
+import { Input } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../../components/Toast'
 import type { Appointment } from './types'
@@ -188,21 +189,23 @@ export function AppointmentDetailModal({
               <div className="mt-3 pt-3 border-t border-border space-y-2">
                 <span className="text-xs font-medium text-muted-foreground">Nova data e horário</span>
                 <div className="flex gap-2">
-                  <input
-                    type="date"
-                    value={dateValue}
-                    onChange={(e) => setDateValue(e.target.value)}
-                    aria-label="Nova data"
-                    className="flex-1 border border-border-strong bg-surface text-foreground rounded-lg px-2 py-2 text-sm"
-                  />
-                  <input
-                    type="time"
-                    value={timeValue}
-                    onChange={(e) => setTimeValue(e.target.value)}
-                    step={300}
-                    aria-label="Novo horário"
-                    className="w-28 border border-border-strong bg-surface text-foreground rounded-lg px-2 py-2 text-sm"
-                  />
+                  <div className="flex-1">
+                    <Input
+                      type="date"
+                      value={dateValue}
+                      onChange={(e) => setDateValue(e.target.value)}
+                      aria-label="Nova data"
+                    />
+                  </div>
+                  <div className="w-28">
+                    <Input
+                      type="time"
+                      value={timeValue}
+                      onChange={(e) => setTimeValue(e.target.value)}
+                      step={300}
+                      aria-label="Novo horário"
+                    />
+                  </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   A duração do serviço é mantida automaticamente.

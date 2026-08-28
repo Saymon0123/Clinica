@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { useSalon } from './useSalon'
+import { SkeletonPagina } from '../../components/Skeleton'
 
 /**
  * Barra as telas de WhatsApp para quem não é dono nem gerente.
@@ -16,7 +17,11 @@ export function RequireManager({ children }: { children: ReactNode }) {
   const { isManager, loading } = useSalon()
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Carregando...</p>
+    return (
+      <div className="p-4 md:p-6">
+        <SkeletonPagina />
+      </div>
+    )
   }
 
   if (!isManager) {

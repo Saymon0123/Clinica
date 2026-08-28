@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { ArrowLeft, AlertCircle, Bot, MessageCircle, Search, Send, Sparkles } from 'lucide-react'
+import { ArrowLeft, AlertCircle, Bot, Building2, MessageCircle, Search, Send, Sparkles } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
 import { useConversations } from './useConversations'
 import { useMessages } from './useMessages'
 import { ThemeToggle } from '../../components/ThemeToggle'
+import { Badge } from '../../components/Badge'
+import { EstadoVazio } from '../../components/EstadoVazio'
+import { SkeletonPagina } from '../../components/Skeleton'
+import { Input, TextArea } from '../../components/Campo'
 import { ContextPopup } from './ContextPopup'
 import { ContatoContextoBar } from './ContatoContextoBar'
 import { useContatoContexto } from './useContatoContexto'
@@ -168,14 +172,20 @@ export function WhatsAppWebPage() {
   }
 
   if (salonLoading) {
-    return <div className="p-6 text-sm text-muted-foreground">Carregando...</div>
+    return (
+      <div className="p-6">
+        <SkeletonPagina />
+      </div>
+    )
   }
 
   if (!salonId) {
     return (
-      <div className="p-6 text-sm text-muted-foreground">
-        Sua conta ainda não está vinculada a um salão.
-      </div>
+      <EstadoVazio
+        icone={Building2}
+        titulo="Conta sem barbearia vinculada"
+        descricao="Sua conta ainda não está vinculada a um salão."
+      />
     )
   }
 
@@ -239,11 +249,11 @@ export function WhatsAppWebPage() {
                 size={14}
                 className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
               />
-              <input
+              <Input
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
                 placeholder="Buscar por nome ou telefone"
-                className="w-full rounded-md border border-border bg-surface-2 pl-8 pr-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground"
+                className="pl-8 placeholder:text-muted-foreground"
               />
             </div>
           </div>
@@ -251,13 +261,16 @@ export function WhatsAppWebPage() {
           {error && <p className="text-sm text-danger p-4">{error}</p>}
 
           {!loading && conversations.length === 0 && (
-            <p className="text-sm text-muted-foreground p-6 text-center">
-              {busca.trim()
-                ? 'Nenhuma conversa encontrada para essa busca.'
-                : tab === 'precisa_dono'
-                  ? 'Nenhuma conversa aguardando o dono.'
-                  : 'Nenhuma conversa ainda.'}
-            </p>
+            <EstadoVazio
+              icone={MessageCircle}
+              titulo={
+                busca.trim()
+                  ? 'Nenhuma conversa encontrada para essa busca.'
+                  : tab === 'precisa_dono'
+                    ? 'Nenhuma conversa aguardando o dono.'
+                    : 'Nenhuma conversa ainda.'
+              }
+            />
           )}
 
           {conversations.map((c) => (
@@ -322,18 +335,8 @@ export function WhatsAppWebPage() {
                     só trocando de aba, o que esconde justamente o urgente. */}
                 {(c.needs_human || c.agent_paused) && (
                   <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                    {c.needs_human && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-danger-soft text-danger px-1.5 py-0.5 text-[10px] font-semibold">
-                        <AlertCircle size={10} />
-                        Pediu você
-                      </span>
-                    )}
-                    {c.agent_paused && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 border border-border text-muted-foreground px-1.5 py-0.5 text-[10px] font-medium">
-                        <Bot size={10} />
-                        Agente pausado
-                      </span>
-                    )}
+                    {c.needs_human && <Badge variante="perigo">Pediu você</Badge>}
+                    {c.agent_paused && <Badge variante="neutro">Agente pausado</Badge>}
                   </div>
                 )}
               </div>
@@ -346,16 +349,12 @@ export function WhatsAppWebPage() {
           {!selectedConversation ? (
             /* É a primeira coisa que o dono vê ao abrir a aba. Uma frase solta
                no meio do vazio parecia tela quebrada. */
-            <div className="flex-1 flex flex-col items-center justify-center gap-3 px-6 text-center">
-              <span className="w-14 h-14 rounded-full bg-surface-2 border border-border flex items-center justify-center text-muted-foreground">
-                <MessageCircle size={24} />
-              </span>
-              <div>
-                <p className="text-sm font-medium text-foreground">Suas conversas do WhatsApp</p>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  Escolha alguém na lista ao lado para ler e responder.
-                </p>
-              </div>
+            <div className="flex-1 flex flex-col items-center justify-center">
+              <EstadoVazio
+                icone={MessageCircle}
+                titulo="Suas conversas do WhatsApp"
+                descricao="Escolha alguém na lista ao lado para ler e responder."
+              />
             </div>
           ) : (
             <>
@@ -503,7 +502,7 @@ export function WhatsAppWebPage() {
               <form onSubmit={handleSend} className="bg-surface border-t border-border p-3">
                 {sendError && <p className="text-xs text-danger mb-2">{sendError}</p>}
                 <div className="flex items-end gap-2">
-                  <textarea
+                  <TextArea
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     onKeyDown={(e) => {
@@ -514,7 +513,7 @@ export function WhatsAppWebPage() {
                     }}
                     placeholder="Digite uma mensagem"
                     rows={1}
-                    className="flex-1 resize-none border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm max-h-32"
+                    className="flex-1 resize-none max-h-32"
                   />
                   <button
                     type="submit"

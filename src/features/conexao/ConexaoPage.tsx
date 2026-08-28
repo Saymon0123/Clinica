@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { BadgeCheck, CheckCircle2, MessageCircle, RefreshCw } from 'lucide-react'
+import { BadgeCheck, Building2, CheckCircle2, MessageCircle, RefreshCw } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
 import { AgentDashboard } from './AgentDashboard'
+import { EstadoVazio } from '../../components/EstadoVazio'
+import { SkeletonPagina } from '../../components/Skeleton'
 import { Tour } from '../tour/Tour'
 import { PASSOS_CONEXAO } from '../tour/passos'
 
@@ -74,14 +76,16 @@ export function ConexaoPage() {
   const conexao = estado.conexao
 
   if (salonLoading || carregandoConexao) {
-    return <p className="text-sm text-muted-foreground">Carregando...</p>
+    return <SkeletonPagina />
   }
 
   if (!salonId) {
     return (
-      <p className="text-sm text-muted-foreground">
-        Sua conta ainda não está vinculada a um salão. Fale com o administrador do sistema.
-      </p>
+      <EstadoVazio
+        icone={Building2}
+        titulo="Conta sem barbearia vinculada"
+        descricao="Sua conta ainda não está vinculada a um salão. Fale com o administrador do sistema."
+      />
     )
   }
 

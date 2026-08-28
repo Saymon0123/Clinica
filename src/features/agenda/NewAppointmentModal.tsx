@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Modal } from '../../components/Modal'
+import { Campo, Input, Select } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
 import type { Professional, Service } from './types'
 
@@ -154,72 +155,62 @@ export function NewAppointmentModal({
   return (
     <Modal onClose={onClose} titulo="Nova reserva" tamanho="md">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm text-muted-foreground mb-1" htmlFor="clientName">Cliente</label>
-            <input
+          <Campo rotulo="Cliente" htmlFor="clientName">
+            <Input
               id="clientName"
               value={clientName}
               onChange={(e) => setClientName(e.target.value)}
               required
-              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               placeholder="Nome do cliente"
             />
-          </div>
+          </Campo>
 
-          <div>
-            <label className="block text-sm text-muted-foreground mb-1" htmlFor="clientPhone">Telefone (opcional)</label>
-            <input
+          <Campo rotulo="Telefone (opcional)" htmlFor="clientPhone">
+            <Input
               id="clientPhone"
               value={clientPhone}
               onChange={(e) => setClientPhone(e.target.value)}
-              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               placeholder="(11) 90000-0000"
             />
-          </div>
+          </Campo>
 
-          <div>
-            <label className="block text-sm text-muted-foreground mb-1" htmlFor="professional">Profissional</label>
-            <select
+          <Campo rotulo="Profissional" htmlFor="professional">
+            <Select
               id="professional"
               value={professionalId}
               onChange={(e) => setProfessionalId(e.target.value)}
               required
-              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             >
               {professionals.map((p) => (
                 <option key={p.id} value={p.id}>{p.nome}</option>
               ))}
-            </select>
-          </div>
+            </Select>
+          </Campo>
 
-          <div>
-            <label className="block text-sm text-muted-foreground mb-1" htmlFor="service">Serviço</label>
-            <select
+          <Campo rotulo="Serviço" htmlFor="service">
+            <Select
               id="service"
               value={serviceId}
               onChange={(e) => setServiceId(e.target.value)}
               required
-              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             >
               {services.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.nome} · {s.duracao_minutos}min · R$ {s.preco.toFixed(2)}
                 </option>
               ))}
-            </select>
-          </div>
+            </Select>
+          </Campo>
 
-          <div>
-            <label className="block text-sm text-muted-foreground mb-1" htmlFor="time">Horário</label>
-            <input
+          <Campo rotulo="Horário" htmlFor="time">
+            <Input
               id="time"
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
               required
-              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             />
-          </div>
+          </Campo>
 
           {error && <p className="text-sm text-danger">{error}</p>}
 

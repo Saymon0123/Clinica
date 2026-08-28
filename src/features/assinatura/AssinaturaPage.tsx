@@ -1,5 +1,6 @@
 import { CreditCard, CheckCircle2, AlertTriangle, Clock } from 'lucide-react'
 import { useSalon } from '../auth/useSalon'
+import { SkeletonPagina } from '../../components/Skeleton'
 import { useAssinatura, type Assinatura } from './useAssinatura'
 import { DadosDeCobranca } from './DadosDeCobranca'
 import { CancelarUso } from './CancelarUso'
@@ -88,7 +89,7 @@ export function AssinaturaPage() {
   const { assinatura, loading, erro, reload } = useAssinatura(salonId)
 
   if (salonLoading || loading) {
-    return <p className="text-sm text-muted-foreground">Carregando...</p>
+    return <SkeletonPagina />
   }
 
   // Dono de rede sem unidade escolhida: o uso é por unidade, então não há o

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './AuthContext'
+import { SkeletonPagina } from '../../components/Skeleton'
 
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
@@ -8,8 +9,8 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-sm text-gray-500">
-        Carregando...
+      <div className="p-4 md:p-6">
+        <SkeletonPagina />
       </div>
     )
   }

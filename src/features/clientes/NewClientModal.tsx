@@ -3,6 +3,7 @@ import { Modal } from '../../components/Modal'
 import { Campo, Input, TextArea } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
 import type { Client } from './types'
+import { ErroInline } from '../../components/ErroInline'
 
 type Props = {
   salonId: string
@@ -102,7 +103,7 @@ export function NewClientModal({ salonId, initial, onClose, onCreated }: Props) 
             />
           </Campo>
 
-          {error && <p className="text-sm text-danger">{error}</p>}
+          <ErroInline>{error}</ErroInline>
 
           <div className="flex gap-2 pt-2">
             <button

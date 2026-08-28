@@ -13,6 +13,7 @@ import { SkeletonPagina } from '../../components/Skeleton'
 import { Input } from '../../components/Campo'
 import { PageHeader } from '../../components/PageHeader'
 import type { Client } from './types'
+import { ErroInline } from '../../components/ErroInline'
 
 function formatDate(iso: string | null) {
   if (!iso) return '—'
@@ -170,7 +171,7 @@ export function ClientesPage() {
         </div>
       )}
 
-      {error && <p className="text-sm text-danger mb-3">{error}</p>}
+      <div className="mb-3"><ErroInline>{error}</ErroInline></div>
 
       {!loading && clients.length === 0 ? (
         <div className="bg-surface rounded-xl border border-border shadow-sm flex flex-col items-center justify-center text-center py-16 px-4">

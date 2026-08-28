@@ -4,6 +4,7 @@ import { Check, Eye, EyeOff, Scissors } from 'lucide-react'
 import { invokeFunction } from '../../lib/invokeFunction'
 import { Input } from '../../components/Campo'
 import { VERSAO_DOS_TERMOS } from '../../lib/termos'
+import { ErroInline } from '../../components/ErroInline'
 
 type ConviteInfo = {
   nome: string | null
@@ -132,7 +133,7 @@ export function AceitarConvitePage() {
         ) : !info ? (
           <div className="space-y-3">
             <h1 className="text-base font-semibold text-foreground">Convite indisponível</h1>
-            <p className="text-sm text-danger">{erro}</p>
+            <ErroInline>{erro}</ErroInline>
             <Link to="/login" className="block text-sm text-primary hover:underline">
               Ir para o login
             </Link>
@@ -258,7 +259,7 @@ export function AceitarConvitePage() {
               </span>
             </label>
 
-            {erro && <p className="text-sm text-danger">{erro}</p>}
+            <ErroInline>{erro}</ErroInline>
 
             <button
               type="submit"

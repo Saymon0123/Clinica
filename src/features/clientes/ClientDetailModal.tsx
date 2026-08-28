@@ -21,6 +21,7 @@ type HistoryOrder = {
 }
 
 import { PacotesDoCliente } from './PacotesDoCliente'
+import { ErroInline } from '../../components/ErroInline'
 
 const STATUS_LABELS: Record<string, string> = {
   agendado: 'Agendado',
@@ -164,9 +165,11 @@ export function ClientDetailModal({
         {loading ? (
           <p className="text-sm text-muted-foreground py-4 text-center">Carregando histórico...</p>
         ) : erro ? (
-          <p className="text-sm text-danger py-4 text-center">
-            Não foi possível carregar o histórico. Feche e abra a ficha de novo.
-          </p>
+          <div className="py-4">
+            <ErroInline>
+              Não foi possível carregar o histórico. Feche e abra a ficha de novo.
+            </ErroInline>
+          </div>
         ) : (
           <div className="space-y-5">
             <div>

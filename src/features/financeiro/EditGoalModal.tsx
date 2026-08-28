@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Modal } from '../../components/Modal'
 import { Campo, Input } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
+import { ErroInline } from '../../components/ErroInline'
 
 export function EditGoalModal({
   salonId,
@@ -58,7 +59,7 @@ export function EditGoalModal({
           />
         </Campo>
 
-        {error && <p className="text-sm text-danger">{error}</p>}
+        <ErroInline>{error}</ErroInline>
 
         <div className="flex gap-2">
           <button

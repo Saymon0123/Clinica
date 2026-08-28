@@ -6,6 +6,7 @@ import { EstadoVazio } from '../../components/EstadoVazio'
 import { Input } from '../../components/Campo'
 import { Skeleton, SkeletonLinhas } from '../../components/Skeleton'
 import { supabase } from '../../lib/supabase'
+import { ErroInline } from '../../components/ErroInline'
 
 type SalonRow = {
   id: string
@@ -103,7 +104,7 @@ export function SalonList({ secret, refreshKey }: { secret: string; refreshKey: 
         </button>
       </div>
 
-      {erro && <p className="text-sm text-danger">{erro}</p>}
+      <ErroInline>{erro}</ErroInline>
 
       {loading && salons.length === 0 && <SkeletonLinhas />}
 

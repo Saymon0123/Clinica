@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
 import { useAuth } from './AuthContext'
+import { ErroInline } from '../../components/ErroInline'
 
 export function LoginPage() {
   const { signIn } = useAuth()
@@ -81,7 +82,7 @@ export function LoginPage() {
           </div>
         </div>
 
-        {error && <p className="text-sm text-danger">{error}</p>}
+        <ErroInline>{error}</ErroInline>
 
         <button
           type="submit"

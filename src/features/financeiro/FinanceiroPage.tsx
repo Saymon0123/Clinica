@@ -32,6 +32,7 @@ import type { SalePrefill } from '../vendas/NewSaleModal'
 import { EditGoalModal } from './EditGoalModal'
 import { ExportReportModal } from './ExportReportModal'
 import { GoalReachedModal } from './GoalReachedModal'
+import { ErroInline } from '../../components/ErroInline'
 
 function formatCurrency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -299,6 +300,8 @@ export function FinanceiroPage() {
         </button>
       </div>
 
+      {/* key={tab} remonta o wrapper na troca e dispara a entrada animada. */}
+      <div key={tab} className="aba-entra space-y-5">
       {tab === 'vendas' ? (
         <VendasSection
           salonId={salonId}
@@ -310,7 +313,7 @@ export function FinanceiroPage() {
         />
       ) : (
         <>
-      {error && <p className="text-sm text-danger">{error}</p>}
+      <ErroInline>{error}</ErroInline>
 
       {/* Cards de métrica com mini-gráfico animado */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -393,7 +396,8 @@ export function FinanceiroPage() {
                   stroke="var(--chart-line)"
                   strokeWidth={2.5}
                   fill="url(#clientsFill)"
-                  isAnimationActive={false}
+                  animationDuration={700}
+                  animationEasing="ease-out"
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -549,6 +553,7 @@ export function FinanceiroPage() {
       </p>
         </>
       )}
+      </div>
 
       {showCelebration && (
         <GoalReachedModal

@@ -8,6 +8,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useSalon } from '../auth/useSalon'
 import type { SaleItemDraft } from './types'
 import { PAYMENT_LABELS } from './types'
+import { ErroInline } from '../../components/ErroInline'
 
 type Option = { id: string; nome: string; preco: number }
 type ClientOption = { id: string; nome: string }
@@ -835,7 +836,7 @@ export function NewSaleModal({
             </div>
           </div>
 
-          {error && <p className="text-sm text-danger">{error}</p>}
+          <ErroInline>{error}</ErroInline>
 
           <div className="flex gap-2 pt-1">
             <button

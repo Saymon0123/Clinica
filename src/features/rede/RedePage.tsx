@@ -21,6 +21,7 @@ import { PageHeader } from '../../components/PageHeader'
 import { useSalon } from '../auth/useSalon'
 import { useProducaoBarbeiros } from './useProducaoBarbeiros'
 import { useRedeData, type Periodo } from './useRedeData'
+import { ErroInline } from '../../components/ErroInline'
 
 function moeda(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -111,7 +112,7 @@ export function RedePage() {
       </>}
       />
 
-      {(erro || erroProducao) && <p className="text-sm text-danger">{erro ?? erroProducao}</p>}
+      <ErroInline>{erro ?? erroProducao}</ErroInline>
 
       {/* Totais da rede */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">

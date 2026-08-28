@@ -463,8 +463,17 @@ body {
 }
 .modal-veu { animation: modal-veu 120ms ease-out; }
 .modal-painel { animation: modal-surge 150ms var(--ease-out); }
+
+/* Entrada de conteúdo ao trocar de aba (leva 4): fade + deslize curto. Usar
+   com `key={aba}` no wrapper, para o React remontar e a animação disparar. */
+@keyframes aba-entra {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.aba-entra { animation: aba-entra 180ms var(--ease-out); }
+
 @media (prefers-reduced-motion: reduce) {
-  .modal-veu, .modal-painel { animation: none; }
+  .modal-veu, .modal-painel, .aba-entra { animation: none; }
 }
 
 @keyframes faixa-desliza {

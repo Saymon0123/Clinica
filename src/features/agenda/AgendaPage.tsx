@@ -12,6 +12,7 @@ import { CardAtivacao } from '../ativacao/CardAtivacao'
 import { PageHeader } from '../../components/PageHeader'
 import { SkeletonPagina } from '../../components/Skeleton'
 import { EstadoVazio } from '../../components/EstadoVazio'
+import { ErroInline } from '../../components/ErroInline'
 
 const HOUR_START = 6
 const HOUR_END = 22
@@ -286,7 +287,7 @@ export function AgendaPage() {
             de presença deixou de ser do barbeiro. Quem fecha o ciclo é o
             banco — 15 min após o fim previsto do serviço, sem comanda fechada,
             o agendamento cancela sozinho (cancela_agendamentos_sem_comanda). */}
-        {error && <p className="text-sm text-danger mb-3">{error}</p>}
+        <div className="mb-3"><ErroInline>{error}</ErroInline></div>
 
         {!loading && professionals.length === 0 ? (
           <EstadoVazio
@@ -370,12 +371,16 @@ export function AgendaPage() {
         )}
         {rescheduling && <p className="text-xs text-muted-foreground mt-2">Reagendando...</p>}
         {rescheduleError && (
-          <p className="text-xs text-danger mt-2 flex items-center gap-2">
-            {rescheduleError}
-            <button onClick={() => setRescheduleError(null)} className="underline">
-              fechar
-            </button>
-          </p>
+          <div className="mt-2">
+            <ErroInline>
+              <span className="flex items-center gap-2">
+                {rescheduleError}
+                <button onClick={() => setRescheduleError(null)} className="underline">
+                  fechar
+                </button>
+              </span>
+            </ErroInline>
+          </div>
         )}
       </div>
 

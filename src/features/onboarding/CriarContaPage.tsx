@@ -5,6 +5,7 @@ import { Eye, EyeOff, MailCheck } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { APP_URL } from '../../lib/appUrl'
 import { DIAS_DE_TESTE } from '../../lib/planos'
+import { ErroInline } from '../../components/ErroInline'
 
 /**
  * Primeiro passo do cadastro aberto: a conta.
@@ -100,7 +101,7 @@ export function CriarContaPage() {
             Se esse e-mail já tinha conta, nada mudou: é só entrar normalmente.
           </p>
 
-          {erro && <p className="text-sm text-danger">{erro}</p>}
+          <ErroInline>{erro}</ErroInline>
 
           <Link
             to="/login"
@@ -178,7 +179,7 @@ export function CriarContaPage() {
             </div>
           </label>
 
-          {erro && <p className="text-sm text-danger">{erro}</p>}
+          <ErroInline>{erro}</ErroInline>
 
           <button
             type="submit"

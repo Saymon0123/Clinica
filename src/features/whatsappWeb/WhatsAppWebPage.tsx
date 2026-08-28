@@ -16,6 +16,7 @@ import { formatarTelefone } from '../../lib/telefone'
 import { filtrarEOrdenar, naoLida } from './lista'
 import { montarThread } from './thread'
 import { lerResumoVisto, marcarResumoVisto } from './resumoVisto'
+import { ErroInline } from '../../components/ErroInline'
 
 type Tab = 'todas' | 'precisa_dono'
 
@@ -258,7 +259,7 @@ export function WhatsAppWebPage() {
             </div>
           </div>
 
-          {error && <p className="text-sm text-danger p-4">{error}</p>}
+          <div className="p-4"><ErroInline>{error}</ErroInline></div>
 
           {!loading && conversations.length === 0 && (
             <EstadoVazio
@@ -421,7 +422,7 @@ export function WhatsAppWebPage() {
                         ? 'O agente não responde este cliente enquanto você estiver no comando.'
                         : 'O cliente pediu para falar com você.'}
                     </span>
-                    {resumeError && <p className="text-xs text-danger">{resumeError}</p>}
+                    <ErroInline>{resumeError}</ErroInline>
                   </div>
                 )}
               </div>
@@ -500,7 +501,7 @@ export function WhatsAppWebPage() {
               </div>
 
               <form onSubmit={handleSend} className="bg-surface border-t border-border p-3">
-                {sendError && <p className="text-xs text-danger mb-2">{sendError}</p>}
+                <div className="mb-2"><ErroInline>{sendError}</ErroInline></div>
                 <div className="flex items-end gap-2">
                   <TextArea
                     value={draft}

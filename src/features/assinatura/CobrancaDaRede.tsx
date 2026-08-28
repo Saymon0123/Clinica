@@ -5,6 +5,7 @@ import { invokeFunction } from '../../lib/invokeFunction'
 import { useSalon } from '../auth/useSalon'
 import { Campo, Input } from '../../components/Campo'
 import { SkeletonLinhas } from '../../components/Skeleton'
+import { ErroInline } from '../../components/ErroInline'
 
 function moeda(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -178,7 +179,7 @@ export function CobrancaDaRede() {
             </div>
           )}
 
-          {erro && <p className="text-sm text-danger">{erro}</p>}
+          <ErroInline>{erro}</ErroInline>
         </>
       )}
     </section>

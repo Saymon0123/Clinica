@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { invokeFunction } from '../../lib/invokeFunction'
 import { SkeletonLinhas } from '../../components/Skeleton'
+import { ErroInline } from '../../components/ErroInline'
 
 /**
  * O funil, em números.
@@ -63,7 +64,7 @@ export function MetricasDoProduto({ secret }: { secret: string }) {
     carregar()
   }, [secret])
 
-  if (erro) return <p className="text-sm text-danger">{erro}</p>
+  if (erro) return <ErroInline>{erro}</ErroInline>
   if (!m) return <SkeletonLinhas />
 
   return (

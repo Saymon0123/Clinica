@@ -3,6 +3,7 @@ import { Upload } from 'lucide-react'
 import { Modal } from '../../components/Modal'
 import { supabase } from '../../lib/supabase'
 import { parseCsv } from '../../lib/csv'
+import { ErroInline } from '../../components/ErroInline'
 
 type Parsed = { nome: string; telefone: string | null; aniversario: string | null; observacao: string | null }
 
@@ -174,7 +175,7 @@ export function ImportClientsModal({
               </p>
             )}
 
-            {error && <p className="text-sm text-danger">{error}</p>}
+            <ErroInline>{error}</ErroInline>
 
             <button
               onClick={handleImport}

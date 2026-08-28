@@ -6,6 +6,7 @@ import { Input } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../../components/Toast'
 import type { Appointment } from './types'
+import { ErroInline } from '../../components/ErroInline'
 
 const STATUS_LABELS: Record<string, string> = {
   agendado: 'Agendado',
@@ -242,7 +243,7 @@ export function AppointmentDetailModal({
             ))}
         </div>
 
-        {error && <p className="text-sm text-danger mb-3">{error}</p>}
+        <div className="mb-3"><ErroInline>{error}</ErroInline></div>
 
         {!isFinal && (
           <div className="space-y-2">

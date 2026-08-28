@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from './AuthContext'
+import { ErroInline } from '../../components/ErroInline'
 
 export function ResetPasswordPage() {
   const navigate = useNavigate()
@@ -88,7 +89,7 @@ export function ResetPasswordPage() {
           />
         </div>
 
-        {error && <p className="text-sm text-danger">{error}</p>}
+        <ErroInline>{error}</ErroInline>
 
         <button
           type="submit"

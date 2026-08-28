@@ -3,6 +3,7 @@ import { Building2 } from 'lucide-react'
 import { Modal } from '../../components/Modal'
 import { Campo, Input } from '../../components/Campo'
 import { invokeFunction } from '../../lib/invokeFunction'
+import { ErroInline } from '../../components/ErroInline'
 
 type Resultado = {
   salonId: string
@@ -132,7 +133,7 @@ export function NovaUnidadeModal({
             <span className="text-sm text-foreground">Copiar os serviços desta unidade</span>
           </label>
 
-          {erro && <p className="text-sm text-danger">{erro}</p>}
+          <ErroInline>{erro}</ErroInline>
 
           <button
             type="submit"

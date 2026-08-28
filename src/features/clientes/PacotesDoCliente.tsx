@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Package } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { ErroInline } from '../../components/ErroInline'
 
 /**
  * Os pacotes pré-pagos do cliente, na ficha.
@@ -58,9 +59,9 @@ export function PacotesDoCliente({ clientId }: { clientId: string }) {
   if (!carregado) return null
   if (erro) {
     return (
-      <p className="text-sm text-danger">
+      <ErroInline>
         Não foi possível carregar os pacotes. Feche e abra a ficha de novo.
-      </p>
+      </ErroInline>
     )
   }
   if (linhas.length === 0) return null

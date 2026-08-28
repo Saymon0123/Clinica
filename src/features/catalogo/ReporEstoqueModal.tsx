@@ -5,6 +5,7 @@ import { Campo, Input } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../../components/Toast'
 import type { ProductItem } from './types'
+import { ErroInline } from '../../components/ErroInline'
 
 /**
  * Reposição em um toque: "quantas chegaram?" e pronto — o sistema soma.
@@ -76,7 +77,7 @@ export function ReporEstoqueModal({
               : ''}
           </p>
 
-          {erro && <p className="text-sm text-danger">{erro}</p>}
+          <ErroInline>{erro}</ErroInline>
 
           <button
             type="submit"

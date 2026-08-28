@@ -3,6 +3,7 @@ import { Download, QrCode } from 'lucide-react'
 import { useSalon } from '../auth/useSalon'
 import { useRecurso } from '../recursos/useRecurso'
 import { APP_URL } from '../../lib/appUrl'
+import { ErroInline } from '../../components/ErroInline'
 
 /**
  * O cartaz do balcão, em PDF.
@@ -113,7 +114,7 @@ export function QrDoBalcao() {
         {gerando ? 'Gerando...' : 'Baixar cartaz em PDF'}
       </button>
 
-      {erro && <p className="text-sm text-danger">{erro}</p>}
+      <ErroInline>{erro}</ErroInline>
 
       <div>
         <div className="text-[11px] text-muted-foreground mb-1">

@@ -4,6 +4,7 @@ import { invokeFunction } from '../../lib/invokeFunction'
 import { useSalon } from '../auth/useSalon'
 import { useAuth } from '../auth/AuthContext'
 import { VERSAO_DOS_TERMOS } from '../../lib/termos'
+import { ErroInline } from '../../components/ErroInline'
 
 /**
  * Segundo passo do cadastro: a pessoa já tem conta e cria a própria barbearia.
@@ -154,7 +155,7 @@ export function CriarBarbeariaPage() {
             </span>
           </label>
 
-          {erro && <p className="text-sm text-danger">{erro}</p>}
+          <ErroInline>{erro}</ErroInline>
 
           <button
             type="submit"

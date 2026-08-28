@@ -10,6 +10,7 @@ import {
 } from './servicosPadrao'
 import { DIAS_DE_TESTE } from '../../lib/planos'
 import { Campo, Input } from '../../components/Campo'
+import { ErroInline } from '../../components/ErroInline'
 
 /**
  * `donoAtende` separa duas coisas que o sistema confundia: ser **dono** (acesso,
@@ -628,7 +629,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
         </div>
       )}
 
-      {erro && <p className="text-sm text-danger mt-4">{erro}</p>}
+      <div className="mt-4"><ErroInline>{erro}</ErroInline></div>
 
       {/* Navegação */}
       <div className="flex gap-2 mt-6 pt-4 border-t border-border">

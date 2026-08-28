@@ -5,6 +5,7 @@ import { NewSaleModal, type SalePrefill } from './NewSaleModal'
 import { PAYMENT_LABELS } from './types'
 import { Tabela, Th, Linha, Td } from '../../components/Tabela'
 import { EstadoVazio } from '../../components/EstadoVazio'
+import { ErroInline } from '../../components/ErroInline'
 
 function formatCurrency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -70,7 +71,7 @@ export function VendasSection({
         </button>
       </div>
 
-      {error && <p className="text-sm text-danger">{error}</p>}
+      <ErroInline>{error}</ErroInline>
 
       {!loading && sales.length === 0 ? (
         <div className="bg-surface border border-border rounded-xl shadow-sm">

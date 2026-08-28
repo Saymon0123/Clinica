@@ -116,35 +116,35 @@ export function RedePage() {
 
       {/* Totais da rede */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <div className="bg-surface border border-border rounded-xl shadow-sm p-4">
+        <div className="bg-surface border border-border rounded-2xl shadow-sm p-4">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <TrendingUp size={14} />
             Faturamento
           </div>
           <div className="text-xl font-semibold text-foreground mt-1">{moeda(totalFaturamento)}</div>
         </div>
-        <div className="bg-surface border border-border rounded-xl shadow-sm p-4">
+        <div className="bg-surface border border-border rounded-2xl shadow-sm p-4">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Receipt size={14} />
             Ticket médio
           </div>
           <div className="text-xl font-semibold text-foreground mt-1">{moeda(ticketRede)}</div>
         </div>
-        <div className="bg-surface border border-border rounded-xl shadow-sm p-4">
+        <div className="bg-surface border border-border rounded-2xl shadow-sm p-4">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <CalendarDays size={14} />
             Agendamentos
           </div>
           <div className="text-xl font-semibold text-foreground mt-1">{totalAgendamentos}</div>
         </div>
-        <div className="bg-surface border border-border rounded-xl shadow-sm p-4">
+        <div className="bg-surface border border-border rounded-2xl shadow-sm p-4">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Users size={14} />
             Clientes novos
           </div>
           <div className="text-xl font-semibold text-foreground mt-1">{totalClientes}</div>
         </div>
-        <div className="bg-surface border border-border rounded-xl shadow-sm p-4">
+        <div className="bg-surface border border-border rounded-2xl shadow-sm p-4">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <CalendarX size={14} />
             Cancelamento
@@ -157,7 +157,7 @@ export function RedePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {/* Evolução do faturamento da rede */}
-        <div className="bg-surface border border-border rounded-xl shadow-sm p-5">
+        <div className="bg-surface border border-border rounded-2xl shadow-sm p-5">
           <h2 className="text-sm font-semibold text-foreground mb-1">Faturamento por dia</h2>
           <p className="text-xs text-muted-foreground mb-3">Rede inteira somada</p>
           {serieDiaria.length === 0 ? (
@@ -186,7 +186,7 @@ export function RedePage() {
         </div>
 
         {/* Faturamento por unidade */}
-        <div className="bg-surface border border-border rounded-xl shadow-sm p-5">
+        <div className="bg-surface border border-border rounded-2xl shadow-sm p-5">
           <h2 className="text-sm font-semibold text-foreground mb-1">Faturamento por unidade</h2>
           <p className="text-xs text-muted-foreground mb-3">Quem puxa o resultado da rede</p>
           {resumos.length === 0 ? (
@@ -224,7 +224,7 @@ export function RedePage() {
       </div>
 
       {/* Comparativo entre unidades */}
-      <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-surface border border-border rounded-2xl shadow-sm overflow-hidden">
         <div className="px-4 py-3 border-b border-border">
           <h2 className="text-sm font-semibold text-foreground">Comparativo por unidade</h2>
         </div>
@@ -286,7 +286,7 @@ export function RedePage() {
       </div>
 
       {/* Produção por barbeiro, somando a rede inteira */}
-      <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-surface border border-border rounded-2xl shadow-sm overflow-hidden">
         <div className="px-4 py-3 border-b border-border">
           <h2 className="text-sm font-semibold text-foreground">Produção por barbeiro</h2>
           <p className="text-xs text-muted-foreground">Quem mais produz na rede, em todas as unidades</p>

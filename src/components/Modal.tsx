@@ -60,7 +60,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
-        className={`modal-painel bg-surface rounded-xl border border-border shadow-xl w-full ${TAMANHOS[tamanho]} max-h-[90vh] overflow-y-auto p-5 space-y-4`}
+        className={`modal-painel bg-surface rounded-2xl border border-border shadow-xl w-full ${TAMANHOS[tamanho]} max-h-[90vh] overflow-y-auto p-5 space-y-4`}
       >
         {titulo && (
           <div className="flex items-start justify-between gap-3">

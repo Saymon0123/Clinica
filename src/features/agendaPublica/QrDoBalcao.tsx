@@ -94,7 +94,7 @@ export function QrDoBalcao() {
   }
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-5 space-y-3">
+    <div className="rounded-2xl border border-border bg-surface p-5 space-y-3">
       <div className="flex items-center gap-2">
         <QrCode size={18} className="text-primary" />
         <h2 className="text-base font-semibold text-foreground">QR do balcão</h2>

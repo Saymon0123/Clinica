@@ -455,7 +455,7 @@ export function AjudaPage() {
               <details
                 key={item.p}
                 open={termo.length > 0 || undefined}
-                className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden"
+                className="bg-surface border border-border rounded-2xl shadow-sm overflow-hidden"
               >
                 <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-foreground hover:bg-surface-2">
                   {item.p}

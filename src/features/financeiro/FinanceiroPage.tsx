@@ -356,7 +356,7 @@ export function FinanceiroPage() {
 
       {/* Gráfico de clientes + donut da meta */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className={`${isManager ? 'lg:col-span-2' : 'lg:col-span-3'} bg-surface border border-border rounded-xl shadow-sm p-5`}>
+        <div className={`${isManager ? 'lg:col-span-2' : 'lg:col-span-3'} bg-surface border border-border rounded-2xl shadow-sm p-5`}>
           <div className="mb-4">
             <h2 className="text-sm font-semibold text-foreground">Novos clientes</h2>
             <p className="text-xs text-muted-foreground">Cadastros por mês nos últimos 12 meses</p>
@@ -405,7 +405,7 @@ export function FinanceiroPage() {
         </div>
 
         {isManager && (
-        <div className="bg-surface border border-border rounded-xl shadow-sm p-5 flex flex-col">
+        <div className="bg-surface border border-border rounded-2xl shadow-sm p-5 flex flex-col">
           <div className="mb-2 flex items-start justify-between gap-2">
             <div>
               <h2 className="text-sm font-semibold text-foreground">Meta de faturamento</h2>
@@ -462,7 +462,7 @@ export function FinanceiroPage() {
       </div>
 
       {/* Serviços mais vendidos */}
-      <div className="bg-surface border border-border rounded-xl shadow-sm p-5">
+      <div className="bg-surface border border-border rounded-2xl shadow-sm p-5">
         <div className="mb-4">
           <h2 className="text-sm font-semibold text-foreground">Serviços mais vendidos</h2>
           <p className="text-xs text-muted-foreground">{rotuloPeriodo} · por faturamento</p>
@@ -504,7 +504,7 @@ export function FinanceiroPage() {
       )}
 
       {/* Comissões do período */}
-      <div className="bg-surface border border-border rounded-xl shadow-sm p-5">
+      <div className="bg-surface border border-border rounded-2xl shadow-sm p-5">
         <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
           <div>
             <h2 className="text-sm font-semibold text-foreground">Comissões</h2>

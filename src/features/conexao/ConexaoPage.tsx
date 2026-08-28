@@ -110,7 +110,7 @@ export function ConexaoPage() {
       <PageHeader titulo="Conexão" subtitulo="O WhatsApp que o agente usa para atender" />
 
       {oficial ? (
-        <div className="bg-surface rounded-xl border border-border shadow-sm p-5 max-w-md">
+        <div className="bg-surface rounded-2xl border border-border shadow-sm p-5 max-w-md">
           {/* Sem data-tour aqui: as âncoras do tour vivem no fluxo legado da
               Evolution (QR), e âncora repetida quebra o passo a passo. */}
           <div className="flex items-center gap-3 mb-4">
@@ -251,7 +251,7 @@ function ConexaoEvolutionLegada({ salonId }: { salonId: string }) {
   }
 
   return (
-    <div className="bg-surface rounded-xl border border-border shadow-sm p-5 max-w-md">
+    <div className="bg-surface rounded-2xl border border-border shadow-sm p-5 max-w-md">
       <div data-tour="conexao-status" className="flex items-center gap-3 mb-4">
         <div className="w-10 h-10 rounded-full bg-success-soft flex items-center justify-center text-success">
           <MessageCircle size={20} />

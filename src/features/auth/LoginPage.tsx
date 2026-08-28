@@ -36,7 +36,7 @@ export function LoginPage() {
     <div className="min-h-[100dvh] flex items-center justify-center bg-background px-4">
       <form
         onSubmit={handleSubmit}
-        className="surge w-full max-w-sm bg-surface p-6 sm:p-8 rounded-xl border border-border space-y-5 shadow-[0_16px_40px_-24px_color-mix(in_srgb,var(--foreground)_45%,transparent)]"
+        className="surge w-full max-w-sm bg-surface p-6 sm:p-8 rounded-2xl border border-border space-y-5 shadow-[0_16px_40px_-24px_color-mix(in_srgb,var(--foreground)_45%,transparent)]"
       >
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Entrar</h1>
 

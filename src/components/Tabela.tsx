@@ -14,7 +14,7 @@ import type { ReactNode, TdHTMLAttributes, ThHTMLAttributes } from 'react'
  */
 export function Tabela({ children }: { children: ReactNode }) {
   return (
-    <div className="bg-surface rounded-xl border border-border shadow-sm overflow-x-auto">
+    <div className="bg-surface rounded-2xl border border-border shadow-sm overflow-x-auto">
       <table className="w-full text-sm">{children}</table>
     </div>
   )

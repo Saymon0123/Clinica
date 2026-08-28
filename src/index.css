@@ -3,10 +3,17 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #f7f9f7;
+  /*
+    Leva A do refinamento (2026-08-28): o fundo desceu meio passo (#f7f9f7 →
+    #eff3f0) e a borda clareou para quase sumir. A separacao card/fundo passa
+    a vir de PROFUNDIDADE (sombra dupla, ver --shadow-sm no @theme) em vez de
+    linha — cards flutuam sobre o canvas em vez de serem caixas contornadas.
+    Os verdes da marca nao mudaram em nada.
+  */
+  --background: #eff3f0;
   --surface: #ffffff;
   --surface-2: #eef2ef;
-  --border: #dde4df;
+  --border: #e3e9e4;
   --border-strong: #c3cfc7;
   --foreground: #0e1512;
   --muted-foreground: #5b665f;
@@ -121,6 +128,9 @@
 }
 
 @theme inline {
+  /* shadow-sm vira a sombra "flutuante" do app inteiro: um contato curto e
+     um halo largo e fraco. Upgrade em todos os cards sem tocar em markup. */
+  --shadow-sm: 0 1px 2px rgb(13 21 18 / 0.04), 0 8px 24px -12px rgb(13 21 18 / 0.12);
   --color-background: var(--background);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);

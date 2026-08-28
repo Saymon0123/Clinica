@@ -172,7 +172,7 @@ export function ConfiguracoesPage() {
       />
 
       <form onSubmit={salvar} className="space-y-6">
-        <div className="bg-surface border border-border rounded-xl shadow-sm p-5 space-y-4">
+        <div className="bg-surface border border-border rounded-2xl shadow-sm p-5 space-y-4">
           <Campo rotulo="Nome da barbearia" htmlFor="nome">
             <Input
               id="nome"
@@ -211,7 +211,7 @@ export function ConfiguracoesPage() {
           </Campo>
         </div>
 
-        <div className="bg-surface border border-border rounded-xl shadow-sm p-5 space-y-3">
+        <div className="bg-surface border border-border rounded-2xl shadow-sm p-5 space-y-3">
           <div>
             <h2 className="text-base font-semibold text-foreground">Horário de funcionamento</h2>
             <p className="text-xs text-muted-foreground">
@@ -355,7 +355,7 @@ export function ConfiguracoesPage() {
           no primeiro "Adicionar unidade". Por isso o botão mora AQUI, onde a
           avulsa chega — a aba Rede só existe para quem já tem duas. */}
       {isOwner && (
-        <section className="bg-surface border border-border rounded-xl shadow-sm p-5 space-y-4">
+        <section className="bg-surface border border-border rounded-2xl shadow-sm p-5 space-y-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">

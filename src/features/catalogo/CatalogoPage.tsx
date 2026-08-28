@@ -172,7 +172,7 @@ export function CatalogoPage() {
           )}
 
           {!loadingServices && services.length === 0 ? (
-            <div className="bg-surface rounded-xl border border-border shadow-sm">
+            <div className="bg-surface rounded-2xl border border-border shadow-sm">
               <EstadoVazio
                 icone={Tag}
                 titulo="Nenhum serviço cadastrado ainda."
@@ -256,7 +256,7 @@ export function CatalogoPage() {
           )}
 
           {!loadingPacotes && pacotes.length === 0 ? (
-            <div className="bg-surface rounded-xl border border-border shadow-sm">
+            <div className="bg-surface rounded-2xl border border-border shadow-sm">
               <EstadoVazio
                 icone={Boxes}
                 titulo="Nenhum pacote ainda."
@@ -356,7 +356,7 @@ export function CatalogoPage() {
           )}
 
           {!loadingProducts && products.length === 0 ? (
-            <div className="bg-surface rounded-xl border border-border shadow-sm">
+            <div className="bg-surface rounded-2xl border border-border shadow-sm">
               <EstadoVazio
                 icone={Package}
                 titulo="Nenhum produto cadastrado ainda."

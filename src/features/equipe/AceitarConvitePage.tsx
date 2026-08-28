@@ -98,7 +98,7 @@ export function AceitarConvitePage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4 py-10">
-      <div className="w-full max-w-sm bg-surface border border-border rounded-xl p-6 space-y-4">
+      <div className="w-full max-w-sm bg-surface border border-border rounded-xl shadow-sm p-6 space-y-4">
         <div className="flex items-center gap-2.5">
           <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary text-primary-foreground">
             <Scissors size={18} />
@@ -123,7 +123,7 @@ export function AceitarConvitePage() {
             </p>
             <Link
               to="/login"
-              className="block w-full text-center btn-primary rounded px-3 py-2.5 text-sm font-medium"
+              className="block w-full text-center btn-primary rounded-lg px-3 py-2.5 text-sm font-medium"
             >
               Ir para o login
             </Link>
@@ -167,7 +167,7 @@ export function AceitarConvitePage() {
 
             <div>
               <span className="text-xs font-medium text-muted-foreground">Seu e-mail</span>
-              <div className="mt-1 bg-surface-2 rounded px-3 py-2 text-sm text-foreground">
+              <div className="mt-1 bg-surface-2 rounded-lg px-3 py-2 text-sm text-foreground">
                 {info.email}
               </div>
             </div>
@@ -180,7 +180,7 @@ export function AceitarConvitePage() {
                   onChange={(e) => setNome(e.target.value)}
                   placeholder="Seu nome"
                   autoComplete="name"
-                  className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                  className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
                 />
                 <span className="block text-[11px] text-muted-foreground mt-1">
                   É o nome que aparece na agenda e que o atendimento no WhatsApp usa.
@@ -199,7 +199,7 @@ export function AceitarConvitePage() {
                   onChange={(e) => setSenha(e.target.value)}
                   placeholder={info.contaExiste ? 'A senha da sua conta' : 'Mínimo 8 caracteres'}
                   autoComplete={info.contaExiste ? 'current-password' : 'new-password'}
-                  className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 pr-10 text-sm"
+                  className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 pr-10 text-sm"
                 />
                 <button
                   type="button"
@@ -220,7 +220,7 @@ export function AceitarConvitePage() {
                   type={mostrarSenha ? 'text' : 'password'}
                   value={confirmacao}
                   onChange={(e) => setConfirmacao(e.target.value)}
-                  className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                  className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
                 />
               </label>
             )}
@@ -262,7 +262,7 @@ export function AceitarConvitePage() {
             <button
               type="submit"
               disabled={salvando}
-              className="w-full btn-primary rounded px-3 py-2.5 text-sm font-medium disabled:opacity-50"
+              className="w-full btn-primary rounded-lg px-3 py-2.5 text-sm font-medium disabled:opacity-50"
             >
               {salvando
                 ? info.contaExiste

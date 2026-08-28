@@ -24,7 +24,7 @@ export function CardAtivacao() {
   const feitos = itens.length - pendentes.length
 
   return (
-    <div className="bg-surface border border-border rounded-xl p-4 mb-5">
+    <div className="bg-surface border border-border rounded-xl shadow-sm p-4 mb-5">
       <div className="flex items-center gap-2.5 mb-1">
         <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary-soft text-primary-soft-foreground shrink-0">
           <Rocket size={16} />

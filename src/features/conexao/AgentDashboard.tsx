@@ -22,7 +22,7 @@ function StatCard({
   hint?: string
 }) {
   return (
-    <div className="bg-surface border border-border rounded-xl p-4">
+    <div className="bg-surface border border-border rounded-xl shadow-sm p-4">
       <div className="flex items-center gap-2 text-muted-foreground mb-2">
         <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary-soft text-primary-soft-foreground">
           {icon}

@@ -256,7 +256,7 @@ export function EquipePage() {
         </div>
         <button
           onClick={() => setModalAberto(true)}
-          className="flex items-center gap-2 btn-primary rounded px-4 py-2 text-sm font-medium"
+          className="flex items-center gap-2 btn-primary rounded-lg px-4 py-2 text-sm font-medium"
         >
           <Plus size={16} />
           Convidar para a equipe
@@ -267,7 +267,7 @@ export function EquipePage() {
 
       {/* Convites pendentes */}
       {convites.length > 0 && (
-        <div className="bg-surface border border-border rounded-xl p-4">
+        <div className="bg-surface border border-border rounded-xl shadow-sm p-4">
           <h2 className="text-sm font-semibold text-foreground mb-2">Convites aguardando</h2>
           <div className="divide-y divide-border">
             {convites.map((c) => (
@@ -284,12 +284,12 @@ export function EquipePage() {
                         value={emailRascunho}
                         onChange={(e) => setEmailRascunho(e.target.value)}
                         aria-label={`Novo e-mail do convite de ${c.nome}`}
-                        className="flex-1 min-w-[12rem] border border-border-strong bg-surface text-foreground rounded px-3 py-1.5 text-sm"
+                        className="flex-1 min-w-[12rem] border border-border-strong bg-surface text-foreground rounded-lg px-3 py-1.5 text-sm"
                       />
                       <button
                         onClick={() => salvarEmail(c)}
                         disabled={salvandoConvite === c.id}
-                        className="btn-primary rounded px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+                        className="btn-primary rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
                       >
                         {salvandoConvite === c.id ? 'Salvando...' : 'Salvar'}
                       </button>
@@ -346,7 +346,7 @@ export function EquipePage() {
       )}
 
       {/* Equipe */}
-      <div className="bg-surface border border-border rounded-xl divide-y divide-border">
+      <div className="bg-surface border border-border rounded-xl shadow-sm divide-y divide-border">
         {loading && <p className="text-sm text-muted-foreground p-4">Carregando...</p>}
 
         {membros.map((m) => (
@@ -384,21 +384,21 @@ export function EquipePage() {
                       }}
                       placeholder="sem comissão"
                       aria-label={`Comissão de ${m.nome} em porcentagem`}
-                      className="w-28 border border-border-strong bg-surface text-foreground rounded px-2 py-1 text-xs"
+                      className="w-28 border border-border-strong bg-surface text-foreground rounded-lg px-2 py-1 text-xs"
                     />
                     <span className="text-xs text-muted-foreground">%</span>
                     <button
                       onClick={() => salvarComissao(m)}
                       disabled={salvandoMembro === m.id}
                       aria-label="Salvar comissão"
-                      className="p-1 rounded text-success hover:bg-surface-2 disabled:opacity-50"
+                      className="p-1 rounded-md text-success hover:bg-surface-2 disabled:opacity-50"
                     >
                       <Check size={14} />
                     </button>
                     <button
                       onClick={() => setEditandoComissao(null)}
                       aria-label="Cancelar"
-                      className="p-1 rounded text-muted-foreground hover:bg-surface-2"
+                      className="p-1 rounded-md text-muted-foreground hover:bg-surface-2"
                     >
                       <X size={14} />
                     </button>
@@ -448,7 +448,7 @@ export function EquipePage() {
                     disabled={salvandoMembro === vinculo.id}
                     onChange={(e) => trocarPapel(vinculo, e.target.value as Papel)}
                     aria-label={`Função de ${m.nome}`}
-                    className="border border-border-strong bg-surface text-foreground rounded px-2 py-1 text-xs disabled:opacity-50"
+                    className="border border-border-strong bg-surface text-foreground rounded-lg px-2 py-1 text-xs disabled:opacity-50"
                   >
                     <option value="barbeiro">Barbeiro</option>
                     <option value="gerente">Gerente</option>
@@ -465,7 +465,7 @@ export function EquipePage() {
                   setComissaoRascunho(m.comissao_percentual != null ? String(Number(m.comissao_percentual)) : '')
                 }}
                 aria-label={`Comissão de ${m.nome}`}
-                className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-surface-2"
+                className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-surface-2"
               >
                 <Percent size={16} />
                 <span className="text-[10px] leading-none">Comissão</span>
@@ -473,7 +473,7 @@ export function EquipePage() {
               <button
                 onClick={() => setHorarioDe(m)}
                 aria-label={`Horário de ${m.nome}`}
-                className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-surface-2"
+                className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-surface-2"
               >
                 <Clock size={16} />
                 <span className="text-[10px] leading-none">Horário</span>
@@ -481,7 +481,7 @@ export function EquipePage() {
               <button
                 onClick={() => alternarAtivo(m)}
                 aria-label={m.ativo ? `Desativar ${m.nome}` : `Reativar ${m.nome}`}
-                className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded hover:bg-surface-2 ${
+                className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-md hover:bg-surface-2 ${
                   m.ativo ? 'text-muted-foreground hover:text-danger' : 'text-success'
                 }`}
               >
@@ -581,7 +581,7 @@ function ConviteModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-surface rounded-xl border border-border w-full max-w-sm p-5 space-y-4"
+        className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-sm p-5 space-y-4"
       >
         <div className="flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
@@ -597,7 +597,7 @@ function ConviteModal({
           <div className="space-y-3">
             <p className="text-sm text-foreground">Convite criado! Mande este link para a pessoa convidada:</p>
             <div className="flex items-center gap-2">
-              <code className="flex-1 bg-surface-2 rounded px-3 py-2 text-xs break-all">{link}</code>
+              <code className="flex-1 bg-surface-2 rounded-lg px-3 py-2 text-xs break-all">{link}</code>
               <button
                 onClick={async () => {
                   await navigator.clipboard.writeText(link)
@@ -605,7 +605,7 @@ function ConviteModal({
                   setTimeout(() => setCopiado(false), 1500)
                 }}
                 aria-label="Copiar link"
-                className="p-2 border border-border-strong rounded text-muted-foreground hover:bg-surface-2 shrink-0"
+                className="p-2 border border-border-strong rounded-md text-muted-foreground hover:bg-surface-2 shrink-0"
               >
                 {copiado ? <Check size={16} className="text-success" /> : <Copy size={16} />}
               </button>
@@ -615,7 +615,7 @@ function ConviteModal({
               e também enviamos o convite por e-mail em alguns minutos, então mandar o link é
               opcional.
             </p>
-            <button onClick={onClose} className="w-full btn-primary rounded px-3 py-2 text-sm font-medium">
+            <button onClick={onClose} className="w-full btn-primary rounded-lg px-3 py-2 text-sm font-medium">
               Fechar
             </button>
           </div>
@@ -626,7 +626,7 @@ function ConviteModal({
               <input
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
-                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               />
             </label>
             <label className="block">
@@ -635,7 +635,7 @@ function ConviteModal({
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               />
             </label>
             <label className="block">
@@ -643,7 +643,7 @@ function ConviteModal({
               <select
                 value={papel}
                 onChange={(e) => setPapel(e.target.value as 'barbeiro' | 'gerente')}
-                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               >
                 <option value="barbeiro">Barbeiro — vê só o que é dele</option>
                 <option value="gerente">Gerente — administra esta unidade</option>
@@ -663,7 +663,7 @@ function ConviteModal({
                 max={100}
                 value={comissao}
                 onChange={(e) => setComissao(e.target.value)}
-                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               />
             </label>
 
@@ -672,7 +672,7 @@ function ConviteModal({
             <button
               type="submit"
               disabled={salvando}
-              className="w-full flex items-center justify-center gap-2 btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
               <Link2 size={15} />
               {salvando ? 'Gerando...' : 'Gerar link de convite'}

@@ -72,7 +72,7 @@ export function FeedbackModal({ onClose }: { onClose: () => void }) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-surface rounded-xl border border-border w-full max-w-md p-5 space-y-4"
+        className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-md p-5 space-y-4"
       >
         <div className="flex items-start justify-between gap-3">
           <div>

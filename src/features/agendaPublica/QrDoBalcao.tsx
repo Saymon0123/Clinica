@@ -107,7 +107,7 @@ export function QrDoBalcao() {
       <button
         onClick={gerarPdf}
         disabled={gerando}
-        className="flex items-center justify-center gap-2 w-full btn-primary rounded px-3 py-2.5 text-sm font-medium disabled:opacity-50"
+        className="flex items-center justify-center gap-2 w-full btn-primary rounded-lg px-3 py-2.5 text-sm font-medium disabled:opacity-50"
       >
         <Download size={16} />
         {gerando ? 'Gerando...' : 'Baixar cartaz em PDF'}
@@ -119,7 +119,7 @@ export function QrDoBalcao() {
         <div className="text-[11px] text-muted-foreground mb-1">
           Ou mande este link direto para o cliente:
         </div>
-        <code className="block bg-surface-2 rounded px-3 py-2 text-xs break-all text-foreground">
+        <code className="block bg-surface-2 rounded-lg px-3 py-2 text-xs break-all text-foreground">
           {link}
         </code>
       </div>

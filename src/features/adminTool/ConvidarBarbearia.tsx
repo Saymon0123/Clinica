@@ -26,7 +26,7 @@ function CampoCopiavel({ label, value }: { label: string; value: string }) {
     <div>
       <div className="text-xs text-muted-foreground mb-1">{label}</div>
       <div className="flex items-center gap-2">
-        <code className="flex-1 bg-surface-2 rounded px-3 py-2 text-sm break-all">{value}</code>
+        <code className="flex-1 bg-surface-2 rounded-lg px-3 py-2 text-sm break-all">{value}</code>
         <button
           type="button"
           onClick={async () => {
@@ -35,7 +35,7 @@ function CampoCopiavel({ label, value }: { label: string; value: string }) {
             setTimeout(() => setCopiado(false), 1500)
           }}
           aria-label={`Copiar ${label}`}
-          className="p-2 border border-border-strong rounded text-muted-foreground hover:bg-surface-2 shrink-0"
+          className="p-2 border border-border-strong rounded-md text-muted-foreground hover:bg-surface-2 shrink-0"
         >
           {copiado ? <Check size={16} className="text-success" /> : <Copy size={16} />}
         </button>
@@ -114,7 +114,7 @@ export function ConvidarBarbearia({ secret, onCriado }: { secret: string; onCria
             setNome('')
             setEmail('')
           }}
-          className="w-full btn-primary rounded px-3 py-2 text-sm font-medium"
+          className="w-full btn-primary rounded-lg px-3 py-2 text-sm font-medium"
         >
           Convidar outra
         </button>
@@ -123,7 +123,7 @@ export function ConvidarBarbearia({ secret, onCriado }: { secret: string; onCria
   }
 
   return (
-    <div className="bg-surface rounded-xl border border-border p-6 space-y-4">
+    <div className="bg-surface rounded-xl border border-border shadow-sm p-6 space-y-4">
       <div>
         <h2 className="text-base font-semibold text-foreground">Convidar barbearia</h2>
         <p className="text-xs text-muted-foreground mt-1">
@@ -138,7 +138,7 @@ export function ConvidarBarbearia({ secret, onCriado }: { secret: string; onCria
           value={nome}
           onChange={(e) => setNome(e.target.value)}
           placeholder="Ex.: Barbearia do Zé"
-          className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+          className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
         />
       </label>
 
@@ -149,7 +149,7 @@ export function ConvidarBarbearia({ secret, onCriado }: { secret: string; onCria
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="dono@email.com"
-          className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+          className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
         />
         <span className="block text-[11px] text-muted-foreground mt-1">
           É o e-mail de acesso dele. O nome ele mesmo digita ao aceitar.
@@ -198,7 +198,7 @@ export function ConvidarBarbearia({ secret, onCriado }: { secret: string; onCria
       <button
         onClick={convidar}
         disabled={enviando}
-        className="w-full flex items-center justify-center gap-1.5 btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+        className="w-full flex items-center justify-center gap-1.5 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
       >
         <Send size={15} />
         {enviando ? 'Gerando...' : 'Gerar convite'}

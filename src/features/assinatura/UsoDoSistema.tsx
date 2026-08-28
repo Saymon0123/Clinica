@@ -97,7 +97,7 @@ export function UsoDoSistema() {
   const boletoAberto = faturas.find((f) => f.boleto_url && !f.paga_em) ?? null
 
   return (
-    <section className="bg-surface border border-border rounded-xl p-5 space-y-4">
+    <section className="bg-surface border border-border rounded-xl shadow-sm p-5 space-y-4">
       <div>
         <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
           <Activity size={18} />
@@ -170,7 +170,7 @@ export function UsoDoSistema() {
                 href={boletoAberto.boleto_url!}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn-primary rounded px-3 py-1.5 text-sm font-medium shrink-0"
+                className="btn-primary rounded-lg px-3 py-1.5 text-sm font-medium shrink-0"
               >
                 Pagar (boleto, Pix ou cartão)
               </a>

@@ -101,10 +101,13 @@ export function ConexaoPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold tracking-tight text-foreground mb-4">Conexão</h1>
+      <div className="mb-4">
+        <h1 className="text-xl font-bold tracking-tight text-foreground">Conexão</h1>
+        <p className="text-sm text-muted-foreground">O WhatsApp que o agente usa para atender</p>
+      </div>
 
       {oficial ? (
-        <div className="bg-surface rounded-xl border border-border p-6 max-w-md">
+        <div className="bg-surface rounded-xl border border-border shadow-sm p-6 max-w-md">
           {/* Sem data-tour aqui: as âncoras do tour vivem no fluxo legado da
               Evolution (QR), e âncora repetida quebra o passo a passo. */}
           <div className="flex items-center gap-3 mb-4">
@@ -123,7 +126,7 @@ export function ConexaoPage() {
           </div>
 
           {conexao?.phone_number_id ? (
-            <div className="flex items-start gap-2 text-success bg-success-soft rounded px-3 py-2 text-sm">
+            <div className="flex items-start gap-2 text-success bg-success-soft rounded-lg px-3 py-2 text-sm">
               <CheckCircle2 size={16} className="shrink-0 mt-0.5" />
               <span>
                 Seu número está conectado pela API oficial do WhatsApp — sem QR code, sem celular
@@ -245,7 +248,7 @@ function ConexaoEvolutionLegada({ salonId }: { salonId: string }) {
   }
 
   return (
-    <div className="bg-surface rounded-xl border border-border p-6 max-w-md">
+    <div className="bg-surface rounded-xl border border-border shadow-sm p-6 max-w-md">
       <div data-tour="conexao-status" className="flex items-center gap-3 mb-4">
         <div className="w-10 h-10 rounded-full bg-success-soft flex items-center justify-center text-success">
           <MessageCircle size={20} />
@@ -281,7 +284,7 @@ function ConexaoEvolutionLegada({ salonId }: { salonId: string }) {
       )}
 
       {status === 'open' ? (
-        <div className="flex items-center gap-2 text-success bg-success-soft rounded px-3 py-2 text-sm mb-4">
+        <div className="flex items-center gap-2 text-success bg-success-soft rounded-lg px-3 py-2 text-sm mb-4">
           <CheckCircle2 size={16} />
           WhatsApp conectado e pronto para uso.
         </div>
@@ -290,7 +293,7 @@ function ConexaoEvolutionLegada({ salonId }: { salonId: string }) {
           <img
             src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`}
             alt="QR code para conectar o WhatsApp"
-            className="w-56 h-56 border border-border rounded"
+            className="w-56 h-56 border border-border rounded-md"
           />
           <p className="text-xs text-muted-foreground text-center">
             Abra o WhatsApp no celular do salão → Aparelhos conectados → Conectar um aparelho, e escaneie o código.
@@ -303,7 +306,7 @@ function ConexaoEvolutionLegada({ salonId }: { salonId: string }) {
           <button
             onClick={handleDisconnect}
             disabled={loading}
-            className="flex-1 btn-secondary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+            className="flex-1 btn-secondary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
           >
             {loading ? 'Desconectando...' : 'Desconectar'}
           </button>
@@ -311,7 +314,7 @@ function ConexaoEvolutionLegada({ salonId }: { salonId: string }) {
           <button
             onClick={handleConnect}
             disabled={loading}
-            className="flex-1 flex items-center justify-center gap-2 btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+            className="flex-1 flex items-center justify-center gap-2 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             {qrCode ? 'Gerar novo QR code' : 'Conectar WhatsApp'}

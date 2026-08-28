@@ -136,7 +136,7 @@ export function CaixaSection({ salonId }: { salonId: string }) {
   const diferenca = valorFechamento.trim() === '' ? null : informado - esperado
 
   return (
-    <div className="bg-surface border border-border rounded-xl p-5">
+    <div className="bg-surface border border-border rounded-xl shadow-sm p-5">
       <div className="flex items-center gap-2 mb-1">
         <Wallet size={16} className="text-muted-foreground" />
         <h2 className="text-sm font-semibold text-foreground">Caixa</h2>
@@ -167,13 +167,13 @@ export function CaixaSection({ salonId }: { salonId: string }) {
                 min="0"
                 value={trocoPadrao}
                 onChange={(e) => setTrocoPadrao(e.target.value)}
-                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               />
             </label>
             <button
               onClick={salvarTroco}
               disabled={salvando}
-              className="btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+              className="btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
               {salvando ? 'Salvando...' : 'Salvar'}
             </button>
@@ -222,7 +222,7 @@ export function CaixaSection({ salonId }: { salonId: string }) {
                   value={valorFechamento}
                   onChange={(e) => setValorFechamento(e.target.value)}
                   placeholder="Quanto tinha de verdade"
-                  className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                  className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
                 />
               </label>
 
@@ -243,7 +243,7 @@ export function CaixaSection({ salonId }: { salonId: string }) {
               <button
                 onClick={conferirEFechar}
                 disabled={salvando}
-                className="w-full flex items-center justify-center gap-2 btn-secondary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 btn-secondary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
               >
                 <Lock size={15} />
                 {salvando ? 'Fechando...' : 'Registrar contagem e fechar o dia'}

@@ -96,7 +96,7 @@ export function NewServiceModal({ salonId, service, onClose, onSaved }: Props) {
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               required
-              className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               placeholder="Corte de cabelo"
             />
           </div>
@@ -112,7 +112,7 @@ export function NewServiceModal({ salonId, service, onClose, onSaved }: Props) {
                 value={duracao}
                 onChange={(e) => setDuracao(e.target.value)}
                 required
-                className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               />
             </div>
             <div>
@@ -123,7 +123,7 @@ export function NewServiceModal({ salonId, service, onClose, onSaved }: Props) {
                 value={preco}
                 onChange={(e) => setPreco(e.target.value)}
                 required
-                className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+                className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
                 placeholder="60,00"
               />
             </div>
@@ -135,14 +135,14 @@ export function NewServiceModal({ salonId, service, onClose, onSaved }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 btn-secondary rounded px-3 py-2 text-sm font-medium"
+              className="flex-1 btn-secondary rounded-lg px-3 py-2 text-sm font-medium"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+              className="flex-1 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
               {submitting ? 'Salvando...' : 'Salvar'}
             </button>

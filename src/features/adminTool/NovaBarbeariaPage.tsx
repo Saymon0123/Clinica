@@ -58,7 +58,7 @@ function AccessGate({ onUnlock }: { onUnlock: (secret: string) => void }) {
           }}
           placeholder="Senha de acesso"
           autoFocus
-          className={`w-full border rounded px-3 py-2 text-sm bg-surface text-foreground ${
+          className={`w-full border rounded-lg px-3 py-2 text-sm bg-surface text-foreground ${
             error ? 'border-danger' : 'border-border-strong'
           }`}
         />
@@ -66,7 +66,7 @@ function AccessGate({ onUnlock }: { onUnlock: (secret: string) => void }) {
         <button
           type="submit"
           disabled={checking || !value.trim()}
-          className="w-full btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+          className="w-full btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
         >
           {checking ? 'Verificando...' : 'Entrar'}
         </button>

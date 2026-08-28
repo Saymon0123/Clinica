@@ -61,7 +61,7 @@ export function VendasSection({
             setActivePrefill(null)
             setModalOpen(true)
           }}
-          className="flex items-center gap-2 btn-primary rounded px-4 py-2 text-sm font-medium"
+          className="flex items-center gap-2 btn-primary rounded-lg px-4 py-2 text-sm font-medium"
         >
           <Plus size={16} />
           Nova venda
@@ -71,7 +71,7 @@ export function VendasSection({
       {error && <p className="text-sm text-danger">{error}</p>}
 
       {!loading && sales.length === 0 ? (
-        <div className="bg-surface border border-border rounded-xl p-10 text-center">
+        <div className="bg-surface border border-border rounded-xl shadow-sm p-10 text-center">
           <Receipt size={32} className="mx-auto mb-3 text-muted-foreground/50" />
           <p className="text-sm text-muted-foreground">
             Nenhuma venda registrada {period === 'dia' ? 'hoje' : 'neste mês'}.
@@ -81,7 +81,7 @@ export function VendasSection({
           </p>
         </div>
       ) : (
-        <div className="bg-surface border border-border rounded-xl overflow-x-auto">
+        <div className="bg-surface border border-border rounded-xl shadow-sm overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs text-muted-foreground">

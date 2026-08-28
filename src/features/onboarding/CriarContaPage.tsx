@@ -87,7 +87,7 @@ export function CriarContaPage() {
   if (enviado) {
     return (
       <div className="min-h-[100dvh] flex items-center justify-center bg-background px-4">
-        <div className="surge w-full max-w-sm bg-surface border border-border rounded-xl p-6 space-y-4 shadow-[0_16px_40px_-24px_color-mix(in_srgb,var(--foreground)_45%,transparent)]">
+        <div className="surge w-full max-w-sm bg-surface border border-border rounded-xl shadow-sm p-6 space-y-4 shadow-[0_16px_40px_-24px_color-mix(in_srgb,var(--foreground)_45%,transparent)]">
           <div className="flex items-center gap-2 text-success">
             <MailCheck size={20} />
             <h1 className="text-base font-semibold">Confira seu e-mail</h1>
@@ -126,7 +126,7 @@ export function CriarContaPage() {
 
   return (
     <div className="min-h-[100dvh] flex items-center justify-center bg-background px-4 py-10">
-      <div className="surge w-full max-w-sm bg-surface border border-border rounded-xl p-6 space-y-5 shadow-[0_16px_40px_-24px_color-mix(in_srgb,var(--foreground)_45%,transparent)]">
+      <div className="surge w-full max-w-sm bg-surface border border-border rounded-xl shadow-sm p-6 space-y-5 shadow-[0_16px_40px_-24px_color-mix(in_srgb,var(--foreground)_45%,transparent)]">
         <div className="flex items-center gap-3">
           <span className="flex items-center justify-center w-11 h-11 rounded-xl bg-primary text-primary-foreground shrink-0">
             <MarcaClubCut size={20} />

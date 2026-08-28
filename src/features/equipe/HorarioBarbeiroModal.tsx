@@ -123,7 +123,7 @@ export function HorarioBarbeiroModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-surface rounded-xl border border-border w-full max-w-sm p-5 space-y-4 max-h-[90vh] overflow-y-auto"
+        className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-sm p-5 space-y-4 max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
@@ -182,7 +182,7 @@ export function HorarioBarbeiroModal({
                           )
                         }
                         aria-label={`Entrada de ${d.label}`}
-                        className="border border-border-strong bg-surface text-foreground rounded px-2 py-1.5 text-sm"
+                        className="border border-border-strong bg-surface text-foreground rounded-lg px-2 py-1.5 text-sm"
                       />
                       <span className="text-xs text-muted-foreground">às</span>
                       <input
@@ -194,7 +194,7 @@ export function HorarioBarbeiroModal({
                           )
                         }
                         aria-label={`Saída de ${d.label}`}
-                        className="border border-border-strong bg-surface text-foreground rounded px-2 py-1.5 text-sm"
+                        className="border border-border-strong bg-surface text-foreground rounded-lg px-2 py-1.5 text-sm"
                       />
                     </>
                   ) : (
@@ -209,7 +209,7 @@ export function HorarioBarbeiroModal({
             <button
               onClick={salvar}
               disabled={salvando || salvo}
-              className="w-full btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+              className="w-full btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
               {salvo ? 'Salvo!' : salvando ? 'Salvando...' : 'Salvar horário'}
             </button>

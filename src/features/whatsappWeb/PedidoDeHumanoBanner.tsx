@@ -48,7 +48,7 @@ export function PedidoDeHumanoBanner({
                   href={`/web?conversa=${p.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 btn-primary rounded px-2.5 py-1 text-xs font-medium"
+                  className="inline-flex items-center gap-1.5 btn-primary rounded-lg px-2.5 py-1 text-xs font-medium"
                 >
                   <MessageCircle size={13} />
                   Responder

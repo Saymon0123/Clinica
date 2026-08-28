@@ -583,7 +583,7 @@ export function NewSaleModal({
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
-        className="bg-surface rounded-xl border border-border w-full max-w-lg max-h-[90vh] overflow-y-auto p-5"
+        className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-lg max-h-[90vh] overflow-y-auto p-5"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
@@ -600,7 +600,7 @@ export function NewSaleModal({
               <select
                 value={clientId}
                 onChange={(e) => setClientId(e.target.value)}
-                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-2 py-2 text-sm"
+                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-2 py-2 text-sm"
               >
                 <option value="">Sem cliente</option>
                 {clients.map((c) => (
@@ -640,7 +640,7 @@ export function NewSaleModal({
                   value={reativacaoSemanas}
                   onChange={(e) => setReativacaoSemanas(e.target.value)}
                   placeholder="—"
-                  className="mt-0.5 w-14 border border-border-strong bg-surface text-foreground rounded px-2 py-1 text-sm text-center"
+                  className="mt-0.5 w-14 border border-border-strong bg-surface text-foreground rounded-lg px-2 py-1 text-sm text-center"
                 />
                 <span className="text-sm text-foreground">
                   Agendamento automático: corta a cada quantas semanas?
@@ -734,7 +734,7 @@ export function NewSaleModal({
               <select
                 value={professionalId}
                 onChange={(e) => setProfessionalId(e.target.value)}
-                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-2 py-2 text-sm"
+                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-2 py-2 text-sm"
               >
                 {professionals.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -755,7 +755,7 @@ export function NewSaleModal({
                   setItemType(e.target.value as 'servico' | 'produto' | 'pacote')
                   setItemRef('')
                 }}
-                className="border border-border-strong bg-surface text-foreground rounded px-2 py-2 text-sm"
+                className="border border-border-strong bg-surface text-foreground rounded-lg px-2 py-2 text-sm"
               >
                 <option value="servico">Serviço</option>
                 <option value="produto">Produto</option>
@@ -765,7 +765,7 @@ export function NewSaleModal({
               <select
                 value={itemRef}
                 onChange={(e) => setItemRef(e.target.value)}
-                className="flex-1 min-w-36 border border-border-strong bg-surface text-foreground rounded px-2 py-2 text-sm"
+                className="flex-1 min-w-36 border border-border-strong bg-surface text-foreground rounded-lg px-2 py-2 text-sm"
               >
                 <option value="">Selecione...</option>
                 {currentOptions.map((o) => (
@@ -781,14 +781,14 @@ export function NewSaleModal({
                 min={1}
                 value={itemQty}
                 onChange={(e) => setItemQty(Math.max(1, Number(e.target.value)))}
-                className="w-16 border border-border-strong bg-surface text-foreground rounded px-2 py-2 text-sm"
+                className="w-16 border border-border-strong bg-surface text-foreground rounded-lg px-2 py-2 text-sm"
                 aria-label="Quantidade"
               />
 
               <button
                 onClick={addItem}
                 type="button"
-                className="flex items-center gap-1 btn-primary rounded px-3 py-2 text-sm font-medium"
+                className="flex items-center gap-1 btn-primary rounded-lg px-3 py-2 text-sm font-medium"
               >
                 <Plus size={14} />
                 Adicionar
@@ -802,7 +802,7 @@ export function NewSaleModal({
               {items.map((i, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center justify-between gap-2 bg-surface-2 rounded px-3 py-2 text-sm"
+                  className="flex items-center justify-between gap-2 bg-surface-2 rounded-lg px-3 py-2 text-sm"
                 >
                   <span className="text-foreground truncate">
                     {i.quantidade}× {i.nome}
@@ -831,7 +831,7 @@ export function NewSaleModal({
               <select
                 value={payment}
                 onChange={(e) => setPayment(e.target.value)}
-                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded px-2 py-2 text-sm"
+                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-2 py-2 text-sm"
               >
                 {Object.entries(PAYMENT_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>
@@ -853,7 +853,7 @@ export function NewSaleModal({
             <button
               onClick={onClose}
               type="button"
-              className="flex-1 btn-secondary rounded px-3 py-2 text-sm font-medium"
+              className="flex-1 btn-secondary rounded-lg px-3 py-2 text-sm font-medium"
             >
               Cancelar
             </button>
@@ -861,7 +861,7 @@ export function NewSaleModal({
               onClick={handleSave}
               disabled={saving || items.length === 0}
               type="button"
-              className="flex-1 btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+              className="flex-1 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
               {saving ? 'Salvando...' : `Finalizar venda`}
             </button>

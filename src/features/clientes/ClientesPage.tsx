@@ -101,12 +101,15 @@ export function ClientesPage() {
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <h1 className="text-xl font-bold tracking-tight text-foreground">Clientes</h1>
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">Clientes</h1>
+          <p className="text-sm text-muted-foreground">Quem já passou pela sua cadeira</p>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           {isManager && (
             <button
               onClick={() => setImporting(true)}
-              className="flex items-center gap-2 btn-secondary rounded px-3 py-2 text-sm font-medium"
+              className="flex items-center gap-2 btn-secondary rounded-lg px-3 py-2 text-sm font-medium"
             >
               <Upload size={15} />
               Importar
@@ -116,7 +119,7 @@ export function ClientesPage() {
           <button
             onClick={handleExport}
             disabled={clients.length === 0}
-            className="flex items-center gap-2 btn-secondary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+            className="flex items-center gap-2 btn-secondary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
           >
             <Download size={15} />
             Exportar
@@ -124,7 +127,7 @@ export function ClientesPage() {
           )}
           <button
             onClick={() => setShowNewClient(true)}
-            className="flex items-center gap-2 btn-primary rounded px-4 py-2 text-sm font-medium"
+            className="flex items-center gap-2 btn-primary rounded-lg px-4 py-2 text-sm font-medium"
           >
             <Plus size={16} />
             Adicionar
@@ -133,7 +136,7 @@ export function ClientesPage() {
       </div>
 
       {clients.length > 0 && (
-        <div className="bg-surface border border-border rounded-xl p-4 mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="bg-surface border border-border rounded-xl shadow-sm p-4 mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary-soft text-primary-soft-foreground">
               <UserPlus size={17} />
@@ -171,7 +174,7 @@ export function ClientesPage() {
       {error && <p className="text-sm text-danger mb-3">{error}</p>}
 
       {!loading && clients.length === 0 ? (
-        <div className="bg-surface rounded-xl border border-border flex flex-col items-center justify-center text-center py-16 px-4">
+        <div className="bg-surface rounded-xl border border-border shadow-sm flex flex-col items-center justify-center text-center py-16 px-4">
           <Inbox size={40} className="text-muted-foreground/40 mb-4" />
           <h2 className="text-base font-semibold text-foreground mb-1">Comece a adicionar clientes</h2>
           <p className="text-sm text-muted-foreground mb-5 max-w-sm">
@@ -179,14 +182,14 @@ export function ClientesPage() {
           </p>
           <button
             onClick={() => setShowNewClient(true)}
-            className="flex items-center gap-2 btn-primary rounded px-4 py-2 text-sm font-medium"
+            className="flex items-center gap-2 btn-primary rounded-lg px-4 py-2 text-sm font-medium"
           >
             <Plus size={16} />
             Adicionar
           </button>
         </div>
       ) : (
-        <div className="bg-surface rounded-xl border border-border">
+        <div className="bg-surface rounded-xl border border-border shadow-sm">
           <div className="p-3 border-b border-border">
             <div className="relative max-w-xs">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -194,7 +197,7 @@ export function ClientesPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Buscar por nome ou telefone"
-                className="w-full border border-border-strong bg-surface text-foreground rounded pl-9 pr-3 py-2 text-sm"
+                className="w-full border border-border-strong bg-surface text-foreground rounded-md pl-9 pr-3 py-2 text-sm"
               />
             </div>
           </div>

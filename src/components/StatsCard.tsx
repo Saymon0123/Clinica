@@ -74,8 +74,8 @@ export function StatsCard({
       ref={ref}
       className={
         hero
-          ? 'bg-primary text-primary-foreground rounded-xl p-4 shadow-md shadow-primary/20 transition-all duration-300 ease-out hover:-translate-y-1'
-          : 'bg-surface border border-border rounded-xl shadow-sm p-4 transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5'
+          ? 'bg-primary text-primary-foreground rounded-2xl p-4 shadow-md shadow-primary/20 transition-all duration-300 ease-out hover:-translate-y-1'
+          : 'bg-surface border border-border rounded-2xl shadow-sm p-4 transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5'
       }
     >
       <div className="flex items-center justify-between mb-2">

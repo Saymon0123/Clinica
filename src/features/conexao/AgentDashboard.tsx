@@ -23,7 +23,7 @@ function StatCard({
   hint?: string
 }) {
   return (
-    <div className="bg-surface border border-border rounded-xl shadow-sm p-5">
+    <div className="bg-surface border border-border rounded-2xl shadow-sm p-5">
       <div className="flex items-center gap-2 text-muted-foreground mb-2">
         <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary-soft text-primary-soft-foreground">
           {icon}
@@ -120,7 +120,7 @@ export function AgentDashboard({ salonId }: { salonId: string }) {
           agendamento automático e confirma por WhatsApp. Sempre do mês
           corrente — é o número que mostra o sistema trazendo gente de volta. */}
       {stats.reativacao && stats.reativacao.enviados > 0 && (
-        <div className="rounded-xl border border-border bg-surface p-5 space-y-3">
+        <div className="rounded-2xl border border-border bg-surface p-5 space-y-3">
           <div>
             <h3 className="text-sm font-semibold text-foreground">Reativação — clientes trazidos de volta</h3>
             <p className="text-xs text-muted-foreground">

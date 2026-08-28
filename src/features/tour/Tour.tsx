@@ -169,7 +169,7 @@ export function Tour({ chave, passos }: { chave: string; passos: PassoDoTour[] }
             ref={balaoRef}
             role="dialog"
             aria-label={passo.titulo}
-            className="fixed z-[62] w-[320px] max-w-[calc(100vw-24px)] bg-surface border border-border rounded-xl shadow-xl p-4"
+            className="fixed z-[62] w-[320px] max-w-[calc(100vw-24px)] bg-surface border border-border rounded-2xl shadow-xl p-4"
             style={{ top: colocacao?.top ?? 0, left: colocacao?.left ?? 0 }}
           >
             <div className="flex items-start justify-between gap-3">

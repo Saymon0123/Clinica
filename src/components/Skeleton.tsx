@@ -27,7 +27,7 @@ export function SkeletonPagina() {
     <div aria-hidden>
       <Skeleton className="h-6 w-40 mb-2" />
       <Skeleton className="h-4 w-64 mb-6" />
-      <div className="bg-surface rounded-xl border border-border shadow-sm p-5">
+      <div className="bg-surface rounded-2xl border border-border shadow-sm p-5">
         <SkeletonLinhas linhas={4} />
       </div>
     </div>

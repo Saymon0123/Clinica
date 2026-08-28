@@ -136,7 +136,7 @@ export function ClientesPage() {
       </>} />
 
       {clients.length > 0 && (
-        <div className="bg-surface border border-border rounded-xl shadow-sm p-5 mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="bg-surface border border-border rounded-2xl shadow-sm p-5 mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary-soft text-primary-soft-foreground">
               <UserPlus size={18} />
@@ -174,7 +174,7 @@ export function ClientesPage() {
       <div className="mb-3"><ErroInline>{error}</ErroInline></div>
 
       {!loading && clients.length === 0 ? (
-        <div className="bg-surface rounded-xl border border-border shadow-sm flex flex-col items-center justify-center text-center py-16 px-4">
+        <div className="bg-surface rounded-2xl border border-border shadow-sm flex flex-col items-center justify-center text-center py-16 px-4">
           <Inbox size={40} className="text-muted-foreground/40 mb-4" />
           <h2 className="text-base font-semibold text-foreground mb-1">Comece a adicionar clientes</h2>
           <p className="text-sm text-muted-foreground mb-5 max-w-sm">
@@ -190,7 +190,7 @@ export function ClientesPage() {
         </div>
       ) : (
         <div>
-          <div className="bg-surface rounded-xl border border-border shadow-sm p-3 mb-3">
+          <div className="bg-surface rounded-2xl border border-border shadow-sm p-3 mb-3">
             <div className="relative max-w-xs">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -203,7 +203,7 @@ export function ClientesPage() {
           </div>
 
           {filteredClients.length === 0 ? (
-            <div className="bg-surface rounded-xl border border-border shadow-sm">
+            <div className="bg-surface rounded-2xl border border-border shadow-sm">
               <EstadoVazio
                 icone={Search}
                 titulo="Nenhum cliente encontrado."

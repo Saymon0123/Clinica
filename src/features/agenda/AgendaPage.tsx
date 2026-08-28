@@ -344,7 +344,7 @@ export function AgendaPage() {
         ) : (
           <div
             ref={scrollRef}
-            className="bg-surface rounded-xl border border-border shadow-sm overflow-auto"
+            className="bg-surface rounded-2xl border border-border shadow-sm overflow-auto"
             style={{ maxHeight: 'calc(100vh - 260px)' }}
           >
             {/* Header com nomes dos profissionais */}
@@ -466,7 +466,7 @@ export function AgendaPage() {
       <div className="w-full lg:w-72 shrink-0 space-y-4">
         {/* Card-herói preenchido (referência CheckinOs, "Occupancy Rate"):
             o único bloco de cor cheia da tela, para o número do dia. */}
-        <div className="bg-primary text-primary-foreground rounded-xl p-4 shadow-md shadow-primary/20">
+        <div className="bg-primary text-primary-foreground rounded-2xl p-4 shadow-md shadow-primary/20">
           <div className="flex items-start justify-between">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-primary-foreground/70">
               Reservas

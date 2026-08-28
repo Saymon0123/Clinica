@@ -274,7 +274,7 @@ export function EquipePage() {
 
       {/* Convites pendentes */}
       {convites.length > 0 && (
-        <div className="bg-surface border border-border rounded-xl shadow-sm p-5">
+        <div className="bg-surface border border-border rounded-2xl shadow-sm p-5">
           <h2 className="text-sm font-semibold text-foreground mb-2">Convites aguardando</h2>
           <div className="divide-y divide-border">
             {convites.map((c) => (
@@ -353,7 +353,7 @@ export function EquipePage() {
       )}
 
       {/* Equipe */}
-      <div className="bg-surface border border-border rounded-xl shadow-sm divide-y divide-border">
+      <div className="bg-surface border border-border rounded-2xl shadow-sm divide-y divide-border">
         {loading && (
           <div className="p-4">
             <SkeletonLinhas />

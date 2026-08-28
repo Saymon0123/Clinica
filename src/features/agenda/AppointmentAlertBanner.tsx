@@ -12,7 +12,7 @@ export function AppointmentAlertBanner({ alerts, onDismiss }: Props) {
   return (
     <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 w-[calc(100vw-2rem)] max-w-sm">
       {alerts.map((alert) => (
-        <div key={alert.id} className="bg-surface border border-border rounded-xl shadow-lg p-4 relative">
+        <div key={alert.id} className="bg-surface border border-border rounded-2xl shadow-lg p-4 relative">
           <button
             onClick={() => onDismiss(alert.id)}
             aria-label="Fechar aviso"

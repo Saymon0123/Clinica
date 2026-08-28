@@ -36,7 +36,7 @@ export function MiniCalendar({ selectedDate, visibleMonth, onSelectDate, onChang
   const today = new Date()
 
   return (
-    <div className="bg-surface rounded-xl border border-border shadow-sm p-4">
+    <div className="bg-surface rounded-2xl border border-border shadow-sm p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-foreground">
           {MONTH_LABELS[visibleMonth.getMonth()]} de {visibleMonth.getFullYear()}

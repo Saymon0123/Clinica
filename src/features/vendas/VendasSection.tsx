@@ -74,7 +74,7 @@ export function VendasSection({
       <ErroInline>{error}</ErroInline>
 
       {!loading && sales.length === 0 ? (
-        <div className="bg-surface border border-border rounded-xl shadow-sm">
+        <div className="bg-surface border border-border rounded-2xl shadow-sm">
           <EstadoVazio
             icone={Receipt}
             titulo={`Nenhuma venda registrada ${period === 'dia' ? 'hoje' : 'neste mês'}.`}

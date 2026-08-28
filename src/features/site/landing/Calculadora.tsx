@@ -228,7 +228,7 @@ export function Calculadora() {
             aoMudar={setFaltas}
           />
           <Controle
-            rotulo="Preço médio do seu atendimento"
+            rotulo="Preço médio do seu corte"
             valor={preco}
             min={MIN_PRECO}
             max={MAX_PRECO}
@@ -254,7 +254,7 @@ export function Calculadora() {
               valores da mesma conta, no mesmo cartão, discordando sobre como
               reagir ao mesmo gesto. */}
           <p className="mt-6 max-w-[34ch] text-[15px] leading-relaxed text-[var(--l-fg-mute)]">
-            Na cobrança por agendamento, transformar essas mesmas faltas em horário confirmado
+            Aqui, transformar essas mesmas faltas em horário confirmado
             custaria <ValorAnimado valor={custoSeFossemAgendamentos} formato={moedaComCentavos} /> no
             mês. A conta é com os seus números.
           </p>

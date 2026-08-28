@@ -142,7 +142,8 @@ export function Depoimentos() {
           </h2>
           {/* A contagem sai do proprio array: nunca fica desatualizada. */}
           <p className="mt-5 text-[16px] leading-relaxed text-[var(--l-fg-mute)] sm:text-[17px]">
-            {DEPOIMENTOS.length} donos de barbearia, nas palavras deles.
+            {DEPOIMENTOS.length} donos de barbearia, nas palavras deles. Um acordou com a agenda cheia de
+            horários marcados enquanto dormia.
           </p>
         </Reveal>
 

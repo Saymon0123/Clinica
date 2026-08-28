@@ -217,15 +217,14 @@ function Hero() {
 
           <Reveal delay={0.05}>
             <h1 className="landing-display mt-5 text-[clamp(2.6rem,6.6vw,5rem)] text-[var(--l-fg)]">
-              Suas mãos estão ocupadas. As <em className="landing-serif">dele</em> não.
+              Você corta. Ele responde, marca e <em className="landing-serif">confirma</em>.
             </h1>
           </Reveal>
 
           <Reveal delay={0.12}>
             <p className="mt-8 max-w-[46ch] text-[17px] leading-relaxed text-[var(--l-fg-mute)] sm:text-[19px]">
-              Ele responde a mensagem das 22h na hora, marca na agenda, e devolve a conversa no
-              segundo em que você larga a máquina. Se o cliente perguntar se é robô, ele responde
-              que é.
+              Enquanto você termina um corte, ele responde o preço, mostra os horários livres e
+              marca o próximo cliente. E quando você pega o celular, ele sai da frente.
             </p>
           </Reveal>
 
@@ -334,7 +333,7 @@ function Recursos() {
     <section id="recursos" className={`${SECAO} secao-ancora`}>
       <div className={CAIXA}>
         <Reveal>
-          <h2 className={TITULO_DECISAO}>O que ele faz enquanto você <em className="landing-serif">corta</em></h2>
+          <h2 className={TITULO_DECISAO}>O que o seu WhatsApp faz enquanto você <em className="landing-serif">corta</em></h2>
         </Reveal>
 
         <RevealGrupo className="mt-11 grid gap-4 md:grid-cols-3">
@@ -741,7 +740,7 @@ function Preco() {
 
         <Reveal delay={0.08} className="mt-11">
           <div className="card rounded-[var(--r-md)] p-8 sm:p-10">
-            <div className="landing-label text-[var(--l-fg-mute)]">Cobrança por uso</div>
+            <div className="landing-label text-[var(--l-fg-mute)]">Você paga por horário marcado</div>
             <div className="mt-4 flex items-baseline gap-1">
               <span className="text-[19px] text-[var(--l-fg-mute)]">R$</span>
               <span className="landing-num text-[52px] text-[var(--l-fg)]">
@@ -754,7 +753,7 @@ function Preco() {
             <p className="mt-3 text-[14px] text-[var(--l-fg-faint)]">
               Sem mensalidade. Sem taxa de setup.{' '}
               <span className="landing-serif text-[var(--l-fg-mute)]">
-                Menos que uma navalha.
+                80 horários no mês custam R$ 60 — menos que um corte com barba.
               </span>
             </p>
             {/* A escada anda na direção OPOSTA à da categoria: nos sistemas
@@ -815,8 +814,8 @@ const PERGUNTAS = [
     'Se ele perguntar, ele assume que é automático. A gente não acha certo enganar o seu cliente. Fora isso, ele escreve como gente.',
   ],
   [
-    'Tem fidelidade?',
-    `Não. São ${DIAS_DE_TESTE} dias grátis sem cartão, e depois você paga só pelos agendamentos confirmados — sem mensalidade e sem mês a cumprir. Cancela quando quiser, pelo próprio sistema.`,
+    'Fico preso em contrato?',
+    `Não. São ${DIAS_DE_TESTE} dias grátis sem cartão, e depois você paga só pelos horários confirmados — sem mensalidade e sem mês a cumprir. Cancela quando quiser, pelo próprio sistema.`,
   ],
   [
     'Funciona com mais de um barbeiro?',
@@ -872,8 +871,8 @@ function Fecho() {
         </Reveal>
         <Reveal delay={0.09}>
           <p className="mx-auto mt-8 max-w-[42ch] text-[17px] leading-relaxed text-[var(--l-fg-mute)] sm:text-[19px]">
-            Em {DIAS_DE_TESTE} dias dá tempo de ver ele responder, marcar, e o cliente aparecer
-            na cadeira.
+            Em {DIAS_DE_TESTE} dias dá tempo de ver seu WhatsApp responder sozinho, marcar, e o
+            cliente aparecer na cadeira.
           </p>
         </Reveal>
         <Reveal delay={0.16}>

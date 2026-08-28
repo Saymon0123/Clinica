@@ -37,26 +37,26 @@ const PATENTES = [
     nome: 'Recruta',
     cor: 'text-[var(--l-fg-faint)]',
     beneficio:
-      'Relatório automático mensal de performance: faturamento, recorrência e horários ociosos.',
+      'Todo mês, no seu WhatsApp: quanto entrou, quem voltou e que horário ficou parado.',
   },
   {
     nome: 'Sargento',
     cor: 'text-[var(--l-fg-mute)]',
     beneficio:
-      'Auditoria trimestral de agenda feita pelo time Aura, apontando onde estão os furos e as oportunidades.',
+      'De 3 em 3 meses, o time Aura olha sua agenda com você e mostra onde está vazando dinheiro.',
   },
   {
     nome: 'Capitão',
     cor: 'text-[var(--l-accent-ink)]',
     beneficio:
-      'Acesso beta a novas automações antes do lançamento geral, e prioridade pra sugerir o que vem a seguir.',
+      'Você testa as automações novas antes de todo mundo — e o que você pedir entra na frente da fila.',
   },
   {
     nome: 'General',
     // Única cor fora da paleta da página — ver nota no topo do arquivo.
     cor: 'text-[#d4af5a]',
     beneficio:
-      'Consultoria trimestral com os fundadores, sua barbearia em destaque nas nossas redes, e comissão por indicação.',
+      'Conversa direta com os fundadores de 3 em 3 meses, sua barbearia nas nossas redes, e comissão por cada barbearia que você indicar.',
   },
 ] as const
 

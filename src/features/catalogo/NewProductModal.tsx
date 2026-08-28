@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Modal } from '../../components/Modal'
+import { Campo, Input } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
 import type { ProductItem } from './types'
 
@@ -88,66 +89,56 @@ export function NewProductModal({ salonId, product, onClose, onSaved }: Props) {
   return (
     <Modal onClose={onClose} titulo={product ? 'Editar produto' : 'Novo produto'} tamanho="md">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm text-muted-foreground mb-1" htmlFor="nome">Nome do produto</label>
-            <input
+          <Campo rotulo="Nome do produto" htmlFor="nome">
+            <Input
               id="nome"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               required
-              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               placeholder="Pomada modeladora"
             />
-          </div>
+          </Campo>
 
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1" htmlFor="precoVenda">Preço de venda (R$)</label>
-              <input
+            <Campo rotulo="Preço de venda (R$)" htmlFor="precoVenda">
+              <Input
                 id="precoVenda"
                 inputMode="decimal"
                 value={precoVenda}
                 onChange={(e) => setPrecoVenda(e.target.value)}
-                className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
                 placeholder="35,00"
               />
-            </div>
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1" htmlFor="precoCusto">Preço de custo (opcional)</label>
-              <input
+            </Campo>
+            <Campo rotulo="Preço de custo (opcional)" htmlFor="precoCusto">
+              <Input
                 id="precoCusto"
                 inputMode="decimal"
                 value={precoCusto}
                 onChange={(e) => setPrecoCusto(e.target.value)}
-                className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
                 placeholder="18,00"
               />
-            </div>
+            </Campo>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1" htmlFor="estoqueAtual">Estoque atual</label>
-              <input
+            <Campo rotulo="Estoque atual" htmlFor="estoqueAtual">
+              <Input
                 id="estoqueAtual"
                 type="number"
                 min={0}
                 value={estoqueAtual}
                 onChange={(e) => setEstoqueAtual(e.target.value)}
-                className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               />
-            </div>
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1" htmlFor="estoqueMinimo">Estoque mínimo</label>
-              <input
+            </Campo>
+            <Campo rotulo="Estoque mínimo" htmlFor="estoqueMinimo">
+              <Input
                 id="estoqueMinimo"
                 type="number"
                 min={0}
                 value={estoqueMinimo}
                 onChange={(e) => setEstoqueMinimo(e.target.value)}
-                className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               />
-            </div>
+            </Campo>
           </div>
 
           {error && <p className="text-sm text-danger">{error}</p>}

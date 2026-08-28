@@ -21,6 +21,8 @@ import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
 import { useFinanceiroData, type MetricKey, type PeriodFilter } from './useFinanceiroData'
 import { StatsCard } from '../../components/StatsCard'
+import { EstadoVazio } from '../../components/EstadoVazio'
+import { SkeletonPagina } from '../../components/Skeleton'
 import { RadialGoal } from '../../components/RadialGoal'
 import { VendasSection } from '../vendas/VendasSection'
 import { FechamentoComissaoModal } from './FechamentoComissaoModal'
@@ -172,7 +174,7 @@ export function FinanceiroPage() {
   const clearPrefill = useCallback(() => setSalePrefill(null), [])
 
   if (salonLoading) {
-    return <p className="text-sm text-muted-foreground">Carregando...</p>
+    return <SkeletonPagina />
   }
 
   if (!salonId) {
@@ -465,9 +467,11 @@ export function FinanceiroPage() {
         </div>
 
         {data.topServices.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">
-            Nenhuma venda registrada no período.
-          </p>
+          <EstadoVazio
+            icone={TrendingUp}
+            titulo="Nenhuma venda registrada no período."
+            descricao="Quando houver vendas, os serviços que mais faturam aparecem aqui."
+          />
         ) : (
           <div className="space-y-3">
             {data.topServices.map((s) => (
@@ -516,9 +520,11 @@ export function FinanceiroPage() {
         </div>
 
         {data.commissions.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">
-            Nenhuma comissão no período (defina o percentual de comissão do profissional para calcular).
-          </p>
+          <EstadoVazio
+            icone={HandCoins}
+            titulo="Nenhuma comissão no período"
+            descricao="Defina o percentual de comissão do profissional para calcular."
+          />
         ) : (
           <div className="space-y-2">
             {data.commissions.map((c) => (

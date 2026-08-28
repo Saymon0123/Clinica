@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Modal } from '../../components/Modal'
+import { Campo, Input } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
 
 export function EditGoalModal({
@@ -45,18 +46,17 @@ export function EditGoalModal({
   return (
     <Modal onClose={onClose} titulo="Meta de faturamento" tamanho="xs">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <label className="block">
-          <span className="text-xs font-medium text-muted-foreground">Meta mensal (R$)</span>
-          <input
+        <Campo rotulo="Meta mensal (R$)" htmlFor="meta-mensal">
+          <Input
+            id="meta-mensal"
             type="number"
             min={1}
             step="0.01"
             value={value}
             onChange={(e) => setValue(e.target.value)}
             autoFocus
-            className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
           />
-        </label>
+        </Campo>
 
         {error && <p className="text-sm text-danger">{error}</p>}
 

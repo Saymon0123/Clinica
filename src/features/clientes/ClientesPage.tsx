@@ -7,6 +7,10 @@ import { ClientDetailModal } from './ClientDetailModal'
 import { ImportClientsModal } from './ImportClientsModal'
 import { buildCsv, downloadCsv } from '../../lib/csv'
 import { formatarTelefone, linkWhatsApp, somenteDigitos } from '../../lib/telefone'
+import { Tabela, Th, Td } from '../../components/Tabela'
+import { EstadoVazio } from '../../components/EstadoVazio'
+import { SkeletonPagina } from '../../components/Skeleton'
+import { Input } from '../../components/Campo'
 import type { Client } from './types'
 
 function formatDate(iso: string | null) {
@@ -87,7 +91,7 @@ export function ClientesPage() {
   }, [clients, search, ordem])
 
   if (salonLoading) {
-    return <p className="text-sm text-muted-foreground">Carregando...</p>
+    return <SkeletonPagina />
   }
 
   if (!salonId) {
@@ -189,33 +193,41 @@ export function ClientesPage() {
           </button>
         </div>
       ) : (
-        <div className="bg-surface rounded-xl border border-border shadow-sm">
-          <div className="p-3 border-b border-border">
+        <div>
+          <div className="bg-surface rounded-xl border border-border shadow-sm p-3 mb-3">
             <div className="relative max-w-xs">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input
+              <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Buscar por nome ou telefone"
-                className="w-full border border-border-strong bg-surface text-foreground rounded-md pl-9 pr-3 py-2 text-sm"
+                className="pl-9"
               />
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          {filteredClients.length === 0 ? (
+            <div className="bg-surface rounded-xl border border-border shadow-sm">
+              <EstadoVazio
+                icone={Search}
+                titulo="Nenhum cliente encontrado."
+                descricao="Tente buscar por outro nome ou telefone."
+              />
+            </div>
+          ) : (
+            <Tabela>
               <thead>
-                <tr className="text-left text-muted-foreground border-b border-border">
-                  <th className="px-4 py-2 font-medium">
+                <tr>
+                  <Th>
                     <button
                       onClick={() => setOrdem('nome')}
                       className={ordem === 'nome' ? 'text-foreground' : 'hover:text-foreground'}
                     >
                       Nome{ordem === 'nome' ? ' ↑' : ''}
                     </button>
-                  </th>
-                  <th className="px-4 py-2 font-medium">Telefone</th>
-                  <th className="px-4 py-2 font-medium">
+                  </Th>
+                  <Th>Telefone</Th>
+                  <Th>
                     <button
                       onClick={() => setOrdem('ultima_visita')}
                       title="Ordenar por quem está há mais tempo sem vir"
@@ -223,9 +235,9 @@ export function ClientesPage() {
                     >
                       Última visita{ordem === 'ultima_visita' ? ' ↑' : ''}
                     </button>
-                  </th>
-                  <th className="px-4 py-2 font-medium">Aniversário</th>
-                  <th className="px-4 py-2 font-medium">Observação</th>
+                  </Th>
+                  <Th>Aniversário</Th>
+                  <Th>Observação</Th>
                 </tr>
               </thead>
               <tbody>
@@ -233,10 +245,10 @@ export function ClientesPage() {
                   <tr
                     key={client.id}
                     onClick={() => setDetailClient(client)}
-                    className="border-b border-border last:border-0 cursor-pointer hover:bg-surface-2 transition-colors"
+                    className="border-b border-border/60 last:border-b-0 cursor-pointer hover:bg-surface-2/60 transition-colors"
                   >
-                    <td className="px-4 py-3 text-foreground font-medium">{client.nome}</td>
-                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                    <Td className="text-foreground font-medium">{client.nome}</Td>
+                    <Td className="text-muted-foreground whitespace-nowrap">
                       {client.telefone ? (
                         linkWhatsApp(client.telefone) ? (
                           <a
@@ -255,8 +267,8 @@ export function ClientesPage() {
                       ) : (
                         '—'
                       )}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
+                    </Td>
+                    <Td className="whitespace-nowrap">
                       {(() => {
                         const uv = formatUltimaVisita(client.ultima_visita)
                         return (
@@ -271,18 +283,14 @@ export function ClientesPage() {
                           </span>
                         )
                       })()}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{formatDate(client.aniversario)}</td>
-                    <td className="px-4 py-3 text-muted-foreground max-w-xs truncate">{client.observacao ?? '—'}</td>
+                    </Td>
+                    <Td className="text-muted-foreground">{formatDate(client.aniversario)}</Td>
+                    <Td className="text-muted-foreground max-w-xs truncate">{client.observacao ?? '—'}</Td>
                   </tr>
                 ))}
               </tbody>
-            </table>
-
-            {filteredClients.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-8">Nenhum cliente encontrado.</p>
-            )}
-          </div>
+            </Tabela>
+          )}
         </div>
       )}
 

@@ -3,6 +3,8 @@ import { Check, HandCoins } from 'lucide-react'
 import { Modal } from '../../components/Modal'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../../components/Toast'
+import { Campo, Input } from '../../components/Campo'
+import { SkeletonLinhas } from '../../components/Skeleton'
 
 type LinhaComissao = {
   id: string
@@ -138,15 +140,14 @@ export function FechamentoComissaoModal({
       }
       tamanho="md"
     >
-        <label className="block">
-          <span className="text-xs font-medium text-muted-foreground">Mês de referência</span>
-          <input
+        <Campo rotulo="Mês de referência" htmlFor="mes-referencia">
+          <Input
+            id="mes-referencia"
             type="month"
             value={mes}
             onChange={(e) => setMes(e.target.value)}
-            className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
           />
-        </label>
+        </Campo>
 
         <div className="grid grid-cols-2 gap-2">
           <div className="bg-surface-2 rounded-lg px-3 py-2">
@@ -162,7 +163,7 @@ export function FechamentoComissaoModal({
         {erro && <p className="text-sm text-danger">{erro}</p>}
 
         {carregando ? (
-          <p className="text-sm text-muted-foreground">Carregando...</p>
+          <SkeletonLinhas />
         ) : linhas.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">
             Nenhuma comissão registrada neste mês.

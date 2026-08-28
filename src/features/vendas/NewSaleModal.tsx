@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { Modal } from '../../components/Modal'
+import { Campo, Select } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../../components/Toast'
 import { useAuth } from '../auth/AuthContext'
@@ -585,12 +586,11 @@ export function NewSaleModal({
     <Modal onClose={onClose} titulo="Nova venda" tamanho="lg">
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Cliente (opcional)</span>
-              <select
+            <Campo rotulo="Cliente (opcional)" htmlFor="venda-cliente">
+              <Select
+                id="venda-cliente"
                 value={clientId}
                 onChange={(e) => setClientId(e.target.value)}
-                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-2 py-2 text-sm"
               >
                 <option value="">Sem cliente</option>
                 {clients.map((c) => (
@@ -598,8 +598,8 @@ export function NewSaleModal({
                     {c.nome}
                   </option>
                 ))}
-              </select>
-            </label>
+              </Select>
+            </Campo>
 
             {clientId && (
               <label className="flex items-start gap-2.5 rounded-lg border border-border bg-surface-2 p-2.5">
@@ -719,20 +719,19 @@ export function NewSaleModal({
               </div>
             )}
 
-            <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Profissional</span>
-              <select
+            <Campo rotulo="Profissional" htmlFor="venda-profissional">
+              <Select
+                id="venda-profissional"
                 value={professionalId}
                 onChange={(e) => setProfessionalId(e.target.value)}
-                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-2 py-2 text-sm"
               >
                 {professionals.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.nome}
                   </option>
                 ))}
-              </select>
-            </label>
+              </Select>
+            </Campo>
           </div>
 
           {/* Adição de itens */}
@@ -752,10 +751,10 @@ export function NewSaleModal({
                 {pacotesDoSalao.length > 0 && <option value="pacote">Pacote</option>}
               </select>
 
-              <select
+              <Select
                 value={itemRef}
                 onChange={(e) => setItemRef(e.target.value)}
-                className="flex-1 min-w-36 border border-border-strong bg-surface text-foreground rounded-lg px-2 py-2 text-sm"
+                className="flex-1 min-w-36"
               >
                 <option value="">Selecione...</option>
                 {currentOptions.map((o) => (
@@ -764,7 +763,7 @@ export function NewSaleModal({
                     {itemType === 'produto' ? ` (${(o as ProductOption).estoque_atual} em estoque)` : ''}
                   </option>
                 ))}
-              </select>
+              </Select>
 
               <input
                 type="number"
@@ -816,20 +815,19 @@ export function NewSaleModal({
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
-            <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Forma de pagamento</span>
-              <select
+            <Campo rotulo="Forma de pagamento" htmlFor="venda-pagamento">
+              <Select
+                id="venda-pagamento"
                 value={payment}
                 onChange={(e) => setPayment(e.target.value)}
-                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-2 py-2 text-sm"
               >
                 {Object.entries(PAYMENT_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
                   </option>
                 ))}
-              </select>
-            </label>
+              </Select>
+            </Campo>
 
             <div className="text-right">
               <span className="text-xs text-muted-foreground">Total</span>

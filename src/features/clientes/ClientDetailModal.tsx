@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { CalendarCheck, Pencil, Receipt, X } from 'lucide-react'
 import { Modal } from '../../components/Modal'
+import { EstadoVazio } from '../../components/EstadoVazio'
+import { Badge } from '../../components/Badge'
 import { supabase } from '../../lib/supabase'
 import { formatarTelefone, linkWhatsApp } from '../../lib/telefone'
 import type { Client } from './types'
@@ -173,7 +175,7 @@ export function ClientDetailModal({
                 Agendamentos recentes
               </h3>
               {appointments.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nenhum agendamento ainda.</p>
+                <EstadoVazio icone={CalendarCheck} titulo="Nenhum agendamento ainda." />
               ) : (
                 <div className="space-y-1.5">
                   {appointments.map((a) => (
@@ -181,16 +183,18 @@ export function ClientDetailModal({
                       <span className="text-foreground truncate">
                         {formatDate(a.data_hora_inicio)} · {one(a.services)?.nome ?? 'Serviço'}
                       </span>
-                      <span
-                        className={`text-xs font-medium shrink-0 ${
-                          a.status === 'concluido'
-                            ? 'text-success'
-                            : a.status === 'cancelado'
-                              ? 'text-danger'
-                              : 'text-muted-foreground'
-                        }`}
-                      >
-                        {STATUS_LABELS[a.status] ?? a.status}
+                      <span className="shrink-0">
+                        <Badge
+                          variante={
+                            a.status === 'concluido'
+                              ? 'ok'
+                              : a.status === 'cancelado' || a.status === 'faltou'
+                                ? 'perigo'
+                                : 'atencao'
+                          }
+                        >
+                          {STATUS_LABELS[a.status] ?? a.status}
+                        </Badge>
                       </span>
                     </div>
                   ))}
@@ -208,7 +212,7 @@ export function ClientDetailModal({
                 Compras recentes
               </h3>
               {orders.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nenhuma compra registrada.</p>
+                <EstadoVazio icone={Receipt} titulo="Nenhuma compra registrada." />
               ) : (
                 <div className="space-y-1.5">
                   {orders.map((o) => (

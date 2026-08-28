@@ -8,6 +8,7 @@ import { RequireNetworkOwner } from './features/auth/RequireNetworkOwner'
 import { RequireManager } from './features/auth/RequireManager'
 import { LoginPage } from './features/auth/LoginPage'
 import { AppLayout } from './components/AppLayout'
+import { SkeletonPagina } from './components/Skeleton'
 import { AgendaPage } from './features/agenda/AgendaPage'
 
 // Telas fora do caminho crítico entram sob demanda: o bundle inicial carrega
@@ -68,7 +69,11 @@ const RedePage = lazy(() => import('./features/rede/RedePage').then((m) => ({ de
 const AjudaPage = lazy(() => import('./features/ajuda/AjudaPage').then((m) => ({ default: m.AjudaPage })))
 
 function Carregando() {
-  return <p className="p-6 text-sm text-muted-foreground">Carregando...</p>
+  return (
+    <div className="p-4 md:p-6">
+      <SkeletonPagina />
+    </div>
+  )
 }
 
 /**

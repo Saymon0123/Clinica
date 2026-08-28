@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Lock, PackagePlus, Plus, Power } from 'lucide-react'
+import { Boxes, Lock, Package, PackagePlus, Plus, Power, Tag } from 'lucide-react'
 import { useSalon } from '../auth/useSalon'
 import { useAuth } from '../auth/AuthContext'
 import { useServicesData } from './useServicesData'
@@ -11,6 +11,10 @@ import { usePacotesData, type Pacote } from './usePacotesData'
 import { NewPacoteModal } from './NewPacoteModal'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../../components/Toast'
+import { Tabela, Th, Linha, Td } from '../../components/Tabela'
+import { Badge } from '../../components/Badge'
+import { EstadoVazio } from '../../components/EstadoVazio'
+import { SkeletonPagina } from '../../components/Skeleton'
 import type { ServiceItem, ProductItem } from './types'
 
 type Tab = 'servicos' | 'produtos' | 'pacotes'
@@ -106,7 +110,7 @@ export function CatalogoPage() {
   }, [salonId, reloadServices, reloadProducts])
 
   if (salonLoading) {
-    return <p className="text-sm text-muted-foreground">Carregando...</p>
+    return <SkeletonPagina />
   }
 
   if (!salonId) {
@@ -164,33 +168,46 @@ export function CatalogoPage() {
             <p className="text-sm text-danger mb-3">{servicesError || actionError}</p>
           )}
 
-          <div className="bg-surface rounded-xl border border-border shadow-sm overflow-x-auto">
-            <table className="w-full text-sm">
+          {!loadingServices && services.length === 0 ? (
+            <div className="bg-surface rounded-xl border border-border shadow-sm">
+              <EstadoVazio
+                icone={Tag}
+                titulo="Nenhum serviço cadastrado ainda."
+                descricao="Os serviços cadastrados aqui aparecem na agenda e nas vendas."
+                acao={
+                  <button
+                    onClick={() => setEditingService('new')}
+                    className="flex items-center gap-2 btn-primary rounded-lg px-4 py-2 text-sm font-medium"
+                  >
+                    <Plus size={16} />
+                    Novo serviço
+                  </button>
+                }
+              />
+            </div>
+          ) : (
+            <Tabela>
               <thead>
-                <tr className="text-left text-muted-foreground border-b border-border">
-                  <th className="px-4 py-2 font-medium">Serviço</th>
-                  <th className="px-4 py-2 font-medium">Duração</th>
-                  <th className="px-4 py-2 font-medium">Preço</th>
-                  <th className="px-4 py-2 font-medium" title="Vendas de comandas fechadas no mês corrente">
-                    Vendas no mês
-                  </th>
-                  <th className="px-4 py-2 font-medium">Status</th>
-                  <th className="px-4 py-2 font-medium text-right">Ações</th>
+                <tr>
+                  <Th>Serviço</Th>
+                  <Th>Duração</Th>
+                  <Th>Preço</Th>
+                  <Th title="Vendas de comandas fechadas no mês corrente">Vendas no mês</Th>
+                  <Th>Status</Th>
+                  <Th className="text-right">Ações</Th>
                 </tr>
               </thead>
               <tbody>
                 {services.map((s) => (
-                  <tr key={s.id} className="border-b border-border last:border-0">
-                    <td className="px-4 py-3 text-foreground font-medium">{s.nome}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{s.duracao_minutos} min</td>
-                    <td className="px-4 py-3 text-muted-foreground">{formatCurrency(s.preco)}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{s.vendas_mes}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${s.ativo ? 'bg-success-soft text-success' : 'bg-surface-2 text-muted-foreground'}`}>
-                        {s.ativo ? 'Ativo' : 'Inativo'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right space-x-2">
+                  <Linha key={s.id}>
+                    <Td className="text-foreground font-medium">{s.nome}</Td>
+                    <Td className="text-muted-foreground">{s.duracao_minutos} min</Td>
+                    <Td className="text-muted-foreground">{formatCurrency(s.preco)}</Td>
+                    <Td className="text-muted-foreground">{s.vendas_mes}</Td>
+                    <Td>
+                      <Badge variante={s.ativo ? 'ok' : 'neutro'}>{s.ativo ? 'Ativo' : 'Inativo'}</Badge>
+                    </Td>
+                    <Td className="text-right space-x-2">
                       {podeMexer(s) ? (
                         <>
                           <button onClick={() => setEditingService(s)} className="btn-chip">
@@ -210,18 +227,12 @@ export function CatalogoPage() {
                           Da gestão
                         </span>
                       )}
-                    </td>
-                  </tr>
+                    </Td>
+                  </Linha>
                 ))}
               </tbody>
-            </table>
-
-            {!loadingServices && services.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                Nenhum serviço cadastrado ainda.
-              </p>
-            )}
-          </div>
+            </Tabela>
+          )}
         </div>
       ) : tab === 'pacotes' ? (
         <div>
@@ -241,40 +252,62 @@ export function CatalogoPage() {
             <p className="text-sm text-danger mb-3">{pacotesError || actionError}</p>
           )}
 
-          <div className="bg-surface rounded-xl border border-border shadow-sm overflow-x-auto">
-            <table className="w-full text-sm">
+          {!loadingPacotes && pacotes.length === 0 ? (
+            <div className="bg-surface rounded-xl border border-border shadow-sm">
+              <EstadoVazio
+                icone={Boxes}
+                titulo="Nenhum pacote ainda."
+                descricao={
+                  <>
+                    Crie o primeiro: "pague adiantado, leve mais barato" — o dinheiro entra na hora e
+                    o cliente volta.
+                  </>
+                }
+                acao={
+                  isManager ? (
+                    <button
+                      onClick={() => setEditingPacote('new')}
+                      className="flex items-center gap-2 btn-primary rounded-lg px-4 py-2 text-sm font-medium"
+                    >
+                      <Plus size={16} />
+                      Novo pacote
+                    </button>
+                  ) : undefined
+                }
+              />
+            </div>
+          ) : (
+            <Tabela>
               <thead>
-                <tr className="text-left text-muted-foreground border-b border-border">
-                  <th className="px-4 py-2 font-medium">Pacote</th>
-                  <th className="px-4 py-2 font-medium">Inclui</th>
-                  <th className="px-4 py-2 font-medium">Preço</th>
-                  <th className="px-4 py-2 font-medium">Economia</th>
-                  <th className="px-4 py-2 font-medium">Vendidos no mês</th>
-                  <th className="px-4 py-2 font-medium">Status</th>
-                  <th className="px-4 py-2 font-medium text-right">Ações</th>
+                <tr>
+                  <Th>Pacote</Th>
+                  <Th>Inclui</Th>
+                  <Th>Preço</Th>
+                  <Th>Economia</Th>
+                  <Th>Vendidos no mês</Th>
+                  <Th>Status</Th>
+                  <Th className="text-right">Ações</Th>
                 </tr>
               </thead>
               <tbody>
                 {pacotes.map((pac) => (
-                  <tr key={pac.id} className="border-b border-border last:border-0">
-                    <td className="px-4 py-3 text-foreground font-medium">{pac.nome}</td>
-                    <td className="px-4 py-3 text-muted-foreground">
+                  <Linha key={pac.id}>
+                    <Td className="text-foreground font-medium">{pac.nome}</Td>
+                    <Td className="text-muted-foreground">
                       {pac.itens.map((i) => `${i.quantidade}× ${i.servico}`).join(' + ')}
                       {pac.validade_dias ? ` · vale ${pac.validade_dias} dias` : ''}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{formatCurrency(pac.preco)}</td>
-                    <td className="px-4 py-3 text-muted-foreground">
+                    </Td>
+                    <Td className="text-muted-foreground">{formatCurrency(pac.preco)}</Td>
+                    <Td className="text-muted-foreground">
                       {pac.valor_avulso > pac.preco
                         ? `${Math.round(((pac.valor_avulso - pac.preco) / pac.valor_avulso) * 100)}% (avulso ${formatCurrency(pac.valor_avulso)})`
                         : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{pac.vendidos_mes}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${pac.ativo ? 'bg-success-soft text-success' : 'bg-surface-2 text-muted-foreground'}`}>
-                        {pac.ativo ? 'Ativo' : 'Inativo'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
+                    </Td>
+                    <Td className="text-muted-foreground">{pac.vendidos_mes}</Td>
+                    <Td>
+                      <Badge variante={pac.ativo ? 'ok' : 'neutro'}>{pac.ativo ? 'Ativo' : 'Inativo'}</Badge>
+                    </Td>
+                    <Td className="text-right space-x-2 whitespace-nowrap">
                       {isManager ? (
                         <>
                           <button onClick={() => setEditingPacote(pac)} className="btn-chip">
@@ -294,19 +327,12 @@ export function CatalogoPage() {
                           Da gestão
                         </span>
                       )}
-                    </td>
-                  </tr>
+                    </Td>
+                  </Linha>
                 ))}
               </tbody>
-            </table>
-
-            {!loadingPacotes && pacotes.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                Nenhum pacote ainda. Crie o primeiro: "pague adiantado, leve mais barato" — o
-                dinheiro entra na hora e o cliente volta.
-              </p>
-            )}
-          </div>
+            </Tabela>
+          )}
         </div>
       ) : (
         <div>
@@ -326,34 +352,51 @@ export function CatalogoPage() {
             <p className="text-sm text-danger mb-3">{productsError || actionError}</p>
           )}
 
-          <div className="bg-surface rounded-xl border border-border shadow-sm overflow-x-auto">
-            <table className="w-full text-sm">
+          {!loadingProducts && products.length === 0 ? (
+            <div className="bg-surface rounded-xl border border-border shadow-sm">
+              <EstadoVazio
+                icone={Package}
+                titulo="Nenhum produto cadastrado ainda."
+                descricao="Cadastre os produtos que ficam à venda no balcão para controlar o estoque."
+                acao={
+                  isManager ? (
+                    <button
+                      onClick={() => setEditingProduct('new')}
+                      className="flex items-center gap-2 btn-primary rounded-lg px-4 py-2 text-sm font-medium"
+                    >
+                      <Plus size={16} />
+                      Novo produto
+                    </button>
+                  ) : undefined
+                }
+              />
+            </div>
+          ) : (
+            <Tabela>
               <thead>
-                <tr className="text-left text-muted-foreground border-b border-border">
-                  <th className="px-4 py-2 font-medium">Produto</th>
-                  <th className="px-4 py-2 font-medium">Preço de venda</th>
-                  <th className="px-4 py-2 font-medium">Estoque</th>
-                  <th className="px-4 py-2 font-medium">Status</th>
-                  <th className="px-4 py-2 font-medium text-right">Ações</th>
+                <tr>
+                  <Th>Produto</Th>
+                  <Th>Preço de venda</Th>
+                  <Th>Estoque</Th>
+                  <Th>Status</Th>
+                  <Th className="text-right">Ações</Th>
                 </tr>
               </thead>
               <tbody>
                 {products.map((p) => (
-                  <tr key={p.id} className="border-b border-border last:border-0">
-                    <td className="px-4 py-3 text-foreground font-medium">{p.nome}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{formatCurrency(p.preco_venda)}</td>
-                    <td className="px-4 py-3 text-muted-foreground">
+                  <Linha key={p.id}>
+                    <Td className="text-foreground font-medium">{p.nome}</Td>
+                    <Td className="text-muted-foreground">{formatCurrency(p.preco_venda)}</Td>
+                    <Td className="text-muted-foreground">
                       {p.estoque_atual}
                       {p.estoque_atual <= p.estoque_minimo && (
                         <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">baixo</span>
                       )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${p.ativo ? 'bg-success-soft text-success' : 'bg-surface-2 text-muted-foreground'}`}>
-                        {p.ativo ? 'Ativo' : 'Inativo'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
+                    </Td>
+                    <Td>
+                      <Badge variante={p.ativo ? 'ok' : 'neutro'}>{p.ativo ? 'Ativo' : 'Inativo'}</Badge>
+                    </Td>
+                    <Td className="text-right space-x-2 whitespace-nowrap">
                       {/* Produto é do gestor — RLS bloqueia o barbeiro, então
                           mostrar os botões para ele era um clique que fingia
                           funcionar. */}
@@ -383,18 +426,12 @@ export function CatalogoPage() {
                           Da gestão
                         </span>
                       )}
-                    </td>
-                  </tr>
+                    </Td>
+                  </Linha>
                 ))}
               </tbody>
-            </table>
-
-            {!loadingProducts && products.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                Nenhum produto cadastrado ainda.
-              </p>
-            )}
-          </div>
+            </Tabela>
+          )}
         </div>
       )}
 

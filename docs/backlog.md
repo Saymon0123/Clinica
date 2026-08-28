@@ -1489,3 +1489,9 @@ migrations não estão no pipeline de deploy — aplicar à mão):
   EXECUTE de `trg_reativacao_pos_atendimento()` para anon/authenticated.
 - **n8n**: se o dedupe de `wamid` for por tabela, o fluxo do agente não muda;
   se for no fluxo, ajustar lá.
+
+## Atualização (2026-08-28, tarde)
+- **Resolvido**: cancelamento de assinatura (colunas dropadas + vínculo sem
+  user_id) corrigido no PR #67 e a função `asaas` **redeployada (v25)** via
+  MCP. O item correspondente da revisão de código está fechado; os demais
+  (webhook, cobrar-uso, RLS de gerente→dono etc.) seguem pendentes.

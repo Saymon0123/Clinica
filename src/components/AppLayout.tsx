@@ -199,6 +199,16 @@ export function AppLayout() {
           ))}
         </nav>
 
+        {/* Assinatura da marca: sem ela a sidebar era um menu de template —
+            nenhum pixel dizia de quem é o produto no desktop. */}
+        <div className="px-3 py-4 border-t border-sidebar-border flex items-center gap-2">
+          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-primary text-primary-foreground shrink-0">
+            <MarcaClubCut size={13} />
+          </span>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/60">
+            Club Cut
+          </span>
+        </div>
       </aside>
 
       {/* Content */}

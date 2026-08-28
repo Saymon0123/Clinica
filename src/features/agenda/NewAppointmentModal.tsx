@@ -169,7 +169,7 @@ export function NewAppointmentModal({
               value={clientName}
               onChange={(e) => setClientName(e.target.value)}
               required
-              className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               placeholder="Nome do cliente"
             />
           </div>
@@ -180,7 +180,7 @@ export function NewAppointmentModal({
               id="clientPhone"
               value={clientPhone}
               onChange={(e) => setClientPhone(e.target.value)}
-              className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               placeholder="(11) 90000-0000"
             />
           </div>
@@ -192,7 +192,7 @@ export function NewAppointmentModal({
               value={professionalId}
               onChange={(e) => setProfessionalId(e.target.value)}
               required
-              className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             >
               {professionals.map((p) => (
                 <option key={p.id} value={p.id}>{p.nome}</option>
@@ -207,7 +207,7 @@ export function NewAppointmentModal({
               value={serviceId}
               onChange={(e) => setServiceId(e.target.value)}
               required
-              className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             >
               {services.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -225,7 +225,7 @@ export function NewAppointmentModal({
               value={time}
               onChange={(e) => setTime(e.target.value)}
               required
-              className="w-full border border-border-strong bg-surface text-foreground rounded px-3 py-2 text-sm"
+              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             />
           </div>
 
@@ -235,14 +235,14 @@ export function NewAppointmentModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 btn-secondary rounded px-3 py-2 text-sm font-medium"
+              className="flex-1 btn-secondary rounded-lg px-3 py-2 text-sm font-medium"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={submitting || professionals.length === 0 || services.length === 0}
-              className="flex-1 btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+              className="flex-1 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
               {submitting ? 'Salvando...' : 'Salvar reserva'}
             </button>

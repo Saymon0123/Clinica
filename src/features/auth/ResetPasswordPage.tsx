@@ -48,7 +48,7 @@ export function ResetPasswordPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <form onSubmit={handleSubmit} className="w-full max-w-sm bg-surface p-6 sm:p-8 rounded-xl border border-border space-y-4">
-        <h1 className="text-xl font-semibold text-foreground">Criar nova senha</h1>
+        <h1 className="text-xl font-bold tracking-tight text-foreground">Criar nova senha</h1>
 
         <div>
           <label className="block text-sm text-muted-foreground mb-1" htmlFor="password">Nova senha</label>

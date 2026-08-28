@@ -30,7 +30,7 @@ export function AcessoBloqueado({ assinatura }: { assinatura: Assinatura }) {
           <Lock size={20} />
         </span>
 
-        <h1 className="text-lg font-semibold text-foreground">Acesso ao CRM suspenso</h1>
+        <h1 className="text-xl font-bold tracking-tight text-foreground">Acesso ao CRM suspenso</h1>
         <p className="text-sm text-muted-foreground mt-1">
           {salonName ? `${salonName} — ` : ''}
           {assinatura.acessoAte

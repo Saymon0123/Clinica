@@ -163,7 +163,7 @@ export function ConfiguracoesPage() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h1 className="text-xl font-semibold text-foreground">Configurações</h1>
+        <h1 className="text-xl font-bold tracking-tight text-foreground">Configurações</h1>
         <p className="text-sm text-muted-foreground">
           Dados de {salonName ?? 'sua barbearia'} e horário de funcionamento
         </p>

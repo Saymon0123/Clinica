@@ -108,7 +108,7 @@ export function AssinaturaPage() {
           <CreditCard size={18} />
         </span>
         <div>
-          <h1 className="text-xl font-semibold text-foreground">Assinatura</h1>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">Assinatura</h1>
           <p className="text-sm text-muted-foreground">{salonName ?? 'Sua barbearia'}</p>
         </div>
       </div>

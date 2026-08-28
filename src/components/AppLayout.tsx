@@ -68,9 +68,11 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
 ]
 
 function navLinkClass({ isActive }: { isActive: boolean }) {
-  return `group flex items-center gap-2.5 px-2.5 py-[7px] rounded-md text-[13px] font-medium tracking-wide transition-all duration-200 ${
+  // Item ativo em pílula preenchida no verde da marca (referência CheckinOs):
+  // um único ponto de cor forte na sidebar, o resto fica quieto.
+  return `group flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium tracking-wide transition-all duration-200 ${
     isActive
-      ? 'bg-primary-soft text-primary-soft-foreground'
+      ? 'bg-primary text-primary-foreground shadow-sm'
       : 'text-muted-foreground hover:bg-surface-2 hover:text-foreground'
   }`
 }
@@ -174,7 +176,15 @@ export function AppLayout() {
 
       {/* Sidebar (desktop only) */}
       <aside className="hidden md:flex w-60 border-r border-sidebar-border bg-sidebar flex-col shrink-0">
-        <div className="px-3 py-4">
+        {/* Marca no topo, como um produto assina (referência CheckinOs). */}
+        <div className="px-4 pt-5 pb-1 flex items-center gap-2">
+          <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary text-primary-foreground shrink-0">
+            <MarcaClubCut size={15} />
+          </span>
+          <span className="text-[15px] font-bold tracking-tight text-foreground">Club Cut</span>
+        </div>
+
+        <div className="px-3 py-3">
           <div className="flex items-center justify-between gap-2">
             <ProfileMenu />
             <ThemeToggle />
@@ -199,16 +209,6 @@ export function AppLayout() {
           ))}
         </nav>
 
-        {/* Assinatura da marca: sem ela a sidebar era um menu de template —
-            nenhum pixel dizia de quem é o produto no desktop. */}
-        <div className="px-3 py-4 border-t border-sidebar-border flex items-center gap-2">
-          <span className="flex items-center justify-center w-6 h-6 rounded-md bg-primary text-primary-foreground shrink-0">
-            <MarcaClubCut size={13} />
-          </span>
-          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/60">
-            Club Cut
-          </span>
-        </div>
       </aside>
 
       {/* Content */}

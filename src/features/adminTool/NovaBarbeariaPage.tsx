@@ -88,7 +88,7 @@ export function NovaBarbeariaPage() {
     <div className="min-h-screen bg-background px-4 py-8">
       <div className="w-full max-w-2xl mx-auto space-y-4">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">Painel administrativo</h1>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">Painel administrativo</h1>
           <p className="text-sm text-muted-foreground">Barbearias e redes cadastradas no sistema</p>
         </div>
 

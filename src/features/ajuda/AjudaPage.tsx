@@ -417,7 +417,7 @@ export function AjudaPage() {
   return (
     <div className="max-w-2xl space-y-4">
       <div>
-        <h1 className="flex items-center gap-2 text-xl font-semibold text-foreground">
+        <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground">
           <HelpCircle size={20} />
           Central de Ajuda
         </h1>

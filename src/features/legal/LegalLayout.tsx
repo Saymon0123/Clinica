@@ -24,7 +24,7 @@ export function LegalLayout({ titulo, children }: { titulo: string; children: Re
         </Link>
 
         <div>
-          <h1 className="text-xl font-semibold text-foreground">{titulo}</h1>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">{titulo}</h1>
           <p className="text-xs text-muted-foreground mt-1">Versão {VERSAO_DOS_TERMOS}</p>
         </div>
 

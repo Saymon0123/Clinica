@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, useInView, useReducedMotion } from 'motion/react'
-import { BatteryFull, Check, CheckCheck, SignalHigh, Wifi } from 'lucide-react'
+import { ArrowLeft, BatteryFull, Check, CheckCheck, Mic, Phone, SignalHigh, Video, Wifi } from 'lucide-react'
 
 /**
  * A conversa do WhatsApp acontecendo.
@@ -45,26 +45,32 @@ type Fala = {
   texto: string
   /** Quanto tempo o balão leva "sendo digitado" antes de aparecer. */
   digitando: number
+  /** Hora mostrada DENTRO do balão, como o WhatsApp faz. Avança de leve ao
+   *  longo da conversa para ela ler como minutos reais, não como um print. */
+  hora: string
 }
 
 const ROTEIRO: Fala[] = [
-  { de: 'cliente', texto: 'Boa noite, quanto tá o corte com barba?', digitando: 700 },
+  { de: 'cliente', texto: 'Boa noite, quanto tá o corte com barba?', digitando: 700, hora: '22:14' },
   {
     de: 'agente',
     texto: 'Boa noite! Corte com barba fica R$ 65, leva 50 minutos.',
     digitando: 1100,
+    hora: '22:14',
   },
-  { de: 'cliente', texto: 'Consigo amanhã de manhã?', digitando: 800 },
+  { de: 'cliente', texto: 'Consigo amanhã de manhã?', digitando: 800, hora: '22:15' },
   {
     de: 'agente',
     texto: 'Consigo sim. Amanhã tenho 9:00, 10:20 e 11:40 com o Rafael.',
     digitando: 1200,
+    hora: '22:15',
   },
-  { de: 'cliente', texto: 'Pode ser 10:20', digitando: 600 },
+  { de: 'cliente', texto: 'Pode ser 10:20', digitando: 600, hora: '22:15' },
   {
     de: 'agente',
     texto: 'Marcado! Amanhã 10:20, corte com barba com o Rafael. Te lembro uma hora antes.',
     digitando: 1300,
+    hora: '22:16',
   },
 ]
 
@@ -77,7 +83,17 @@ const HORA_CONVERSA = '22:14'
 /** Quanto tempo depois de aparecer um balão do agente leva para o check virar duplo e azul. */
 const CHECK_LIDO_MS = 900
 
-function Balao({ fala, semMovimento }: { fala: Fala; semMovimento: boolean }) {
+function Balao({
+  fala,
+  comRabinho,
+  semMovimento,
+}: {
+  fala: Fala
+  /** Primeira bolha de um grupo do mesmo lado ganha o rabinho, como no
+   *  WhatsApp; as seguintes saem retas. */
+  comRabinho: boolean
+  semMovimento: boolean
+}) {
   const doAgente = fala.de === 'agente'
   const [lida, setLida] = useState(semMovimento)
 
@@ -94,33 +110,54 @@ function Balao({ fala, semMovimento }: { fala: Fala; semMovimento: boolean }) {
       initial={{ opacity: 0, y: 10, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.32, ease: [0.23, 1, 0.32, 1] }}
-      className={`flex ${doAgente ? 'justify-end' : 'justify-start'}`}
+      className={`relative flex ${doAgente ? 'justify-end' : 'justify-start'}`}
     >
+      {/*
+        Cores do WhatsApp escuro de verdade, não uma paleta "inspirada":
+        #005C4B na bolha enviada, #202C33 na recebida, texto #E9EDEF. O
+        aparelho imita um objeto real e a imitação só convence exata.
+      */}
       <div
-        className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-snug ${
-          doAgente
-            ? 'rounded-br-md bg-[#10684f] text-[#ecfdf5]'
-            : 'rounded-bl-md bg-[#2a2927] text-white'
-        }`}
+        className={`relative max-w-[80%] rounded-lg px-2.5 pb-1.5 pt-1.5 text-[13.5px] leading-snug text-[#E9EDEF] shadow-[0_1px_1px_rgba(0,0,0,0.25)] ${
+          doAgente ? 'bg-[#005C4B]' : 'bg-[#202C33]'
+        } ${comRabinho ? (doAgente ? 'rounded-tr-none' : 'rounded-tl-none') : ''}`}
       >
-        {fala.texto}
-        {/*
-          Só o agente carrega check: e o dono do WhatsApp real e quem ve o
-          proprio check embaixo da propria mensagem, nao da mensagem alheia.
-        */}
-        {doAgente && (
-          <span
-            className={`ml-1.5 inline-flex translate-y-[1px] items-center transition-colors duration-300 ${
-              lida ? 'text-[#63d4fb]' : 'text-[#ecfdf5]/50'
+        {comRabinho && (
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 8 13"
+            className={`absolute top-0 h-[13px] w-2 ${
+              doAgente ? '-right-2 text-[#005C4B]' : '-left-2 scale-x-[-1] text-[#202C33]'
             }`}
           >
-            {lida ? (
-              <CheckCheck className="h-[13px] w-[13px]" strokeWidth={2.4} />
-            ) : (
-              <Check className="h-[13px] w-[13px]" strokeWidth={2.4} />
-            )}
-          </span>
+            <path d="M0 0h8v13C8 6 4 2 0 0Z" fill="currentColor" transform="scale(-1,1) translate(-8,0)" />
+          </svg>
         )}
+        {fala.texto}
+        {/*
+          Hora dentro da bolha, canto de baixo, como o WhatsApp diagrama — com
+          um respiro à esquerda para o texto não colar nela. Só o agente
+          carrega check: é o dono do aparelho, e check aparece embaixo da
+          PRÓPRIA mensagem, nunca da alheia.
+        */}
+        <span className="float-right ml-2 mt-[7px] flex translate-y-[2px] items-center gap-1">
+          <span className={`text-[10px] leading-none ${doAgente ? 'text-[#E9EDEF]/60' : 'text-[#8696A0]'}`}>
+            {fala.hora}
+          </span>
+          {doAgente && (
+            <span
+              className={`inline-flex transition-colors duration-300 ${
+                lida ? 'text-[#53BDEB]' : 'text-[#8696A0]'
+              }`}
+            >
+              {lida ? (
+                <CheckCheck className="h-[14px] w-[14px]" strokeWidth={2.2} />
+              ) : (
+                <Check className="h-[14px] w-[14px]" strokeWidth={2.2} />
+              )}
+            </span>
+          )}
+        </span>
       </div>
     </motion.div>
   )
@@ -136,8 +173,8 @@ function Digitando({ doAgente }: { doAgente: boolean }) {
       className={`flex ${doAgente ? 'justify-end' : 'justify-start'}`}
     >
       <div
-        className={`flex gap-1 rounded-2xl px-3.5 py-3 ${
-          doAgente ? 'rounded-br-md bg-[#10684f]' : 'rounded-bl-md bg-[#2a2927]'
+        className={`flex gap-1 rounded-lg px-3.5 py-3 text-[#E9EDEF] ${
+          doAgente ? 'bg-[#005C4B]' : 'bg-[#202C33]'
         }`}
       >
         {[0, 1, 2].map((i) => (
@@ -225,8 +262,8 @@ export function ChatDemo() {
         tela escura, ou seja, invisivel. O aparelho e objeto fisico simulado, e
         objeto simulado segue a aparencia do que imita.
       */}
-      <div className="relative z-[1] overflow-hidden rounded-[34px] border border-[var(--l-line-strong)] bg-[#0e0f0c] p-2 shadow-[0_24px_60px_-28px_rgba(0,0,0,0.7)]">
-        <div className="overflow-hidden rounded-[27px] bg-[#121110]">
+      <div className="relative z-[1] overflow-hidden rounded-[34px] border border-[var(--l-line-strong)] bg-[#0a0e12] p-2 shadow-[0_24px_60px_-28px_rgba(0,0,0,0.7)]">
+        <div className="overflow-hidden rounded-[27px] bg-[#0B141A]">
           {/*
             Barra de status do aparelho, com a hora. O H1 promete "responde a
             mensagem das 22h na hora" — sem relógio essa promessa fica só na
@@ -241,16 +278,22 @@ export function ChatDemo() {
             </div>
           </div>
 
-          {/* Cabeçalho da conversa */}
-          <div className="flex items-center gap-2.5 border-b border-white/10 bg-[#1c1b19] px-4 py-3">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--l-accent)] text-[12px] font-bold text-[var(--l-on-accent)]">
+          {/* Cabeçalho da conversa, na diagramação do WhatsApp: seta de
+              voltar, avatar, nome + online, vídeo e ligação à direita. */}
+          <div className="flex items-center gap-2 bg-[#202C33] px-3 py-2.5">
+            <ArrowLeft className="h-[17px] w-[17px] shrink-0 text-[#AEBAC1]" strokeWidth={2} />
+            <span className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full bg-[var(--l-accent)] text-[11px] font-bold text-[var(--l-on-accent)]">
               BC
             </span>
-            <div className="min-w-0">
-              <div className="truncate text-[13px] font-semibold text-white">
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[13px] font-semibold tracking-[-0.01em] text-[#E9EDEF]">
                 Barbearia Corte Certo
               </div>
-              <div className="text-[10.5px] text-white/55">online</div>
+              <div className="text-[11px] leading-tight text-[#8696A0]">online</div>
+            </div>
+            <div className="flex shrink-0 items-center gap-3 text-[#AEBAC1]">
+              <Video className="h-[18px] w-[18px]" strokeWidth={2} />
+              <Phone className="h-[16px] w-[16px]" strokeWidth={2} />
             </div>
           </div>
 
@@ -264,14 +307,26 @@ export function ChatDemo() {
             A máscara desmancha o topo em vez de cortar na régua.
           */}
           <div
-            className="flex h-[356px] flex-col justify-end gap-2 overflow-hidden px-3.5 py-4"
+            className="flex h-[340px] flex-col justify-end gap-[3px] overflow-hidden px-3 py-3"
             style={{
-              maskImage: 'linear-gradient(to bottom, transparent 0, #000 56px)',
-              WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, #000 56px)',
+              maskImage: 'linear-gradient(to bottom, transparent 0, #000 48px)',
+              WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, #000 48px)',
+              /* O "doodle" do fundo do WhatsApp, na versão pobre e suficiente:
+                 uma trama de pontos quase invisível sobre o #0B141A. O padrão
+                 real é um asset proprietário; a textura é o que o olho sente. */
+              backgroundImage:
+                'radial-gradient(rgba(233,237,239,0.045) 1px, transparent 1.6px)',
+              backgroundSize: '18px 18px',
             }}
           >
             {ROTEIRO.slice(0, ditas).map((f, i) => (
-              <Balao key={i} fala={f} semMovimento={!!semMovimento} />
+              <div key={i} className={i > 0 && ROTEIRO[i - 1].de !== f.de ? 'mt-2' : ''}>
+                <Balao
+                  fala={f}
+                  comRabinho={i === 0 || ROTEIRO[i - 1].de !== f.de}
+                  semMovimento={!!semMovimento}
+                />
+              </div>
             ))}
             {/*
               Sem animação de saída: o indicador é SUBSTITUÍDO pelo balão, e não
@@ -279,6 +334,17 @@ export function ChatDemo() {
               lugar no fluxo e as duas coisas se sobrepunham no mesmo canto.
             */}
             {digitando && <Digitando doAgente={digitando === 'agente'} />}
+          </div>
+
+          {/* Barra de escrever, decorativa: é ela que fecha a ilusão de
+              aplicativo real. Não é input de verdade — aria-hidden, sem foco. */}
+          <div aria-hidden="true" className="flex items-center gap-2 px-2.5 pb-3 pt-1">
+            <div className="flex h-[38px] flex-1 items-center rounded-full bg-[#202C33] px-4 text-[13px] text-[#8696A0]">
+              Mensagem
+            </div>
+            <div className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full bg-[#00A884]">
+              <Mic className="h-[17px] w-[17px] text-[#0B141A]" strokeWidth={2.2} />
+            </div>
           </div>
         </div>
       </div>

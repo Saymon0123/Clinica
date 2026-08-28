@@ -78,6 +78,15 @@ Deno.serve(async (req: Request) => {
     global: { headers: { Authorization: autorizacao } },
   })
 
+  // Identidade de quem chamou. As checagens de vínculo abaixo PRECISAM filtrar
+  // por user_id: a RLS deixa gestor enxergar os vínculos da equipe inteira,
+  // então consultar user_salons só por salon_id devolve os vínculos dos outros
+  // — o maybeSingle estourava com 2+ pessoas (dono com equipe não conseguia
+  // cancelar) e o papel checado podia ser o de um colega.
+  const { data: quemChamou } = await comoUsuario.auth.getUser()
+  const usuario = quemChamou?.user
+  if (!usuario) return json({ error: 'Nao autorizado.' }, 401)
+
   // ------------------------------------------------------------------
   // Preferência de boleto da rede: um só, ou um por unidade.
   // Só o dono de TODAS as unidades mexe — o formato do boleto afeta as outras
@@ -91,6 +100,7 @@ Deno.serve(async (req: Request) => {
     const { data: minhas } = await comoUsuario
       .from('user_salons')
       .select('salon_id, role, salons!inner ( organization_id )')
+      .eq('user_id', usuario.id)
       .eq('role', 'owner')
       .eq('salons.organization_id', organizationId)
 
@@ -152,6 +162,7 @@ Deno.serve(async (req: Request) => {
     .from('user_salons')
     .select('role')
     .eq('salon_id', salonId)
+    .eq('user_id', usuario.id)
     .maybeSingle()
   if (erroVinculo) {
     console.error('Erro ao verificar o vinculo:', erroVinculo)
@@ -178,13 +189,15 @@ Deno.serve(async (req: Request) => {
     }
   }
 
+  // `plano_agendado` e `upgrade_payment_id` saíram deste update: a migration
+  // 0110 dropou as duas colunas, e o PostgREST recusava o update INTEIRO —
+  // todo cancelamento morria aqui com 500, depois de a recorrência no Asaas
+  // já ter sido removida.
   const { error: erroUpdate } = await admin
     .from('subscriptions')
     .update({
       status: 'cancelada',
       asaas_subscription_id: null,
-      plano_agendado: null,
-      upgrade_payment_id: null,
     })
     .eq('id', assinatura.id)
   if (erroUpdate) {

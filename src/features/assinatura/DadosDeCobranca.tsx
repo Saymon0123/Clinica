@@ -34,7 +34,7 @@ export function DadosDeCobranca({
 
   if (documentoAtual && !editando) {
     return (
-      <div className="bg-surface border border-border rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+      <div className="bg-surface border border-border rounded-xl shadow-sm px-4 py-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <CreditCard size={16} className="text-muted-foreground shrink-0" />
           <span className="text-sm text-muted-foreground shrink-0">Cobrança para</span>
@@ -88,7 +88,7 @@ export function DadosDeCobranca({
   }
 
   return (
-    <form onSubmit={salvar} className="bg-surface border border-border rounded-xl p-4">
+    <form onSubmit={salvar} className="bg-surface border border-border rounded-xl shadow-sm p-4">
       <div className="flex items-center gap-2 mb-1">
         <CreditCard size={16} className="text-muted-foreground" />
         <h2 className="text-sm font-semibold text-foreground">Dados de cobrança</h2>

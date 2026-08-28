@@ -60,7 +60,16 @@ const CARD_CONFIG: { key: MetricKey; label: string; icon: typeof DollarSign; for
   { key: 'cancelamentos', label: 'Cancelamentos', icon: CalendarX, format: 'number' },
 ]
 
-function ChangeBadge({ pct, invert }: { pct: number | null; invert?: boolean }) {
+function ChangeBadge({
+  pct,
+  invert,
+  emHero,
+}: {
+  pct: number | null
+  invert?: boolean
+  /** Sobre o card preenchido, verde/vermelho some no fundo: vira pílula clara. */
+  emHero?: boolean
+}) {
   if (pct === null) return null
   const positive = invert ? pct < 0 : pct >= 0
   const Icon = pct >= 0 ? TrendingUp : TrendingDown
@@ -68,7 +77,11 @@ function ChangeBadge({ pct, invert }: { pct: number | null; invert?: boolean }) 
     <span
       title={invert ? 'Aqui, queda é bom: verde significa menos cancelamentos que no período anterior.' : undefined}
       className={`inline-flex items-center gap-0.5 text-xs font-medium ${
-        positive ? 'text-success' : 'text-danger'
+        emHero
+          ? 'bg-primary-foreground/15 text-primary-foreground rounded-full px-2 py-0.5'
+          : positive
+            ? 'text-success'
+            : 'text-danger'
       }`}
     >
       <Icon size={13} />
@@ -316,10 +329,23 @@ export function FinanceiroPage() {
               label={label}
               value={loading ? 0 : metric.value}
               formattedValue={(n) => (format === 'currency' ? formatCurrency(n) : Math.round(n).toString())}
-              badge={<ChangeBadge pct={metric.changePct} invert={invert} />}
+              badge={<ChangeBadge pct={metric.changePct} invert={invert} emHero={key === 'faturamento'} />}
               bars={bars}
-              barColor={key === 'cancelamentos' ? 'bg-danger/25' : 'bg-primary/25'}
-              barHighlightColor={key === 'cancelamentos' ? 'bg-danger' : 'bg-primary'}
+              hero={key === 'faturamento'}
+              barColor={
+                key === 'faturamento'
+                  ? 'bg-primary-foreground/25'
+                  : key === 'cancelamentos'
+                    ? 'bg-danger/25'
+                    : 'bg-primary/25'
+              }
+              barHighlightColor={
+                key === 'faturamento'
+                  ? 'bg-primary-foreground'
+                  : key === 'cancelamentos'
+                    ? 'bg-danger'
+                    : 'bg-primary'
+              }
             />
           )
         })}
@@ -327,7 +353,7 @@ export function FinanceiroPage() {
 
       {/* Gráfico de clientes + donut da meta */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className={`${isManager ? 'lg:col-span-2' : 'lg:col-span-3'} bg-surface border border-border rounded-xl p-5`}>
+        <div className={`${isManager ? 'lg:col-span-2' : 'lg:col-span-3'} bg-surface border border-border rounded-xl shadow-sm p-5`}>
           <div className="mb-4">
             <h2 className="text-sm font-semibold text-foreground">Novos clientes</h2>
             <p className="text-xs text-muted-foreground">Cadastros por mês nos últimos 12 meses</p>
@@ -375,7 +401,7 @@ export function FinanceiroPage() {
         </div>
 
         {isManager && (
-        <div className="bg-surface border border-border rounded-xl p-5 flex flex-col">
+        <div className="bg-surface border border-border rounded-xl shadow-sm p-5 flex flex-col">
           <div className="mb-2 flex items-start justify-between gap-2">
             <div>
               <h2 className="text-sm font-semibold text-foreground">Meta de faturamento</h2>
@@ -432,7 +458,7 @@ export function FinanceiroPage() {
       </div>
 
       {/* Serviços mais vendidos */}
-      <div className="bg-surface border border-border rounded-xl p-5">
+      <div className="bg-surface border border-border rounded-xl shadow-sm p-5">
         <div className="mb-4">
           <h2 className="text-sm font-semibold text-foreground">Serviços mais vendidos</h2>
           <p className="text-xs text-muted-foreground">{rotuloPeriodo} · por faturamento</p>
@@ -472,7 +498,7 @@ export function FinanceiroPage() {
       )}
 
       {/* Comissões do período */}
-      <div className="bg-surface border border-border rounded-xl p-5">
+      <div className="bg-surface border border-border rounded-xl shadow-sm p-5">
         <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
           <div>
             <h2 className="text-sm font-semibold text-foreground">Comissões</h2>

@@ -136,7 +136,7 @@ export function CaixaSection({ salonId }: { salonId: string }) {
   const diferenca = valorFechamento.trim() === '' ? null : informado - esperado
 
   return (
-    <div className="bg-surface border border-border rounded-xl p-5">
+    <div className="bg-surface border border-border rounded-xl shadow-sm p-5">
       <div className="flex items-center gap-2 mb-1">
         <Wallet size={16} className="text-muted-foreground" />
         <h2 className="text-sm font-semibold text-foreground">Caixa</h2>

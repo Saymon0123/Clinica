@@ -124,7 +124,7 @@ export function AssinaturaPage() {
       <UsoDoSistema />
 
       {assinatura && (
-        <div className="bg-surface border border-border rounded-xl p-4 space-y-4">
+        <div className="bg-surface border border-border rounded-xl shadow-sm p-4 space-y-4">
           <Situacao assinatura={assinatura} />
           {assinatura.status !== 'cancelada' && (
             <div className="pt-3 border-t border-border">

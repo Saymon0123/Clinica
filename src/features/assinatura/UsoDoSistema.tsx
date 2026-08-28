@@ -97,7 +97,7 @@ export function UsoDoSistema() {
   const boletoAberto = faturas.find((f) => f.boleto_url && !f.paga_em) ?? null
 
   return (
-    <section className="bg-surface border border-border rounded-xl p-5 space-y-4">
+    <section className="bg-surface border border-border rounded-xl shadow-sm p-5 space-y-4">
       <div>
         <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
           <Activity size={18} />

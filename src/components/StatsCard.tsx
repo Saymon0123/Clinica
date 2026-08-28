@@ -31,6 +31,7 @@ export function StatsCard({
   bars,
   barColor = 'bg-primary/25',
   barHighlightColor = 'bg-primary',
+  hero = false,
 }: {
   icon: ReactNode
   label: string
@@ -40,6 +41,11 @@ export function StatsCard({
   bars: BarPoint[]
   barColor?: string
   barHighlightColor?: string
+  /**
+   * Card preenchido no verde da marca — o destaque da fileira (referência
+   * CheckinOs, "Occupancy Rate"). Um por tela: dois heróis não destacam nada.
+   */
+  hero?: boolean
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const [visible, setVisible] = useState(false)
@@ -66,11 +72,21 @@ export function StatsCard({
   return (
     <div
       ref={ref}
-      className="bg-surface border border-border rounded-xl p-4 transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5"
+      className={
+        hero
+          ? 'bg-primary text-primary-foreground rounded-xl p-4 shadow-md shadow-primary/20 transition-all duration-300 ease-out hover:-translate-y-1'
+          : 'bg-surface border border-border rounded-xl shadow-sm p-4 transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5'
+      }
     >
       <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary-soft text-primary-soft-foreground">
+        <div
+          className={`flex items-center gap-2 ${hero ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}
+        >
+          <span
+            className={`flex items-center justify-center w-7 h-7 rounded-lg ${
+              hero ? 'bg-primary-foreground/15' : 'bg-primary-soft text-primary-soft-foreground'
+            }`}
+          >
             {icon}
           </span>
           <span className="text-sm">{label}</span>
@@ -78,7 +94,11 @@ export function StatsCard({
         {badge}
       </div>
 
-      <div className="text-2xl font-semibold text-foreground mb-3 tabular-nums">
+      <div
+        className={`text-2xl mb-3 tabular-nums ${
+          hero ? 'font-bold' : 'font-semibold text-foreground'
+        }`}
+      >
         {formattedValue(animatedValue)}
       </div>
 

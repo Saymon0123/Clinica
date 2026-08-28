@@ -136,7 +136,7 @@ export function ClientesPage() {
       </div>
 
       {clients.length > 0 && (
-        <div className="bg-surface border border-border rounded-xl p-4 mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="bg-surface border border-border rounded-xl shadow-sm p-4 mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary-soft text-primary-soft-foreground">
               <UserPlus size={17} />

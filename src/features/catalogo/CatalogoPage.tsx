@@ -151,6 +151,8 @@ export function CatalogoPage() {
         }
       />
 
+      {/* key={tab} remonta o wrapper na troca e dispara a entrada animada. */}
+      <div key={tab} className="aba-entra">
       {tab === 'servicos' ? (
         <div>
           {/* Barbeiro também acrescenta serviço; só não mexe no que não é dele. */}
@@ -434,6 +436,7 @@ export function CatalogoPage() {
           )}
         </div>
       )}
+      </div>
 
       {editingService && (
         <NewServiceModal

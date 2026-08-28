@@ -299,6 +299,8 @@ export function FinanceiroPage() {
         </button>
       </div>
 
+      {/* key={tab} remonta o wrapper na troca e dispara a entrada animada. */}
+      <div key={tab} className="aba-entra space-y-5">
       {tab === 'vendas' ? (
         <VendasSection
           salonId={salonId}
@@ -393,7 +395,8 @@ export function FinanceiroPage() {
                   stroke="var(--chart-line)"
                   strokeWidth={2.5}
                   fill="url(#clientsFill)"
-                  isAnimationActive={false}
+                  animationDuration={700}
+                  animationEasing="ease-out"
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -549,6 +552,7 @@ export function FinanceiroPage() {
       </p>
         </>
       )}
+      </div>
 
       {showCelebration && (
         <GoalReachedModal

@@ -1465,3 +1465,27 @@ O que falta (bloqueado nos templates da Meta):
 - **n8n**: lembrete de 1h antes para quem confirmou — sai pela janela de 24h
   aberta pelo clique (grátis) e cai no template de lembrete só se a janela
   fechou.
+
+## Revisão de código do CRM (2026-08-28) — pendências fora do repositório
+
+Achados confirmados que exigem peças além do commit (edge functions e
+migrations não estão no pipeline de deploy — aplicar à mão):
+
+- **Supabase (edge function `asaas`)**: cancelamento quebrado desde a migration
+  0110 (update em `plano_agendado`/`upgrade_payment_id`, colunas dropadas) e
+  checagem de vínculo sem filtro de `user_id` (dono com equipe recebe 500).
+  Corrigir no repositório + **redeploy manual da função**.
+- **Supabase (migration)**: policy `user_salons: gestor gerencia a equipe`
+  (0015) deixa gerente se promover a `owner` ou deletar o vínculo do dono via
+  API; convite `role='owner'` também sai por RLS de gerente (0017/0050).
+  Migration nova + **aplicar em produção à mão**.
+- **Supabase (edge functions `asaas-webhook`, `cobrar-uso`, `whatsapp-webhook`,
+  `accept-invite`, `criar-minha-barbearia`, `admin-*`)**: erros de update não
+  checados (pagamento confirmado pode não liberar acesso), cobrança sem lock
+  (execução dupla = boleto duplicado), webhook da Meta sem dedupe de `wamid`
+  (agente responde 2×), corrida no aceite de convite, `listUsers()` sem
+  paginação. Cada correção exige **redeploy manual**.
+- **Painel do Supabase**: ligar proteção contra senha vazada (Auth); revogar
+  EXECUTE de `trg_reativacao_pos_atendimento()` para anon/authenticated.
+- **n8n**: se o dedupe de `wamid` for por tabela, o fluxo do agente não muda;
+  se for no fluxo, ajustar lá.

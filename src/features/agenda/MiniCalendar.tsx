@@ -44,14 +44,14 @@ export function MiniCalendar({ selectedDate, visibleMonth, onSelectDate, onChang
         <div className="flex gap-1">
           <button
             onClick={() => onChangeMonth(new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() - 1, 1))}
-            className="p-1 text-muted-foreground hover:bg-surface-2 rounded"
+            className="p-1 text-muted-foreground hover:bg-surface-2 rounded-md"
             aria-label="Mês anterior"
           >
             <ChevronLeft size={16} />
           </button>
           <button
             onClick={() => onChangeMonth(new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 1))}
-            className="p-1 text-muted-foreground hover:bg-surface-2 rounded"
+            className="p-1 text-muted-foreground hover:bg-surface-2 rounded-md"
             aria-label="Próximo mês"
           >
             <ChevronRight size={16} />
@@ -59,7 +59,7 @@ export function MiniCalendar({ selectedDate, visibleMonth, onSelectDate, onChang
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 text-center text-xs text-muted-foreground mb-1">
+      <div className="grid grid-cols-7 gap-1 text-center text-[10px] uppercase tracking-wide text-muted-foreground/70 mb-1">
         {WEEKDAY_LABELS.map((d) => (
           <div key={d}>{d}</div>
         ))}
@@ -74,12 +74,17 @@ export function MiniCalendar({ selectedDate, visibleMonth, onSelectDate, onChang
             <button
               key={d.toISOString()}
               onClick={() => onSelectDate(d)}
-              className={`aspect-square rounded text-xs flex items-center justify-center
-                ${isSelected ? 'btn-primary' : inMonth ? 'text-foreground hover:bg-surface-2' : 'text-muted-foreground/40'}
-                ${isToday && !isSelected ? 'ring-1 ring-gray-400 dark:ring-gray-500' : ''}
+              className={`relative aspect-square rounded-full text-xs tabular-nums flex items-center justify-center
+                ${isSelected ? 'btn-primary font-semibold' : inMonth ? 'text-foreground hover:bg-surface-2' : 'text-muted-foreground/40'}
+                ${isToday && !isSelected ? 'font-semibold text-primary' : ''}
               `}
             >
               {d.getDate()}
+              {/* Hoje = ponto sob o número, no verde da marca. O anel cinza de
+                  antes usava cores cruas do Tailwind, fora do sistema de tokens. */}
+              {isToday && !isSelected && (
+                <span className="absolute bottom-1 w-1 h-1 rounded-full bg-primary" aria-hidden />
+              )}
             </button>
           )
         })}

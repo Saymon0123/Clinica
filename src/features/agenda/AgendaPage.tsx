@@ -1,4 +1,4 @@
-import { useMemo, useState, type DragEvent } from 'react'
+import { useEffect, useMemo, useState, type DragEvent } from 'react'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
@@ -107,6 +107,40 @@ function AppointmentBlock({
   )
 }
 
+/**
+ * Traço da hora atual, só quando o dia exibido é hoje. Puramente visual:
+ * responde "onde estamos no dia" sem a pessoa ler a régua de horas.
+ * Reposiciona a cada minuto — mesma granularidade da régua.
+ */
+function LinhaDeAgora({ selectedDate }: { selectedDate: Date }) {
+  const [agora, setAgora] = useState(() => new Date())
+  useEffect(() => {
+    const id = setInterval(() => setAgora(new Date()), 60_000)
+    return () => clearInterval(id)
+  }, [])
+
+  const hoje =
+    agora.getFullYear() === selectedDate.getFullYear() &&
+    agora.getMonth() === selectedDate.getMonth() &&
+    agora.getDate() === selectedDate.getDate()
+  const minutos = (agora.getHours() - HOUR_START) * 60 + agora.getMinutes()
+  if (!hoje || minutos < 0 || minutos > (HOUR_END - HOUR_START) * 60) return null
+
+  return (
+    <div
+      aria-hidden
+      className="absolute inset-x-0 z-[3] pointer-events-none flex items-center"
+      // 12px = pt-3 do contêiner da grade, para casar com a régua de horas.
+      style={{ top: 12 + (minutos / 60) * ROW_HEIGHT }}
+    >
+      <span className="w-14 shrink-0 flex justify-end pr-1.5">
+        <span className="w-1.5 h-1.5 rounded-full bg-danger" />
+      </span>
+      <span className="flex-1 h-px bg-danger/50" />
+    </div>
+  )
+}
+
 export function AgendaPage() {
   const { salonId, loading: salonLoading } = useSalon()
   const [selectedDate, setSelectedDate] = useState(new Date())
@@ -205,23 +239,27 @@ export function AgendaPage() {
 
         {/* Toolbar */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <div className="flex items-center gap-3">
+          {/* Stepper segmentado: os dois chevrons e a data numa peça só, em vez
+              de dois botões quadrados órfãos flutuando em volta do texto. */}
+          <div className="flex items-center rounded-lg border border-border bg-surface overflow-hidden">
             <button
               onClick={() => handleSelectDate(addDays(selectedDate, -1))}
-              className="p-2 border border-border-strong rounded hover:bg-surface-2 text-foreground"
+              className="p-2 hover:bg-surface-2 text-muted-foreground hover:text-foreground transition-colors"
               aria-label="Dia anterior"
             >
               <ChevronLeft size={18} />
             </button>
-            <div>
-              <div className="text-sm font-semibold text-foreground">
+            <div className="px-3 py-1 text-center border-x border-border min-w-[7.5rem]">
+              <div className="text-sm font-semibold text-foreground tabular-nums">
                 {selectedDate.getDate()} de {MONTH_SHORT[selectedDate.getMonth()]}
               </div>
-              <div className="text-xs text-muted-foreground capitalize">{WEEKDAY_FULL[selectedDate.getDay()]}</div>
+              <div className="text-[11px] text-muted-foreground capitalize leading-tight">
+                {WEEKDAY_FULL[selectedDate.getDay()]}
+              </div>
             </div>
             <button
               onClick={() => handleSelectDate(addDays(selectedDate, 1))}
-              className="p-2 border border-border-strong rounded hover:bg-surface-2 text-foreground"
+              className="p-2 hover:bg-surface-2 text-muted-foreground hover:text-foreground transition-colors"
               aria-label="Próximo dia"
             >
               <ChevronRight size={18} />
@@ -230,7 +268,7 @@ export function AgendaPage() {
 
           <button
             onClick={() => setModalState({})}
-            className="flex items-center gap-2 btn-primary rounded px-4 py-2 text-sm font-medium"
+            className="flex items-center gap-2 btn-primary rounded-lg px-4 py-2 text-sm font-medium"
           >
             <Plus size={16} />
             Nova reserva
@@ -256,19 +294,26 @@ export function AgendaPage() {
             <div className="flex border-b border-border sticky top-0 bg-surface z-10 min-w-fit">
               <div className="w-14 shrink-0" />
               {professionals.map((p) => (
-                <div key={p.id} className="flex-1 min-w-[160px] px-3 py-2 text-sm font-medium text-foreground border-l border-border">
-                  {p.nome}
+                <div
+                  key={p.id}
+                  className="flex-1 min-w-[160px] px-3 py-2 flex items-center gap-2 border-l border-border"
+                >
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary-soft text-primary-soft-foreground text-[11px] font-semibold shrink-0">
+                    {p.nome.trim().charAt(0).toUpperCase()}
+                  </span>
+                  <span className="text-sm font-medium text-foreground truncate">{p.nome}</span>
                 </div>
               ))}
             </div>
 
             {/* Grade */}
-            <div className="flex min-w-fit pt-3 pb-3">
+            <div className="flex min-w-fit pt-3 pb-3 relative">
+              <LinhaDeAgora selectedDate={selectedDate} />
               <div className="w-14 shrink-0 relative" style={{ height: gridHeight }}>
                 {hours.map((h) => (
                   <div
                     key={h}
-                    className="absolute right-2 -translate-y-1/2 text-xs text-muted-foreground"
+                    className="absolute right-2 -translate-y-1/2 text-[11px] text-muted-foreground tabular-nums"
                     style={{ top: (h - HOUR_START) * ROW_HEIGHT }}
                   >
                     {String(h).padStart(2, '0')}:00
@@ -322,10 +367,16 @@ export function AgendaPage() {
 
       <div className="w-full lg:w-72 shrink-0 space-y-4">
         <div className="bg-surface rounded-xl border border-border p-4">
-          <div className="text-sm text-muted-foreground">Reservas</div>
-          <div className="text-2xl font-semibold text-foreground">{appointments.length}</div>
-          <div className="text-xs text-muted-foreground">
-            {selectedDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+            Reservas
+          </div>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-3xl font-semibold text-foreground tabular-nums leading-none">
+              {appointments.length}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {selectedDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}
+            </span>
           </div>
         </div>
 

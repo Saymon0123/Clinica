@@ -203,7 +203,7 @@ export function AppointmentDetailModal({
                     value={dateValue}
                     onChange={(e) => setDateValue(e.target.value)}
                     aria-label="Nova data"
-                    className="flex-1 border border-border-strong bg-surface text-foreground rounded px-2 py-2 text-sm"
+                    className="flex-1 border border-border-strong bg-surface text-foreground rounded-lg px-2 py-2 text-sm"
                   />
                   <input
                     type="time"
@@ -211,7 +211,7 @@ export function AppointmentDetailModal({
                     onChange={(e) => setTimeValue(e.target.value)}
                     step={300}
                     aria-label="Novo horário"
-                    className="w-28 border border-border-strong bg-surface text-foreground rounded px-2 py-2 text-sm"
+                    className="w-28 border border-border-strong bg-surface text-foreground rounded-lg px-2 py-2 text-sm"
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -225,14 +225,14 @@ export function AppointmentDetailModal({
                       setTimeValue(toTimeInput(appointment.data_hora_inicio))
                       setError(null)
                     }}
-                    className="flex-1 btn-secondary rounded px-3 py-2 text-sm font-medium"
+                    className="flex-1 btn-secondary rounded-lg px-3 py-2 text-sm font-medium"
                   >
                     Voltar
                   </button>
                   <button
                     onClick={handleReschedule}
                     disabled={busy}
-                    className="flex-1 btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+                    className="flex-1 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
                   >
                     {busy ? 'Salvando...' : 'Salvar nova data'}
                   </button>
@@ -256,7 +256,7 @@ export function AppointmentDetailModal({
             <button
               onClick={handleConcludeAndCharge}
               disabled={busy}
-              className="w-full flex items-center justify-center gap-2 btn-primary rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
               <Receipt size={15} />
               Concluir e cobrar
@@ -265,7 +265,7 @@ export function AppointmentDetailModal({
                 toque errado mais provável do modal — e ele libera o horário
                 para o agente vender na hora. */}
             {confirmCancel ? (
-              <div className="flex items-center justify-between gap-2 border border-border-strong rounded px-3 py-2">
+              <div className="flex items-center justify-between gap-2 border border-border-strong rounded-lg px-3 py-2">
                 <span className="text-xs text-danger">
                   Cancelar? O horário volta a ficar disponível.
                 </span>
@@ -289,7 +289,7 @@ export function AppointmentDetailModal({
               <button
                 onClick={() => setConfirmCancel(true)}
                 disabled={busy}
-                className="w-full flex items-center justify-center gap-1.5 border border-border-strong rounded px-3 py-2 text-sm font-medium text-danger hover:bg-danger-soft disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-1.5 border border-border-strong rounded-lg px-3 py-2 text-sm font-medium text-danger hover:bg-danger-soft disabled:opacity-50"
               >
                 <XCircle size={15} />
                 Cancelar agendamento

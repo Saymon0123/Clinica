@@ -7,7 +7,7 @@ import { CONTATO } from '../../lib/contato'
 import { ChatDemo } from './landing/ChatDemo'
 import { ProvaRobo } from './landing/ProvaRobo'
 import { ProdutoDemo } from './landing/ProdutoDemo'
-import { DEPOIMENTOS, Depoimentos } from './landing/Depoimentos'
+import { Depoimentos } from './landing/Depoimentos'
 import { FaqAccordion } from './landing/FaqAccordion'
 import { Calculadora } from './landing/Calculadora'
 import { CalculadoraPreco } from './landing/CalculadoraPreco'
@@ -277,12 +277,6 @@ function Hero() {
             <Cta className="mt-11" microcopy={MICROCOPY}>
               {CTA}
             </Cta>
-            {/* Prova encostada no pedido, que é onde ela trabalha. O número
-                sai de DEPOIMENTOS.length — se um depoimento sair da lista, a
-                linha desce junto, nunca anuncia mais do que a página prova. */}
-            <p className="mt-4 text-[13.5px] text-[var(--l-fg-faint)]">
-              Já roda em {DEPOIMENTOS.length} barbearias — e os donos contam como é.
-            </p>
           </Reveal>
         </div>
 

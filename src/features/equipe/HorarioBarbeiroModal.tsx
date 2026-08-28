@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Clock } from 'lucide-react'
 import { Modal } from '../../components/Modal'
+import { Input } from '../../components/Campo'
+import { SkeletonLinhas } from '../../components/Skeleton'
 import { supabase } from '../../lib/supabase'
 
 type Dia = { dia_semana: number; label: string; trabalha: boolean; inicio: string; fim: string }
@@ -132,7 +134,7 @@ export function HorarioBarbeiroModal({
       tamanho="sm"
     >
         {carregando ? (
-          <p className="text-sm text-muted-foreground">Carregando...</p>
+          <SkeletonLinhas />
         ) : (
           <>
             <p className="text-xs text-muted-foreground">
@@ -169,29 +171,31 @@ export function HorarioBarbeiroModal({
 
                   {d.trabalha ? (
                     <>
-                      <input
-                        type="time"
-                        value={d.inicio}
-                        onChange={(e) =>
-                          setDias((prev) =>
-                            prev.map((x, idx) => (idx === i ? { ...x, inicio: e.target.value } : x)),
-                          )
-                        }
-                        aria-label={`Entrada de ${d.label}`}
-                        className="border border-border-strong bg-surface text-foreground rounded-lg px-2 py-1.5 text-sm"
-                      />
+                      <div className="w-28">
+                        <Input
+                          type="time"
+                          value={d.inicio}
+                          onChange={(e) =>
+                            setDias((prev) =>
+                              prev.map((x, idx) => (idx === i ? { ...x, inicio: e.target.value } : x)),
+                            )
+                          }
+                          aria-label={`Entrada de ${d.label}`}
+                        />
+                      </div>
                       <span className="text-xs text-muted-foreground">às</span>
-                      <input
-                        type="time"
-                        value={d.fim}
-                        onChange={(e) =>
-                          setDias((prev) =>
-                            prev.map((x, idx) => (idx === i ? { ...x, fim: e.target.value } : x)),
-                          )
-                        }
-                        aria-label={`Saída de ${d.label}`}
-                        className="border border-border-strong bg-surface text-foreground rounded-lg px-2 py-1.5 text-sm"
-                      />
+                      <div className="w-28">
+                        <Input
+                          type="time"
+                          value={d.fim}
+                          onChange={(e) =>
+                            setDias((prev) =>
+                              prev.map((x, idx) => (idx === i ? { ...x, fim: e.target.value } : x)),
+                            )
+                          }
+                          aria-label={`Saída de ${d.label}`}
+                        />
+                      </div>
                     </>
                   ) : (
                     <span className="text-sm text-muted-foreground">Folga</span>

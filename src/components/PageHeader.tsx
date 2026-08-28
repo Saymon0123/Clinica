@@ -13,7 +13,7 @@ export function PageHeader({
   subtitulo,
   acoes,
 }: {
-  titulo: string
+  titulo: ReactNode
   subtitulo?: string
   acoes?: ReactNode
 }) {

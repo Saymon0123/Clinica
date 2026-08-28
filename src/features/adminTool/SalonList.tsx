@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Building2, Check, MessageCircle, Pencil, Power, RefreshCw } from 'lucide-react'
 import { Modal } from '../../components/Modal'
+import { Badge } from '../../components/Badge'
+import { EstadoVazio } from '../../components/EstadoVazio'
+import { Input } from '../../components/Campo'
+import { Skeleton, SkeletonLinhas } from '../../components/Skeleton'
 import { supabase } from '../../lib/supabase'
 
 type SalonRow = {
@@ -83,9 +87,13 @@ export function SalonList({ secret, refreshKey }: { secret: string; refreshKey: 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {loading ? 'Carregando...' : `${salons.length} barbearia${salons.length === 1 ? '' : 's'}`}
-        </p>
+        {loading ? (
+          <Skeleton className="h-4 w-28" />
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            {`${salons.length} barbearia${salons.length === 1 ? '' : 's'}`}
+          </p>
+        )}
         <button
           onClick={carregar}
           className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
@@ -96,6 +104,8 @@ export function SalonList({ secret, refreshKey }: { secret: string; refreshKey: 
       </div>
 
       {erro && <p className="text-sm text-danger">{erro}</p>}
+
+      {loading && salons.length === 0 && <SkeletonLinhas />}
 
       {salons.map((s) => (
         <div
@@ -108,17 +118,8 @@ export function SalonList({ secret, refreshKey }: { secret: string; refreshKey: 
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-sm font-medium text-foreground">{s.nome}</span>
-                {s.rede && (
-                  <span className="inline-flex items-center gap-1 text-[11px] rounded-full bg-primary-soft text-primary-soft-foreground px-2 py-0.5">
-                    <Building2 size={10} />
-                    {s.rede}
-                  </span>
-                )}
-                {!s.ativo && (
-                  <span className="text-[11px] rounded-full bg-danger-soft text-danger px-2 py-0.5">
-                    Desativada
-                  </span>
-                )}
+                {s.rede && <Badge variante="marca">{s.rede}</Badge>}
+                {!s.ativo && <Badge variante="neutro">Desativada</Badge>}
               </div>
               <div className="text-xs text-muted-foreground mt-0.5 truncate">
                 {s.endereco ?? 'Sem endereço'}
@@ -131,7 +132,7 @@ export function SalonList({ secret, refreshKey }: { secret: string; refreshKey: 
                 aria-label={`Editar ${s.nome}`}
                 className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-surface-2"
               >
-                <Pencil size={15} />
+                <Pencil size={16} />
               </button>
               <button
                 onClick={() => alternarAtivo(s)}
@@ -141,7 +142,7 @@ export function SalonList({ secret, refreshKey }: { secret: string; refreshKey: 
                   s.ativo ? 'text-muted-foreground hover:text-danger' : 'text-success'
                 }`}
               >
-                <Power size={15} />
+                <Power size={16} />
               </button>
             </div>
           </div>
@@ -158,31 +159,26 @@ export function SalonList({ secret, refreshKey }: { secret: string; refreshKey: 
       ))}
 
       {!loading && salons.length === 0 && (
-        <p className="text-sm text-muted-foreground text-center py-8">
-          Nenhuma barbearia cadastrada ainda.
-        </p>
+        <EstadoVazio icone={Building2} titulo="Nenhuma barbearia cadastrada ainda." />
       )}
 
       {/* Edição */}
       {editando && (
         <Modal onClose={() => setEditando(null)} titulo="Editar barbearia" tamanho="sm">
-            <input
+            <Input
               value={editando.nome}
               onChange={(e) => setEditando({ ...editando, nome: e.target.value })}
               placeholder="Nome"
-              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             />
-            <input
+            <Input
               value={editando.endereco ?? ''}
               onChange={(e) => setEditando({ ...editando, endereco: e.target.value })}
               placeholder="Endereço"
-              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             />
-            <input
+            <Input
               value={editando.telefone ?? ''}
               onChange={(e) => setEditando({ ...editando, telefone: e.target.value })}
               placeholder="Telefone"
-              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             />
 
             <button
@@ -190,7 +186,7 @@ export function SalonList({ secret, refreshKey }: { secret: string; refreshKey: 
               disabled={busy}
               className="w-full flex items-center justify-center gap-1.5 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
-              <Check size={15} />
+              <Check size={16} />
               {busy ? 'Salvando...' : 'Salvar'}
             </button>
         </Modal>

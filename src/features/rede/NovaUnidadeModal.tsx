@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Building2 } from 'lucide-react'
 import { Modal } from '../../components/Modal'
+import { Campo, Input } from '../../components/Campo'
 import { invokeFunction } from '../../lib/invokeFunction'
 
 type Resultado = {
@@ -92,45 +93,34 @@ export function NovaUnidadeModal({
     >
         <form onSubmit={criar} className="space-y-3">
           {primeiraUnidade && (
-            <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Nome da rede</span>
-              <input
+            <Campo
+              rotulo="Nome da rede"
+              htmlFor="unidade-nome-rede"
+              apoio="Como o conjunto das unidades se chama. Em branco, usa o nome da barbearia atual."
+            >
+              <Input
+                id="unidade-nome-rede"
                 value={nomeRede}
                 onChange={(e) => setNomeRede(e.target.value)}
-                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
                 placeholder="Ex: Barbearia do Zé"
               />
-              <span className="block text-[11px] text-muted-foreground mt-1">
-                Como o conjunto das unidades se chama. Em branco, usa o nome da barbearia atual.
-              </span>
-            </label>
+            </Campo>
           )}
-          <label className="block">
-            <span className="text-xs font-medium text-muted-foreground">Nome da unidade</span>
-            <input
+          <Campo rotulo="Nome da unidade" htmlFor="unidade-nome">
+            <Input
+              id="unidade-nome"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
-              className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               placeholder="Ex: Unidade Centro"
               autoFocus
             />
-          </label>
-          <label className="block">
-            <span className="text-xs font-medium text-muted-foreground">Endereço</span>
-            <input
-              value={endereco}
-              onChange={(e) => setEndereco(e.target.value)}
-              className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
-            />
-          </label>
-          <label className="block">
-            <span className="text-xs font-medium text-muted-foreground">Telefone</span>
-            <input
-              value={telefone}
-              onChange={(e) => setTelefone(e.target.value)}
-              className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
-            />
-          </label>
+          </Campo>
+          <Campo rotulo="Endereço" htmlFor="unidade-endereco">
+            <Input id="unidade-endereco" value={endereco} onChange={(e) => setEndereco(e.target.value)} />
+          </Campo>
+          <Campo rotulo="Telefone" htmlFor="unidade-telefone">
+            <Input id="unidade-telefone" value={telefone} onChange={(e) => setTelefone(e.target.value)} />
+          </Campo>
 
           <label className="flex items-center gap-2 cursor-pointer">
             <input

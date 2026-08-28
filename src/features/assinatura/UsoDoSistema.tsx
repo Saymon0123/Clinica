@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Activity, CalendarCheck, MessageSquareText, RotateCcw } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
+import { Badge } from '../../components/Badge'
+import { SkeletonLinhas } from '../../components/Skeleton'
 
 function moeda(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -111,7 +113,7 @@ export function UsoDoSistema() {
       </div>
 
       {carregando ? (
-        <p className="text-sm text-muted-foreground">Carregando...</p>
+        <SkeletonLinhas />
       ) : erro ? (
         <p className="text-sm text-danger">
           Não foi possível carregar o uso agora. Confira a internet e recarregue a página.
@@ -121,7 +123,7 @@ export function UsoDoSistema() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="bg-surface-2 rounded-lg p-3">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <CalendarCheck size={13} /> Agendamentos cobráveis
+                <CalendarCheck size={14} /> Agendamentos cobráveis
               </div>
               <div className="text-xl font-semibold text-foreground mt-1">{uso.agendamentos}</div>
               <div className="text-[11px] text-muted-foreground">
@@ -137,14 +139,14 @@ export function UsoDoSistema() {
             </div>
             <div className="bg-surface-2 rounded-lg p-3">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <MessageSquareText size={13} /> Lembretes
+                <MessageSquareText size={14} /> Lembretes
               </div>
               <div className="text-xl font-semibold text-foreground mt-1">{uso.lembretes}</div>
               <div className="text-[11px] text-muted-foreground">sem custo</div>
             </div>
             <div className="bg-surface-2 rounded-lg p-3">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <RotateCcw size={13} /> Reativações
+                <RotateCcw size={14} /> Reativações
               </div>
               <div className="text-xl font-semibold text-foreground mt-1">{uso.reativacoes}</div>
               <div className="text-[11px] text-muted-foreground">sem custo</div>
@@ -186,7 +188,9 @@ export function UsoDoSistema() {
                     <div className="min-w-0 text-sm text-foreground">
                       {dataBr(f.periodo_inicio)} – {dataBr(f.periodo_fim)}
                       {f.motivo === 'cancelamento' && (
-                        <span className="ml-2 text-[11px] text-danger">cancelamento</span>
+                        <span className="ml-2 inline-flex align-middle">
+                          <Badge variante="perigo">cancelamento</Badge>
+                        </span>
                       )}
                       <span className="ml-2 text-[11px] text-muted-foreground">
                         {f.agendamentos} agendamento{f.agendamentos === 1 ? '' : 's'} ×{' '}
@@ -195,7 +199,7 @@ export function UsoDoSistema() {
                     </div>
                     <span className="inline-flex items-center gap-2">
                       {f.paga_em ? (
-                        <span className="text-[11px] text-success">pago</span>
+                        <Badge variante="ok">pago</Badge>
                       ) : f.boleto_url ? (
                         <a
                           href={f.boleto_url}
@@ -206,7 +210,7 @@ export function UsoDoSistema() {
                           Pagar
                         </a>
                       ) : Number(f.valor) > 0 ? (
-                        <span className="text-[11px] text-muted-foreground">acumula</span>
+                        <Badge variante="atencao">acumula</Badge>
                       ) : null}
                       <span className="text-sm font-medium text-foreground">{moeda(Number(f.valor))}</span>
                     </span>

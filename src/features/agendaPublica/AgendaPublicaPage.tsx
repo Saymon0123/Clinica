@@ -230,7 +230,7 @@ export function AgendaPublicaPage() {
 
             <div>
               <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
-                <Clock size={13} />
+                <Clock size={14} />
                 Horários livres hoje
               </div>
 

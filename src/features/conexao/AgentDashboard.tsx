@@ -22,7 +22,7 @@ function StatCard({
   hint?: string
 }) {
   return (
-    <div className="bg-surface border border-border rounded-xl shadow-sm p-4">
+    <div className="bg-surface border border-border rounded-xl shadow-sm p-5">
       <div className="flex items-center gap-2 text-muted-foreground mb-2">
         <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary-soft text-primary-soft-foreground">
           {icon}
@@ -73,37 +73,37 @@ export function AgentDashboard({ salonId }: { salonId: string }) {
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <StatCard
-          icon={<Bot size={15} />}
+          icon={<Bot size={16} />}
           label="Conversas atendidas"
           value={loading ? '—' : stats.conversas}
           hint="clientes que o agente respondeu"
         />
         <StatCard
-          icon={<Timer size={15} />}
+          icon={<Timer size={16} />}
           label="Tempo de resposta"
           value={loading ? '—' : formatResponseTime(stats.tempoRespostaMedioSeg)}
           hint="média do agente"
         />
         <StatCard
-          icon={<MessageSquare size={15} />}
+          icon={<MessageSquare size={16} />}
           label="Mensagens enviadas"
           value={loading ? '—' : stats.mensagensAgente}
           hint="pelo agente"
         />
         <StatCard
-          icon={<CalendarCheck size={15} />}
+          icon={<CalendarCheck size={16} />}
           label="Agendamentos"
           value={loading ? '—' : stats.agendamentos}
           hint="feitos pelo agente (a cobrança na aba Assinatura usa o mês fechado)"
         />
         <StatCard
-          icon={<CalendarX size={15} />}
+          icon={<CalendarX size={16} />}
           label="Cancelamentos"
           value={loading ? '—' : stats.cancelamentos}
           hint="pelo agente"
         />
         <StatCard
-          icon={<Hand size={15} />}
+          icon={<Hand size={16} />}
           label="Pediram o dono"
           value={loading ? '—' : stats.pedidosDono}
           hint="aguardando você na aba WEB"
@@ -119,7 +119,7 @@ export function AgentDashboard({ salonId }: { salonId: string }) {
           agendamento automático e confirma por WhatsApp. Sempre do mês
           corrente — é o número que mostra o sistema trazendo gente de volta. */}
       {stats.reativacao && stats.reativacao.enviados > 0 && (
-        <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
+        <div className="rounded-xl border border-border bg-surface p-5 space-y-3">
           <div>
             <h3 className="text-sm font-semibold text-foreground">Reativação — clientes trazidos de volta</h3>
             <p className="text-xs text-muted-foreground">

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Check, Clock, Copy, Link2, Pencil, Percent, Plus, Power, Trash2, UserPlus, X } from 'lucide-react'
+import { Check, Clock, Copy, Link2, Pencil, Percent, Plus, Power, Trash2, UserPlus, Users, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { urlDoConvite } from '../../lib/appUrl'
 import { formatarTelefone, linkWhatsApp } from '../../lib/telefone'
@@ -8,6 +8,11 @@ import { useAuth } from '../auth/AuthContext'
 import { useSalon, type Papel } from '../auth/useSalon'
 import { HorarioBarbeiroModal } from './HorarioBarbeiroModal'
 import { toast } from '../../components/Toast'
+import { Badge } from '../../components/Badge'
+import { EstadoVazio } from '../../components/EstadoVazio'
+import { SkeletonPagina, SkeletonLinhas } from '../../components/Skeleton'
+import { Campo, Input, Select } from '../../components/Campo'
+import { PageHeader } from '../../components/PageHeader'
 
 type Membro = {
   id: string
@@ -229,7 +234,7 @@ export function EquipePage() {
     setTimeout(() => setCopiado(null), 1500)
   }
 
-  if (salonLoading) return <p className="text-sm text-muted-foreground">Carregando...</p>
+  if (salonLoading) return <SkeletonPagina />
 
   // Dono de rede sem unidade escolhida: a equipe é por unidade.
   if (isOwner && !salonId) {
@@ -250,25 +255,25 @@ export function EquipePage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">Equipe</h1>
-          <p className="text-sm text-muted-foreground">Barbeiros que atendem nesta barbearia</p>
-        </div>
-        <button
-          onClick={() => setModalAberto(true)}
-          className="flex items-center gap-2 btn-primary rounded-lg px-4 py-2 text-sm font-medium"
-        >
-          <Plus size={16} />
-          Convidar para a equipe
-        </button>
-      </div>
+      <PageHeader
+        titulo="Equipe"
+        subtitulo="Barbeiros que atendem nesta barbearia"
+        acoes={
+          <button
+            onClick={() => setModalAberto(true)}
+            className="flex items-center gap-2 btn-primary rounded-lg px-4 py-2 text-sm font-medium"
+          >
+            <Plus size={16} />
+            Convidar para a equipe
+          </button>
+        }
+      />
 
       {erro && <p className="text-sm text-danger">{erro}</p>}
 
       {/* Convites pendentes */}
       {convites.length > 0 && (
-        <div className="bg-surface border border-border rounded-xl shadow-sm p-4">
+        <div className="bg-surface border border-border rounded-xl shadow-sm p-5">
           <h2 className="text-sm font-semibold text-foreground mb-2">Convites aguardando</h2>
           <div className="divide-y divide-border">
             {convites.map((c) => (
@@ -280,12 +285,12 @@ export function EquipePage() {
                   <div className="space-y-2">
                     <div className="text-sm text-foreground">{c.nome}</div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <input
+                      <Input
                         type="email"
                         value={emailRascunho}
                         onChange={(e) => setEmailRascunho(e.target.value)}
                         aria-label={`Novo e-mail do convite de ${c.nome}`}
-                        className="flex-1 min-w-[12rem] border border-border-strong bg-surface text-foreground rounded-lg px-3 py-1.5 text-sm"
+                        className="flex-1 min-w-[12rem]"
                       />
                       <button
                         onClick={() => salvarEmail(c)}
@@ -315,7 +320,7 @@ export function EquipePage() {
                         onClick={() => copiar(c.token)}
                         className="btn-chip btn-chip-primario flex items-center gap-1.5"
                       >
-                        {copiado === c.token ? <Check size={13} /> : <Copy size={13} />}
+                        {copiado === c.token ? <Check size={14} /> : <Copy size={14} />}
                         {copiado === c.token ? 'Link copiado!' : 'Copiar link'}
                       </button>
                       <button
@@ -348,7 +353,11 @@ export function EquipePage() {
 
       {/* Equipe */}
       <div className="bg-surface border border-border rounded-xl shadow-sm divide-y divide-border">
-        {loading && <p className="text-sm text-muted-foreground p-4">Carregando...</p>}
+        {loading && (
+          <div className="p-4">
+            <SkeletonLinhas />
+          </div>
+        )}
 
         {membros.map((m) => (
           <div key={m.id} className="flex items-center justify-between gap-3 p-4">
@@ -360,33 +369,34 @@ export function EquipePage() {
                 <div className="text-sm font-medium text-foreground truncate">
                   {m.nome}
                   {!m.ativo && (
-                    <span className="ml-2 text-[11px] rounded-full bg-surface-2 text-muted-foreground px-2 py-0.5">
-                      Inativo
+                    <span className="ml-2 inline-flex align-middle">
+                      <Badge variante="neutro">Inativo</Badge>
                     </span>
                   )}
                   {!m.user_id && (
-                    <span className="ml-2 text-[11px] rounded-full bg-warning/15 text-warning px-2 py-0.5">
-                      Sem acesso
+                    <span className="ml-2 inline-flex align-middle">
+                      <Badge variante="atencao">Sem acesso</Badge>
                     </span>
                   )}
                 </div>
                 {editandoComissao === m.id ? (
                   <div className="flex items-center gap-1 mt-1">
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      autoFocus
-                      value={comissaoRascunho}
-                      onChange={(e) => setComissaoRascunho(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') salvarComissao(m)
-                        if (e.key === 'Escape') setEditandoComissao(null)
-                      }}
-                      placeholder="sem comissão"
-                      aria-label={`Comissão de ${m.nome} em porcentagem`}
-                      className="w-28 border border-border-strong bg-surface text-foreground rounded-lg px-2 py-1 text-xs"
-                    />
+                    <div className="w-28">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        autoFocus
+                        value={comissaoRascunho}
+                        onChange={(e) => setComissaoRascunho(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') salvarComissao(m)
+                          if (e.key === 'Escape') setEditandoComissao(null)
+                        }}
+                        placeholder="sem comissão"
+                        aria-label={`Comissão de ${m.nome} em porcentagem`}
+                      />
+                    </div>
                     <span className="text-xs text-muted-foreground">%</span>
                     <button
                       onClick={() => salvarComissao(m)}
@@ -494,9 +504,7 @@ export function EquipePage() {
         ))}
 
         {!loading && membros.length === 0 && (
-          <p className="text-sm text-muted-foreground p-6 text-center">
-            Nenhum barbeiro cadastrado ainda.
-          </p>
+          <EstadoVazio icone={Users} titulo="Nenhum barbeiro cadastrado ainda." />
         )}
       </div>
 
@@ -617,51 +625,46 @@ function ConviteModal({
           </div>
         ) : (
           <form onSubmit={criar} className="space-y-3">
-            <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Nome</span>
-              <input
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
-              />
-            </label>
-            <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">E-mail de acesso</span>
-              <input
+            <Campo rotulo="Nome" htmlFor="convite-nome">
+              <Input id="convite-nome" value={nome} onChange={(e) => setNome(e.target.value)} />
+            </Campo>
+            <Campo rotulo="E-mail de acesso" htmlFor="convite-email">
+              <Input
+                id="convite-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               />
-            </label>
-            <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Função</span>
-              <select
+            </Campo>
+            <Campo
+              rotulo="Função"
+              htmlFor="convite-papel"
+              apoio={
+                papel === 'gerente'
+                  ? 'Enxerga e edita tudo desta barbearia, menos o painel da rede.'
+                  : 'Vê apenas os próprios agendamentos, clientes atendidos e comissão.'
+              }
+            >
+              <Select
+                id="convite-papel"
                 value={papel}
                 onChange={(e) => setPapel(e.target.value as 'barbeiro' | 'gerente')}
-                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               >
                 <option value="barbeiro">Barbeiro — vê só o que é dele</option>
                 <option value="gerente">Gerente — administra esta unidade</option>
-              </select>
-              <span className="mt-1 block text-[11px] text-muted-foreground">
-                {papel === 'gerente'
-                  ? 'Enxerga e edita tudo desta barbearia, menos o painel da rede.'
-                  : 'Vê apenas os próprios agendamentos, clientes atendidos e comissão.'}
-              </span>
-            </label>
+              </Select>
+            </Campo>
 
-            <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Comissão (%)</span>
-              <input
+            <Campo rotulo="Comissão (%)" htmlFor="convite-comissao">
+              <Input
+                id="convite-comissao"
                 type="number"
                 min={0}
                 max={100}
                 value={comissao}
                 onChange={(e) => setComissao(e.target.value)}
-                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               />
-            </label>
+            </Campo>
 
             {erro && <p className="text-sm text-danger">{erro}</p>}
 
@@ -670,7 +673,7 @@ function ConviteModal({
               disabled={salvando}
               className="w-full flex items-center justify-center gap-2 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
-              <Link2 size={15} />
+              <Link2 size={16} />
               {salvando ? 'Gerando...' : 'Gerar link de convite'}
             </button>
           </form>

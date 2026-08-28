@@ -9,6 +9,7 @@ import {
   type ServicoPadrao,
 } from './servicosPadrao'
 import { DIAS_DE_TESTE } from '../../lib/planos'
+import { Campo, Input } from '../../components/Campo'
 
 /**
  * `donoAtende` separa duas coisas que o sistema confundia: ser **dono** (acesso,
@@ -187,7 +188,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
   // ---------- Tela de sucesso ----------
   if (resultado) {
     return (
-      <div className="bg-surface rounded-xl border border-success/40 p-6 space-y-4">
+      <div className="bg-surface rounded-xl border border-success/40 p-5 space-y-4">
         <div className="flex items-center gap-2 text-success">
           <Check size={20} />
           <h2 className="text-base font-semibold">
@@ -242,7 +243,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
   const grupos = [...new Set(servicos.map((s) => s.grupo))]
 
   return (
-    <div className="bg-surface rounded-xl border border-border shadow-sm p-6">
+    <div className="bg-surface rounded-xl border border-border shadow-sm p-5">
       {/* Progresso */}
       <div className="flex items-center gap-1 mb-6">
         {PASSOS.map((nome, i) => (
@@ -302,23 +303,17 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
 
           {tipo === 'rede' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-              <label className="block">
-                <span className="text-xs font-medium text-muted-foreground">Nome da rede</span>
-                <input
+              <Campo rotulo="Nome da rede" htmlFor="wizard-rede-nome">
+                <Input
+                  id="wizard-rede-nome"
                   value={redeNome}
                   onChange={(e) => setRedeNome(e.target.value)}
                   placeholder="Ex.: Barbearia do Zé"
-                  className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
                 />
-              </label>
-              <label className="block">
-                <span className="text-xs font-medium text-muted-foreground">CNPJ (opcional)</span>
-                <input
-                  value={redeCnpj}
-                  onChange={(e) => setRedeCnpj(e.target.value)}
-                  className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
-                />
-              </label>
+              </Campo>
+              <Campo rotulo="CNPJ (opcional)" htmlFor="wizard-rede-cnpj">
+                <Input id="wizard-rede-cnpj" value={redeCnpj} onChange={(e) => setRedeCnpj(e.target.value)} />
+              </Campo>
             </div>
           )}
         </div>
@@ -347,15 +342,14 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
                   )}
                 </div>
               )}
-              <input
+              <Input
                 value={u.nome}
                 onChange={(e) =>
                   setUnidades((prev) => prev.map((x, idx) => (idx === i ? { ...x, nome: e.target.value } : x)))
                 }
                 placeholder="Nome da barbearia"
-                className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               />
-              <input
+              <Input
                 value={u.endereco}
                 onChange={(e) =>
                   setUnidades((prev) =>
@@ -363,9 +357,8 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
                   )
                 }
                 placeholder="Endereço completo"
-                className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               />
-              <input
+              <Input
                 value={u.telefone}
                 onChange={(e) =>
                   setUnidades((prev) =>
@@ -373,7 +366,6 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
                   )
                 }
                 placeholder="Telefone da unidade (opcional)"
-                className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               />
 
               {perguntaSeDonoAtende && (
@@ -405,7 +397,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
               onClick={() => setUnidades((prev) => [...prev, unidadeVazia(false)])}
               className="flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
             >
-              <Plus size={15} />
+              <Plus size={16} />
               Adicionar unidade
             </button>
           )}
@@ -425,38 +417,36 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
           <p className="text-xs text-muted-foreground">
             É quem vai receber o acesso{tipo === 'rede' ? ' a todas as unidades' : ''}.
           </p>
-          <input
+          <Input
             value={donoNome}
             onChange={(e) => setDonoNome(e.target.value)}
             placeholder="Nome completo"
-            className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
           />
-          <input
+          <Input
             type="email"
             value={donoEmail}
             onChange={(e) => setDonoEmail(e.target.value)}
             placeholder="E-mail de acesso"
-            className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
           />
-          <input
+          <Input
             value={donoTelefone}
             onChange={(e) => setDonoTelefone(e.target.value)}
             placeholder="Telefone (opcional)"
-            className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
           />
 
           {donoAtendeEmAlguma && (
             <label className="block pt-1">
               <span className="text-sm text-foreground">Comissão do dono como barbeiro</span>
               <div className="flex items-center gap-2 mt-1">
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={comissao}
-                  onChange={(e) => setComissao(e.target.value)}
-                  className="w-28 border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
-                />
+                <div className="w-28">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={comissao}
+                    onChange={(e) => setComissao(e.target.value)}
+                  />
+                </div>
                 <span className="text-sm text-muted-foreground">% de cada serviço que ele fizer</span>
               </div>
               <span className="block text-xs text-muted-foreground mt-1">
@@ -521,27 +511,31 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
                 </label>
                 {d.aberto ? (
                   <>
-                    <input
-                      type="time"
-                      value={d.abre}
-                      onChange={(e) =>
-                        setHorario((prev) =>
-                          prev.map((x, idx) => (idx === i ? { ...x, abre: e.target.value } : x)),
-                        )
-                      }
-                      className="border border-border-strong bg-surface text-foreground rounded-lg px-2 py-1.5 text-sm"
-                    />
+                    <div className="w-28">
+                      <Input
+                        type="time"
+                        value={d.abre}
+                        onChange={(e) =>
+                          setHorario((prev) =>
+                            prev.map((x, idx) => (idx === i ? { ...x, abre: e.target.value } : x)),
+                          )
+                        }
+                        aria-label={`${d.label} abre às`}
+                      />
+                    </div>
                     <span className="text-xs text-muted-foreground">às</span>
-                    <input
-                      type="time"
-                      value={d.fecha}
-                      onChange={(e) =>
-                        setHorario((prev) =>
-                          prev.map((x, idx) => (idx === i ? { ...x, fecha: e.target.value } : x)),
-                        )
-                      }
-                      className="border border-border-strong bg-surface text-foreground rounded-lg px-2 py-1.5 text-sm"
-                    />
+                    <div className="w-28">
+                      <Input
+                        type="time"
+                        value={d.fecha}
+                        onChange={(e) =>
+                          setHorario((prev) =>
+                            prev.map((x, idx) => (idx === i ? { ...x, fecha: e.target.value } : x)),
+                          )
+                        }
+                        aria-label={`${d.label} fecha às`}
+                      />
+                    </div>
                   </>
                 ) : (
                   <span className="text-sm text-muted-foreground">Fechado</span>
@@ -591,7 +585,8 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
                       <span className="flex-1 text-sm text-foreground truncate">{s.nome}</span>
                       <div className="flex items-center gap-1 shrink-0">
                         <span className="text-xs text-muted-foreground">R$</span>
-                        <input
+                        <div className="w-20">
+                        <Input
                           type="number"
                           min={0}
                           step="0.01"
@@ -604,9 +599,10 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
                             )
                           }
                           aria-label={`Preço de ${s.nome}`}
-                          className="w-20 border border-border-strong bg-surface text-foreground rounded-lg px-2 py-1 text-sm"
                         />
-                        <input
+                        </div>
+                        <div className="w-16">
+                        <Input
                           type="number"
                           min={5}
                           step="5"
@@ -619,8 +615,8 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
                             )
                           }
                           aria-label={`Duração de ${s.nome}`}
-                          className="w-16 border border-border-strong bg-surface text-foreground rounded-lg px-2 py-1 text-sm"
                         />
+                        </div>
                         <span className="text-xs text-muted-foreground">min</span>
                       </div>
                     </div>

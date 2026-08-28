@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Modal } from '../../components/Modal'
+import { Campo, Input } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
 import type { ServiceItem } from './types'
 
@@ -79,22 +80,19 @@ export function NewServiceModal({ salonId, service, onClose, onSaved }: Props) {
   return (
     <Modal onClose={onClose} titulo={service ? 'Editar serviço' : 'Novo serviço'} tamanho="md">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm text-muted-foreground mb-1" htmlFor="nome">Nome do serviço</label>
-            <input
+          <Campo rotulo="Nome do serviço" htmlFor="nome">
+            <Input
               id="nome"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               required
-              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               placeholder="Corte de cabelo"
             />
-          </div>
+          </Campo>
 
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1" htmlFor="duracao">Duração (min)</label>
-              <input
+            <Campo rotulo="Duração (min)" htmlFor="duracao">
+              <Input
                 id="duracao"
                 type="number"
                 min={5}
@@ -102,21 +100,18 @@ export function NewServiceModal({ salonId, service, onClose, onSaved }: Props) {
                 value={duracao}
                 onChange={(e) => setDuracao(e.target.value)}
                 required
-                className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               />
-            </div>
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1" htmlFor="preco">Preço (R$)</label>
-              <input
+            </Campo>
+            <Campo rotulo="Preço (R$)" htmlFor="preco">
+              <Input
                 id="preco"
                 inputMode="decimal"
                 value={preco}
                 onChange={(e) => setPreco(e.target.value)}
                 required
-                className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
                 placeholder="60,00"
               />
-            </div>
+            </Campo>
           </div>
 
           {error && <p className="text-sm text-danger">{error}</p>}

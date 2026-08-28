@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { PackagePlus } from 'lucide-react'
 import { Modal } from '../../components/Modal'
+import { Campo, Input } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../../components/Toast'
 import type { ProductItem } from './types'
@@ -58,17 +59,16 @@ export function ReporEstoqueModal({
   return (
     <Modal onClose={onClose} titulo={`Repor ${product.nome}`} tamanho="xs">
         <form onSubmit={handleSubmit} className="space-y-3">
-          <label className="block">
-            <span className="text-xs font-medium text-muted-foreground">Quantas unidades chegaram?</span>
-            <input
+          <Campo rotulo="Quantas unidades chegaram?" htmlFor="quantidade-reposicao">
+            <Input
+              id="quantidade-reposicao"
               type="number"
               min={1}
               autoFocus
               value={quantidade}
               onChange={(e) => setQuantidade(e.target.value)}
-              className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             />
-          </label>
+          </Campo>
           <p className="text-xs text-muted-foreground">
             Estoque atual: {product.estoque_atual}
             {quantidade && parseInt(quantidade, 10) > 0
@@ -83,7 +83,7 @@ export function ReporEstoqueModal({
             disabled={salvando}
             className="w-full flex items-center justify-center gap-2 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
           >
-            <PackagePlus size={15} />
+            <PackagePlus size={16} />
             {salvando ? 'Salvando...' : 'Somar ao estoque'}
           </button>
         </form>

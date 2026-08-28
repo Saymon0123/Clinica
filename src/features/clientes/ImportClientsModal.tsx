@@ -181,7 +181,7 @@ export function ImportClientsModal({
               disabled={!parsed || busy}
               className="w-full flex items-center justify-center gap-2 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
-              <Upload size={15} />
+              <Upload size={16} />
               {busy ? 'Importando...' : 'Importar'}
             </button>
           </>

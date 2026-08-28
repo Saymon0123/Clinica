@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Check, MessageSquarePlus, X } from 'lucide-react'
 import { Modal } from '../../components/Modal'
+import { TextArea } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
 import { useSalon } from '../auth/useSalon'
@@ -113,7 +114,7 @@ export function FeedbackModal({ onClose }: { onClose: () => void }) {
               ))}
             </div>
 
-            <textarea
+            <TextArea
               value={mensagem}
               onChange={(e) => setMensagem(e.target.value)}
               rows={5}
@@ -123,7 +124,7 @@ export function FeedbackModal({ onClose }: { onClose: () => void }) {
                   ? 'O que aconteceu? Se puder, diga o que você estava fazendo na hora.'
                   : 'O que melhoraria o seu dia a dia aqui?'
               }
-              className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-foreground resize-none"
+              className="resize-none"
             />
 
             {erro && <p className="text-sm text-danger">{erro}</p>}

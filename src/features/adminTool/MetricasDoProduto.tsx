@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { invokeFunction } from '../../lib/invokeFunction'
+import { SkeletonLinhas } from '../../components/Skeleton'
 
 /**
  * O funil, em números.
@@ -63,7 +64,7 @@ export function MetricasDoProduto({ secret }: { secret: string }) {
   }, [secret])
 
   if (erro) return <p className="text-sm text-danger">{erro}</p>
-  if (!m) return <p className="text-sm text-muted-foreground">Carregando métricas...</p>
+  if (!m) return <SkeletonLinhas />
 
   return (
     <div className="space-y-3">

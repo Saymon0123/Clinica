@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type DragEvent } from 'react'
-import { CalendarDays, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Building2, CalendarDays, ChevronLeft, ChevronRight, Plus, Users } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
 import { useAgendaData } from './useAgendaData'
@@ -9,6 +10,8 @@ import { AppointmentDetailModal } from './AppointmentDetailModal'
 import type { Appointment } from './types'
 import { CardAtivacao } from '../ativacao/CardAtivacao'
 import { PageHeader } from '../../components/PageHeader'
+import { SkeletonPagina } from '../../components/Skeleton'
+import { EstadoVazio } from '../../components/EstadoVazio'
 
 const HOUR_START = 6
 const HOUR_END = 22
@@ -222,14 +225,16 @@ export function AgendaPage() {
   }
 
   if (salonLoading) {
-    return <p className="text-sm text-muted-foreground">Carregando...</p>
+    return <SkeletonPagina />
   }
 
   if (!salonId) {
     return (
-      <p className="text-sm text-muted-foreground">
-        Sua conta ainda não está vinculada a um salão. Fale com o administrador do sistema.
-      </p>
+      <EstadoVazio
+        icone={Building2}
+        titulo="Conta sem barbearia vinculada"
+        descricao="Sua conta ainda não está vinculada a um salão. Fale com o administrador do sistema."
+      />
     )
   }
 
@@ -284,9 +289,16 @@ export function AgendaPage() {
         {error && <p className="text-sm text-danger mb-3">{error}</p>}
 
         {!loading && professionals.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Nenhum profissional cadastrado ainda. Cadastre um profissional para começar a usar a agenda.
-          </p>
+          <EstadoVazio
+            icone={Users}
+            titulo="Nenhum profissional cadastrado ainda"
+            descricao="Cadastre um profissional para começar a usar a agenda."
+            acao={
+              <Link to="/equipe" className="btn-primary rounded-lg px-4 py-2 text-sm font-medium inline-block">
+                Ir para Equipe
+              </Link>
+            }
+          />
         ) : (
           <div
             className="bg-surface rounded-xl border border-border shadow-sm overflow-auto"
@@ -376,7 +388,7 @@ export function AgendaPage() {
               Reservas
             </div>
             <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary-foreground/15">
-              <CalendarDays size={15} />
+              <CalendarDays size={16} />
             </span>
           </div>
           <div className="mt-1 flex items-baseline gap-2">

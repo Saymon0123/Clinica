@@ -14,6 +14,10 @@ import {
   YAxis,
 } from 'recharts'
 import { NovaUnidadeModal } from './NovaUnidadeModal'
+import { Badge } from '../../components/Badge'
+import { EstadoVazio } from '../../components/EstadoVazio'
+import { SkeletonLinhas } from '../../components/Skeleton'
+import { PageHeader } from '../../components/PageHeader'
 import { useSalon } from '../auth/useSalon'
 import { useProducaoBarbeiros } from './useProducaoBarbeiros'
 import { useRedeData, type Periodo } from './useRedeData'
@@ -78,14 +82,10 @@ export function RedePage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">Rede</h1>
-          <p className="text-sm text-muted-foreground">
-            Visão somada das {gerenciadas.length} unidades que você administra
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      <PageHeader
+        titulo="Rede"
+        subtitulo={`Visão somada das ${gerenciadas.length} unidades que você administra`}
+        acoes={<>
           <div className="flex rounded-lg border border-border overflow-hidden">
             {(['semana', 'mes'] as Periodo[]).map((p) => (
               <button
@@ -104,12 +104,12 @@ export function RedePage() {
               onClick={() => setModalAberto(true)}
               className="flex items-center gap-2 btn-primary rounded-lg px-3 py-2 text-sm font-medium"
             >
-              <Plus size={15} />
+              <Plus size={16} />
               Nova unidade
             </button>
           )}
-        </div>
-      </div>
+      </>}
+      />
 
       {(erro || erroProducao) && <p className="text-sm text-danger">{erro ?? erroProducao}</p>}
 
@@ -229,9 +229,11 @@ export function RedePage() {
         </div>
 
         {loading ? (
-          <p className="text-sm text-muted-foreground p-4">Carregando...</p>
+          <div className="p-4">
+            <SkeletonLinhas />
+          </div>
         ) : resumos.length === 0 ? (
-          <p className="text-sm text-muted-foreground p-6 text-center">Nenhuma unidade para comparar.</p>
+          <EstadoVazio icone={Building2} titulo="Nenhuma unidade para comparar." />
         ) : (
           <div className="divide-y divide-border">
             {resumos.map((r) => {
@@ -240,18 +242,10 @@ export function RedePage() {
                 <div key={r.salonId} className="p-4 space-y-2">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      <Building2 size={15} className="text-muted-foreground shrink-0" />
+                      <Building2 size={16} className="text-muted-foreground shrink-0" />
                       <span className="text-sm font-medium text-foreground truncate">{r.nome}</span>
-                      {r.salonId === salonId && (
-                        <span className="text-[11px] rounded-full bg-primary-soft text-primary-soft-foreground px-2 py-0.5 shrink-0">
-                          atual
-                        </span>
-                      )}
-                      {!r.ativo && (
-                        <span className="text-[11px] rounded-full bg-surface-2 text-muted-foreground px-2 py-0.5 shrink-0">
-                          desativada
-                        </span>
-                      )}
+                      {r.salonId === salonId && <Badge variante="marca">atual</Badge>}
+                      {!r.ativo && <Badge variante="neutro">desativada</Badge>}
                     </div>
                     <span className="text-sm font-semibold text-foreground">{moeda(r.faturamento)}</span>
                   </div>
@@ -298,9 +292,7 @@ export function RedePage() {
         </div>
 
         {producao.length === 0 ? (
-          <p className="text-sm text-muted-foreground p-6 text-center">
-            Nenhum barbeiro com venda no período.
-          </p>
+          <EstadoVazio icone={Users} titulo="Nenhum barbeiro com venda no período." />
         ) : (
           <div className="divide-y divide-border">
             {producao.map((b) => {

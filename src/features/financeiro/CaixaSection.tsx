@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Lock, Wallet } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { Campo, Input } from '../../components/Campo'
+import { SkeletonLinhas } from '../../components/Skeleton'
 
 type Caixa = {
   id: string
@@ -150,7 +152,7 @@ export function CaixaSection({ salonId }: { salonId: string }) {
       {aviso && <p className="text-sm text-success mb-3">{aviso}</p>}
 
       {carregando ? (
-        <p className="text-sm text-muted-foreground">Carregando...</p>
+        <SkeletonLinhas />
       ) : !caixa ? (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
@@ -161,13 +163,13 @@ export function CaixaSection({ salonId }: { salonId: string }) {
               <span className="text-xs font-medium text-muted-foreground">
                 Troco padrão na gaveta
               </span>
-              <input
+              <Input
                 type="number"
                 step="0.01"
                 min="0"
                 value={trocoPadrao}
                 onChange={(e) => setTrocoPadrao(e.target.value)}
-                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
+                className="mt-1"
               />
             </label>
             <button
@@ -213,18 +215,17 @@ export function CaixaSection({ salonId }: { salonId: string }) {
               Conferir a gaveta (opcional)
             </summary>
             <div className="mt-3 space-y-3">
-              <label className="block">
-                <span className="text-xs font-medium text-muted-foreground">Contagem da gaveta</span>
-                <input
+              <Campo rotulo="Contagem da gaveta" htmlFor="contagem-gaveta">
+                <Input
+                  id="contagem-gaveta"
                   type="number"
                   step="0.01"
                   min="0"
                   value={valorFechamento}
                   onChange={(e) => setValorFechamento(e.target.value)}
                   placeholder="Quanto tinha de verdade"
-                  className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
                 />
-              </label>
+              </Campo>
 
               {diferenca !== null && (
                 <p
@@ -245,7 +246,7 @@ export function CaixaSection({ salonId }: { salonId: string }) {
                 disabled={salvando}
                 className="w-full flex items-center justify-center gap-2 btn-secondary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
               >
-                <Lock size={15} />
+                <Lock size={16} />
                 {salvando ? 'Fechando...' : 'Registrar contagem e fechar o dia'}
               </button>
             </div>

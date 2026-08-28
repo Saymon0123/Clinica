@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { useSalon } from './useSalon'
+import { SkeletonPagina } from '../../components/Skeleton'
 
 /**
  * Barra as telas da rede para quem não é dono.
@@ -13,7 +14,11 @@ export function RequireNetworkOwner({ children }: { children: ReactNode }) {
   const { isOwner, isNetwork, loading } = useSalon()
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Carregando...</p>
+    return (
+      <div className="p-4 md:p-6">
+        <SkeletonPagina />
+      </div>
+    )
   }
 
   if (!isOwner || !isNetwork) {

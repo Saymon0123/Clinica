@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Modal } from '../../components/Modal'
+import { Campo, Input, TextArea } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
 import type { Client } from './types'
 
@@ -64,50 +65,42 @@ export function NewClientModal({ salonId, initial, onClose, onCreated }: Props) 
   return (
     <Modal onClose={onClose} titulo={isEditing ? 'Editar cliente' : 'Adicionar cliente'} tamanho="md">
       <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm text-muted-foreground mb-1" htmlFor="nome">Nome</label>
-            <input
+          <Campo rotulo="Nome" htmlFor="nome">
+            <Input
               id="nome"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               required
-              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               placeholder="Nome completo"
             />
-          </div>
+          </Campo>
 
-          <div>
-            <label className="block text-sm text-muted-foreground mb-1" htmlFor="telefone">Telefone</label>
-            <input
+          <Campo rotulo="Telefone" htmlFor="telefone">
+            <Input
               id="telefone"
               value={telefone}
               onChange={(e) => setTelefone(e.target.value)}
-              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               placeholder="(11) 90000-0000"
             />
-          </div>
+          </Campo>
 
-          <div>
-            <label className="block text-sm text-muted-foreground mb-1" htmlFor="aniversario">Aniversário</label>
-            <input
+          <Campo rotulo="Aniversário" htmlFor="aniversario">
+            <Input
               id="aniversario"
               type="date"
               value={aniversario}
               onChange={(e) => setAniversario(e.target.value)}
-              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             />
-          </div>
+          </Campo>
 
-          <div>
-            <label className="block text-sm text-muted-foreground mb-1" htmlFor="observacao">Observação (opcional)</label>
-            <textarea
+          <Campo rotulo="Observação (opcional)" htmlFor="observacao">
+            <TextArea
               id="observacao"
               value={observacao}
               onChange={(e) => setObservacao(e.target.value)}
               rows={2}
-              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             />
-          </div>
+          </Campo>
 
           {error && <p className="text-sm text-danger">{error}</p>}
 

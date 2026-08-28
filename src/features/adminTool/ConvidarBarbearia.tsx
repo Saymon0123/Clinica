@@ -3,6 +3,7 @@ import { Check, Copy, Send } from 'lucide-react'
 import { invokeFunction } from '../../lib/invokeFunction'
 import { HORARIO_PADRAO, SERVICOS_PADRAO, serializarHorario } from './servicosPadrao'
 import { DIAS_DE_TESTE } from '../../lib/planos'
+import { Campo, Input } from '../../components/Campo'
 
 /**
  * Cadastro à distância — quando a conversa com o dono acontece por mensagem.
@@ -90,7 +91,7 @@ export function ConvidarBarbearia({ secret, onCriado }: { secret: string; onCria
   if (resultado) {
     const vence = new Date(resultado.expiraEm).toLocaleDateString('pt-BR')
     return (
-      <div className="bg-surface rounded-xl border border-success/40 p-6 space-y-4">
+      <div className="bg-surface rounded-xl border border-success/40 p-5 space-y-4">
         <div className="flex items-center gap-2 text-success">
           <Check size={20} />
           <h2 className="text-base font-semibold">Convite pronto!</h2>
@@ -123,7 +124,7 @@ export function ConvidarBarbearia({ secret, onCriado }: { secret: string; onCria
   }
 
   return (
-    <div className="bg-surface rounded-xl border border-border shadow-sm p-6 space-y-4">
+    <div className="bg-surface rounded-xl border border-border shadow-sm p-5 space-y-4">
       <div>
         <h2 className="text-base font-semibold text-foreground">Convidar barbearia</h2>
         <p className="text-xs text-muted-foreground mt-1">
@@ -132,29 +133,28 @@ export function ConvidarBarbearia({ secret, onCriado }: { secret: string; onCria
         </p>
       </div>
 
-      <label className="block">
-        <span className="text-xs font-medium text-muted-foreground">Nome da barbearia</span>
-        <input
+      <Campo rotulo="Nome da barbearia" htmlFor="convidar-nome">
+        <Input
+          id="convidar-nome"
           value={nome}
           onChange={(e) => setNome(e.target.value)}
           placeholder="Ex.: Barbearia do Zé"
-          className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
         />
-      </label>
+      </Campo>
 
-      <label className="block">
-        <span className="text-xs font-medium text-muted-foreground">E-mail do dono</span>
-        <input
+      <Campo
+        rotulo="E-mail do dono"
+        htmlFor="convidar-email"
+        apoio="É o e-mail de acesso dele. O nome ele mesmo digita ao aceitar."
+      >
+        <Input
+          id="convidar-email"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="dono@email.com"
-          className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
         />
-        <span className="block text-[11px] text-muted-foreground mt-1">
-          É o e-mail de acesso dele. O nome ele mesmo digita ao aceitar.
-        </span>
-      </label>
+      </Campo>
 
       {/* Sem plano desde 2026-08-25: a cobrança é por agendamento do agente. */}
       <p className="text-xs text-muted-foreground">
@@ -200,7 +200,7 @@ export function ConvidarBarbearia({ secret, onCriado }: { secret: string; onCria
         disabled={enviando}
         className="w-full flex items-center justify-center gap-1.5 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
       >
-        <Send size={15} />
+        <Send size={16} />
         {enviando ? 'Gerando...' : 'Gerar convite'}
       </button>
     </div>

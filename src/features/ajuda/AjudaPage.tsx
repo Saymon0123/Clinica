@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { HelpCircle, Search } from 'lucide-react'
+import { PageHeader } from '../../components/PageHeader'
 
 /**
  * Central de Ajuda: os tutoriais passo a passo de tudo que o sistema faz,
@@ -416,16 +417,15 @@ export function AjudaPage() {
 
   return (
     <div className="max-w-2xl space-y-4">
-      <div>
-        <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground">
-          <HelpCircle size={20} />
-          Central de Ajuda
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Tudo que dá para fazer no sistema, passo a passo. Digite o que você quer fazer — ou
-          navegue por área.
-        </p>
-      </div>
+      <PageHeader
+        titulo={
+          <span className="flex items-center gap-2">
+            <HelpCircle size={20} />
+            Central de Ajuda
+          </span>
+        }
+        subtitulo="Tudo que dá para fazer no sistema, passo a passo. Digite o que você quer fazer — ou navegue por área."
+      />
 
       <div className="relative">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />

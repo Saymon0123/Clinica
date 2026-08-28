@@ -6,6 +6,9 @@ import { formatarTelefone } from '../../lib/telefone'
 import { useSalon } from '../auth/useSalon'
 import { QrDoBalcao } from '../agendaPublica/QrDoBalcao'
 import { AvisoDeJornada } from './AvisoDeJornada'
+import { Campo, Input } from '../../components/Campo'
+import { SkeletonPagina } from '../../components/Skeleton'
+import { PageHeader } from '../../components/PageHeader'
 import { NovaUnidadeModal } from '../rede/NovaUnidadeModal'
 import {
   desserializarHorario,
@@ -157,25 +160,20 @@ export function ConfiguracoesPage() {
   }
 
   if (carregando) {
-    return <p className="text-sm text-muted-foreground">Carregando...</p>
+    return <SkeletonPagina />
   }
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight text-foreground">Configurações</h1>
-        <p className="text-sm text-muted-foreground">
-          Dados de {salonName ?? 'sua barbearia'} e horário de funcionamento
-        </p>
-      </div>
+      <PageHeader
+        titulo="Configurações"
+        subtitulo={`Dados de ${salonName ?? 'sua barbearia'} e horário de funcionamento`}
+      />
 
       <form onSubmit={salvar} className="space-y-6">
         <div className="bg-surface border border-border rounded-xl shadow-sm p-5 space-y-4">
-          <div>
-            <label className="block text-sm text-muted-foreground mb-1" htmlFor="nome">
-              Nome da barbearia
-            </label>
-            <input
+          <Campo rotulo="Nome da barbearia" htmlFor="nome">
+            <Input
               id="nome"
               value={nome}
               onChange={(e) => {
@@ -183,15 +181,11 @@ export function ConfiguracoesPage() {
                 setSalvo(false)
               }}
               required
-              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             />
-          </div>
+          </Campo>
 
-          <div>
-            <label className="block text-sm text-muted-foreground mb-1" htmlFor="endereco">
-              Endereço
-            </label>
-            <input
+          <Campo rotulo="Endereço" htmlFor="endereco">
+            <Input
               id="endereco"
               value={endereco}
               onChange={(e) => {
@@ -199,15 +193,11 @@ export function ConfiguracoesPage() {
                 setSalvo(false)
               }}
               placeholder="Rua, número, bairro"
-              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             />
-          </div>
+          </Campo>
 
-          <div>
-            <label className="block text-sm text-muted-foreground mb-1" htmlFor="telefone">
-              Telefone
-            </label>
-            <input
+          <Campo rotulo="Telefone" htmlFor="telefone">
+            <Input
               id="telefone"
               value={telefone}
               onChange={(e) => {
@@ -216,9 +206,8 @@ export function ConfiguracoesPage() {
               }}
               onBlur={() => setTelefone((t) => (t.trim() ? formatarTelefone(t) : t))}
               placeholder="(11) 90000-0000"
-              className="w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             />
-          </div>
+          </Campo>
         </div>
 
         <div className="bg-surface border border-border rounded-xl shadow-sm p-5 space-y-3">
@@ -236,7 +225,8 @@ export function ConfiguracoesPage() {
               Folga entre um atendimento e outro
             </label>
             <div className="flex items-center gap-2">
-              <input
+              <div className="w-24">
+                <Input
                 id="folga"
                 type="number"
                 min={0}
@@ -247,8 +237,8 @@ export function ConfiguracoesPage() {
                   setFolga(e.target.value)
                   setSalvo(false)
                 }}
-                className="w-24 border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               />
+              </div>
               <span className="text-sm text-muted-foreground">minutos</span>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
@@ -263,7 +253,8 @@ export function ConfiguracoesPage() {
               Atraso tolerado
             </label>
             <div className="flex items-center gap-2">
-              <input
+              <div className="w-24">
+                <Input
                 id="atraso"
                 type="number"
                 min={5}
@@ -274,8 +265,8 @@ export function ConfiguracoesPage() {
                   setAtraso(e.target.value)
                   setSalvo(false)
                 }}
-                className="w-24 border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               />
+              </div>
               <span className="text-sm text-muted-foreground">minutos</span>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
@@ -301,21 +292,23 @@ export function ConfiguracoesPage() {
 
               {d.aberto ? (
                 <div className="flex items-center gap-2">
-                  <input
-                    type="time"
-                    value={d.abre}
-                    onChange={(e) => alterarDia(d.chave, { abre: e.target.value })}
-                    aria-label={`${d.label} abre às`}
-                    className="border border-border-strong bg-surface text-foreground rounded-lg px-2 py-1 text-sm"
-                  />
+                  <div className="w-28">
+                    <Input
+                      type="time"
+                      value={d.abre}
+                      onChange={(e) => alterarDia(d.chave, { abre: e.target.value })}
+                      aria-label={`${d.label} abre às`}
+                    />
+                  </div>
                   <span className="text-xs text-muted-foreground">às</span>
-                  <input
-                    type="time"
-                    value={d.fecha}
-                    onChange={(e) => alterarDia(d.chave, { fecha: e.target.value })}
-                    aria-label={`${d.label} fecha às`}
-                    className="border border-border-strong bg-surface text-foreground rounded-lg px-2 py-1 text-sm"
-                  />
+                  <div className="w-28">
+                    <Input
+                      type="time"
+                      value={d.fecha}
+                      onChange={(e) => alterarDia(d.chave, { fecha: e.target.value })}
+                      aria-label={`${d.label} fecha às`}
+                    />
+                  </div>
                 </div>
               ) : (
                 <span className="text-sm text-muted-foreground">Fechado</span>

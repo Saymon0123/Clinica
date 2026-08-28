@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { Modal } from '../../components/Modal'
+import { Campo, Input, Select } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../../components/Toast'
 import type { Pacote } from './usePacotesData'
@@ -134,15 +135,14 @@ export function NewPacoteModal({
   return (
     <Modal onClose={onClose} titulo={pacote ? 'Editar pacote' : 'Novo pacote'} tamanho="md">
         <form onSubmit={salvar} className="space-y-4">
-          <label className="block">
-            <span className="text-xs font-medium text-muted-foreground">Nome do pacote</span>
-            <input
+          <Campo rotulo="Nome do pacote" htmlFor="nome-pacote">
+            <Input
+              id="nome-pacote"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               placeholder="5 cortes"
-              className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             />
-          </label>
+          </Campo>
 
           <div>
             <span className="text-xs font-medium text-muted-foreground">O que está incluído</span>
@@ -170,10 +170,10 @@ export function NewPacoteModal({
               })}
             </div>
             <div className="flex gap-2 mt-2">
-              <select
+              <Select
                 value={novoServico}
                 onChange={(e) => setNovoServico(e.target.value)}
-                className="flex-1 min-w-0 border border-border-strong bg-surface text-foreground rounded-lg px-2 py-2 text-sm"
+                className="flex-1 min-w-0"
               >
                 <option value="">Serviço...</option>
                 {servicos
@@ -183,7 +183,7 @@ export function NewPacoteModal({
                       {x.nome} — {moeda(x.preco)}
                     </option>
                   ))}
-              </select>
+              </Select>
               <input
                 type="number"
                 min={1}
@@ -204,27 +204,25 @@ export function NewPacoteModal({
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Preço do pacote (R$)</span>
-              <input
+            <Campo rotulo="Preço do pacote (R$)" htmlFor="preco-pacote">
+              <Input
+                id="preco-pacote"
                 inputMode="decimal"
                 value={preco}
                 onChange={(e) => setPreco(e.target.value)}
                 placeholder="120,00"
-                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               />
-            </label>
-            <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Validade (dias, opcional)</span>
-              <input
+            </Campo>
+            <Campo rotulo="Validade (dias, opcional)" htmlFor="validade-pacote">
+              <Input
+                id="validade-pacote"
                 type="number"
                 min={1}
                 value={validade}
                 onChange={(e) => setValidade(e.target.value)}
                 placeholder="90"
-                className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
               />
-            </label>
+            </Campo>
           </div>
 
           {valorAvulso > 0 && precoNum > 0 && (

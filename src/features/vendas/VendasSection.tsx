@@ -3,6 +3,8 @@ import { Plus, Receipt } from 'lucide-react'
 import { useVendasData } from './useVendasData'
 import { NewSaleModal, type SalePrefill } from './NewSaleModal'
 import { PAYMENT_LABELS } from './types'
+import { Tabela, Th, Linha, Td } from '../../components/Tabela'
+import { EstadoVazio } from '../../components/EstadoVazio'
 
 function formatCurrency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -71,46 +73,42 @@ export function VendasSection({
       {error && <p className="text-sm text-danger">{error}</p>}
 
       {!loading && sales.length === 0 ? (
-        <div className="bg-surface border border-border rounded-xl shadow-sm p-10 text-center">
-          <Receipt size={32} className="mx-auto mb-3 text-muted-foreground/50" />
-          <p className="text-sm text-muted-foreground">
-            Nenhuma venda registrada {period === 'dia' ? 'hoje' : 'neste mês'}.
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Registre a primeira venda para o faturamento aparecer na visão geral.
-          </p>
+        <div className="bg-surface border border-border rounded-xl shadow-sm">
+          <EstadoVazio
+            icone={Receipt}
+            titulo={`Nenhuma venda registrada ${period === 'dia' ? 'hoje' : 'neste mês'}.`}
+            descricao="Registre a primeira venda para o faturamento aparecer na visão geral."
+          />
         </div>
       ) : (
-        <div className="bg-surface border border-border rounded-xl shadow-sm overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Data</th>
-                <th className="px-4 py-3 font-medium">Cliente</th>
-                <th className="px-4 py-3 font-medium">Profissional</th>
-                <th className="px-4 py-3 font-medium">Pagamento</th>
-                <th className="px-4 py-3 font-medium text-right">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sales.map((s) => (
-                <tr key={s.id} className="border-b border-border/50 last:border-0 hover:bg-surface-2">
-                  <td className="px-4 py-3 text-foreground whitespace-nowrap">
-                    {formatDateTime(s.closed_at ?? s.created_at)}
-                  </td>
-                  <td className="px-4 py-3 text-foreground">{s.client_nome ?? '—'}</td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {s.professional_nome ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {s.forma_pagamento ? (PAYMENT_LABELS[s.forma_pagamento] ?? s.forma_pagamento) : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-right font-medium text-foreground">{formatCurrency(s.total)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Tabela>
+          <thead>
+            <tr>
+              <Th>Data</Th>
+              <Th>Cliente</Th>
+              <Th>Profissional</Th>
+              <Th>Pagamento</Th>
+              <Th className="text-right">Total</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {sales.map((s) => (
+              <Linha key={s.id}>
+                <Td className="text-foreground whitespace-nowrap">
+                  {formatDateTime(s.closed_at ?? s.created_at)}
+                </Td>
+                <Td className="text-foreground">{s.client_nome ?? '—'}</Td>
+                <Td className="text-muted-foreground">
+                  {s.professional_nome ?? '—'}
+                </Td>
+                <Td className="text-muted-foreground">
+                  {s.forma_pagamento ? (PAYMENT_LABELS[s.forma_pagamento] ?? s.forma_pagamento) : '—'}
+                </Td>
+                <Td className="text-right font-medium text-foreground">{formatCurrency(s.total)}</Td>
+              </Linha>
+            ))}
+          </tbody>
+        </Tabela>
       )}
 
       {modalOpen && (

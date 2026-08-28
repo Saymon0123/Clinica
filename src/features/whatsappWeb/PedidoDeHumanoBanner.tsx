@@ -50,7 +50,7 @@ export function PedidoDeHumanoBanner({
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 btn-primary rounded-lg px-2.5 py-1 text-xs font-medium"
                 >
-                  <MessageCircle size={13} />
+                  <MessageCircle size={14} />
                   Responder
                 </a>
                 <button
@@ -63,7 +63,7 @@ export function PedidoDeHumanoBanner({
                   disabled={resolvendo === p.id}
                   className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground disabled:opacity-50"
                 >
-                  <Check size={13} />
+                  <Check size={14} />
                   {resolvendo === p.id ? 'Resolvendo...' : 'Resolvido'}
                 </button>
               </div>

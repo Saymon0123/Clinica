@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CalendarClock, Trash2, XCircle, Receipt } from 'lucide-react'
 import { Modal } from '../../components/Modal'
+import { Input } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../../components/Toast'
 import type { Appointment } from './types'
@@ -188,21 +189,23 @@ export function AppointmentDetailModal({
               <div className="mt-3 pt-3 border-t border-border space-y-2">
                 <span className="text-xs font-medium text-muted-foreground">Nova data e horário</span>
                 <div className="flex gap-2">
-                  <input
-                    type="date"
-                    value={dateValue}
-                    onChange={(e) => setDateValue(e.target.value)}
-                    aria-label="Nova data"
-                    className="flex-1 border border-border-strong bg-surface text-foreground rounded-lg px-2 py-2 text-sm"
-                  />
-                  <input
-                    type="time"
-                    value={timeValue}
-                    onChange={(e) => setTimeValue(e.target.value)}
-                    step={300}
-                    aria-label="Novo horário"
-                    className="w-28 border border-border-strong bg-surface text-foreground rounded-lg px-2 py-2 text-sm"
-                  />
+                  <div className="flex-1">
+                    <Input
+                      type="date"
+                      value={dateValue}
+                      onChange={(e) => setDateValue(e.target.value)}
+                      aria-label="Nova data"
+                    />
+                  </div>
+                  <div className="w-28">
+                    <Input
+                      type="time"
+                      value={timeValue}
+                      onChange={(e) => setTimeValue(e.target.value)}
+                      step={300}
+                      aria-label="Novo horário"
+                    />
+                  </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   A duração do serviço é mantida automaticamente.
@@ -233,7 +236,7 @@ export function AppointmentDetailModal({
                 onClick={() => setEditingDate(true)}
                 className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline pt-1"
               >
-                <CalendarClock size={13} />
+                <CalendarClock size={14} />
                 Alterar data/horário
               </button>
             ))}
@@ -248,7 +251,7 @@ export function AppointmentDetailModal({
               disabled={busy}
               className="w-full flex items-center justify-center gap-2 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
-              <Receipt size={15} />
+              <Receipt size={16} />
               Concluir e cobrar
             </button>
             {/* Confirmação inline, como no excluir: cancelar por engano era o
@@ -281,7 +284,7 @@ export function AppointmentDetailModal({
                 disabled={busy}
                 className="w-full flex items-center justify-center gap-1.5 border border-border-strong rounded-lg px-3 py-2 text-sm font-medium text-danger hover:bg-danger-soft disabled:opacity-50"
               >
-                <XCircle size={15} />
+                <XCircle size={16} />
                 Cancelar agendamento
               </button>
             )}
@@ -313,7 +316,7 @@ export function AppointmentDetailModal({
               onClick={() => setConfirmDelete(true)}
               className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-danger"
             >
-              <Trash2 size={13} />
+              <Trash2 size={14} />
               Excluir agendamento
             </button>
           )}

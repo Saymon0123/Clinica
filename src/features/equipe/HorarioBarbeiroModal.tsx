@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Clock, X } from 'lucide-react'
+import { Clock } from 'lucide-react'
+import { Modal } from '../../components/Modal'
 import { supabase } from '../../lib/supabase'
 
 type Dia = { dia_semana: number; label: string; trabalha: boolean; inicio: string; fim: string }
@@ -120,21 +121,16 @@ export function HorarioBarbeiroModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-sm p-5 space-y-4 max-h-[90vh] overflow-y-auto"
-      >
-        <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
-            <Clock size={18} />
-            Horário de {nome}
-          </h2>
-          <button onClick={onClose} aria-label="Fechar" className="text-muted-foreground hover:text-foreground">
-            <X size={18} />
-          </button>
-        </div>
-
+    <Modal
+      onClose={onClose}
+      titulo={
+        <span className="flex items-center gap-2">
+          <Clock size={18} />
+          Horário de {nome}
+        </span>
+      }
+      tamanho="sm"
+    >
         {carregando ? (
           <p className="text-sm text-muted-foreground">Carregando...</p>
         ) : (
@@ -215,7 +211,6 @@ export function HorarioBarbeiroModal({
             </button>
           </>
         )}
-      </div>
-    </div>
+    </Modal>
   )
 }

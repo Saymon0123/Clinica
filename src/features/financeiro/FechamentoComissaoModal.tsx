@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Check, HandCoins, X } from 'lucide-react'
+import { Check, HandCoins } from 'lucide-react'
+import { Modal } from '../../components/Modal'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../../components/Toast'
 
@@ -127,21 +128,16 @@ export function FechamentoComissaoModal({
   const totalPago = linhas.reduce((s, l) => s + l.pagoValor, 0)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-md p-5 space-y-4 max-h-[90vh] overflow-y-auto"
-      >
-        <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
-            <HandCoins size={18} />
-            Fechamento de comissão
-          </h2>
-          <button onClick={onClose} aria-label="Fechar" className="text-muted-foreground hover:text-foreground">
-            <X size={18} />
-          </button>
-        </div>
-
+    <Modal
+      onClose={onClose}
+      titulo={
+        <span className="flex items-center gap-2">
+          <HandCoins size={18} />
+          Fechamento de comissão
+        </span>
+      }
+      tamanho="md"
+    >
         <label className="block">
           <span className="text-xs font-medium text-muted-foreground">Mês de referência</span>
           <input
@@ -204,7 +200,6 @@ export function FechamentoComissaoModal({
           Os valores vêm do que foi gravado na venda, então mudar o percentual do barbeiro depois não
           altera comissões antigas.
         </p>
-      </div>
-    </div>
+    </Modal>
   )
 }

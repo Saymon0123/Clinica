@@ -1,4 +1,5 @@
 import { Sparkles, X } from 'lucide-react'
+import { Modal } from '../../components/Modal'
 
 /**
  * Resumo que o agente de IA escreveu ao passar a conversa para o dono.
@@ -14,11 +15,7 @@ export function ContextPopup({
   onClose: () => void
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-sm p-5 space-y-4 shadow-xl"
-      >
+    <Modal onClose={onClose} tamanho="sm">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary-soft text-primary-soft-foreground shrink-0">
@@ -47,7 +44,6 @@ export function ContextPopup({
         <button onClick={onClose} className="w-full btn-primary rounded-lg px-3 py-2 text-sm font-medium">
           Entendi, ver conversa
         </button>
-      </div>
-    </div>
+    </Modal>
   )
 }

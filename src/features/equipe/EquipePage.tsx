@@ -3,6 +3,7 @@ import { Check, Clock, Copy, Link2, Pencil, Percent, Plus, Power, Trash2, UserPl
 import { supabase } from '../../lib/supabase'
 import { urlDoConvite } from '../../lib/appUrl'
 import { formatarTelefone, linkWhatsApp } from '../../lib/telefone'
+import { Modal } from '../../components/Modal'
 import { useAuth } from '../auth/AuthContext'
 import { useSalon, type Papel } from '../auth/useSalon'
 import { HorarioBarbeiroModal } from './HorarioBarbeiroModal'
@@ -578,21 +579,16 @@ function ConviteModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-sm p-5 space-y-4"
-      >
-        <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
-            <UserPlus size={18} />
-            Convidar para a equipe
-          </h2>
-          <button onClick={onClose} aria-label="Fechar" className="text-muted-foreground hover:text-foreground">
-            <X size={18} />
-          </button>
-        </div>
-
+    <Modal
+      onClose={onClose}
+      titulo={
+        <span className="flex items-center gap-2">
+          <UserPlus size={18} />
+          Convidar para a equipe
+        </span>
+      }
+      tamanho="sm"
+    >
         {link ? (
           <div className="space-y-3">
             <p className="text-sm text-foreground">Convite criado! Mande este link para a pessoa convidada:</p>
@@ -679,7 +675,6 @@ function ConviteModal({
             </button>
           </form>
         )}
-      </div>
-    </div>
+    </Modal>
   )
 }

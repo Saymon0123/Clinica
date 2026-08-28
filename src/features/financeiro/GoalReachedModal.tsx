@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import { PartyPopper, X } from 'lucide-react'
+import { Modal } from '../../components/Modal'
 import { playCelebrationSound } from '../../lib/sound'
 
 const CONFETTI_COLORS = ['#6d28d9', '#a78bfa', '#10b981', '#f59e0b', '#ec4899']
@@ -41,12 +42,9 @@ export function GoalReachedModal({
   const pct = goal > 0 ? (revenue / goal) * 100 : 0
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-hidden"
-      onClick={onClose}
-    >
+    <Modal onClose={onClose} tamanho="sm">
       {/* Confete — respeita prefers-reduced-motion via CSS */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
         {confetti.map((c) => (
           <span
             key={c.id}
@@ -64,12 +62,7 @@ export function GoalReachedModal({
         ))}
       </div>
 
-      <div
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-labelledby="meta-atingida-titulo"
-        className="relative bg-surface rounded-2xl border border-border w-full max-w-sm p-6 text-center shadow-2xl"
-      >
+      <div aria-labelledby="meta-atingida-titulo" className="relative text-center">
         <button
           onClick={onClose}
           aria-label="Fechar"
@@ -105,6 +98,6 @@ export function GoalReachedModal({
           Continuar
         </button>
       </div>
-    </div>
+    </Modal>
   )
 }

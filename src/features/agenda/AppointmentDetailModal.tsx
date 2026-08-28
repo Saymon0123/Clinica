@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CalendarClock, Trash2, X, XCircle, Receipt } from 'lucide-react'
+import { CalendarClock, Trash2, XCircle, Receipt } from 'lucide-react'
+import { Modal } from '../../components/Modal'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../../components/Toast'
 import type { Appointment } from './types'
@@ -153,18 +154,7 @@ export function AppointmentDetailModal({
     appointment.status === 'faltou'
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div
-        className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-sm p-5"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-semibold text-foreground">Agendamento</h2>
-          <button onClick={onClose} aria-label="Fechar" className="text-muted-foreground hover:text-foreground">
-            <X size={18} />
-          </button>
-        </div>
-
+    <Modal onClose={onClose} titulo="Agendamento" tamanho="sm">
         <div className="space-y-2 mb-4">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Status</span>
@@ -328,7 +318,6 @@ export function AppointmentDetailModal({
             </button>
           )}
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

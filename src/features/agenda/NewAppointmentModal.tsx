@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { X } from 'lucide-react'
+import { Modal } from '../../components/Modal'
 import { supabase } from '../../lib/supabase'
 import type { Professional, Service } from './types'
 
@@ -152,16 +152,8 @@ export function NewAppointmentModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-      <div className="w-full max-w-md bg-surface rounded-xl border border-border-lg">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h2 className="text-lg font-semibold text-foreground">Nova reserva</h2>
-          <button onClick={onClose} aria-label="Fechar" className="text-muted-foreground p-1">
-            <X size={20} />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+    <Modal onClose={onClose} titulo="Nova reserva" tamanho="md">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm text-muted-foreground mb-1" htmlFor="clientName">Cliente</label>
             <input
@@ -248,7 +240,6 @@ export function NewAppointmentModal({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   )
 }

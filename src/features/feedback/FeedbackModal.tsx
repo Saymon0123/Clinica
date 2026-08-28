@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Check, MessageSquarePlus, X } from 'lucide-react'
+import { Modal } from '../../components/Modal'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
 import { useSalon } from '../auth/useSalon'
@@ -66,14 +67,7 @@ export function FeedbackModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={onClose}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="bg-surface rounded-xl border border-border shadow-sm w-full max-w-md p-5 space-y-4"
-      >
+    <Modal onClose={onClose} tamanho="md">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
@@ -148,7 +142,6 @@ export function FeedbackModal({ onClose }: { onClose: () => void }) {
             </div>
           </form>
         )}
-      </div>
-    </div>
+    </Modal>
   )
 }

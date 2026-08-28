@@ -3,6 +3,7 @@ import { MarcaClubCut } from '../../components/MarcaClubCut'
 import { useParams } from 'react-router-dom'
 import { Check, Clock } from 'lucide-react'
 import { invokeFunction } from '../../lib/invokeFunction'
+import { ErroInline } from '../../components/ErroInline'
 
 /**
  * A página que o QR do balcão abre.
@@ -150,7 +151,7 @@ export function AgendaPublicaPage() {
         ) : carregando ? (
           <p className="text-sm text-muted-foreground">Carregando horários...</p>
         ) : !dados ? (
-          <p className="text-sm text-danger">{erro}</p>
+          <ErroInline>{erro}</ErroInline>
         ) : escolhido ? (
           // ---------- Passo 3: quem é você ----------
           <form onSubmit={agendar} className="surge space-y-4">
@@ -197,7 +198,7 @@ export function AgendaPublicaPage() {
               </span>
             </label>
 
-            {erro && <p className="text-sm text-danger">{erro}</p>}
+            <ErroInline>{erro}</ErroInline>
 
             <button
               type="submit"
@@ -268,7 +269,7 @@ export function AgendaPublicaPage() {
               )}
             </div>
 
-            {erro && <p className="text-sm text-danger">{erro}</p>}
+            <ErroInline>{erro}</ErroInline>
           </div>
         )}
 

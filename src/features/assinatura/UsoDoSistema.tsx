@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
 import { Badge } from '../../components/Badge'
 import { SkeletonLinhas } from '../../components/Skeleton'
+import { ErroInline } from '../../components/ErroInline'
 
 function moeda(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -115,9 +116,9 @@ export function UsoDoSistema() {
       {carregando ? (
         <SkeletonLinhas />
       ) : erro ? (
-        <p className="text-sm text-danger">
+        <ErroInline>
           Não foi possível carregar o uso agora. Confira a internet e recarregue a página.
-        </p>
+        </ErroInline>
       ) : uso ? (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

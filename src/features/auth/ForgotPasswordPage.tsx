@@ -11,6 +11,7 @@ import {
   normalizarCodigo,
 } from '../../lib/recuperacaoSenha'
 import { useAuth } from './AuthContext'
+import { ErroInline } from '../../components/ErroInline'
 
 /**
  * Redefinição de senha por **código de 6 dígitos**, sem sair do site.
@@ -148,7 +149,7 @@ export function ForgotPasswordPage() {
               />
             </div>
 
-            {erro && <p className="text-sm text-danger">{erro}</p>}
+            <ErroInline>{erro}</ErroInline>
 
             <button
               type="submit"
@@ -229,7 +230,7 @@ export function ForgotPasswordPage() {
               />
             </div>
 
-            {erro && <p className="text-sm text-danger">{erro}</p>}
+            <ErroInline>{erro}</ErroInline>
 
             <button
               type="submit"

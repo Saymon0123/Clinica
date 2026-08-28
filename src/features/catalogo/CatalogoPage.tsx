@@ -17,6 +17,7 @@ import { EstadoVazio } from '../../components/EstadoVazio'
 import { SkeletonPagina } from '../../components/Skeleton'
 import { PageHeader } from '../../components/PageHeader'
 import type { ServiceItem, ProductItem } from './types'
+import { ErroInline } from '../../components/ErroInline'
 
 type Tab = 'servicos' | 'produtos' | 'pacotes'
 
@@ -167,7 +168,7 @@ export function CatalogoPage() {
           </div>
 
           {(servicesError || actionError) && (
-            <p className="text-sm text-danger mb-3">{servicesError || actionError}</p>
+            <div className="mb-3"><ErroInline>{servicesError || actionError}</ErroInline></div>
           )}
 
           {!loadingServices && services.length === 0 ? (
@@ -251,7 +252,7 @@ export function CatalogoPage() {
           )}
 
           {(pacotesError || actionError) && (
-            <p className="text-sm text-danger mb-3">{pacotesError || actionError}</p>
+            <div className="mb-3"><ErroInline>{pacotesError || actionError}</ErroInline></div>
           )}
 
           {!loadingPacotes && pacotes.length === 0 ? (
@@ -351,7 +352,7 @@ export function CatalogoPage() {
           )}
 
           {(productsError || actionError) && (
-            <p className="text-sm text-danger mb-3">{productsError || actionError}</p>
+            <div className="mb-3"><ErroInline>{productsError || actionError}</ErroInline></div>
           )}
 
           {!loadingProducts && products.length === 0 ? (

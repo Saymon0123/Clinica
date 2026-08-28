@@ -4,6 +4,7 @@ import { invokeFunction } from '../../lib/invokeFunction'
 import { HORARIO_PADRAO, SERVICOS_PADRAO, serializarHorario } from './servicosPadrao'
 import { DIAS_DE_TESTE } from '../../lib/planos'
 import { Campo, Input } from '../../components/Campo'
+import { ErroInline } from '../../components/ErroInline'
 
 /**
  * Cadastro à distância — quando a conversa com o dono acontece por mensagem.
@@ -193,7 +194,7 @@ export function ConvidarBarbearia({ secret, onCriado }: { secret: string; onCria
         </span>
       </label>
 
-      {erro && <p className="text-sm text-danger">{erro}</p>}
+      <ErroInline>{erro}</ErroInline>
 
       <button
         onClick={convidar}

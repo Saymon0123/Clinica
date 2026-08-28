@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Bot, CalendarCheck, CalendarX, Hand, MessageSquare, Timer } from 'lucide-react'
 import { useAgentStats, type AgentPeriod } from './useAgentStats'
+import { ErroInline } from '../../components/ErroInline'
 
 function formatResponseTime(seconds: number | null) {
   if (seconds === null) return '—'
@@ -69,7 +70,7 @@ export function AgentDashboard({ salonId }: { salonId: string }) {
         </div>
       </div>
 
-      {error && <p className="text-sm text-danger">{error}</p>}
+      <ErroInline>{error}</ErroInline>
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <StatCard

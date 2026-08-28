@@ -3,6 +3,7 @@ import { Lock, Wallet } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { Campo, Input } from '../../components/Campo'
 import { SkeletonLinhas } from '../../components/Skeleton'
+import { ErroInline } from '../../components/ErroInline'
 
 type Caixa = {
   id: string
@@ -148,7 +149,7 @@ export function CaixaSection({ salonId }: { salonId: string }) {
         nada.
       </p>
 
-      {erro && <p className="text-sm text-danger mb-3">{erro}</p>}
+      <div className="mb-3"><ErroInline>{erro}</ErroInline></div>
       {aviso && <p className="text-sm text-success mb-3">{aviso}</p>}
 
       {carregando ? (

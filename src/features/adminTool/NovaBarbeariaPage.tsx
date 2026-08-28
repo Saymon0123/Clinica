@@ -6,6 +6,7 @@ import { SalonList } from './SalonList'
 import { ConvidarBarbearia } from './ConvidarBarbearia'
 import { MetricasDoProduto } from './MetricasDoProduto'
 import { PageHeader } from '../../components/PageHeader'
+import { ErroInline } from '../../components/ErroInline'
 
 const SECRET_STORAGE_KEY = 'admin_tool_secret'
 
@@ -63,7 +64,7 @@ function AccessGate({ onUnlock }: { onUnlock: (secret: string) => void }) {
             error ? 'border-danger' : 'border-border-strong'
           }`}
         />
-        {error && <p className="text-sm text-danger">{error}</p>}
+        <ErroInline>{error}</ErroInline>
         <button
           type="submit"
           disabled={checking || !value.trim()}

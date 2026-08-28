@@ -4,6 +4,7 @@ import { Modal } from '../../components/Modal'
 import { Input } from '../../components/Campo'
 import { SkeletonLinhas } from '../../components/Skeleton'
 import { supabase } from '../../lib/supabase'
+import { ErroInline } from '../../components/ErroInline'
 
 type Dia = { dia_semana: number; label: string; trabalha: boolean; inicio: string; fim: string }
 
@@ -204,7 +205,7 @@ export function HorarioBarbeiroModal({
               ))}
             </div>
 
-            {erro && <p className="text-sm text-danger">{erro}</p>}
+            <ErroInline>{erro}</ErroInline>
 
             <button
               onClick={salvar}

@@ -6,6 +6,7 @@ import { TextArea } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
 import { useSalon } from '../auth/useSalon'
+import { ErroInline } from '../../components/ErroInline'
 
 type Tipo = 'sugestao' | 'problema' | 'elogio'
 
@@ -127,7 +128,7 @@ export function FeedbackModal({ onClose }: { onClose: () => void }) {
               className="resize-none"
             />
 
-            {erro && <p className="text-sm text-danger">{erro}</p>}
+            <ErroInline>{erro}</ErroInline>
 
             <div className="flex items-center justify-between gap-3">
               <span className="text-[11px] text-muted-foreground">

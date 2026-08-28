@@ -32,6 +32,7 @@ import type { SalePrefill } from '../vendas/NewSaleModal'
 import { EditGoalModal } from './EditGoalModal'
 import { ExportReportModal } from './ExportReportModal'
 import { GoalReachedModal } from './GoalReachedModal'
+import { ErroInline } from '../../components/ErroInline'
 
 function formatCurrency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -312,7 +313,7 @@ export function FinanceiroPage() {
         />
       ) : (
         <>
-      {error && <p className="text-sm text-danger">{error}</p>}
+      <ErroInline>{error}</ErroInline>
 
       {/* Cards de métrica com mini-gráfico animado */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">

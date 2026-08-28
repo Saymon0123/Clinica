@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { invokeFunction } from '../../lib/invokeFunction'
+import { ErroInline } from '../../components/ErroInline'
 
 /**
  * O único botão do modelo por uso: cancelar.
@@ -55,7 +56,7 @@ export function CancelarUso({ salonId, onMudou }: { salonId: string; onMudou: ()
             Voltar
           </button>
         </div>
-        {erro && <p className="text-sm text-danger">{erro}</p>}
+        <ErroInline>{erro}</ErroInline>
       </div>
     )
   }

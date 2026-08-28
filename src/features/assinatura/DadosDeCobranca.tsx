@@ -3,6 +3,7 @@ import { Check, CreditCard } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { apenasDigitos, formatarDocumento, problemaNoDocumento } from '../../lib/documento'
 import { Campo, Input } from '../../components/Campo'
+import { ErroInline } from '../../components/ErroInline'
 
 /**
  * Coleta o CPF/CNPJ de quem paga a plataforma.
@@ -112,7 +113,7 @@ export function DadosDeCobranca({
         />
       </Campo>
 
-      {erro && <p className="text-sm text-danger mt-2">{erro}</p>}
+      <div className="mt-2"><ErroInline>{erro}</ErroInline></div>
 
       <div className="flex items-center gap-3 mt-3">
         <button

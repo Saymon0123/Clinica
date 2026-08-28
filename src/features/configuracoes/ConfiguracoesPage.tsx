@@ -10,6 +10,7 @@ import { Campo, Input } from '../../components/Campo'
 import { SkeletonPagina } from '../../components/Skeleton'
 import { PageHeader } from '../../components/PageHeader'
 import { NovaUnidadeModal } from '../rede/NovaUnidadeModal'
+import { ErroInline } from '../../components/ErroInline'
 import {
   desserializarHorario,
   serializarHorario,
@@ -321,7 +322,7 @@ export function ConfiguracoesPage() {
             os PACOTES pre-pagos, configurados no Catalogo (aba Pacotes) — cada
             pacote carrega as proprias regras, sem configuracao global aqui. */}
 
-        {erro && <p className="text-sm text-danger">{erro}</p>}
+        <ErroInline>{erro}</ErroInline>
 
         <div className="flex items-center gap-3">
           <button

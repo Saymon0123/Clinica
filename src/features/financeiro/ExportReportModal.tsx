@@ -4,6 +4,7 @@ import { Modal } from '../../components/Modal'
 import { supabase } from '../../lib/supabase'
 import { buildCsv, downloadCsv } from '../../lib/csv'
 import { PAYMENT_LABELS } from '../vendas/types'
+import { ErroInline } from '../../components/ErroInline'
 
 type Range = 'semana' | 'mes'
 
@@ -162,7 +163,7 @@ export function ExportReportModal({ salonId, onClose }: { salonId: string; onClo
           profissional, serviço/produto, valores e forma de pagamento.
         </p>
 
-        {error && <p className="text-sm text-danger">{error}</p>}
+        <ErroInline>{error}</ErroInline>
 
         <button
           onClick={handleExport}

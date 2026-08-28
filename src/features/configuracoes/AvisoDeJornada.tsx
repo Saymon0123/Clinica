@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { AlertTriangle, Check } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
+import { ErroInline } from '../../components/ErroInline'
 
 /**
  * A barbearia abre num dia em que ninguém trabalha.
@@ -168,7 +169,7 @@ export function AvisoDeJornada({ recarregar }: { recarregar?: number }) {
             : `Aplicar à jornada dos ${profissionais.length} barbeiros`}
       </button>
 
-      {erro && <p className="text-sm text-danger">{erro}</p>}
+      <ErroInline>{erro}</ErroInline>
 
       <p className="text-[11px] text-muted-foreground">
         Se cada barbeiro trabalha em dias diferentes, ignore este aviso e ajuste um por um na aba

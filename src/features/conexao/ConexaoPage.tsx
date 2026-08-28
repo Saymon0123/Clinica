@@ -8,6 +8,7 @@ import { SkeletonPagina } from '../../components/Skeleton'
 import { PageHeader } from '../../components/PageHeader'
 import { Tour } from '../tour/Tour'
 import { PASSOS_CONEXAO } from '../tour/passos'
+import { ErroInline } from '../../components/ErroInline'
 
 type Status = 'close' | 'connecting' | 'open'
 
@@ -96,10 +97,10 @@ export function ConexaoPage() {
     return (
       <div>
         <PageHeader titulo="Conexão" />
-        <p className="text-sm text-danger">
+        <ErroInline>
           Não foi possível verificar a conexão do WhatsApp agora. Confira a internet e recarregue a
           página.
-        </p>
+        </ErroInline>
       </div>
     )
   }
@@ -270,7 +271,7 @@ function ConexaoEvolutionLegada({ salonId }: { salonId: string }) {
         </p>
       </div>
 
-      {error && <p className="text-sm text-danger mb-3">{error}</p>}
+      <div className="mb-3"><ErroInline>{error}</ErroInline></div>
 
       {webhookAviso && (
         <div className="mb-3 rounded-lg border border-warning bg-warning/10 p-3">

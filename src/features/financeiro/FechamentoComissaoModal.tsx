@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { toast } from '../../components/Toast'
 import { Campo, Input } from '../../components/Campo'
 import { SkeletonLinhas } from '../../components/Skeleton'
+import { ErroInline } from '../../components/ErroInline'
 
 type LinhaComissao = {
   id: string
@@ -160,7 +161,7 @@ export function FechamentoComissaoModal({
           </div>
         </div>
 
-        {erro && <p className="text-sm text-danger">{erro}</p>}
+        <ErroInline>{erro}</ErroInline>
 
         {carregando ? (
           <SkeletonLinhas />

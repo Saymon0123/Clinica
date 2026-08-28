@@ -5,6 +5,7 @@ import { Campo, Input, Select } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../../components/Toast'
 import type { Pacote } from './usePacotesData'
+import { ErroInline } from '../../components/ErroInline'
 
 function moeda(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -245,7 +246,7 @@ export function NewPacoteModal({
             </p>
           )}
 
-          {erro && <p className="text-sm text-danger">{erro}</p>}
+          <ErroInline>{erro}</ErroInline>
 
           <div className="flex gap-2 pt-1">
             <button type="button" onClick={onClose} className="flex-1 btn-secondary rounded-lg px-3 py-2 text-sm font-medium">

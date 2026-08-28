@@ -13,6 +13,7 @@ import { EstadoVazio } from '../../components/EstadoVazio'
 import { SkeletonPagina, SkeletonLinhas } from '../../components/Skeleton'
 import { Campo, Input, Select } from '../../components/Campo'
 import { PageHeader } from '../../components/PageHeader'
+import { ErroInline } from '../../components/ErroInline'
 
 type Membro = {
   id: string
@@ -269,7 +270,7 @@ export function EquipePage() {
         }
       />
 
-      {erro && <p className="text-sm text-danger">{erro}</p>}
+      <ErroInline>{erro}</ErroInline>
 
       {/* Convites pendentes */}
       {convites.length > 0 && (
@@ -666,7 +667,7 @@ function ConviteModal({
               />
             </Campo>
 
-            {erro && <p className="text-sm text-danger">{erro}</p>}
+            <ErroInline>{erro}</ErroInline>
 
             <button
               type="submit"

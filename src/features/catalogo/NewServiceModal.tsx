@@ -3,6 +3,7 @@ import { Modal } from '../../components/Modal'
 import { Campo, Input } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
 import type { ServiceItem } from './types'
+import { ErroInline } from '../../components/ErroInline'
 
 type Props = {
   salonId: string
@@ -114,7 +115,7 @@ export function NewServiceModal({ salonId, service, onClose, onSaved }: Props) {
             </Campo>
           </div>
 
-          {error && <p className="text-sm text-danger">{error}</p>}
+          <ErroInline>{error}</ErroInline>
 
           <div className="flex gap-2 pt-2">
             <button

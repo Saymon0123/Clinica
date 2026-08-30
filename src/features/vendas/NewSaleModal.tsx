@@ -371,6 +371,18 @@ export function NewSaleModal({
       setError('Selecione o profissional.')
       return
     }
+    // Pacote sem cliente não existe: o crédito precisa de um dono.
+    if (!clientId && items.some((i) => i.tipo === 'pacote' || i.viaPacote || i.viaPacoteNovo)) {
+      setError('Escolha o cliente antes de vender ou usar pacote.')
+      return
+    }
+    // Cinto e suspensório: se algum item ainda aponta para saldo que não é
+    // deste cliente (troca no meio, saldo ainda carregando), barra a venda.
+    const saldosDoCliente = new Set(saldos.map((s) => s.pacote_do_cliente_id))
+    if (items.some((i) => i.viaPacote && !saldosDoCliente.has(i.viaPacote))) {
+      setError('O saldo de pacote usado não é do cliente escolhido. Remova o item e use o pacote de novo.')
+      return
+    }
 
     setSaving(true)
     setError(null)
@@ -591,7 +603,13 @@ export function NewSaleModal({
               <Select
                 id="venda-cliente"
                 value={clientId}
-                onChange={(e) => setClientId(e.target.value)}
+                onChange={(e) => {
+                  // Trocar de cliente derruba os itens que usavam saldo de
+                  // pacote do cliente anterior — senão a comanda do novo
+                  // cliente debita o crédito do antigo em silêncio.
+                  setClientId(e.target.value)
+                  setItems((prev) => prev.filter((i) => !i.viaPacote))
+                }}
               >
                 <option value="">Sem cliente</option>
                 {clients.map((c) => (
@@ -796,7 +814,7 @@ export function NewSaleModal({
                 >
                   <span className="text-foreground truncate">
                     {i.quantidade}× {i.nome}
-                    <span className="text-muted-foreground"> · {i.tipo === 'servico' ? 'Serviço' : 'Produto'}</span>
+                    <span className="text-muted-foreground"> · {i.tipo === 'servico' ? 'Serviço' : i.tipo === 'pacote' ? 'Pacote' : 'Produto'}</span>
                   </span>
                   <span className="flex items-center gap-2 shrink-0">
                     <span className="font-medium text-foreground">

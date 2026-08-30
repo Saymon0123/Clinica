@@ -1495,3 +1495,47 @@ migrations não estão no pipeline de deploy — aplicar à mão):
   user_id) corrigido no PR #67 e a função `asaas` **redeployada (v25)** via
   MCP. O item correspondente da revisão de código está fechado; os demais
   (webhook, cobrar-uso, RLS de gerente→dono etc.) seguem pendentes.
+
+## Revisão de agentes (2026-08-29) — o que ficou aberto
+
+Revisão em 6 frentes (db/backend/frontend/qa/n8n/deploy) com os agentes de
+`~/meus-projetos`. Corrigido na hora: troca de cliente corrompia crédito de
+pacote no caixa (NewSaleModal, + guardas no save); `cobrar-uso` sem authz
+(agora exige service key, n8n "Gerar Boletos" migrado para a credencial
+Supabase — JWT saiu do texto plano); migration 0114 (revokes de
+`trg_reativacao_pos_atendimento` e `precificar_consumo_ia`; pausa da
+reativação só no vencimento real; DELETE de `stock_movements` para membros —
+rollback de estoque do barbeiro funcionava só para gestor; drift
+`consumo_ia`/`precos_modelo` versionado); limite do popup 30→8; rótulo
+"Pacote" na comanda; fallback sandbox removido do `cobrar-uso`.
+
+Aberto, por prioridade:
+- **Agente n8n: transcrição/visão sem caminho de erro** — cliente fica sem
+  resposta em silêncio se a OpenAI falhar. Precisa de ramo de fallback ("não
+  consegui ouvir o áudio") testado com mensagem real antes de publicar.
+  Nenhum dos 11 workflows tem errorWorkflow global — um único notificando o
+  canal de alertas cobriria todos.
+- **Testes zero nos fluxos críticos**: venda/rollback, pacotes, caixa
+  automático, reativação — nem vitest nem pgTAP.
+- Edge functions: `listUsers()` sem paginação (admin-create/invite-salon);
+  `add-salon-unit` sem rate limit; `criar-minha-barbearia` com maybeSingle
+  sem tratamento (salão duplicado) e rate limit próprio burlável; token do
+  asaas-webhook sem constant-time; update de faturas no webhook com erro
+  descartado; `whatsapp` sem salonId cai em `.limit(1)`; CORS `*` nas
+  funções admin; `taxaExcedida` fail-open em 4 cópias (extrair p/ _shared);
+  `verify_jwt` das públicas não versionado no config.toml.
+- Banco: FKs por `salon_id` sem índice (services/products/professionals/
+  professional_schedules/professional_services/orders.cash_register_id/
+  reativacao_envios); policies duplicadas de SELECT em `user_salons` (90
+  avisos); `preco_por_uso` executável por authenticated (decidir se é
+  intencional); `btree_gist` no schema public; `criar_agendamentos_de_
+  reativacao` não checa profissional ativo nem expediente.
+- Frontend: conferir o que os PRs #62-69 já resolveram (Modal único com Esc
+  chegou no #65) e varrer o resto: `window.confirm` na Equipe, busca da
+  Ajuda sem estado vazio, banners sem safe-area-top, erro booleano na
+  Conexão, labels no adminTool, escala de z-index.
+- Popup da landing: limite contornável por sessionId novo (considerar IP),
+  leads em data table do n8n sem expurgo (LGPD); áudio/imagem de cliente vão
+  à OpenAI — cobrir na política de privacidade.
+- Infra: CI Node 22 vs Vercel Node 24; chunks grandes (jspdf ~400kB);
+  repositório ainda público.

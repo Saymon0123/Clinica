@@ -6,8 +6,9 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
  * Roda pelo n8n a cada hora, ANTES do notificador — assim o e-mail já sai com
  * o link do boleto. É idempotente por desenho: só olha fatura com
  * `asaas_payment_id` nulo e valor > 0, então disparar de novo não cobra ninguém
- * duas vezes. Por isso o gatilho pode ser simples (qualquer JWT válido): quem
- * disparar à toa só faz o trabalho que já ia acontecer.
+ * duas vezes. Mesmo assim o gatilho exige a service key (revisão de 29/08):
+ * idempotência protege contra cobrança dupla, não contra antecipação forçada
+ * nem contra martelar a API do Asaas com um JWT qualquer.
  *
  * Três regras que moram aqui:
  *
@@ -26,7 +27,8 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const ASAAS_API_KEY = Deno.env.get('ASAAS_API_KEY')
-const ASAAS_BASE_URL = Deno.env.get('ASAAS_BASE_URL') ?? 'https://api-sandbox.asaas.com'
+// Sem fallback de propósito: sandbox silencioso em produção é pior que falhar.
+const ASAAS_BASE_URL = Deno.env.get('ASAAS_BASE_URL')
 
 /** Abaixo disso o Asaas recusa a cobrança; o valor acumula para o próximo mês. */
 const MINIMO_ASAAS = 5
@@ -60,10 +62,25 @@ type FaturaAberta = {
   valor: number
 }
 
+/**
+ * Só o gatilho interno (n8n com a service key) pode disparar. A idempotência
+ * continua valendo, mas ela protege contra cobrança dupla — não contra
+ * antecipação forçada nem contra martelar a API do Asaas com JWT qualquer.
+ */
+function chamadorAutorizado(req: Request): boolean {
+  const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '')
+  const esperado = SERVICE_ROLE_KEY
+  if (token.length !== esperado.length) return false
+  let diff = 0
+  for (let i = 0; i < esperado.length; i++) diff |= token.charCodeAt(i) ^ esperado.charCodeAt(i)
+  return diff === 0
+}
+
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
-  if (!ASAAS_API_KEY) {
-    console.error('ASAAS_API_KEY ausente.')
+  if (!chamadorAutorizado(req)) return json({ error: 'Não autorizado.' }, 401)
+  if (!ASAAS_API_KEY || !ASAAS_BASE_URL) {
+    console.error('ASAAS_API_KEY ou ASAAS_BASE_URL ausente.')
     return json({ error: 'Cobranca nao configurada.' }, 500)
   }
 

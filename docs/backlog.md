@@ -1539,3 +1539,37 @@ Aberto, por prioridade:
   à OpenAI — cobrir na política de privacidade.
 - Infra: CI Node 22 vs Vercel Node 24; chunks grandes (jspdf ~400kB);
   repositório ainda público.
+
+## Modelo híbrido de WhatsApp — Fase 1 entregue (2026-08-30)
+
+Decisão: conversa com o cliente no número REAL da barbearia (Evolution);
+lembrete/reativação/avisos saem de número DA PLATAFORMA na Cloud API (sem BSP
+não há Embedded Signup viável por barbearia, e banimento no oficial queima o
+nosso número, não o do barbeiro). Remarcar da reativação responde no número
+central com link wa.me da barbearia (decisão v1).
+
+Feito (0115 aplicada + whatsapp-webhook v7):
+- `remetentes_oficiais` (semeada com o número atual da WABA) +
+  `salons.remetente_phone_number_id` para fragmentar por número no futuro
+  (nota de qualidade e tier são por número).
+- Views de envio (clientes_para_reativar/avisar_retorno, atrasos, vencimentos
+  + dependentes) desamarradas da conexão Cloud do salão: remetente vem da
+  plataforma, provedor fixo cloud_api. Fail-closed sem remetente ativo;
+  vencimentos com LEFT lateral para a auditoria "sem canal" continuar viva.
+- Webhook oficial ganhou o ramo do número central: botão resolve salão pelo
+  wamid (responder_lembrete); Remarcar vira acao `reagendar_central` para o
+  fluxo de resposta; texto solto é logado e descartado (nunca salão
+  arbitrário). Não-quebra: enquanto o número estiver vinculado à El Guardians
+  em whatsapp_connections, o ramo por salão continua valendo.
+
+Fase 2 (pendente): ponte Evolution de volta na ENTRADA do agente n8n (roteada
+por salão, restaurando o caminho de mídia antigo — áudio/imagem chegam
+diferente, ver docs/n8n-cloud-api-entrada.md); fluxo de resposta do lembrete
+tratando `reagendar_central` (texto com wa.me do salão) e resposta educada a
+texto solto no número central; desvincular o número oficial da El Guardians
+(vira só remetente central) e parear a El Guardians na Evolution para teste.
+Fase 3 (pendente): aba Conexão focada na Evolution (bloco Cloud por salão
+morre), alerta de desconexão Evolution no canal de alertas, monitor de nota
+do número central, reescrever artifacts "Conexão WhatsApp" e Central de
+Ajuda; manual "Registro WhatsApp" fica obsoleto. Radar: RAM do VPS cresce por
+instância Baileys (~1 por barbearia).

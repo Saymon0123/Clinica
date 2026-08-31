@@ -164,14 +164,66 @@ Deno.serve(async (req) => {
         const phoneNumberId: string | undefined = valor.metadata?.phone_number_id
         if (!phoneNumberId) continue
 
-        // A tradução número -> barbearia. Nulo significa número desconhecido, e
-        // aí o certo é PARAR: seguir com uma barbearia arbitrária gravaria a
-        // conversa de um cliente na conta de outro dono.
+        // A tradução número -> barbearia. Nulo tem DOIS significados no modelo
+        // híbrido: número desconhecido (paramos) ou o REMETENTE CENTRAL da
+        // plataforma — o número nosso que envia lembrete/reativação por todas
+        // as barbearias. Nele não existe "salão do número": o salão vem do
+        // wamid do template respondido, via responder_lembrete.
         const { data: salonId } = await admin.rpc('salon_por_phone_number_id', {
           p_phone_number_id: phoneNumberId,
         })
         if (!salonId) {
-          console.error('phone_number_id desconhecido:', phoneNumberId)
+          const { data: central } = await admin
+            .from('remetentes_oficiais')
+            .select('phone_number_id')
+            .eq('phone_number_id', phoneNumberId)
+            .eq('ativo', true)
+            .maybeSingle()
+          if (!central) {
+            console.error('phone_number_id desconhecido:', phoneNumberId)
+            continue
+          }
+          if (valor.statuses?.length) continue
+
+          for (const m of (valor.messages ?? []) as MensagemRecebida[]) {
+            const { texto, tipo } = conteudoDaMensagem(m)
+
+            // Clique de botão com contexto: o banco resolve tudo, inclusive
+            // de qual barbearia é o agendamento.
+            if (tipo === 'botao' && m.context?.id && texto) {
+              const { data: r, error } = await admin.rpc('responder_lembrete', {
+                p_message_id: m.context.id,
+                p_botao: texto,
+              })
+              if (error) {
+                console.error('responder_lembrete (central) falhou:', error.message)
+                continue
+              }
+              if (r?.atendido && (r.resposta || r.entregar_ao_agente) && N8N_LEMBRETE_URL) {
+                // Reagendar no número central NÃO vai ao agente: o agente mora
+                // no número da barbearia (Evolution). O fluxo de resposta troca
+                // entregar_ao_agente pelo convite com o wa.me da barbearia.
+                await fetch(N8N_LEMBRETE_URL, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    salon_id: r.salon_id ?? null,
+                    phone_number_id: phoneNumberId,
+                    contact_phone: m.from,
+                    appointment_id: r.appointment_id ?? null,
+                    acao: r.entregar_ao_agente ? 'reagendar_central' : r.acao,
+                    resposta: r.resposta ?? null,
+                  }),
+                })
+              }
+              continue
+            }
+
+            // Texto solto no número de avisos: não há barbearia nem agente
+            // aqui. Fase 2 responde educadamente apontando o número certo;
+            // por ora, registra e segue — nada de salão arbitrário.
+            console.error('mensagem sem contexto no numero central, de:', m.from, 'tipo:', tipo)
+          }
           continue
         }
 

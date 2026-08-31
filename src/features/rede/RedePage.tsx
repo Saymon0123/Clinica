@@ -82,7 +82,9 @@ export function RedePage() {
   const melhor = resumos[0]
 
   return (
-    <div className="space-y-4">
+    // valores-alinhados: comparativo de unidades e producao por barbeiro sao
+    // colunas de dinheiro lado a lado.
+    <div className="valores-alinhados space-y-4">
       <PageHeader
         titulo="Rede"
         subtitulo={`Visão somada das ${gerenciadas.length} unidades que você administra`}

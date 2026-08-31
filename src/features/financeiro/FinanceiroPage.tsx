@@ -190,7 +190,9 @@ export function FinanceiroPage() {
   const goalPct = data.revenueGoal > 0 ? Math.min((data.revenueCurrent / data.revenueGoal) * 100, 100) : 0
 
   return (
-    <div className="space-y-5">
+    // valores-alinhados: a tela inteira e numero empilhado (KPIs, comissoes,
+    // caixa, top servicos) — digito de largura fixa evita a coluna "dancar".
+    <div className="valores-alinhados space-y-5">
       <PageHeader
         titulo="Financeiro"
         subtitulo={isManager ? 'Desempenho e vendas da sua barbearia' : 'Seus atendimentos e sua comissão'}

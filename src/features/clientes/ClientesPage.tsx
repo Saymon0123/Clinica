@@ -12,6 +12,7 @@ import { EstadoVazio } from '../../components/EstadoVazio'
 import { SkeletonPagina } from '../../components/Skeleton'
 import { Input } from '../../components/Campo'
 import { PageHeader } from '../../components/PageHeader'
+import { Pessoa } from '../../components/Pessoa'
 import type { Client } from './types'
 import { ErroInline } from '../../components/ErroInline'
 
@@ -222,7 +223,6 @@ export function ClientesPage() {
                       Nome{ordem === 'nome' ? ' ↑' : ''}
                     </button>
                   </Th>
-                  <Th>Telefone</Th>
                   <Th>
                     <button
                       onClick={() => setOrdem('ultima_visita')}
@@ -243,26 +243,31 @@ export function ClientesPage() {
                     onClick={() => setDetailClient(client)}
                     className="border-b border-border/60 last:border-b-0 cursor-pointer hover:bg-surface-2/60 transition-colors"
                   >
-                    <Td className="text-foreground font-medium">{client.nome}</Td>
-                    <Td className="text-muted-foreground whitespace-nowrap">
-                      {client.telefone ? (
-                        linkWhatsApp(client.telefone) ? (
-                          <a
-                            href={linkWhatsApp(client.telefone)!}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            title="Abrir conversa no WhatsApp"
-                            className="text-primary hover:underline"
-                          >
-                            {formatarTelefone(client.telefone)}
-                          </a>
-                        ) : (
-                          formatarTelefone(client.telefone)
-                        )
-                      ) : (
-                        '—'
-                      )}
+                    {/* Contato empilhado sob o nome (leva C, referência): a
+                        lista lê-se como de pessoas. O link do WhatsApp é o
+                        mesmo de antes, só mudou de coluna para cá. */}
+                    <Td>
+                      <Pessoa
+                        nome={client.nome}
+                        contato={
+                          client.telefone ? (
+                            linkWhatsApp(client.telefone) ? (
+                              <a
+                                href={linkWhatsApp(client.telefone)!}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                title="Abrir conversa no WhatsApp"
+                                className="text-primary hover:underline"
+                              >
+                                {formatarTelefone(client.telefone)}
+                              </a>
+                            ) : (
+                              formatarTelefone(client.telefone)
+                            )
+                          ) : null
+                        }
+                      />
                     </Td>
                     <Td className="whitespace-nowrap">
                       {(() => {

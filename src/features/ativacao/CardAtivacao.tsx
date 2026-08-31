@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Check, ChevronRight, Rocket } from 'lucide-react'
 import { useSalon } from '../auth/useSalon'
 import { useAtivacao } from './useAtivacao'
+import { BarraProgresso } from '../../components/Pessoa'
 
 /**
  * Checklist do que falta para a barbearia funcionar de verdade.
@@ -29,12 +30,21 @@ export function CardAtivacao() {
         <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary-soft text-primary-soft-foreground shrink-0">
           <Rocket size={16} />
         </span>
-        <div>
+        <div className="min-w-0 flex-1">
           <h2 className="text-sm font-semibold text-foreground">Falta pouco para começar</h2>
           <p className="text-xs text-muted-foreground">
             {feitos} de {itens.length} prontos
           </p>
         </div>
+      </div>
+
+      {/* Barra fina (leva C): o "X de Y" já existia como texto; a barra dá a
+          leitura de relance, sem número novo. */}
+      <div className="mt-3">
+        <BarraProgresso
+          porcentagem={(feitos / itens.length) * 100}
+          rotulo={`${feitos} de ${itens.length} passos prontos`}
+        />
       </div>
 
       <ul className="mt-3 space-y-1.5">

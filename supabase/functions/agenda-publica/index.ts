@@ -103,7 +103,7 @@ Deno.serve(async (req: Request) => {
     const { data: ag } = await admin
       .from('appointments')
       .select(
-        'id, status, data_hora_inicio, services(nome), professionals(nome), salons(nome, telefone)',
+        'id, status, data_hora_inicio, services!appointments_service_id_fkey(nome), professionals(nome), salons(nome, telefone)',
       )
       .eq('token_gestao', token)
       .maybeSingle()

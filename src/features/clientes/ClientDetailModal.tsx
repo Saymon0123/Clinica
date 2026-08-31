@@ -71,7 +71,7 @@ export function ClientDetailModal({
       const [appts, ords, concluidos] = await Promise.all([
         supabase
           .from('appointments')
-          .select('id, data_hora_inicio, status, services(nome)')
+          .select('id, data_hora_inicio, status, services!appointments_service_id_fkey(nome)')
           .eq('client_id', client.id)
           .order('data_hora_inicio', { ascending: false })
           .limit(15),

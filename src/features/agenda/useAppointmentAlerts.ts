@@ -24,7 +24,7 @@ export function useAppointmentAlerts(salonId: string | null) {
   const fetchDetails = useCallback(async (appointmentId: string) => {
     const { data, error } = await supabase
       .from('appointments')
-      .select('id, data_hora_inicio, clients(nome), services(nome)')
+      .select('id, data_hora_inicio, clients(nome), services!appointments_service_id_fkey(nome)')
       .eq('id', appointmentId)
       .maybeSingle()
 

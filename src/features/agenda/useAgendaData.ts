@@ -42,7 +42,13 @@ export function useAgendaData(salonId: string | null, date: Date) {
       supabase
         .from('appointments')
         .select(
-          'id, professional_id, client_id, service_id, data_hora_inicio, data_hora_fim, status, chegou_em, iniciado_em, atraso_perguntado_em, clients(nome), services(nome), appointment_services(count)',
+          // `services!appointments_service_id_fkey` é OBRIGATÓRIO desde a 0120:
+          // appointment_services criou um segundo caminho appointments↔services
+          // (many-to-many) e o embed sem hint vira PGRST201 (ambíguo) — foi o
+          // que derrubou a agenda inteira em 31/08. Vale para TODO embed de
+          // services a partir de appointments. O count fica no cliente
+          // (appointment_services.length) para não depender de agregado.
+          'id, professional_id, client_id, service_id, data_hora_inicio, data_hora_fim, status, chegou_em, iniciado_em, atraso_perguntado_em, clients(nome), services!appointments_service_id_fkey(nome), appointment_services(service_id)',
         )
         .eq('salon_id', salonId)
         .gte('data_hora_inicio', start)
@@ -85,12 +91,11 @@ export function useAgendaData(salonId: string | null, date: Date) {
         const r = row as unknown as Appointment & {
           clients: { nome: string } | null
           services: { nome: string } | null
-          appointment_services: { count: number }[] | null
+          appointment_services: { service_id: string }[] | null
         }
-        // appointment_services(count) vem no mesmo select — sem query extra
-        // por bloco. Com 1 (ou 0, agendamento antigo sem linha na tabela
-        // nova) não mostra sufixo; com 2+ mostra quantos serviços A MAIS.
-        const totalServicos = r.appointment_services?.[0]?.count ?? 0
+        // Conta no cliente: com 1 (ou 0, agendamento antigo sem linha na
+        // tabela nova) não mostra sufixo; com 2+ mostra quantos A MAIS.
+        const totalServicos = r.appointment_services?.length ?? 0
         return {
           id: r.id,
           professional_id: r.professional_id,

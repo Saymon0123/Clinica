@@ -1600,3 +1600,12 @@ Pendências do híbrido:
 - Reescrever o artifact "Conexão WhatsApp" e aposentar o manual "Registro
   WhatsApp na API oficial" (obsoleto no híbrido — barbearia não registra mais
   nada na Meta).
+
+### Documentos do híbrido — feito (30/08/2026)
+Artifact "Conexão WhatsApp Club Cut" reescrito para o modelo híbrido (dois
+canais, por quê do híbrido, caminho da conversa e do aviso, vigilância da
+qualidade, estado por barbearia, coexistência como fim do modelo) — mesma URL.
+Manual "Registro de Número na API Oficial" aposentado com faixa de
+obsolescência, preservado como referência histórica. Restam do híbrido só os
+passos do Saymon (campos do webhook na Meta, QR da El Guardians, observar
+Curitiba) e o desvínculo final do número oficial.

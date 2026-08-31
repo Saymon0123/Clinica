@@ -159,6 +159,23 @@ cima de um item antigo.**
 
 ## Infraestrutura e manutenção
 
+### Template de e-mail do Supabase ainda diz "14 dias" (2026-08-31)
+O prazo do teste voltou de 14 para 7 dias. Foi trocado no CRM
+(`src/lib/planos.ts`, fonte única de todas as telas), na meta description do
+`index.html`, na edge function `criar-minha-barbearia` (redeployada, v9) e no
+prompt do agente Aurora do popup da landing (n8n `j2g3tdLZTlvs8sdP`,
+republicado).
+
+**Falta o que não mora no repositório:** o corpo do e-mail de confirmação de
+cadastro vive no painel do Supabase, em *Authentication → Email Templates →
+Confirm signup*. O arquivo `docs/emails-auth/confirmacao-de-cadastro.html` já
+está corrigido; ele é só a cópia versionada — **colar no painel à mão**, senão
+quem se cadastra recebe um e-mail prometendo 14 dias e o sistema concede 7.
+
+Enquanto não for colado, é a única superfície do produto que mente sobre o
+prazo.
+
+
 ### Migrations estão fora do pipeline de deploy
 Levantado em 2026-08-02. A cadeia `push → GitHub → CI → Vercel` funciona e é
 automática: o CI roda typecheck, lint, vitest e pgTAP, e o `vercel[bot]` publica
@@ -501,7 +518,7 @@ via n8n Data Table, zero custo), modelo OpenRouter `:free`
 (`nvidia/nemotron-3-ultra-550b-a55b:free`, confirmado `$0` de entrada e
 saída via openrouter.ai/api/v1/models em 2026-08-22), prompt com
 só fatos reais do produto (preço R$0,85/agendamento, sem mensalidade, sem
-setup, teste de 14 dias, lembretes, confirmação, "Aura") e instrução
+setup, teste de 7 dias, lembretes, confirmação, "Aura") e instrução
 explícita de nunca inventar número ou recurso.
 
 **Limite subiu de 8 para 30/sessão/dia** (2026-08-22, mesmo dia dos testes

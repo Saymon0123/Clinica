@@ -14,6 +14,8 @@
   --surface: #ffffff;
   --surface-2: #eef2ef;
   --border: #e3e9e4;
+  /* Elevacao do card no tema claro: contato curto + halo largo e fraco. */
+  --sombra-card: 0 1px 2px rgb(13 21 18 / 0.04), 0 8px 24px -12px rgb(13 21 18 / 0.12);
   --border-strong: #c3cfc7;
   --foreground: #0e1512;
   --muted-foreground: #5b665f;
@@ -80,6 +82,20 @@
   --surface-2: #1b2620;
   --border: #2a332c;
   --border-strong: #3d4a41;
+  /*
+    Elevacao do card no escuro. A sombra do tema claro e quase preta
+    (rgb 13 21 18) e o fundo daqui e exatamente #0d1512: preto sobre preto NAO
+    aparece, entao a leva A passava batido no escuro.
+
+    A tecnica do dark e outra -- luz, e nao sombra: uma linha clara no topo do
+    card (inset) simula a luz vindo de cima e destaca a borda superior, mais
+    uma sombra preta densa e curta que separa o card do fundo. E o que Linear,
+    Vercel e Raycast fazem no tema escuro.
+  */
+  --sombra-card:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.045),
+    0 1px 2px rgb(0 0 0 / 0.35),
+    0 10px 26px -14px rgb(0 0 0 / 0.6);
   --foreground: #f3f1ea;
   --muted-foreground: #9c9a8f;
   /*
@@ -128,9 +144,10 @@
 }
 
 @theme inline {
-  /* shadow-sm vira a sombra "flutuante" do app inteiro: um contato curto e
-     um halo largo e fraco. Upgrade em todos os cards sem tocar em markup. */
-  --shadow-sm: 0 1px 2px rgb(13 21 18 / 0.04), 0 8px 24px -12px rgb(13 21 18 / 0.12);
+  /* shadow-sm e a elevacao do card no app inteiro. Aponta para --sombra-card,
+     que MUDA POR TEMA: no claro e sombra; no escuro, sombra preta sumiria no
+     fundo preto, entao a elevacao vem de uma linha de luz no topo (inset). */
+  --shadow-sm: var(--sombra-card);
   --color-background: var(--background);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
@@ -157,6 +174,21 @@
   --color-chat-out-muted: var(--chat-out-muted);
   --color-chat-avatar: var(--chat-avatar);
   --color-chat-avatar-foreground: var(--chat-avatar-foreground);
+}
+
+/*
+  Numeros que se empilham precisam de digito de largura fixa. No Archivo o "1"
+  e mais estreito que o "8", entao uma coluna de valores (R$ 1.180,00 sobre
+  R$ 990,50 sobre R$ 65,00) fica com as virgulas desalinhadas e a coluna
+  "danca" a cada atualizacao. `tabular-nums` trava a largura.
+
+  Aplicado no CONTEINER, e nao valor a valor: toda tabela e toda lista de
+  valores herdam de uma vez, e texto corrido continua com o numero
+  proporcional (que e o certo para ler, e onde nada se alinha).
+*/
+table,
+.valores-alinhados {
+  font-variant-numeric: tabular-nums;
 }
 
 body {

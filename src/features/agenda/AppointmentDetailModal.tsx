@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CalendarClock, Trash2, XCircle, Receipt } from 'lucide-react'
 import { Modal } from '../../components/Modal'
@@ -46,6 +46,21 @@ function toTimeInput(iso: string) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
+type ServicoDoAgendamento = {
+  service_id: string
+  nome: string
+  preco: number
+  duracao_minutos: number
+}
+
+function formatDuracao(min: number) {
+  const h = Math.floor(min / 60)
+  const m = min % 60
+  if (h === 0) return `${m}min`
+  if (m === 0) return `${h}h`
+  return `${h}h${String(m).padStart(2, '0')}`
+}
+
 export function AppointmentDetailModal({
   appointment,
   onClose,
@@ -64,6 +79,39 @@ export function AppointmentDetailModal({
   const [editingDate, setEditingDate] = useState(false)
   const [dateValue, setDateValue] = useState(() => toDateInput(appointment.data_hora_inicio))
   const [timeValue, setTimeValue] = useState(() => toTimeInput(appointment.data_hora_inicio))
+
+  // Corte + barba num agendamento só (item 6): a lista completa vem da view
+  // `servicos_do_agendamento`. Com 1 item só, cai de volta no rótulo simples
+  // que já existia (service_nome).
+  const [servicos, setServicos] = useState<ServicoDoAgendamento[] | null>(null)
+
+  useEffect(() => {
+    let cancelado = false
+    supabase
+      .from('servicos_do_agendamento')
+      .select('service_id, nome, preco, duracao_minutos')
+      .eq('appointment_id', appointment.id)
+      .order('ordem')
+      .then(({ data, error: fetchError }) => {
+        if (cancelado) return
+        if (fetchError) {
+          console.error('Erro ao buscar serviços do agendamento:', fetchError)
+          return
+        }
+        setServicos((data ?? []) as ServicoDoAgendamento[])
+      })
+    return () => {
+      cancelado = true
+    }
+  }, [appointment.id])
+
+  const duracaoTotalMin =
+    servicos && servicos.length > 0
+      ? servicos.reduce((acc, s) => acc + s.duracao_minutos, 0)
+      : Math.round(
+          (new Date(appointment.data_hora_fim).getTime() - new Date(appointment.data_hora_inicio).getTime()) / 60000,
+        )
+  const precoTotal = servicos?.reduce((acc, s) => acc + s.preco, 0) ?? 0
 
   async function handleReschedule() {
     if (!dateValue || !timeValue) {
@@ -145,6 +193,9 @@ export function AppointmentDetailModal({
     if (appointment.client_id) params.set('clientId', appointment.client_id)
     if (appointment.professional_id) params.set('professionalId', appointment.professional_id)
     if (appointment.service_id) params.set('serviceId', appointment.service_id)
+    if (servicos && servicos.length > 1) {
+      params.set('serviceIds', servicos.map((s) => s.service_id).join(','))
+    }
     navigate(`/financeiro?${params.toString()}`)
   }
 
@@ -172,9 +223,13 @@ export function AppointmentDetailModal({
             <span className="text-sm text-muted-foreground">Cliente</span>
             <span className="text-sm font-medium text-foreground">{appointment.client_nome ?? '—'}</span>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Serviço</span>
-            <span className="text-sm font-medium text-foreground">{appointment.service_nome ?? '—'}</span>
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-sm text-muted-foreground shrink-0">Serviço</span>
+            <span className="text-sm font-medium text-foreground text-right">
+              {servicos && servicos.length > 1
+                ? `${servicos.map((s) => s.nome).join(' + ')} · ${formatDuracao(duracaoTotalMin)} · R$ ${precoTotal.toFixed(2)}`
+                : appointment.service_nome ?? '—'}
+            </span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Início</span>

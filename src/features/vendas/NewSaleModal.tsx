@@ -38,6 +38,8 @@ export type SalePrefill = {
   clientId?: string
   professionalId?: string
   serviceId?: string
+  /** Serviços combinados no mesmo agendamento (item 6). Quando tem 2+, cada um vira um item da comanda; `serviceId` continua sendo o principal, mantido por compatibilidade. */
+  serviceIds?: string[]
 }
 
 function formatCurrency(value: number) {
@@ -222,20 +224,27 @@ export function NewSaleModal({
       if (!prefill?.professionalId && visiveis.length > 0) {
         setProfessionalId(visiveis[0].id)
       }
-      // Pré-adiciona o serviço do agendamento, se veio da agenda
-      if (prefill?.serviceId && s.data) {
-        const svc = s.data.find((x) => x.id === prefill.serviceId)
-        if (svc) {
-          setItems([
-            {
-              tipo: 'servico',
-              refId: svc.id,
-              nome: svc.nome,
-              quantidade: 1,
-              preco_unitario: Number(svc.preco),
-            },
-          ])
-        }
+      // Pré-adiciona o(s) serviço(s) do agendamento, se veio da agenda.
+      // Com 2+ em serviceIds (corte + barba no mesmo horário), um item por
+      // serviço; senão cai no comportamento antigo, só o principal.
+      const idsParaPrefill =
+        prefill?.serviceIds && prefill.serviceIds.length > 1
+          ? prefill.serviceIds
+          : prefill?.serviceId
+            ? [prefill.serviceId]
+            : []
+      if (idsParaPrefill.length > 0 && s.data) {
+        const itensPrefill = idsParaPrefill
+          .map((id) => s.data!.find((x) => x.id === id))
+          .filter((svc): svc is NonNullable<typeof svc> => Boolean(svc))
+          .map((svc) => ({
+            tipo: 'servico' as const,
+            refId: svc.id,
+            nome: svc.nome,
+            quantidade: 1,
+            preco_unitario: Number(svc.preco),
+          }))
+        if (itensPrefill.length > 0) setItems(itensPrefill)
       }
     }
     load()

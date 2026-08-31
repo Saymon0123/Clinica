@@ -107,7 +107,12 @@ function AppointmentBlock({
       <div className={`text-xs font-medium truncate ${style.text}`}>
         {formatTime(appt.data_hora_inicio)} · {appt.client_nome ?? 'Cliente'}
       </div>
-      {appt.service_nome && <div className={`text-[11px] truncate ${style.subtext}`}>{appt.service_nome}</div>}
+      {appt.service_nome && (
+        <div className={`text-[11px] truncate ${style.subtext}`}>
+          {appt.service_nome}
+          {!!appt.servicos_extras && ` +${appt.servicos_extras}`}
+        </div>
+      )}
     </div>
   )
 }

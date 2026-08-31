@@ -42,7 +42,7 @@ export function useAgendaData(salonId: string | null, date: Date) {
       supabase
         .from('appointments')
         .select(
-          'id, professional_id, client_id, service_id, data_hora_inicio, data_hora_fim, status, chegou_em, iniciado_em, atraso_perguntado_em, clients(nome), services(nome)',
+          'id, professional_id, client_id, service_id, data_hora_inicio, data_hora_fim, status, chegou_em, iniciado_em, atraso_perguntado_em, clients(nome), services(nome), appointment_services(count)',
         )
         .eq('salon_id', salonId)
         .gte('data_hora_inicio', start)
@@ -82,7 +82,15 @@ export function useAgendaData(salonId: string | null, date: Date) {
     setServices(servResult.data ?? [])
     setAppointments(
       (apptResult.data ?? []).map((row) => {
-        const r = row as unknown as Appointment & { clients: { nome: string } | null; services: { nome: string } | null }
+        const r = row as unknown as Appointment & {
+          clients: { nome: string } | null
+          services: { nome: string } | null
+          appointment_services: { count: number }[] | null
+        }
+        // appointment_services(count) vem no mesmo select — sem query extra
+        // por bloco. Com 1 (ou 0, agendamento antigo sem linha na tabela
+        // nova) não mostra sufixo; com 2+ mostra quantos serviços A MAIS.
+        const totalServicos = r.appointment_services?.[0]?.count ?? 0
         return {
           id: r.id,
           professional_id: r.professional_id,
@@ -96,6 +104,7 @@ export function useAgendaData(salonId: string | null, date: Date) {
           atraso_perguntado_em: r.atraso_perguntado_em ?? null,
           client_nome: r.clients?.nome ?? null,
           service_nome: r.services?.nome ?? null,
+          servicos_extras: totalServicos > 1 ? totalServicos - 1 : 0,
         }
       }),
     )

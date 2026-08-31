@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Modal } from '../../components/Modal'
 import { Campo, Input, Select } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
@@ -37,9 +37,37 @@ export function NewAppointmentModal({
   const [clientPhone, setClientPhone] = useState('')
   const [professionalId, setProfessionalId] = useState(defaultProfessionalId ?? professionals[0]?.id ?? '')
   const [serviceId, setServiceId] = useState(services[0]?.id ?? '')
+  // Serviços extras (item 6: corte + barba no mesmo horário). O select
+  // principal continua sendo o primeiro/serviço-âncora; estes são somados.
+  const [extraServiceIds, setExtraServiceIds] = useState<string[]>([])
   const [time, setTime] = useState(defaultTime ?? '09:00')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Trocar o serviço principal não pode deixar o mesmo id duplicado na lista
+  // de extras.
+  useEffect(() => {
+    setExtraServiceIds((prev) => prev.filter((id) => id !== serviceId))
+  }, [serviceId])
+
+  function toggleExtraService(id: string) {
+    setExtraServiceIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    )
+  }
+
+  const outrosServicos = services.filter((s) => s.id !== serviceId)
+  const duracaoTotal =
+    (services.find((s) => s.id === serviceId)?.duracao_minutos ?? 0) +
+    extraServiceIds.reduce((acc, id) => acc + (services.find((s) => s.id === id)?.duracao_minutos ?? 0), 0)
+
+  function formatDuracao(min: number) {
+    const h = Math.floor(min / 60)
+    const m = min % 60
+    if (h === 0) return `${m}min`
+    if (m === 0) return `${h}h`
+    return `${h}h${String(m).padStart(2, '0')}`
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -114,16 +142,40 @@ export function NewAppointmentModal({
       const start = toDateTimeLocal(date, time)
       const end = new Date(start.getTime() + service.duracao_minutos * 60000)
 
-      const { error: apptError } = await supabase.from('appointments').insert({
-        salon_id: salonId,
-        client_id: clientId,
-        professional_id: professionalId,
-        service_id: serviceId,
-        data_hora_inicio: start.toISOString(),
-        data_hora_fim: end.toISOString(),
-        status: 'agendado',
-      })
+      const { data: novoAgendamento, error: apptError } = await supabase
+        .from('appointments')
+        .insert({
+          salon_id: salonId,
+          client_id: clientId,
+          professional_id: professionalId,
+          service_id: serviceId,
+          data_hora_inicio: start.toISOString(),
+          data_hora_fim: end.toISOString(),
+          status: 'agendado',
+        })
+        .select('id')
+        .single()
       if (apptError) throw apptError
+
+      // Corte + barba etc: define a lista completa de serviços do
+      // agendamento. A RPC recalcula o fim (soma das durações) e recusa
+      // (23P01) se não couber antes do próximo horário do profissional.
+      if (extraServiceIds.length > 0) {
+        const { error: servicosError } = await supabase.rpc('definir_servicos_do_agendamento', {
+          p_appointment_id: novoAgendamento.id,
+          p_service_ids: [serviceId, ...extraServiceIds],
+        })
+        if (servicosError) {
+          const { error: rollbackError } = await supabase
+            .from('appointments')
+            .delete()
+            .eq('id', novoAgendamento.id)
+          if (rollbackError) {
+            console.error('Agendamento com serviços inválidos e não foi possível desfazê-lo:', rollbackError)
+          }
+          throw servicosError
+        }
+      }
 
       clienteCriadoAgora = null
       onCreated()
@@ -142,12 +194,18 @@ export function NewAppointmentModal({
         }
       }
       console.error('Erro ao criar reserva:', err)
-      const code = (err as { code?: string } | null)?.code
-      setError(
-        code === '23P01'
-          ? 'Já existe um agendamento nesse horário para este profissional. Escolha outro horário.'
-          : 'Não foi possível criar a reserva. Tente novamente.',
-      )
+      const erro = err as { code?: string; message?: string } | null
+      const code = erro?.code
+      const mensagem = erro?.message ?? ''
+      if (code === '23P01' && extraServiceIds.length > 0 && mensagem.toLowerCase().includes('sobreposicao')) {
+        setError(
+          'Os serviços juntos não cabem nesse horário — o seguinte já está ocupado. Escolha outro horário ou menos serviços.',
+        )
+      } else if (code === '23P01') {
+        setError('Já existe um agendamento nesse horário para este profissional. Escolha outro horário.')
+      } else {
+        setError('Não foi possível criar a reserva. Tente novamente.')
+      }
     } finally {
       setSubmitting(false)
     }
@@ -202,6 +260,35 @@ export function NewAppointmentModal({
               ))}
             </Select>
           </Campo>
+
+          {outrosServicos.length > 0 && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">Adicionar outro serviço</span>
+                {extraServiceIds.length > 0 && (
+                  <span className="text-xs font-medium text-foreground">
+                    Duração total: {formatDuracao(duracaoTotal)}
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {outrosServicos.map((s) => {
+                  const selecionado = extraServiceIds.includes(s.id)
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => toggleExtraService(s.id)}
+                      aria-pressed={selecionado}
+                      className={`btn-chip ${selecionado ? 'btn-chip-primario' : ''}`}
+                    >
+                      {s.nome} · {formatDuracao(s.duracao_minutos)}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           <Campo rotulo="Horário" htmlFor="time">
             <Input

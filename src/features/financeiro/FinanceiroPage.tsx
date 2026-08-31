@@ -121,6 +121,7 @@ export function FinanceiroPage() {
         clientId: searchParams.get('clientId') ?? undefined,
         professionalId: searchParams.get('professionalId') ?? undefined,
         serviceId: searchParams.get('serviceId') ?? undefined,
+        serviceIds: searchParams.get('serviceIds')?.split(',').filter(Boolean) ?? undefined,
       })
       setSearchParams({}, { replace: true })
     }

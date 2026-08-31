@@ -1656,3 +1656,26 @@ Aberto da verificação:
 Fase 2 do trio (backlog): mostrar média/lista de avaliações no CRM
 (dashboard); link de gestão também na confirmação do agente; teste real do
 ciclo avaliação quando a El Guardians parear na Evolution.
+
+## Item 6 — corte + barba num agendamento só (2026-08-31)
+
+Entregue (migration 0120 aplicada e testada na El Guardians; CRM verde):
+- `appointment_services` (filha) + espelho automático do principal em todo
+  INSERT (agente/QR/reativação ficam consistentes sem saber da tabela);
+  `appointments.service_id` segue como o principal.
+- Trigger de fim soma a filha — arrastar multi-serviço não encolhe mais
+  (testado: 40+30=1h10; mover manteve 1h10).
+- RPC `definir_servicos_do_agendamento` (definer com checagem de vínculo):
+  define a lista, recalcula o fim; estourar no vizinho devolve 23P01 com
+  rollback total (testado).
+- Fatura: valor_gerado e detalhe somam todos os serviços; cobrança segue
+  1 agendamento cobrável (decisão de 30/08).
+- Reativação copia a lista completa do último corte.
+- CRM: NewAppointmentModal com chips de serviços extras + duração total +
+  rollback no 23P01 com mensagem própria; detalhe mostra a lista; "Concluir e
+  cobrar" pré-preenche a comanda com todos; grade mostra "+N".
+
+Fase 2 (pendente, decisão consciente): agente de WhatsApp e QR público seguem
+marcando UM serviço — ensinar a IA a somar duração é risco de overbooking e
+só entra com teste real de conversa; quando entrar, o prompt precisa citar
+"corte + barba" nas confirmações e a disponibilidade considerar a soma.

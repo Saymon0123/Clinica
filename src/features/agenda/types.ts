@@ -49,4 +49,6 @@ export type Appointment = {
   atraso_perguntado_em?: string | null
   client_nome?: string | null
   service_nome?: string | null
+  /** Quantos serviços além do principal (corte + barba etc). 0 = só o principal. */
+  servicos_extras?: number
 }

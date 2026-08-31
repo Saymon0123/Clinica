@@ -212,7 +212,15 @@ Deno.serve(async (req) => {
                 console.error('responder_lembrete (central) falhou:', error.message)
                 continue
               }
-              if (r?.atendido && (r.resposta || r.entregar_ao_agente) && N8N_LEMBRETE_URL) {
+              // No ramo por-salão, atendido=false devolve a mensagem ao agente.
+              // Aqui não há agente — então precisa ao menos deixar rastro, senão
+              // um clique com wamid desconhecido some sem ninguém saber.
+              if (!r?.atendido) {
+                console.error('clique no numero central sem lembrete correspondente:',
+                  m.context.id, 'acao:', r?.acao ?? 'desconhecida', 'de:', m.from)
+                continue
+              }
+              if (r.atendido && (r.resposta || r.entregar_ao_agente) && N8N_LEMBRETE_URL) {
                 // Reagendar no número central NÃO vai ao agente: o agente mora
                 // no número da barbearia (Evolution). O fluxo de resposta troca
                 // entregar_ao_agente pelo convite com o wa.me da barbearia.

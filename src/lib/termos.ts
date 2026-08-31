@@ -17,8 +17,11 @@
 // cobrança por agendamento (por uso). Caíram as cláusulas de planos e de troca
 // de plano; a de preço foi reescrita; e a do WhatsApp deixou de descrever um
 // canal não oficial — a conexão passou à API oficial da Meta em 2026-08-22.
-// Quem aceitou a versão anterior continua com o registro dela.
-export const VERSAO_DOS_TERMOS = '2026-08-24'
+// 2026-08-31: modelo híbrido — a cláusula do WhatsApp passou a descrever a
+// realidade atual: a conversa acontece no número da barbearia (pareado por QR)
+// e os avisos automáticos saem por número do Club Cut na API oficial. Quem
+// aceitou versões anteriores continua com o registro delas.
+export const VERSAO_DOS_TERMOS = '2026-08-31'
 
 /**
  * O texto ainda não passou por advogado.

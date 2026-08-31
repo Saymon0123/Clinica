@@ -1609,3 +1609,28 @@ Manual "Registro de Número na API Oficial" aposentado com faixa de
 obsolescência, preservado como referência histórica. Restam do híbrido só os
 passos do Saymon (campos do webhook na Meta, QR da El Guardians, observar
 Curitiba) e o desvínculo final do número oficial.
+
+## Verificação completa do híbrido (2026-08-31) — corrigido na hora
+
+5 frentes (db/backend/n8n/qa/deploy). Produção limpa (Vercel READY em main,
+CI verde, 0 erros de runtime; webhook v8→v9, cobrar-uso v2; 0115/0116 conferem
+no banco). Corrigido: Termos de Uso descreviam conexão "pela API oficial" —
+cláusula 8 reescrita para o híbrido e VERSAO_DOS_TERMOS → 2026-08-31 (quem
+aceitou a anterior fica detectável); clique no número central com wamid
+desconhecido morria sem rastro — webhook v9 loga; índice da FK
+salons.remetente_phone_number_id (0117).
+
+Aberto da verificação:
+- **Saymon**: conferir na UI do n8n (a API omite o bloco credentials) que os 2
+  nós "Responder pela Evolution" do agente estão com a credencial "Evolution
+  API - CRM Salão"; e criar/conferir o segredo `N8N_LEMBRETE_RESPOSTA_URL`
+  nas edge functions do Supabase apontando para
+  https://n8n-m5uf.srv1833354.hstgr.cloud/webhook/lembrete-resposta-central
+  (sem ele, a resposta dos botões de lembrete não é entregue ao cliente).
+- Ramo Evolution do agente ainda sem execução real (todas as 25 amostradas
+  foram cloud_api) — validação de verdade vem com o QR da El Guardians ou a
+  primeira mensagem de cliente da Curitiba.
+- Testes de borda sugeridos: evento de status da Meta não deve virar linha em
+  eventos_da_waba; e conferir escaping do detalhe no e-mail da auditoria (o
+  fluxo 7yliDoD9AaQp3Qcm escapa HTML nos textos — verificado na revisão de
+  29/08 — mas vale reconferir com o campo novo qualidade-waba).

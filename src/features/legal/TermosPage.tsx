@@ -114,11 +114,14 @@ export function TermosPage() {
 
       <Secao titulo="8. Sobre o WhatsApp">
         <p>
-          A conexão é feita pela <strong>API oficial do WhatsApp (Meta)</strong>. Ainda assim, o
-          WhatsApp é um serviço da Meta, sujeito às políticas dela: a Meta pode restringir ou
-          suspender números que violem as regras dela, a critério dela, e nesse caso o atendimento
-          automático deixa de funcionar até a situação ser resolvida. Não respondemos por decisões
-          da Meta, e vamos ajudar você a regularizar sempre que acontecer.
+          O atendimento automático conversa com seus clientes <strong>pelo número da sua
+          barbearia</strong>, conectado ao sistema por pareamento (QR code). Avisos automáticos —
+          como lembretes e confirmações de horário — são enviados por um número do Club Cut na{' '}
+          <strong>API oficial do WhatsApp (Meta)</strong>, sempre identificando a sua barbearia na
+          mensagem. O WhatsApp é um serviço da Meta, sujeito às políticas dela: a Meta pode
+          restringir ou suspender números, a critério dela, e nesse caso o atendimento ou os avisos
+          deixam de funcionar até a situação ser resolvida. Não respondemos por decisões da Meta, e
+          vamos ajudar você a regularizar sempre que acontecer.
         </p>
         <p>
           Mensagens que o sistema envia por iniciativa própria (como lembretes) usam modelos

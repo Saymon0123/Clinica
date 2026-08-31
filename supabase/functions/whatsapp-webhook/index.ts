@@ -161,6 +161,19 @@ Deno.serve(async (req) => {
     for (const entrada of evento.entry ?? []) {
       for (const mudanca of entrada.changes ?? []) {
         const valor = mudanca.value ?? {}
+
+        // Eventos administrativos da WABA (phone_number_quality_update,
+        // account_update...) não são conversa: são a Meta avisando sobre a
+        // saúde do número central — que carrega os lembretes de TODAS as
+        // barbearias. Grava e a auditoria transforma em alerta.
+        if (mudanca.field && mudanca.field !== 'messages') {
+          const { error: erroEvento } = await admin
+            .from('eventos_da_waba')
+            .insert({ campo: mudanca.field, evento: valor })
+          if (erroEvento) console.error('Erro ao gravar evento da WABA:', erroEvento)
+          continue
+        }
+
         const phoneNumberId: string | undefined = valor.metadata?.phone_number_id
         if (!phoneNumberId) continue
 

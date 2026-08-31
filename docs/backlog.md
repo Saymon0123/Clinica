@@ -1573,3 +1573,30 @@ morre), alerta de desconexão Evolution no canal de alertas, monitor de nota
 do número central, reescrever artifacts "Conexão WhatsApp" e Central de
 Ajuda; manual "Registro WhatsApp" fica obsoleto. Radar: RAM do VPS cresce por
 instância Baileys (~1 por barbearia).
+
+## Modelo híbrido — Fases 2 e 3 entregues (2026-08-30)
+
+Fase 2 PUBLICADA: agente com ponte Evolution (entrada dupla, mídia base64,
+envio roteado por provedor com a URL real do servidor) — a Curitiba voltou a
+ter atendimento automático (decisão do Saymon); lembretes com o webhook
+`lembrete-resposta-central` (Remarcar → wa.me da barbearia).
+
+Fase 3: aba Conexão reescrita para o híbrido (QR é o fluxo principal; aviso
+sobre o número de lembretes); Central de Ajuda atualizada; migration 0116
+(`eventos_da_waba` + ramo `qualidade-waba` na auditoria, testado — alerta da
+Meta sobre o número central cai no canal de alertas em até 30min); webhook v8
+captura campos administrativos (phone_number_quality_update etc.).
+
+Pendências do híbrido:
+- **Saymon**: no painel da Meta (app → Webhooks → WhatsApp Business Account),
+  assinar os campos `phone_number_quality_update` e `account_update` — sem
+  isso a Meta não envia os eventos que o monitor de qualidade escuta.
+- **Saymon**: parear a El Guardians no QR e testar texto + ÁUDIO real (ramo de
+  mídia só foi verificado estruturalmente); observar as primeiras execuções da
+  Curitiba no n8n.
+- Depois do teste: desvincular o número oficial da El Guardians em
+  `whatsapp_connections` (vira remetente central puro; o ramo central do
+  webhook assume).
+- Reescrever o artifact "Conexão WhatsApp" e aposentar o manual "Registro
+  WhatsApp na API oficial" (obsoleto no híbrido — barbearia não registra mais
+  nada na Meta).

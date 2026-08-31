@@ -39,14 +39,15 @@ async function callWhatsapp(action: 'connect' | 'status' | 'disconnect', salonId
 /**
  * Estado da conexão com o WhatsApp.
  *
- * Desde 2026-08-22 a conexão nova é a API OFICIAL da Meta (provedor
- * 'cloud_api'): não há QR code — o número é registrado junto com a nossa
- * equipe na entrada, e depois disso simplesmente funciona. A tela mostra isso
- * como fato consumado.
+ * MODELO HÍBRIDO (2026-08-30): a CONVERSA com o cliente acontece no número
+ * real da barbearia, pareado por QR code (Evolution) — é o fluxo principal
+ * desta tela. Lembretes, confirmações e reativação chegam ao cliente por um
+ * número DO CLUB CUT na API oficial da Meta (remetente central); a barbearia
+ * não configura nada para isso.
  *
- * O fluxo antigo da Evolution (QR code) continua aqui SÓ para as barbearias
- * que ainda não migraram — apagá-lo derrubaria quem depende dele hoje. Quando
- * a última unidade migrar, este bloco inteiro morre.
+ * O bloco 'cloud_api' abaixo atende só a barbearia que ainda está com o
+ * número vinculado direto na API oficial (transição); quando ela parear na
+ * Evolution, o vínculo sai do banco e este bloco deixa de aparecer.
  */
 export function ConexaoPage() {
   const { salonId, loading: salonLoading } = useSalon()
@@ -161,7 +162,7 @@ export function ConexaoPage() {
   )
 }
 
-/** O fluxo antigo por QR code, vivo só até a última barbearia migrar. */
+/** A conexão do número da barbearia (QR code) — o canal de CONVERSA do modelo híbrido. */
 function ConexaoEvolutionLegada({ salonId }: { salonId: string }) {
   const [status, setStatus] = useState<Status>('close')
   const [qrCode, setQrCode] = useState<string | null>(null)
@@ -266,8 +267,10 @@ function ConexaoEvolutionLegada({ salonId }: { salonId: string }) {
 
       <div className="mb-3 rounded-lg border border-border bg-surface-2 p-3">
         <p className="text-xs text-muted-foreground">
-          Esta unidade ainda usa a conexão por QR code. Em breve nossa equipe migra o número para a{' '}
-          <strong>API oficial da Meta</strong> — sem QR, sem celular ligado e sem risco de bloqueio.
+          Este é o número que <strong>conversa</strong> com seus clientes — o agente responde por
+          ele. Já os <strong>lembretes e confirmações</strong> chegam ao cliente por um número do
+          Club Cut, sempre com o nome da sua barbearia na mensagem. Vale avisar no balcão: “o
+          lembrete chega por outro número, mas é da gente”.
         </p>
       </div>
 

@@ -341,9 +341,14 @@ const SECOES: Secao[] = [
           'Na aba **Conexão**: conversas atendidas, tempo médio de resposta, agendamentos e cancelamentos feitos pelo agente, e quantos clientes pediram você. Dá para ver por semana ou por mês.',
       },
       {
-        p: 'Preciso deixar um celular ligado para o WhatsApp funcionar?',
+        p: 'Como o WhatsApp da barbearia se conecta ao sistema?',
         intro:
-          '**Não.** Seu número é conectado pela API oficial do WhatsApp (Meta) — sem QR code, sem celular ligado, sem risco de bloqueio. A conexão é feita uma única vez, junto com a nossa equipe, na entrada. Para trocar de número, fale com o suporte.',
+          'Na aba **Conexão**, clique em **Conectar WhatsApp** e escaneie o QR code com o celular da barbearia (WhatsApp → Aparelhos conectados). Pronto: o agente passa a responder os clientes **pelo seu número de sempre**. Se a conexão cair, é só escanear de novo na mesma tela.',
+      },
+      {
+        p: 'Por que o lembrete chega ao cliente por outro número?',
+        intro:
+          'Os **lembretes, confirmações e reativações** saem por um número do Club Cut na API oficial da Meta — sempre com o nome da sua barbearia na mensagem. Isso protege o seu número e garante os botões de "Sim, confirmo". Vale avisar o cliente no balcão: *"o lembrete chega por outro número, mas é da gente"*. A conversa normal continua toda no seu número.',
       },
     ],
   },

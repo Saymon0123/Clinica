@@ -74,7 +74,7 @@ export function StatsCard({
       ref={ref}
       className={
         hero
-          ? 'bg-primary text-primary-foreground rounded-2xl p-4 shadow-md shadow-primary/20 transition-all duration-300 ease-out hover:-translate-y-1'
+          ? 'heroi-superficie text-primary-foreground rounded-2xl p-4 shadow-md shadow-primary/20 transition-all duration-300 ease-out hover:-translate-y-1'
           : 'bg-surface border border-border rounded-2xl shadow-sm p-4 transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5'
       }
     >
@@ -95,9 +95,7 @@ export function StatsCard({
       </div>
 
       <div
-        className={`text-2xl mb-3 tabular-nums ${
-          hero ? 'font-bold' : 'font-semibold text-foreground'
-        }`}
+        className={`num-destaque text-2xl mb-3 ${hero ? '' : 'text-foreground'}`}
       >
         {formattedValue(animatedValue)}
       </div>

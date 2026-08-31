@@ -191,6 +191,43 @@ table,
   font-variant-numeric: tabular-nums;
 }
 
+/*
+  Numero de destaque do CRM (KPI, total, meta). Mesma receita da .landing-num:
+  o site ja fala em mono nos numeros grandes e o sistema falava em grotesco --
+  duas vozes para o mesmo produto. O mono ja e tabular por natureza, entao
+  dispensa o tabular-nums.
+*/
+.num-destaque {
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+/*
+  Superficie do card-heroi. O verde chapado ficava plano ao lado dos cards
+  brancos com elevacao; o gradiente diagonal do primary para um verde mais
+  fundo da volume sem inventar cor nenhuma -- os dois tons saem do proprio
+  --primary via color-mix.
+
+  No tema escuro o primary INVERTE (vira verde claro com tinta escura), entao
+  a mistura vai para o branco em vez do preto, senao o card escureceria e a
+  tinta escura por cima sumiria.
+*/
+.heroi-superficie {
+  background-image: linear-gradient(
+    135deg,
+    var(--primary) 0%,
+    color-mix(in srgb, var(--primary) 82%, #000) 100%
+  );
+}
+.dark .heroi-superficie {
+  background-image: linear-gradient(
+    135deg,
+    var(--primary) 0%,
+    color-mix(in srgb, var(--primary) 88%, #fff) 100%
+  );
+}
+
 body {
   margin: 0;
   font-family: 'Archivo', system-ui, 'Segoe UI', Roboto, sans-serif;

@@ -16,7 +16,7 @@ import {
   Wallet,
   Target,
 } from 'lucide-react'
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
 import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
 import { useFinanceiroData, type MetricKey, type PeriodFilter } from './useFinanceiroData'
@@ -372,6 +372,13 @@ export function FinanceiroPage() {
                     <stop offset="100%" stopColor="var(--chart-line)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
+                {/* Grade so horizontal e fraquissima: da referencia de valor sem
+                    virar gaiola. Vertical nao entra — o eixo X ja marca o mes. */}
+                <CartesianGrid
+                  vertical={false}
+                  stroke="var(--border)"
+                  strokeDasharray="3 3"
+                />
                 <XAxis
                   dataKey="month"
                   tickLine={false}
@@ -400,6 +407,25 @@ export function FinanceiroPage() {
                   fill="url(#clientsFill)"
                   animationDuration={700}
                   animationEasing="ease-out"
+                  /* Ponto so no ultimo mes: e o dado que interessa ("onde
+                     estamos agora"), e ponto em todos poluiria a curva. */
+                  dot={(props: { cx?: number; cy?: number; index?: number }) => {
+                    const ultimo = (props.index ?? -1) === data.clientsGrowth.length - 1
+                    if (!ultimo || props.cx == null || props.cy == null) {
+                      return <g key={props.index} />
+                    }
+                    return (
+                      <circle
+                        key={props.index}
+                        cx={props.cx}
+                        cy={props.cy}
+                        r={4}
+                        fill="var(--chart-line)"
+                        stroke="var(--surface)"
+                        strokeWidth={2}
+                      />
+                    )
+                  }}
                 />
               </AreaChart>
             </ResponsiveContainer>

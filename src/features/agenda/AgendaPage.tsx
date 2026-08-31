@@ -466,7 +466,7 @@ export function AgendaPage() {
       <div className="w-full lg:w-72 shrink-0 space-y-4">
         {/* Card-herói preenchido (referência CheckinOs, "Occupancy Rate"):
             o único bloco de cor cheia da tela, para o número do dia. */}
-        <div className="bg-primary text-primary-foreground rounded-2xl p-4 shadow-md shadow-primary/20">
+        <div className="heroi-superficie text-primary-foreground rounded-2xl p-4 shadow-md shadow-primary/20">
           <div className="flex items-start justify-between">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-primary-foreground/70">
               Reservas
@@ -476,7 +476,7 @@ export function AgendaPage() {
             </span>
           </div>
           <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-3xl font-bold tabular-nums leading-none">
+            <span className="num-destaque text-3xl leading-none">
               {appointments.length}
             </span>
             <span className="text-xs text-primary-foreground/70">

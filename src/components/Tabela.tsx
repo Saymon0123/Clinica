@@ -38,5 +38,7 @@ export function Linha({ className, children }: { className?: string; children: R
 }
 
 export function Td({ className, ...props }: TdHTMLAttributes<HTMLTableCellElement>) {
-  return <td className={`px-4 py-3 ${className ?? ''}`} {...props} />
+  // py-3.5 (leva C): linha mais alta, no respiro da referência — e é a altura
+  // que o avatar de 36px do <Pessoa> pede para não ficar espremido.
+  return <td className={`px-4 py-3.5 ${className ?? ''}`} {...props} />
 }

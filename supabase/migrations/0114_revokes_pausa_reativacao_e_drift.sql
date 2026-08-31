@@ -11,8 +11,12 @@
 --    existiam só no banco, fora de qualquer migration.
 
 -- 1) Revokes
+-- O revoke de `precificar_consumo_ia()` NÃO fica aqui: esta migration é quem
+-- versiona essa função (seção 4), então num banco aplicado do zero ela ainda
+-- não existe neste ponto e o revoke aborta com 42883 — foi o que derrubou o
+-- CI. Em produção passava porque lá a função já existia por drift. O revoke
+-- dela está no fim da seção 4, logo depois do create.
 revoke all on function public.trg_reativacao_pos_atendimento() from public, anon, authenticated;
-revoke all on function public.precificar_consumo_ia() from public, anon, authenticated;
 
 -- 2) Pausa apenas no vencimento real
 create or replace function public.expira_reativacoes_sem_resposta()
@@ -143,3 +147,8 @@ drop trigger if exists consumo_ia_precificar on public.consumo_ia;
 create trigger consumo_ia_precificar
   before insert on public.consumo_ia
   for each row execute function public.precificar_consumo_ia();
+
+-- Revoke da seção 1 que precisava esperar a função existir (ver comentário lá
+-- em cima). Mesma regra da 0095/0107: definer nunca executável via RPC por
+-- anon/authenticated.
+revoke all on function public.precificar_consumo_ia() from public, anon, authenticated;

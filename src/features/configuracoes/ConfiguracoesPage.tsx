@@ -42,6 +42,8 @@ export function ConfiguracoesPage() {
   const [nomeOriginal, setNomeOriginal] = useState('')
   const [endereco, setEndereco] = useState('')
   const [telefone, setTelefone] = useState('')
+  // Item 16: nota 5 na avaliação pós-atendimento manda o cliente avaliar aqui.
+  const [googleReviewUrl, setGoogleReviewUrl] = useState('')
   // Minutos livres exigidos antes e depois de cada atendimento. Zero mantem o
   // comportamento antigo, colado.
   const [folga, setFolga] = useState('0')
@@ -65,7 +67,7 @@ export function ConfiguracoesPage() {
     const { data, error } = await supabase
       .from('salons')
       .select(
-        'nome, endereco, telefone, horario_funcionamento, folga_entre_atendimentos_minutos, atraso_tolerado_minutos',
+        'nome, endereco, telefone, google_review_url, horario_funcionamento, folga_entre_atendimentos_minutos, atraso_tolerado_minutos',
       )
       .eq('id', salonId)
       .maybeSingle()
@@ -81,6 +83,7 @@ export function ConfiguracoesPage() {
     setNomeOriginal(data.nome ?? '')
     setEndereco(data.endereco ?? '')
     setTelefone(data.telefone ?? '')
+    setGoogleReviewUrl(data.google_review_url ?? '')
     setFolga(String(data.folga_entre_atendimentos_minutos ?? 0))
     setAtraso(String(data.atraso_tolerado_minutos ?? 10))
     setHorario(desserializarHorario(data.horario_funcionamento))
@@ -121,6 +124,7 @@ export function ConfiguracoesPage() {
         nome: nome.trim(),
         endereco: endereco.trim() || null,
         telefone: telefone.trim() || null,
+        google_review_url: googleReviewUrl.trim() || null,
         folga_entre_atendimentos_minutos: Math.min(60, Math.max(0, Number(folga) || 0)),
         // Mínimo de 5: abaixo disso o cliente recebe a pergunta enquanto ainda
         // está estacionando, e a barbearia parece impaciente.
@@ -207,6 +211,23 @@ export function ConfiguracoesPage() {
               }}
               onBlur={() => setTelefone((t) => (t.trim() ? formatarTelefone(t) : t))}
               placeholder="(11) 90000-0000"
+            />
+          </Campo>
+
+          <Campo
+            rotulo="Link de avaliação no Google (opcional)"
+            htmlFor="google-review"
+            apoio="Depois do atendimento, quem der nota 5 no WhatsApp recebe este link para avaliar a barbearia no Google. Pegue o seu em: Perfil da Empresa no Google → Pedir avaliações."
+          >
+            <Input
+              id="google-review"
+              value={googleReviewUrl}
+              onChange={(e) => {
+                setGoogleReviewUrl(e.target.value)
+                setSalvo(false)
+              }}
+              placeholder="https://g.page/r/..."
+              inputMode="url"
             />
           </Campo>
         </div>

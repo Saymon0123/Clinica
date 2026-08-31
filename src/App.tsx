@@ -55,6 +55,9 @@ const SobrePage = lazy(() => import('./features/site/SobrePage').then((m) => ({ 
 const AgendaPublicaPage = lazy(() =>
   import('./features/agendaPublica/AgendaPublicaPage').then((m) => ({ default: m.AgendaPublicaPage })),
 )
+const MeuHorarioPage = lazy(() =>
+  import('./features/agendaPublica/MeuHorarioPage').then((m) => ({ default: m.MeuHorarioPage })),
+)
 const TermosPage = lazy(() => import('./features/legal/TermosPage').then((m) => ({ default: m.TermosPage })))
 const PrivacidadePage = lazy(() =>
   import('./features/legal/PrivacidadePage').then((m) => ({ default: m.PrivacidadePage })),
@@ -116,6 +119,7 @@ function App() {
             <Route path="/admin/nova-barbearia" element={<NovaBarbeariaPage />} />
             <Route path="/convite/:token" element={<AceitarConvitePage />} />
             <Route path="/agendar/:salonId" element={<AgendaPublicaPage />} />
+            <Route path="/meu-horario/:token" element={<MeuHorarioPage />} />
             <Route path="/termos" element={<TermosPage />} />
             <Route path="/privacidade" element={<PrivacidadePage />} />
             <Route

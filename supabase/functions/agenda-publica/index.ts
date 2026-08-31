@@ -12,8 +12,13 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
  * horários livres e criar **um** agendamento para hoje. Nada mais.
  *
  * O que ela deliberadamente **não** faz: listar clientes, mostrar de quem é o
- * agendamento que ocupa um horário, cancelar, remarcar, ou agendar para outro
- * dia. Cada uma dessas viraria uma porta aberta na rua.
+ * agendamento que ocupa um horário, ou agendar para outro dia. Cada uma dessas
+ * viraria uma porta aberta na rua.
+ *
+ * Cancelar existe, mas NUNCA pela rua: só pelo `token_gestao` — um uuid
+ * impossível de adivinhar, gerado por agendamento e entregue apenas a quem
+ * marcou (tela de sucesso do QR). Quem tem o token cancela AQUELE horário e
+ * nada mais; remarcar é um link para o WhatsApp da barbearia.
  */
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
@@ -78,10 +83,77 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'Corpo invalido.' }, 400)
   }
 
+  const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+
+  // ------------------------------------------------------------------
+  // Gestão pelo token: ver e cancelar O PRÓPRIO horário. Sem salonId de
+  // propósito — o token resolve tudo, e não vaza nada de ninguém.
+  // ------------------------------------------------------------------
+  if (body.acao === 'meu_horario' || body.acao === 'cancelar_horario') {
+    const token = (body.token as string | undefined)?.trim() ?? ''
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
+      return json({ error: 'Link invalido.' }, 400)
+    }
+    // Freio contra varredura de tokens: uuid aleatório já torna o chute
+    // inviável, mas martelar também não fica de graça.
+    if (await taxaExcedida(admin, `gestao:${ipDe(req)}`, 12, 600)) {
+      return json({ error: 'Muitas tentativas. Aguarde alguns minutos.' }, 429)
+    }
+
+    const { data: ag } = await admin
+      .from('appointments')
+      .select(
+        'id, status, data_hora_inicio, services(nome), professionals(nome), salons(nome, telefone)',
+      )
+      .eq('token_gestao', token)
+      .maybeSingle()
+    if (!ag) return json({ error: 'Agendamento nao encontrado.' }, 404)
+
+    type Rel = { nome: string | null } | { nome: string | null }[] | null
+    const nomeDe = (r: Rel) => (Array.isArray(r) ? r[0]?.nome : r?.nome) ?? null
+    const salaoRel = (Array.isArray(ag.salons) ? ag.salons[0] : ag.salons) as
+      | { nome: string | null; telefone: string | null }
+      | null
+    const whatsappBarbearia = salaoRel?.telefone
+      ? '55' + salaoRel.telefone.replace(/\D/g, '').replace(/^55/, '')
+      : null
+
+    const info = {
+      status: ag.status,
+      inicio: ag.data_hora_inicio,
+      servico: nomeDe(ag.services as Rel),
+      barbeiro: nomeDe(ag.professionals as Rel),
+      barbearia: salaoRel?.nome ?? null,
+      whatsappBarbearia,
+    }
+
+    if (body.acao === 'meu_horario') return json(info)
+
+    // Cancelar: só horário ainda de pé, e com antecedência mínima — cancelar
+    // em cima da hora é conversa com a barbearia, não botão.
+    if (!['agendado', 'confirmado'].includes(ag.status)) {
+      return json({ ...info, error: 'Esse horario ja nao esta mais de pe.' }, 409)
+    }
+    const doisHoras = 2 * 3600000
+    if (new Date(ag.data_hora_inicio).getTime() - Date.now() < doisHoras) {
+      return json(
+        { ...info, error: 'Faltam menos de 2 horas — para mudar agora, chame a barbearia no WhatsApp.' },
+        409,
+      )
+    }
+    const { error: erroCancela } = await admin
+      .from('appointments')
+      .update({ status: 'cancelado' })
+      .eq('id', ag.id)
+    if (erroCancela) {
+      console.error('Erro ao cancelar pelo token:', erroCancela)
+      return json({ error: 'Nao foi possivel cancelar. Tente novamente.' }, 500)
+    }
+    return json({ ...info, status: 'cancelado', ok: true })
+  }
+
   const salonId = body.salonId as string | undefined
   if (!salonId) return json({ error: 'Barbearia nao informada.' }, 400)
-
-  const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
   // A barbearia existe, está ativa, está sendo atendida e tem o recurso ligado?
   //
@@ -287,7 +359,7 @@ Deno.serve(async (req: Request) => {
       status: 'agendado',
       origem: 'publico',
     })
-    .select('id, data_hora_inicio')
+    .select('id, data_hora_inicio, token_gestao')
     .single()
 
   if (erroAgendamento) {
@@ -315,5 +387,11 @@ Deno.serve(async (req: Request) => {
     )
   }
 
-  return json({ ok: true, agendamentoId: agendamento.id, inicio: agendamento.data_hora_inicio })
+  return json({
+    ok: true,
+    agendamentoId: agendamento.id,
+    inicio: agendamento.data_hora_inicio,
+    // O link de gestão: é assim que quem marcou pode cancelar sozinho depois.
+    tokenGestao: agendamento.token_gestao,
+  })
 })

@@ -55,6 +55,8 @@ export function AgendaPublicaPage() {
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [pronto, setPronto] = useState(false)
+  // O link de gestão: é a única chave para cancelar este horário depois.
+  const [tokenGestao, setTokenGestao] = useState<string | null>(null)
 
   const consultar = useCallback(
     async (servico?: string) => {
@@ -90,7 +92,7 @@ export function AgendaPublicaPage() {
     if (!escolhido || !servicoId) return setErro('Escolha um horário.')
 
     setEnviando(true)
-    const { data, error } = await invokeFunction<{ ok: boolean; conflito?: boolean }>(
+    const { data, error } = await invokeFunction<{ ok: boolean; conflito?: boolean; tokenGestao?: string }>(
       'agenda-publica',
       {
         body: {
@@ -114,6 +116,7 @@ export function AgendaPublicaPage() {
       consultar(servicoId ?? undefined)
       return
     }
+    setTokenGestao(data.tokenGestao ?? null)
     setPronto(true)
   }
 
@@ -144,9 +147,22 @@ export function AgendaPublicaPage() {
               <strong>{escolhido?.hora_local}</strong> com {escolhido?.profissional}
               {servico ? `, ${servico.nome}` : ''}.
             </p>
-            <p className="text-sm text-muted-foreground">
-              É só aguardar. Se precisar mudar alguma coisa, fale com a barbearia.
-            </p>
+            {tokenGestao ? (
+              <p className="text-sm text-muted-foreground">
+                Precisou desmarcar?{' '}
+                <a
+                  href={`/meu-horario/${tokenGestao}`}
+                  className="font-medium text-primary underline"
+                >
+                  Gerencie seu horário por este link
+                </a>{' '}
+                — salve nos favoritos ou tire um print.
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                É só aguardar. Se precisar mudar alguma coisa, fale com a barbearia.
+              </p>
+            )}
           </div>
         ) : carregando ? (
           <p className="text-sm text-muted-foreground">Carregando horários...</p>

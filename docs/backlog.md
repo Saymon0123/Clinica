@@ -1634,3 +1634,25 @@ Aberto da verificação:
   eventos_da_waba; e conferir escaping do detalhe no e-mail da auditoria (o
   fluxo 7yliDoD9AaQp3Qcm escapa HTML nos textos — verificado na revisão de
   29/08 — mas vale reconferir com o campo novo qualidade-waba).
+
+## Trio da realidade do balcão — itens 14, 12 e 16 entregues (2026-08-31)
+
+- **14 Saldo pelo agente**: view `saldo_de_pacotes_por_telefone` (0118) +
+  ferramenta "Saldo de Pacotes" no agente com identidade travada no número da
+  conversa (nunca $fromAI); prompt reescrito sem a contradição da seção
+  DINHEIRO (saldo pode, só via ferramenta; vazio = sem pacote). Testado:
+  agente chamou a ferramenta e não inventou número. Publicado.
+- **12 Cancelar/remarcar público**: `appointments.token_gestao` (0118) +
+  ações meu_horario/cancelar_horario na agenda-publica v7 (rate limit,
+  antecedência 2h, testada com curl 404/400) + página /meu-horario/:token no
+  CRM + link na tela de sucesso do QR. Remarcar = wa.me da barbearia.
+- **16 Avaliação pós-atendimento**: PRIMEIRO fluxo 100% Evolution do híbrido
+  (workflow NsHcELIXrETknywa, publicado): pede nota pelo número da barbearia,
+  sem template/janela/custo Meta; marca só após envio; 8 semanas de respiro
+  por cliente; nota registrada pelo agente (ferramenta "Registrar Avaliação",
+  tabela `avaliacoes`); nota 5 → link do Google (campo novo nas Configurações,
+  exposto em salons_atendendo pela 0119); nota ≤3 → dono avisado.
+
+Fase 2 do trio (backlog): mostrar média/lista de avaliações no CRM
+(dashboard); link de gestão também na confirmação do agente; teste real do
+ciclo avaliação quando a El Guardians parear na Evolution.

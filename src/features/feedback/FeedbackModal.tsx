@@ -137,7 +137,7 @@ export function FeedbackModal({ onClose }: { onClose: () => void }) {
               <button
                 type="submit"
                 disabled={enviando || !mensagem.trim()}
-                className="btn-primary rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50 shrink-0"
+                className="btn-primary rounded-full px-5 py-2 text-sm font-medium disabled:opacity-50 shrink-0"
               >
                 {enviando ? 'Enviando...' : 'Enviar'}
               </button>

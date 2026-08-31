@@ -128,7 +128,7 @@ export function ClientesPage() {
           )}
           <button
             onClick={() => setShowNewClient(true)}
-            className="flex items-center gap-2 btn-primary rounded-lg px-4 py-2 text-sm font-medium"
+            className="flex items-center gap-2 btn-primary rounded-full px-5 py-2 text-sm font-medium"
           >
             <Plus size={16} />
             Adicionar
@@ -182,7 +182,7 @@ export function ClientesPage() {
           </p>
           <button
             onClick={() => setShowNewClient(true)}
-            className="flex items-center gap-2 btn-primary rounded-lg px-4 py-2 text-sm font-medium"
+            className="flex items-center gap-2 btn-primary rounded-full px-5 py-2 text-sm font-medium"
           >
             <Plus size={16} />
             Adicionar

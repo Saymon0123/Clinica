@@ -160,7 +160,7 @@ export function CatalogoPage() {
           <div className="flex justify-end mb-3">
             <button
               onClick={() => setEditingService('new')}
-              className="flex items-center gap-2 btn-primary rounded-lg px-4 py-2 text-sm font-medium"
+              className="flex items-center gap-2 btn-primary rounded-full px-5 py-2 text-sm font-medium"
             >
               <Plus size={16} />
               Novo serviço
@@ -180,7 +180,7 @@ export function CatalogoPage() {
                 acao={
                   <button
                     onClick={() => setEditingService('new')}
-                    className="flex items-center gap-2 btn-primary rounded-lg px-4 py-2 text-sm font-medium"
+                    className="flex items-center gap-2 btn-primary rounded-full px-5 py-2 text-sm font-medium"
                   >
                     <Plus size={16} />
                     Novo serviço
@@ -243,7 +243,7 @@ export function CatalogoPage() {
             <div className="flex justify-end mb-3">
               <button
                 onClick={() => setEditingPacote('new')}
-                className="flex items-center gap-2 btn-primary rounded-lg px-4 py-2 text-sm font-medium"
+                className="flex items-center gap-2 btn-primary rounded-full px-5 py-2 text-sm font-medium"
               >
                 <Plus size={16} />
                 Novo pacote
@@ -270,7 +270,7 @@ export function CatalogoPage() {
                   isManager ? (
                     <button
                       onClick={() => setEditingPacote('new')}
-                      className="flex items-center gap-2 btn-primary rounded-lg px-4 py-2 text-sm font-medium"
+                      className="flex items-center gap-2 btn-primary rounded-full px-5 py-2 text-sm font-medium"
                     >
                       <Plus size={16} />
                       Novo pacote
@@ -343,7 +343,7 @@ export function CatalogoPage() {
             <div className="flex justify-end mb-3">
               <button
                 onClick={() => setEditingProduct('new')}
-                className="flex items-center gap-2 btn-primary rounded-lg px-4 py-2 text-sm font-medium"
+                className="flex items-center gap-2 btn-primary rounded-full px-5 py-2 text-sm font-medium"
               >
                 <Plus size={16} />
                 Novo produto
@@ -365,7 +365,7 @@ export function CatalogoPage() {
                   isManager ? (
                     <button
                       onClick={() => setEditingProduct('new')}
-                      className="flex items-center gap-2 btn-primary rounded-lg px-4 py-2 text-sm font-medium"
+                      className="flex items-center gap-2 btn-primary rounded-full px-5 py-2 text-sm font-medium"
                     >
                       <Plus size={16} />
                       Novo produto

@@ -317,7 +317,7 @@ export function AgendaPage() {
 
           <button
             onClick={() => setModalState({})}
-            className="flex items-center gap-2 btn-primary rounded-lg px-4 py-2 text-sm font-medium"
+            className="flex items-center gap-2 btn-primary rounded-full px-5 py-2 text-sm font-medium"
           >
             <Plus size={16} />
             Nova reserva
@@ -336,7 +336,7 @@ export function AgendaPage() {
             titulo="Nenhum profissional cadastrado ainda"
             descricao="Cadastre um profissional para começar a usar a agenda."
             acao={
-              <Link to="/equipe" className="btn-primary rounded-lg px-4 py-2 text-sm font-medium inline-block">
+              <Link to="/equipe" className="btn-primary rounded-full px-5 py-2 text-sm font-medium inline-block">
                 Ir para Equipe
               </Link>
             }

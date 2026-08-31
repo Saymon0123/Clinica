@@ -55,7 +55,7 @@ export function AcessoBloqueado({ assinatura }: { assinatura: Assinatura }) {
             </p>
             <Link
               to="/assinatura"
-              className="btn-primary rounded-lg px-4 py-2 text-sm font-medium inline-flex mt-4"
+              className="btn-primary rounded-full px-5 py-2 text-sm font-medium inline-flex mt-4"
             >
               Ver assinatura
             </Link>

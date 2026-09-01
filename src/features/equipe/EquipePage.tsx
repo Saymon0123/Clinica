@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Check, Clock, Copy, Link2, Pencil, Percent, Plus, Power, Trash2, UserPlus, Users, X } from 'lucide-react'
+import { Check, Clock, Copy, Link2, Pencil, Percent, Plus, Power, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { urlDoConvite } from '../../lib/appUrl'
 import { formatarTelefone, linkWhatsApp } from '../../lib/telefone'
@@ -61,6 +61,8 @@ export function EquipePage() {
   const [editandoComissao, setEditandoComissao] = useState<string | null>(null)
   const [comissaoRascunho, setComissaoRascunho] = useState('')
   const [salvandoMembro, setSalvandoMembro] = useState<string | null>(null)
+  // Tirar da equipe é irreversível pelo CRM: confirma antes, dizendo o nome.
+  const [tirandoDaEquipe, setTirandoDaEquipe] = useState<{ vinculo: string; nome: string } | null>(null)
 
   const carregar = useCallback(async () => {
     if (!salonId) return
@@ -125,17 +127,62 @@ export function EquipePage() {
 
     setSalvandoMembro(v.id)
     setErro(null)
-    const { error } = await supabase.from('user_salons').update({ role: novo }).eq('id', v.id)
+    // RPC, não update direto: desde a 0122 a escrita em `user_salons` saiu do
+    // alcance do PostgREST. A trava de dono e a do último dono moram no banco
+    // agora — as checagens acima viraram só o aviso amigável.
+    const { error } = await supabase.rpc('definir_papel_do_membro', {
+      p_vinculo_id: v.id,
+      p_papel: novo,
+    })
     setSalvandoMembro(null)
     if (error) {
       console.error('Erro ao trocar a função:', error)
-      setErro('Não foi possível alterar a função.')
+      setErro(
+        error.message?.includes('sem dono')
+          ? 'A barbearia ficaria sem dono. Promova outra pessoa antes.'
+          : error.message?.includes('Apenas o dono')
+            ? 'Só o dono da barbearia pode mudar a função de alguém.'
+            : 'Não foi possível alterar a função.',
+      )
       return
     }
     // O próprio papel mudou: o contexto recarrega para o menu e as permissões
     // acompanharem sem novo login.
     if (v.user_id === user?.id) await recarregarUnidades()
     toast('Função alterada')
+    carregar()
+  }
+
+  /**
+   * Tirar da equipe = tirar o ACESSO.
+   *
+   * "Desativar" só some com o barbeiro da agenda; o vínculo em `user_salons`
+   * continuava, e com ele o login, os agendamentos e a lista de clientes. O
+   * dono achava que tinha demitido do sistema porque o botão dizia "Desativar".
+   * A RPC apaga o vínculo, desativa o profissional (sem apagar histórico) e
+   * recusa deixar a barbearia sem dono.
+   */
+  async function confirmarTirarDaEquipe() {
+    if (!tirandoDaEquipe) return
+    setSalvandoMembro(tirandoDaEquipe.vinculo)
+    setErro(null)
+    const { error } = await supabase.rpc('tirar_da_equipe', {
+      p_vinculo_id: tirandoDaEquipe.vinculo,
+    })
+    setSalvandoMembro(null)
+    setTirandoDaEquipe(null)
+    if (error) {
+      console.error('Erro ao tirar da equipe:', error)
+      setErro(
+        error.message?.includes('sem dono')
+          ? 'A barbearia ficaria sem dono. Promova outra pessoa antes.'
+          : error.message?.includes('Apenas o dono')
+            ? 'Só o dono da barbearia pode tirar alguém da equipe.'
+            : 'Não foi possível tirar da equipe.',
+      )
+      return
+    }
+    toast('Tirado da equipe — o acesso foi encerrado')
     carregar()
   }
 
@@ -500,6 +547,19 @@ export function EquipePage() {
                 <Power size={16} />
                 <span className="text-[10px] leading-none">{m.ativo ? 'Desativar' : 'Ativar'}</span>
               </button>
+              {/* Desativar tira da agenda; TIRAR DA EQUIPE tira o acesso. Eram a
+                  mesma coisa na cabeça do dono e não eram no sistema: o
+                  desativado continuava entrando e lendo clientes. */}
+              {vinculo && (
+                <button
+                  onClick={() => setTirandoDaEquipe({ vinculo: vinculo.id, nome: m.nome })}
+                  aria-label={`Tirar ${m.nome} da equipe`}
+                  className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-md text-muted-foreground hover:text-danger hover:bg-surface-2"
+                >
+                  <UserMinus size={16} />
+                  <span className="text-[10px] leading-none">Tirar</span>
+                </button>
+              )}
             </div>
           </div>
         ))}
@@ -528,6 +588,36 @@ export function EquipePage() {
           onClose={() => setModalAberto(false)}
           onCriado={carregar}
         />
+      )}
+
+      {tirandoDaEquipe && (
+        <Modal onClose={() => setTirandoDaEquipe(null)} titulo="Tirar da equipe" tamanho="sm">
+          <div className="space-y-4">
+            <p className="text-sm text-foreground">
+              <strong>{tirandoDaEquipe.nome}</strong> perde o acesso ao sistema agora: não entra
+              mais, não vê a agenda nem os clientes da barbearia.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              O histórico de atendimentos e comissões fica guardado, e ele sai da agenda. Para
+              voltar, precisa de um convite novo.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={confirmarTirarDaEquipe}
+                disabled={salvandoMembro === tirandoDaEquipe.vinculo}
+                className="flex-1 btn-danger rounded-lg px-3 py-2.5 text-sm font-medium disabled:opacity-50"
+              >
+                {salvandoMembro === tirandoDaEquipe.vinculo ? 'Tirando...' : 'Tirar da equipe'}
+              </button>
+              <button
+                onClick={() => setTirandoDaEquipe(null)}
+                className="flex-1 btn-secondary rounded-lg px-3 py-2.5 text-sm font-medium"
+              >
+                Manter
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   )

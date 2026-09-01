@@ -4,6 +4,7 @@ import { Modal } from '../../components/Modal'
 import { Campo, Input, Select } from '../../components/Campo'
 import { Badge } from '../../components/Badge'
 import { supabase } from '../../lib/supabase'
+import { traduzirErroDoBanco } from '../../lib/erroDoBanco'
 import type { Professional, Service } from './types'
 import { ErroInline } from '../../components/ErroInline'
 
@@ -108,15 +109,24 @@ export function NewAppointmentModal({
       const digitos = clientPhone.replace(/\D/g, '')
       let existingClient: { id: string } | null = null
 
-      if (digitos.length >= 8) {
-        const { data, error: phoneError } = await supabase
-          .from('clients')
-          .select('id')
-          .eq('salon_id', salonId)
-          .eq('telefone_norm', digitos.slice(-8))
-          .limit(1)
-        if (phoneError) throw phoneError
-        existingClient = data?.[0] ?? null
+      // Com telefone completo, quem resolve é a RPC `garantir_cliente`: ela
+      // acha (ou cria) o cliente POR CIMA da RLS de leitura. Antes, um cliente
+      // cadastrado por outro barbeiro era invisível na busca e o cadastro
+      // batia no índice único — o barbeiro ficava travado sem saída pela tela
+      // (achado 11 da revisão de 01/09).
+      if (digitos.length >= 10) {
+        const { data, error: rpcError } = await supabase.rpc('garantir_cliente', {
+          p_salon_id: salonId,
+          p_nome: clientName.trim(),
+          p_telefone: clientPhone.trim(),
+        })
+        if (rpcError) throw rpcError
+        const resolvido = (data as { id: string; nome: string; ja_existia: boolean }[] | null)?.[0]
+        if (!resolvido) throw new Error('Não foi possível identificar o cliente.')
+        existingClient = { id: resolvido.id }
+        // Cliente nascido nesta tentativa: se a reserva falhar adiante, ele é
+        // desfeito junto (cadastro órfão foi defeito já corrigido antes).
+        if (!resolvido.ja_existia) clienteCriadoAgora = resolvido.id
       }
 
       if (!existingClient && digitos.length < 8) {
@@ -208,10 +218,16 @@ export function NewAppointmentModal({
         setError(
           'Os serviços juntos não cabem nesse horário — o seguinte já está ocupado. Escolha outro horário ou menos serviços.',
         )
-      } else if (code === '23P01') {
-        setError('Já existe um agendamento nesse horário para este profissional. Escolha outro horário.')
       } else {
-        setError('Não foi possível criar a reserva. Tente novamente.')
+        // Tradutor compartilhado: o mesmo erro do banco passa a dizer a mesma
+        // coisa aqui e na aba Clientes.
+        setError(
+          traduzirErroDoBanco(
+            erro,
+            { '23P01': 'Já existe um agendamento nesse horário para este profissional. Escolha outro horário.' },
+            'Não foi possível criar a reserva. Tente novamente.',
+          ),
+        )
       }
     } finally {
       setSubmitting(false)

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Modal } from '../../components/Modal'
 import { Campo, Input, TextArea } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
+import { traduzirErroDoBanco } from '../../lib/erroDoBanco'
 import type { Client } from './types'
 import { ErroInline } from '../../components/ErroInline'
 
@@ -52,11 +53,13 @@ export function NewClientModal({ salonId, initial, onClose, onCreated }: Props) 
       onClose()
     } catch (err) {
       console.error('Erro ao salvar cliente:', err)
-      const code = (err as { code?: string } | null)?.code
+      // Mesmo tradutor da Agenda: erro do banco fala a mesma língua nas duas.
       setError(
-        code === '23505'
-          ? 'Já existe um cliente cadastrado com esse telefone.'
-          : 'Não foi possível salvar o cliente. Tente novamente.',
+        traduzirErroDoBanco(
+          err as { code?: string; message?: string },
+          undefined,
+          'Não foi possível salvar o cliente. Tente novamente.',
+        ),
       )
     } finally {
       setSubmitting(false)

@@ -103,8 +103,11 @@ export function NewPacoteModal({
       if (pacote) {
         const { error: upError } = await supabase.from('pacotes').update(payload).eq('id', pacote.id)
         if (upError) throw upError
-        // Composição: substitui inteira. Pacotes já vendidos não mudam — o
-        // saldo do cliente aponta para os itens da época via consumos.
+        // Composição: substitui inteira. Quem JÁ comprou não é afetado — desde
+        // a migration 0123 a composição é copiada para `pacote_do_cliente_itens`
+        // no ato da venda, e é dessa cópia que o saldo do cliente sai. Antes
+        // disso a view lia os itens atuais do modelo: editar um pacote de 10
+        // para 5 tirava crédito de quem tinha pagado por 10.
         const { error: delError } = await supabase.from('pacote_itens').delete().eq('pacote_id', pacote.id)
         if (delError) throw delError
       } else {
@@ -144,6 +147,17 @@ export function NewPacoteModal({
               placeholder="5 cortes"
             />
           </Campo>
+
+          {/* Editar composição é seguro desde a 0123 (a venda congela o que o
+              cliente levou), mas o barbeiro precisa saber que o novo valor não
+              alcança quem já comprou — senão ele "corrige" um pacote achando
+              que está corrigindo o crédito de alguém. */}
+          {pacote && (
+            <p className="text-xs text-muted-foreground bg-surface-2 rounded-lg px-3 py-2">
+              Mudanças aqui valem só para <strong>novas vendas</strong>. Quem já comprou mantém o
+              que pagou.
+            </p>
+          )}
 
           <div>
             <span className="text-xs font-medium text-muted-foreground">O que está incluído</span>

@@ -1696,3 +1696,29 @@ Fase 2 (pendente, decisão consciente): agente de WhatsApp e QR público seguem
 marcando UM serviço — ensinar a IA a somar duração é risco de overbooking e
 só entra com teste real de conversa; quando entrar, o prompt precisa citar
 "corte + barba" nas confirmações e a disponibilidade considerar a soma.
+
+## Correções de rota — avaliação e UX de serviços (2026-09-01)
+
+**Regra enunciada pelo Saymon:** toda conversa INICIADA por nós (reativação,
+lembrete, avaliação) sai pelo número central da API oficial; a Evolution só
+responde quem falou primeiro. Reduz risco de banimento e mantém o número do
+barbeiro fora da linha de tiro.
+
+- Avaliação migrada da Evolution para a Cloud API (migration 0121): template
+  `avaliacao_pos_atendimento` (rascunho, entra na leva a submeter à Meta) com
+  3 botões (Otimo/Bom/Podia melhorar → notas 5/4/2); view `avaliacoes_a_pedir`
+  agora é template-gated e usa o remetente central; `avaliacao_pedidos` guarda
+  o wamid; RPC `responder_avaliacao` transforma clique em nota, devolve o texto
+  pronto (nota 5 + link do Google) e sinaliza avisar o dono; nota <=3 vira
+  alerta na auditoria (view `auditoria_avaliacao`). Webhook v10 tenta
+  responder_avaliacao quando responder_lembrete não reconhece o wamid. Fluxo
+  n8n NsHcELIXrETknywa republicado enviando sendTemplate + RPC com wamid.
+  Testado no banco: clique→nota→resposta→alerta→clique repetido não duplica.
+- UX de múltiplos serviços refeita (NewAppointmentModal): saíram os chips de
+  "adicionais sugeridos"; entrou a mecânica da comanda — select + Adicionar,
+  lista dos escolhidos com remover, badge "principal" no primeiro, total
+  somado. Nada é sugerido ao barbeiro.
+
+Pendente: a ferramenta "Registrar Avaliação" do agente continua existindo para
+quem responder por texto no número da barbearia (caminho secundário) — avaliar
+se vale manter depois de ver o uso real.

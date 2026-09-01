@@ -212,12 +212,39 @@ Deno.serve(async (req) => {
                 console.error('responder_lembrete (central) falhou:', error.message)
                 continue
               }
-              // No ramo por-salão, atendido=false devolve a mensagem ao agente.
-              // Aqui não há agente — então precisa ao menos deixar rastro, senão
-              // um clique com wamid desconhecido some sem ninguém saber.
+              // Não era lembrete: pode ser o clique da pesquisa de avaliação,
+              // que sai pelo mesmo número central (regra de 01/09: toda
+              // conversa iniciada por nós vai pela oficial). Mesma mecânica —
+              // o banco decide pelo wamid e devolve o texto pronto.
               if (!r?.atendido) {
-                console.error('clique no numero central sem lembrete correspondente:',
-                  m.context.id, 'acao:', r?.acao ?? 'desconhecida', 'de:', m.from)
+                const { data: av, error: erroAv } = await admin.rpc('responder_avaliacao', {
+                  p_message_id: m.context.id,
+                  p_botao: texto,
+                })
+                if (erroAv) {
+                  console.error('responder_avaliacao falhou:', erroAv.message)
+                  continue
+                }
+                if (av?.atendido && av.resposta && N8N_LEMBRETE_URL) {
+                  await fetch(N8N_LEMBRETE_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      salon_id: av.salon_id ?? null,
+                      phone_number_id: phoneNumberId,
+                      contact_phone: m.from,
+                      appointment_id: null,
+                      acao: 'avaliacao',
+                      nota: av.nota ?? null,
+                      // Nota baixa: o fluxo avisa o dono no canal de alertas.
+                      avisar_dono: av.avisar_dono === true,
+                      resposta: av.resposta,
+                    }),
+                  })
+                } else if (!av?.atendido) {
+                  console.error('clique no numero central sem lembrete nem avaliacao:',
+                    m.context.id, 'de:', m.from)
+                }
                 continue
               }
               if (r.atendido && (r.resposta || r.entregar_ao_agente) && N8N_LEMBRETE_URL) {

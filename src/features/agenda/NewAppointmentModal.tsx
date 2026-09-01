@@ -1,6 +1,8 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
+import { Plus, Trash2 } from 'lucide-react'
 import { Modal } from '../../components/Modal'
 import { Campo, Input, Select } from '../../components/Campo'
+import { Badge } from '../../components/Badge'
 import { supabase } from '../../lib/supabase'
 import type { Professional, Service } from './types'
 import { ErroInline } from '../../components/ErroInline'
@@ -36,30 +38,36 @@ export function NewAppointmentModal({
   const [clientName, setClientName] = useState('')
   const [clientPhone, setClientPhone] = useState('')
   const [professionalId, setProfessionalId] = useState(defaultProfessionalId ?? professionals[0]?.id ?? '')
-  const [serviceId, setServiceId] = useState(services[0]?.id ?? '')
-  // Serviços extras (item 6: corte + barba no mesmo horário). O select
-  // principal continua sendo o primeiro/serviço-âncora; estes são somados.
-  const [extraServiceIds, setExtraServiceIds] = useState<string[]>([])
+  // Serviços da reserva, na ordem em que o barbeiro adicionou (item 6: corte +
+  // barba no mesmo horário). Nada vem pré-selecionado nem sugerido — o
+  // dono do produto rejeitou chips de "adicionais"; cada serviço entra por
+  // escolha explícita, item a item, igual à comanda (NewSaleModal). O
+  // primeiro da lista é o serviço PRINCIPAL (vai em `service_id`).
+  const [selectedServices, setSelectedServices] = useState<Service[]>([])
+  const [serviceToAdd, setServiceToAdd] = useState('')
   const [time, setTime] = useState(defaultTime ?? '09:00')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Trocar o serviço principal não pode deixar o mesmo id duplicado na lista
-  // de extras.
-  useEffect(() => {
-    setExtraServiceIds((prev) => prev.filter((id) => id !== serviceId))
-  }, [serviceId])
+  // Já adicionado não aparece de novo no seletor — evita duplicar o mesmo
+  // serviço na lista.
+  const servicosDisponiveis = services.filter(
+    (s) => !selectedServices.some((sel) => sel.id === s.id),
+  )
 
-  function toggleExtraService(id: string) {
-    setExtraServiceIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    )
+  function addService() {
+    if (!serviceToAdd) return
+    const servico = services.find((s) => s.id === serviceToAdd)
+    if (!servico) return
+    setSelectedServices((prev) => [...prev, servico])
+    setServiceToAdd('')
   }
 
-  const outrosServicos = services.filter((s) => s.id !== serviceId)
-  const duracaoTotal =
-    (services.find((s) => s.id === serviceId)?.duracao_minutos ?? 0) +
-    extraServiceIds.reduce((acc, id) => acc + (services.find((s) => s.id === id)?.duracao_minutos ?? 0), 0)
+  function removeService(index: number) {
+    setSelectedServices((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const duracaoTotal = selectedServices.reduce((acc, s) => acc + s.duracao_minutos, 0)
 
   function formatDuracao(min: number) {
     const h = Math.floor(min / 60)
@@ -77,14 +85,12 @@ export function NewAppointmentModal({
       setError('Informe o nome do cliente.')
       return
     }
-    if (!professionalId || !serviceId) {
-      setError('Selecione profissional e serviço.')
+    if (!professionalId) {
+      setError('Selecione o profissional.')
       return
     }
-
-    const service = services.find((s) => s.id === serviceId)
-    if (!service) {
-      setError('Serviço inválido.')
+    if (selectedServices.length === 0) {
+      setError('Adicione ao menos um serviço.')
       return
     }
 
@@ -139,8 +145,9 @@ export function NewAppointmentModal({
         clienteCriadoAgora = newClient.id
       }
 
+      const servicoPrincipal = selectedServices[0]
       const start = toDateTimeLocal(date, time)
-      const end = new Date(start.getTime() + service.duracao_minutos * 60000)
+      const end = new Date(start.getTime() + servicoPrincipal.duracao_minutos * 60000)
 
       const { data: novoAgendamento, error: apptError } = await supabase
         .from('appointments')
@@ -148,7 +155,7 @@ export function NewAppointmentModal({
           salon_id: salonId,
           client_id: clientId,
           professional_id: professionalId,
-          service_id: serviceId,
+          service_id: servicoPrincipal.id,
           data_hora_inicio: start.toISOString(),
           data_hora_fim: end.toISOString(),
           status: 'agendado',
@@ -160,10 +167,10 @@ export function NewAppointmentModal({
       // Corte + barba etc: define a lista completa de serviços do
       // agendamento. A RPC recalcula o fim (soma das durações) e recusa
       // (23P01) se não couber antes do próximo horário do profissional.
-      if (extraServiceIds.length > 0) {
+      if (selectedServices.length > 1) {
         const { error: servicosError } = await supabase.rpc('definir_servicos_do_agendamento', {
           p_appointment_id: novoAgendamento.id,
-          p_service_ids: [serviceId, ...extraServiceIds],
+          p_service_ids: selectedServices.map((s) => s.id),
         })
         if (servicosError) {
           const { error: rollbackError } = await supabase
@@ -197,7 +204,7 @@ export function NewAppointmentModal({
       const erro = err as { code?: string; message?: string } | null
       const code = erro?.code
       const mensagem = erro?.message ?? ''
-      if (code === '23P01' && extraServiceIds.length > 0 && mensagem.toLowerCase().includes('sobreposicao')) {
+      if (code === '23P01' && selectedServices.length > 1 && mensagem.toLowerCase().includes('sobreposicao')) {
         setError(
           'Os serviços juntos não cabem nesse horário — o seguinte já está ocupado. Escolha outro horário ou menos serviços.',
         )
@@ -246,47 +253,71 @@ export function NewAppointmentModal({
             </Select>
           </Campo>
 
-          <Campo rotulo="Serviço" htmlFor="service">
-            <Select
-              id="service"
-              value={serviceId}
-              onChange={(e) => setServiceId(e.target.value)}
-              required
-            >
-              {services.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.nome} · {s.duracao_minutos}min · R$ {s.preco.toFixed(2)}
-                </option>
-              ))}
-            </Select>
-          </Campo>
+          {/* Adição de serviços: mesma mecânica da comanda (NewSaleModal) —
+              nada sugerido, o barbeiro escolhe e adiciona um de cada vez. */}
+          <div className="border border-border rounded-lg p-3 space-y-2">
+            <span className="text-xs font-medium text-muted-foreground">Adicionar serviço</span>
+            <div className="flex flex-wrap gap-2">
+              <Select
+                value={serviceToAdd}
+                onChange={(e) => setServiceToAdd(e.target.value)}
+                className="flex-1 min-w-36"
+                aria-label="Serviço a adicionar"
+              >
+                <option value="">Selecione...</option>
+                {servicosDisponiveis.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.nome} · {formatDuracao(s.duracao_minutos)} · R$ {s.preco.toFixed(2)}
+                  </option>
+                ))}
+              </Select>
+              <button
+                onClick={addService}
+                type="button"
+                disabled={!serviceToAdd}
+                className="flex items-center gap-1 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
+              >
+                <Plus size={14} />
+                Adicionar
+              </button>
+            </div>
+          </div>
 
-          {outrosServicos.length > 0 && (
+          {/* Lista dos serviços escolhidos, na ordem em que entraram. O
+              primeiro é o principal (vira `service_id`). */}
+          {selectedServices.length > 0 && (
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground">Adicionar outro serviço</span>
-                {extraServiceIds.length > 0 && (
-                  <span className="text-xs font-medium text-foreground">
-                    Duração total: {formatDuracao(duracaoTotal)}
+                <span className="text-xs font-medium text-muted-foreground">Serviços da reserva</span>
+                <span className="text-xs font-medium text-foreground">
+                  Total: {formatDuracao(duracaoTotal)}
+                </span>
+              </div>
+              {selectedServices.map((s, idx) => (
+                <div
+                  key={`${s.id}-${idx}`}
+                  className="flex items-center justify-between gap-2 bg-surface-2 rounded-lg px-3 py-2 text-sm"
+                >
+                  <span className="flex items-center gap-1.5 min-w-0">
+                    {idx === 0 && <Badge variante="marca">principal</Badge>}
+                    <span className="truncate text-foreground min-w-0 flex-1">
+                      {s.nome}
+                      <span className="text-muted-foreground">
+                        {' '}
+                        · {formatDuracao(s.duracao_minutos)} · R$ {s.preco.toFixed(2)}
+                      </span>
+                    </span>
                   </span>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {outrosServicos.map((s) => {
-                  const selecionado = extraServiceIds.includes(s.id)
-                  return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => toggleExtraService(s.id)}
-                      aria-pressed={selecionado}
-                      className={`btn-chip ${selecionado ? 'btn-chip-primario' : ''}`}
-                    >
-                      {s.nome} · {formatDuracao(s.duracao_minutos)}
-                    </button>
-                  )
-                })}
-              </div>
+                  <button
+                    onClick={() => removeService(idx)}
+                    type="button"
+                    aria-label={`Remover ${s.nome}`}
+                    className="text-muted-foreground hover:text-danger shrink-0"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
             </div>
           )}
 
@@ -312,7 +343,7 @@ export function NewAppointmentModal({
             </button>
             <button
               type="submit"
-              disabled={submitting || professionals.length === 0 || services.length === 0}
+              disabled={submitting || professionals.length === 0 || services.length === 0 || selectedServices.length === 0}
               className="flex-1 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
               {submitting ? 'Salvando...' : 'Salvar reserva'}

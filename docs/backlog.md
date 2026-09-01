@@ -1722,3 +1722,16 @@ barbeiro fora da linha de tiro.
 Pendente: a ferramenta "Registrar Avaliação" do agente continua existindo para
 quem responder por texto no número da barbearia (caminho secundário) — avaliar
 se vale manter depois de ver o uso real.
+
+### El Guardians desvinculada do número oficial (2026-09-01)
+Diagnóstico: a aba Conexão mostrava "API oficial" para a El Guardians porque
+ela ainda tinha `provedor = 'cloud_api'` — e o phone_number_id dela era o MESMO
+que virou remetente central. Efeito escondido: `salon_por_phone_number_id`
+resolvia o número central para a El Guardians, então o ramo central do webhook
+nunca rodava e texto solto de cliente de OUTRA barbearia cairia na conversa
+dela. Corrigido: linha da El Guardians voltou para evolution sem
+phone_number_id (verificado: central_resolve_salao = null; nenhum salão em
+cloud_api). Blindagem no CRM: o bloco "oficial" agora exige phone_number_id
+próprio, e o texto passou a explicar o híbrido.
+Pendente do Saymon: parear o QR da El Guardians e testar conversa (texto +
+áudio) — é o teste que valida o ramo Evolution e o ramo central de uma vez.

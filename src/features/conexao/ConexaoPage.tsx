@@ -92,7 +92,13 @@ export function ConexaoPage() {
     )
   }
 
-  const oficial = conexao?.provedor === 'cloud_api'
+  // No híbrido, barbearia nenhuma fala pela Cloud API: esse bloco só existe
+  // para o dia da coexistência (número do barbeiro na oficial, sem sair do
+  // celular). Enquanto isso, `provedor = 'cloud_api'` numa barbearia é resto
+  // do modelo antigo — e mostrar "conectado pela API oficial" esconde que ela
+  // está sem canal de conversa. Sem phone_number_id, cai no QR, que é o
+  // caminho certo hoje.
+  const oficial = conexao?.provedor === 'cloud_api' && !!conexao?.phone_number_id
 
   if (estado.erro) {
     return (
@@ -123,30 +129,22 @@ export function ConexaoPage() {
                 WhatsApp
                 <BadgeCheck size={16} className="text-success" />
               </div>
-              <div className="text-xs text-muted-foreground">
-                {conexao?.phone_number_id ? 'Conectado pela API oficial da Meta' : 'Registro em andamento'}
-              </div>
+              <div className="text-xs text-muted-foreground">Conectado pela API oficial da Meta</div>
             </div>
           </div>
 
-          {conexao?.phone_number_id ? (
-            <div className="flex items-start gap-2 text-success bg-success-soft rounded-lg px-3 py-2 text-sm">
-              <CheckCircle2 size={16} className="shrink-0 mt-0.5" />
-              <span>
-                Seu número está conectado pela API oficial do WhatsApp — sem QR code, sem celular
-                ligado, sem risco de banimento. O agente atende sozinho.
-              </span>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              O registro do seu número na API oficial é feito junto com a nossa equipe. Se ainda não
-              foi concluído, fale com o suporte.
-            </p>
-          )}
+          <div className="flex items-start gap-2 text-success bg-success-soft rounded-lg px-3 py-2 text-sm">
+            <CheckCircle2 size={16} className="shrink-0 mt-0.5" />
+            <span>
+              Este número atende pela API oficial do WhatsApp — sem QR code e sem celular ligado. O
+              agente responde seus clientes por ele.
+            </span>
+          </div>
 
           <p className="text-xs text-muted-foreground mt-3">
-            Precisa trocar o número da barbearia? Fale com o suporte — a troca é feita com a nossa
-            equipe para o histórico das conversas não se perder.
+            Os lembretes e confirmações continuam saindo por um número do Club Cut, sempre com o
+            nome da sua barbearia na mensagem. Precisa trocar o número? Fale com o suporte — a troca
+            é feita com a nossa equipe para o histórico das conversas não se perder.
           </p>
         </div>
       ) : (

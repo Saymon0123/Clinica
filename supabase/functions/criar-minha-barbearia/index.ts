@@ -27,15 +27,16 @@ const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
 /**
  * Dias de teste do cadastro aberto.
  *
- * Passou de 7 para 14 em 2026-08-14: o valor do produto aparece quando o
- * cliente **volta** — quando um lembrete evita uma falta —, e numa barbearia
- * média isso leva mais de uma semana. Em gpt-4o-mini, dobrar o prazo custa
- * centavos por barbearia, e o teto da migration 0052 cobre o caso extremo.
+ * Subiu de 7 para 14 em 2026-08-14 e voltou para 7 em 2026-08-31: a aposta
+ * era que o valor aparece quando o cliente **volta**, mas quem ia ativar
+ * ativava na primeira semana — a segunda só adiava a conversa de assinatura
+ * para depois de a pessoa ter esfriado.
  *
  * Cópia do que está em `src/lib/planos.ts`, porque edge function não importa
- * de `src/`. Ao mudar num, mudar no outro.
+ * de `src/`. Ao mudar num, mudar no outro — e esta aqui só vale depois de
+ * `supabase functions deploy criar-minha-barbearia`.
  */
-const DIAS_DE_TESTE = 14
+const DIAS_DE_TESTE = 7
 
 /** Teto de barbearias criadas por IP num dia. Não é segurança — é o que evita
  *  que um cadastro em massa vire conta da OpenAI antes de alguém perceber. */

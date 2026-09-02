@@ -128,6 +128,16 @@ Deno.serve(async (req: Request) => {
       })
       .eq('id', organizationId)
     if (erroOrg) {
+      // 23514 aqui e sempre a mesma coisa: ligar o boleto unico sem CPF/CNPJ
+      // valido (CHECK `organizations_unificada_exige_documento`, migration
+      // 0130). E pedido do usuario, nao falha do sistema -- 400 com a frase
+      // certa, e nao um 500 generico que manda "tentar de novo" para sempre.
+      if (erroOrg.code === '23514') {
+        return json(
+          { error: 'Para receber um boleto unico da rede e preciso informar um CPF ou CNPJ valido do pagante.' },
+          400,
+        )
+      }
       console.error('Erro ao gravar a preferencia da rede:', erroOrg)
       return json({ error: 'Nao foi possivel salvar. Tente novamente.' }, 500)
     }

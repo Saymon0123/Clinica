@@ -1838,3 +1838,32 @@ busca passa pela RLS de leitura, que pode esconder um cliente cadastrado por
 outro barbeiro. Não achando, cria outro. O índice único não barra, porque sem
 telefone `telefone_norm` é nulo. É o resto do achado 11: a RPC `garantir_cliente`
 resolveu o caminho com telefone, o caminho sem telefone continua aberto.
+
+---
+
+## Achados do passo 2.1 — a cadeia de cobrança (2026-09-02)
+
+### ⚠️ Dívida invisível: fatura com valor e sem boleto emitido não bloqueia ninguém
+A regra nova de acesso (`estender_acesso_sem_debito`, migration 0130) só segura
+o acesso quando existe fatura **vencida** em aberto — e uma fatura só vence se
+alguém emitiu o boleto, que hoje é feito **à mão** a partir do e-mail de
+detalhamento.
+
+A escolha é deliberada: o defeito que o passo consertou era o oposto — quem usou
+pouco demais para gerar boleto ficava bloqueado devendo nada, e em 02/09 as
+**seis** faturas da base estavam com `boleto_vencimento` nulo. Entre punir quem
+não deve e deixar passar quem deve, punir quem não deve é pior.
+
+Mas o outro lado ficou aberto: se a operação esquecer de emitir o boleto de uma
+fatura com valor, aquela barbearia usa o sistema de graça e nada avisa. Falta um
+alerta para a operação — fatura com `valor > 0`, `paga_em` nulo e
+`boleto_vencimento` nulo há mais de N dias. É trabalho de n8n (o mesmo fluxo que
+já manda o detalhamento), não do banco.
+
+### O `atendimento_ate` tem duas fórmulas no projeto
+`estender_acesso_sem_debito` grava `acesso_ate + 7`, seguindo o que o teste de
+gating usa. Mas as views de bloqueio calculam `coalesce(atendimento_ate,
+acesso_ate + 3)` — folga de 3 dias quando a coluna é nula. São dois números para
+a mesma ideia ("quanto tempo o WhatsApp continua depois do acesso vencer"), e
+qual vale depende de a coluna estar preenchida ou não. Unificar quando alguém
+mexer nessa área.

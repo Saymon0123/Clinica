@@ -6,6 +6,7 @@ import { useSalon } from '../auth/useSalon'
 import { Campo, Input } from '../../components/Campo'
 import { SkeletonLinhas } from '../../components/Skeleton'
 import { ErroInline } from '../../components/ErroInline'
+import { formatarDocumento, problemaNoDocumento } from '../../lib/documento'
 
 function moeda(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -81,8 +82,21 @@ export function CobrancaDaRede() {
 
   const total = usos.reduce((acc, u) => acc + u.agendamentos * Number(u.preco_unitario), 0)
 
+  // O documento é do PAGADOR no Asaas. Sem ele, `cobrar-uso` agrupa as faturas
+  // da rede, não consegue criar o cliente, conta em `semDocumento` e segue em
+  // frente — a rede fica sem boleto nenhum, em silêncio, até alguém reparar.
+  // Por isso a mesma regra existe como CHECK no banco
+  // (`organizations_unificada_exige_documento`, migration 0130): aqui é só para
+  // o dono ler a frase certa antes de o servidor recusar.
+  const problemaDoDocumento = problemaNoDocumento(cpfCnpj)
+  const podeUnificar = problemaDoDocumento === null
+
   async function alternar() {
     const acao = rede?.cobrancaUnificada ? 'separar-rede' : 'unificar-rede'
+    if (acao === 'unificar-rede' && problemaDoDocumento) {
+      setErro(problemaDoDocumento)
+      return
+    }
     setAgindo(true)
     setErro(null)
     const { error } = await invokeFunction(
@@ -159,15 +173,21 @@ export function CobrancaDaRede() {
                   <Input
                     id="rede-cpf-cnpj"
                     value={cpfCnpj}
-                    onChange={(e) => setCpfCnpj(e.target.value)}
+                    onChange={(e) => setCpfCnpj(formatarDocumento(e.target.value))}
                     placeholder="00.000.000/0000-00"
+                    inputMode="numeric"
                   />
                 </Campo>
+                {/* O aviso só aparece depois que a pessoa começou a digitar: um
+                    campo que já nasce reclamando parece bronca. */}
+                {cpfCnpj.trim() !== '' && problemaDoDocumento && (
+                  <p className="mt-1 text-xs text-warning">{problemaDoDocumento}</p>
+                )}
               </div>
               <button
                 type="button"
                 onClick={alternar}
-                disabled={agindo}
+                disabled={agindo || !podeUnificar}
                 className="inline-flex items-center gap-2 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
               >
                 <Receipt size={16} />

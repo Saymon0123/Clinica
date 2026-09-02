@@ -18,15 +18,21 @@ import { moedaComCentavos } from './Calculadora'
  * ────────────────────────────────────────────────────────────────────────────
  * SÓ ENTRA NÚMERO PÚBLICO E CONFERIDO — a mesma regra dos depoimentos.
  *
- * A faixa "R$ 79,90 a R$ 299 por mês" e o exemplo de R$ 164,50 vêm de
- * páginas públicas de preço consultadas em 2026-08-25:
+ * Reconferido em 2026-09-02, quando esta tabela deixou de ser um bloco dentro
+ * da seção de preço e virou seção própria: mais gente lê, então o número
+ * precisa estar mais certo, não menos.
  *
- *   - AppBarber (central de ajuda, "Planos e Preços do Sistema"):
- *     R$ 79,90/mês para 1 profissional, R$ 109,90 para 2, R$ 164,50 para 3,
- *     R$ 219,90 para 4 — e WhatsApp/fidelidade como módulos à parte.
- *   - BestBarbers (site, "Sistema para Barbearia"): plano completo com app
- *     "a partir de R$ 299/mês".
- *   - BarbUp (blog de preços da categoria): R$ 49,90 a R$ 129,90.
+ *   - AppBarber ("Planos e Preços do Sistema", página pública de ajuda):
+ *     R$ 79,90/mês para 1 profissional, R$ 109,90 para 2, R$ 164,50 para 3 e
+ *     R$ 219,90 a partir de 4 — confirmado sem alteração desde 2026-08-25.
+ *     É a escada que a tabela usa, e ela é o argumento: o preço SOBE a cada
+ *     contratação.
+ *
+ * **O "até R$ 299" saiu.** Vinha da página da BestBarbers em 2026-08-25 e não
+ * foi possível reconfirmar em 2026-09-02 (a página não expõe mais o valor na
+ * busca pública). Número que não dá para reconferir não fica numa página que
+ * cobra honestidade dos outros — a faixa agora vai só até onde a fonte viva
+ * sustenta. Se reencontrar o preço publicado, dá para reabrir a faixa.
  *
  * A página NÃO cita os nomes porque preço de concorrente muda sem avisar, e
  * um número velho com nome em cima vira propaganda enganosa — o rodapé da
@@ -34,6 +40,12 @@ import { moedaComCentavos } from './Calculadora'
  * consultar as páginas de novo e trocar a data.
  * ────────────────────────────────────────────────────────────────────────────
  */
+/*
+  Quatro linhas, não cinco. "Mês fraco: paga o mesmo / paga quase nada" saiu:
+  era a mesma ideia de "como cobra", dita de novo com outras palavras, e
+  diluía justamente a linha que ninguém pode copiar sem trocar o próprio
+  modelo — a de que o preço cai quando a equipe cresce.
+*/
 const LINHAS = [
   {
     criterio: 'Como cobra',
@@ -46,18 +58,13 @@ const LINHAS = [
     clubcut: `O preço por agendamento cai — até ${moedaComCentavos(PRECO_MINIMO_POR_AGENDAMENTO)}`,
   },
   {
-    criterio: 'Mês fraco',
-    mensalidade: 'Paga o mesmo',
-    clubcut: 'Paga quase nada',
-  },
-  {
     criterio: 'WhatsApp, lembrete, extras',
     mensalidade: 'Muitas vezes é módulo cobrado à parte',
     clubcut: 'Tudo incluso desde o primeiro agendamento',
   },
   {
     criterio: 'Quanto custa',
-    mensalidade: 'R$ 79,90 a R$ 299 por mês',
+    mensalidade: 'De R$ 79,90 a R$ 219,90 por mês, conforme a equipe',
     clubcut: `A partir de ${moedaComCentavos(PRECO_POR_AGENDAMENTO)} por agendamento`,
   },
 ] as const
@@ -151,8 +158,8 @@ export function Comparativo() {
           As faixas: {FAIXAS_DE_USO.map((f) => `${f.rotulo} · ${moedaComCentavos(f.preco)}`).join(
             '  —  ',
           )}
-          . Preços dos sistemas com mensalidade levantados das páginas públicas de preço dos mais
-          conhecidos da categoria, em agosto de 2026.
+          . Preço do sistema por mensalidade levantado da página pública de preços de um dos mais
+          conhecidos da categoria, reconferido em setembro de 2026.
         </p>
       </div>
     </div>

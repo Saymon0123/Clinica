@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarCheck, Check, Menu, MessageCircle, Smartphone, Wallet, X } from 'lucide-react'
+import { Check, Menu, MessageCircle, Smartphone, Wallet, X } from 'lucide-react'
 import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'motion/react'
 import { DIAS_DE_TESTE, PRECO_POR_AGENDAMENTO } from '../../lib/planos'
 import { CONTATO } from '../../lib/contato'
@@ -347,32 +347,32 @@ const RECURSOS = [
     titulo: 'Atende no WhatsApp, sozinho',
     texto:
       'Responde preço, horário e o que a barbearia faz. Marca, remarca e cancela. Às 23h40 de um domingo, ele responde igual.',
-    largo: true,
-  },
-  {
-    icone: CalendarCheck,
-    titulo: 'Agenda que não deixa furo',
-    texto:
-      'Corte de 40 minutos às 10h termina 10h40, e é 10h40 que aparece livre para o próximo. Nada marcado por cima de nada.',
-    largo: false,
+    span: 'md:col-span-2',
   },
   {
     icone: Smartphone,
     titulo: 'Você sabe da falta às 14h50',
     texto:
       'Uma hora antes, o lembrete pergunta se ele vem. Dez minutos antes, um "está a caminho?". Dá tempo de chamar outro.',
-    largo: false,
+    span: '',
   },
   {
     icone: Wallet,
     titulo: 'O dinheiro do dia, fechado',
     texto:
       'Comanda, caixa e a comissão de cada barbeiro calculada sozinha. Você fecha o dia sabendo quanto entrou e quanto é de cada um.',
-    largo: true,
+    span: 'md:col-span-3',
   },
 ]
 
-/** Bento: células de tamanhos diferentes. Quatro cards iguais seriam o template. */
+/**
+ * Bento: células de tamanhos diferentes. Cards iguais seriam o template.
+ *
+ * Eram quatro. "Agenda que não deixa furo" saiu porque a demo da seção
+ * seguinte MOSTRA a agenda se organizando — descrever em texto o que a tela
+ * ao lado exibe é a repetição que fazia a página parecer que dava três voltas
+ * no mesmo assunto (feedback de 02/09).
+ */
 function Recursos() {
   return (
     <section id="recursos" className={`${SECAO} secao-ancora`}>
@@ -383,7 +383,7 @@ function Recursos() {
 
         <RevealGrupo className="mt-11 grid gap-4 md:grid-cols-3">
           {RECURSOS.map((f) => (
-            <RevealItem key={f.titulo} className={f.largo ? 'md:col-span-2' : ''}>
+            <RevealItem key={f.titulo} className={f.span}>
               <div className="card h-full rounded-[var(--r-md)] p-7 sm:p-9">
                 {/* Icone decorativo: o titulo do card ja diz tudo. Sem aria-hidden o
                     leitor de tela anuncia um grafico sem nome antes do texto. */}
@@ -495,77 +495,44 @@ function PorDentro() {
 
 /* -------------------------------------------------------------------------- */
 
-/**
- * A mesma cena, com e sem.
- *
- * As três linhas são as três dores da abertura, fechadas: a mensagem das 22h,
- * a falta das 15h20 e o caixa no fim do dia. A página abre o problema lá em
- * cima e fecha ele aqui, com o produto no meio — é prova por comportamento,
- * não por número.
- *
- * **Cada célula descreve só o que o sistema faz hoje.** Nenhuma promete
- * resultado ("recupera o cliente", "reduz a falta"): descrevem o que acontece
- * mecanicamente, que é verificável no teste grátis. A regra da página vale
- * aqui em dobro, porque tabela dá cara de fato a qualquer frase.
- */
-const COMPARACAO: Array<[cena: string, sem: string, com: string]> = [
-  [
-    'Mensagem às 22h',
-    'Fica para amanhã. Às vezes o cliente também.',
-    'Respondida na hora, com preço e horário livre.',
-  ],
-  [
-    'Cliente não aparece',
-    'Você descobre olhando para a cadeira vazia.',
-    'Lembrete 1h antes pergunta se ele vem. Você sabe antes.',
-  ],
-  [
-    'Fim do dia',
-    'Comanda de papel, comissão de cabeça.',
-    'Caixa fechado e a comissão de cada um, calculada.',
-  ],
-]
+/* -------------------------------------------------------------------------- */
 
-function ComSem() {
+/**
+ * O comparativo com o resto da categoria, como SEÇÃO.
+ *
+ * Estava dentro da seção de Preço, como terceiro bloco empilhado depois da
+ * calculadora — ali ele lia como letra miúda de preço, e não como resposta à
+ * pergunta "por que vocês e não o sistema que eu já conheço". O sócio leu a
+ * página e disse exatamente isso: "já tem um negócio assim ali no meio, mas
+ * não achei que ficou legal daquele jeito" (02/09).
+ *
+ * O título carrega o argumento inteiro, e é o único que a categoria não pode
+ * copiar sem mudar o próprio modelo de cobrança: no concorrente o preço SOBE
+ * quando a barbearia contrata; aqui ele DESCE. A tabela abaixo é a prova.
+ *
+ * Entra no lugar que a antiga seção "O mesmo dia, duas versões" deixou vago:
+ * logo depois da demo do produto, antes dos depoimentos. Quem acabou de ver a
+ * tela funcionando é quem está pronto para perguntar quanto custa e por que
+ * não o outro.
+ */
+function ComoCobramos() {
   return (
     <section className={`${SECAO_APOIO} bg-[var(--l-canvas)]`}>
       <div className={CAIXA}>
         <Reveal>
           <h2 className={TITULO_NARRATIVA}>
-            O mesmo dia, <em className="landing-serif">duas</em> versões
+            Contratar barbeiro devia sair mais <em className="landing-serif">barato</em>, não mais
+            caro
           </h2>
+          <p className="mt-6 max-w-[52ch] text-[17px] leading-relaxed text-[var(--l-fg-mute)]">
+            Nos sistemas por mensalidade, cada profissional novo sobe o plano de faixa. Aqui é o
+            contrário: quanto mais a equipe agenda, menor fica o preço de cada agendamento.
+          </p>
         </Reveal>
 
-        <RevealGrupo className="mt-11 overflow-hidden rounded-[var(--r-md)] border border-[var(--l-line)]">
-          {/* Cabeçalho da tabela, em etiqueta mono. */}
-          <div className="hidden grid-cols-[0.8fr_1fr_1fr] gap-6 border-b border-[var(--l-line)] bg-[var(--l-bg)] px-7 py-4 sm:grid">
-            <span className="landing-label text-[var(--l-fg-faint)]">A cena</span>
-            <span className="landing-label text-[var(--l-fg-faint)]">Sem</span>
-            <span className="landing-label text-[var(--l-accent-ink)]">Com o Club Cut</span>
-          </div>
-
-          {COMPARACAO.map(([cena, sem, com], i) => (
-            <RevealItem key={cena}>
-              <div
-                className={`grid gap-3 px-7 py-6 sm:grid-cols-[0.8fr_1fr_1fr] sm:gap-6 ${
-                  i > 0 ? 'border-t border-[var(--l-line)]' : ''
-                }`}
-              >
-                <span className="text-[15px] font-semibold text-[var(--l-fg)]">{cena}</span>
-                <span className="text-[15px] leading-relaxed text-[var(--l-fg-faint)]">
-                  <span className="landing-label mr-2 inline sm:hidden">Sem —</span>
-                  {sem}
-                </span>
-                <span className="text-[15px] leading-relaxed text-[var(--l-fg)]">
-                  <span className="landing-label mr-2 inline text-[var(--l-accent-ink)] sm:hidden">
-                    Com —
-                  </span>
-                  {com}
-                </span>
-              </div>
-            </RevealItem>
-          ))}
-        </RevealGrupo>
+        <Reveal delay={0.1} className="mt-11">
+          <Comparativo />
+        </Reveal>
       </div>
     </section>
   )
@@ -816,10 +783,6 @@ function Preco() {
           <CalculadoraPreco />
         </Reveal>
 
-        <Reveal delay={0.16} className="mt-9">
-          <Comparativo />
-        </Reveal>
-
         <Reveal delay={0.18}>
           <Cta className="mt-14" microcopy={`${MICROCOPY} No teste você usa tudo, sem custo.`}>
             {CTA}
@@ -1054,7 +1017,7 @@ export function VendasPage() {
         <Recursos />
         <Franqueza />
         <PorDentro />
-        <ComSem />
+        <ComoCobramos />
         <Depoimentos />
         <ComoComeca />
         <SemPromessa />

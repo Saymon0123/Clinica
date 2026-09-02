@@ -550,9 +550,14 @@ export function EquipePage() {
               {/* Desativar tira da agenda; TIRAR DA EQUIPE tira o acesso. Eram a
                   mesma coisa na cabeça do dono e não eram no sistema: o
                   desativado continuava entrando e lendo clientes. */}
-              {vinculo && (
+              {m.user_id && vinculos.some((v) => v.user_id === m.user_id) && (
                 <button
-                  onClick={() => setTirandoDaEquipe({ vinculo: vinculo.id, nome: m.nome })}
+                  onClick={() =>
+                    setTirandoDaEquipe({
+                      vinculo: vinculos.find((v) => v.user_id === m.user_id)!.id,
+                      nome: m.nome,
+                    })
+                  }
                   aria-label={`Tirar ${m.nome} da equipe`}
                   className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-md text-muted-foreground hover:text-danger hover:bg-surface-2"
                 >

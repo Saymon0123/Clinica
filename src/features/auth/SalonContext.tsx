@@ -22,6 +22,12 @@ export type SalonContextValue = {
   /** Dono da rede: além da unidade, tem o painel analítico consolidado. */
   isOwner: boolean
   loading: boolean
+  /**
+   * Falhou ao carregar os vínculos — que NÃO é a mesma coisa que "não tem
+   * barbearia". Sem esta distinção, uma queda de rede levava o dono à tela de
+   * criar barbearia, sugerindo que a dele havia sumido (achado 4 da revisão).
+   */
+  erroAoCarregar: boolean
   /** Todas as unidades em que o usuário tem vínculo, na ordem de criação. */
   unidades: Unidade[]
   /** true quando o usuário é DONO de mais de uma unidade. */
@@ -52,6 +58,7 @@ export function SalonProvider({ children }: { children: ReactNode }) {
   const [unidades, setUnidades] = useState<Unidade[]>([])
   const [selecionada, setSelecionada] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [erroAoCarregar, setErroAoCarregar] = useState(false)
 
   const carregar = useCallback(async () => {
     // Enquanto o AuthContext restaura a sessão do storage, `user` é nulo — mas
@@ -101,11 +108,13 @@ export function SalonProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       console.error('Erro ao carregar as unidades do usuário:', error)
-      setUnidades([])
-      setSelecionada(null)
+      // NÃO zera as unidades: lista vazia é "não tem barbearia", e o AppLayout
+      // manda essa pessoa criar uma. Aqui a verdade é "não deu para saber".
+      setErroAoCarregar(true)
       setLoading(false)
       return
     }
+    setErroAoCarregar(false)
 
     const lista: Unidade[] = ((data ?? []) as LinhaVinculo[]).map((linha) => {
       const relacao = Array.isArray(linha.salons) ? linha.salons[0] : linha.salons
@@ -161,13 +170,14 @@ export function SalonProvider({ children }: { children: ReactNode }) {
       isManager: role === 'owner' || role === 'gerente',
       isOwner: donoEmAlguma,
       loading,
+      erroAoCarregar,
       unidades,
       isNetwork: proprias.length > 1,
       organizationId: atual?.organizationId ?? null,
       selecionarUnidade,
       recarregarUnidades: carregar,
     }
-  }, [unidades, selecionada, loading, selecionarUnidade, carregar])
+  }, [unidades, selecionada, loading, erroAoCarregar, selecionarUnidade, carregar])
 
   return <SalonContext.Provider value={value}>{children}</SalonContext.Provider>
 }

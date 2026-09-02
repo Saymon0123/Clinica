@@ -127,13 +127,22 @@ Deno.serve(async (req: Request) => {
   // Já tem barbearia? Duas fontes de chamada repetida: clique duplo no botão e
   // recarregar a página no meio. Sem esta checagem, cada uma cria uma barbearia
   // nova, com assinatura e trial próprios.
-  const { data: jaTem } = await admin
+  // `.limit(1)` e NÃO `.maybeSingle()`: quem já tem DOIS vínculos (dono de
+  // rede, ou barbeiro numa e dono de outra — casos reais na base) fazia o
+  // maybeSingle devolver erro, o erro era descartado, `jaTem` vinha nulo e o
+  // guard deixava criar mais uma barbearia. Erro aqui ABORTA: criar duplicata
+  // é pior que pedir para tentar de novo (achado 4 da revisão de 01/09).
+  const { data: vinculos, error: erroVinculos } = await admin
     .from('user_salons')
     .select('salon_id')
     .eq('user_id', userId)
-    .maybeSingle()
-  if (jaTem) {
-    return json({ salonId: jaTem.salon_id, jaExistia: true })
+    .limit(1)
+  if (erroVinculos) {
+    console.error('Erro ao verificar vinculos existentes:', erroVinculos)
+    return json({ error: 'Nao foi possivel verificar sua conta agora. Tente de novo.' }, 503)
+  }
+  if (vinculos && vinculos.length > 0) {
+    return json({ salonId: vinculos[0].salon_id, jaExistia: true })
   }
 
   const ip =

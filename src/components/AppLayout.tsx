@@ -15,6 +15,7 @@ import {
   MoreHorizontal,
 } from 'lucide-react'
 import { ProfileMenu } from './ProfileMenu'
+import { supabase } from '../lib/supabase'
 import { useSalon } from '../features/auth/useSalon'
 import { useAppointmentAlerts } from '../features/agenda/useAppointmentAlerts'
 import { AppointmentAlertBanner } from '../features/agenda/AppointmentAlertBanner'
@@ -78,7 +79,17 @@ function navLinkClass({ isActive }: { isActive: boolean }) {
 }
 
 export function AppLayout() {
-  const { salonId, salonName, isManager, isOwner, isNetwork, loading, unidades } = useSalon()
+  const {
+    salonId,
+    salonName,
+    isManager,
+    isOwner,
+    isNetwork,
+    loading,
+    erroAoCarregar,
+    unidades,
+    recarregarUnidades,
+  } = useSalon()
   const location = useLocation()
   const { alerts, dismiss } = useAppointmentAlerts(salonId)
   const { hasPending } = usePendingConversations(isManager ? salonId : null)
@@ -136,6 +147,36 @@ export function AppLayout() {
   //
   // `unidades.length` e não `salonId`: dono de rede sem unidade escolhida
   // também tem `salonId` nulo, e mandá-lo criar barbearia seria absurdo.
+  // Falha ao carregar NÃO é "não tem barbearia". Uma queda de rede mandava o
+  // dono para a tela de criar barbearia — parecendo que a dele havia sumido —
+  // e ele podia criar uma segunda por engano (achado 4 da revisão de 01/09).
+  if (!loading && erroAoCarregar) {
+    return (
+      <div className="min-h-[100dvh] bg-background flex items-center justify-center px-4">
+        <div className="w-full max-w-sm text-center space-y-4">
+          <h1 className="text-lg font-semibold text-foreground">
+            Não foi possível carregar sua barbearia
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Isso costuma ser conexão. Sua barbearia e seus dados estão salvos — nada foi perdido.
+          </p>
+          <button
+            onClick={() => void recarregarUnidades()}
+            className="w-full btn-primary rounded-lg px-3 py-2.5 text-sm font-semibold"
+          >
+            Tentar de novo
+          </button>
+          <button
+            onClick={() => void supabase.auth.signOut()}
+            className="w-full btn-ghost rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground"
+          >
+            Sair desta conta
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   if (!loading && unidades.length === 0) {
     return <CriarBarbeariaPage />
   }

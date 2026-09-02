@@ -348,7 +348,16 @@ export function AppointmentDetailModal({
         )}
 
         <div className="mt-3 pt-3 border-t border-border">
-          {confirmDelete ? (
+          {/* Agendamento concluído já virou COMANDA. Excluir aqui não apaga a
+              venda: a FK é ON DELETE SET NULL, então a comanda fica órfã, o
+              atendimento some do histórico do cliente e a comissão perde a
+              origem — e o próprio barbeiro conseguia fazer isso (achado 13). */}
+          {appointment.status === 'concluido' ? (
+            <p className="text-xs text-muted-foreground">
+              Este atendimento já foi concluído e pode ter comanda ligada a ele, por isso não é
+              possível excluí-lo. Para corrigir valores, ajuste a venda no Financeiro.
+            </p>
+          ) : confirmDelete ? (
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs text-danger">Excluir de vez? Não dá para desfazer.</span>
               <div className="flex gap-2">

@@ -70,6 +70,11 @@ export function NewAppointmentModal({
 
   const duracaoTotal = selectedServices.reduce((acc, s) => acc + s.duracao_minutos, 0)
 
+  // Mesmo cálculo do submit: fim do atendimento antes de agora.
+  const horarioJaPassou =
+    selectedServices.length > 0 &&
+    toDateTimeLocal(date, time).getTime() + duracaoTotal * 60000 < Date.now()
+
   function formatDuracao(min: number) {
     const h = Math.floor(min / 60)
     const m = min % 60
@@ -159,6 +164,13 @@ export function NewAppointmentModal({
       const start = toDateTimeLocal(date, time)
       const end = new Date(start.getTime() + servicoPrincipal.duracao_minutos * 60000)
 
+      // Horário que já terminou é LANÇAMENTO RETROATIVO, não reserva: o
+      // barbeiro atendeu às 14h e está registrando às 15h para não perder o
+      // histórico. Como 'agendado', o cron cancelava em minutos e o registro
+      // sumia sem explicação (achado 6). Como 'concluido', o cron ignora e a
+      // comanda pode ser feita em seguida.
+      const jaPassou = end.getTime() < Date.now()
+
       const { data: novoAgendamento, error: apptError } = await supabase
         .from('appointments')
         .insert({
@@ -168,7 +180,7 @@ export function NewAppointmentModal({
           service_id: servicoPrincipal.id,
           data_hora_inicio: start.toISOString(),
           data_hora_fim: end.toISOString(),
-          status: 'agendado',
+          status: jaPassou ? 'concluido' : 'agendado',
         })
         .select('id')
         .single()
@@ -346,6 +358,16 @@ export function NewAppointmentModal({
               required
             />
           </Campo>
+
+          {/* O barbeiro precisa saber ANTES de salvar que este lançamento é
+              retroativo — senão ele procura a reserva na agenda de hoje e não
+              encontra, porque ela nasceu concluída. */}
+          {horarioJaPassou && (
+            <p className="text-xs text-muted-foreground bg-surface-2 rounded-lg px-3 py-2">
+              Esse horário já passou. Vamos registrar como{' '}
+              <strong>atendimento concluído</strong> — depois é só fechar a comanda no Financeiro.
+            </p>
+          )}
 
           <ErroInline>{error}</ErroInline>
 

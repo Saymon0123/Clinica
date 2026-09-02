@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
 import { supabase } from '../../lib/supabase'
+import { toast } from '../../components/Toast'
 import { useSalon } from '../auth/useSalon'
 import { useFinanceiroData, type MetricKey, type PeriodFilter } from './useFinanceiroData'
 import { StatsCard } from '../../components/StatsCard'
@@ -29,6 +30,12 @@ import { VendasSection } from '../vendas/VendasSection'
 import { FechamentoComissaoModal } from './FechamentoComissaoModal'
 import { CaixaSection } from './CaixaSection'
 import type { SalePrefill } from '../vendas/NewSaleModal'
+import {
+  guardarVendaPendente,
+  lerVendaPendente,
+  limparVendaPendente,
+  type VendaPendente,
+} from '../../lib/vendaPendente'
 import { EditGoalModal } from './EditGoalModal'
 import { ExportReportModal } from './ExportReportModal'
 import { GoalReachedModal } from './GoalReachedModal'
@@ -112,20 +119,65 @@ export function FinanceiroPage() {
   const [salePrefill, setSalePrefill] = useState<SalePrefill | null>(null)
 
   // Veio do "Concluir e cobrar" da agenda: abre direto na aba de vendas.
+  //
+  // O vínculo é GRAVADO antes de a URL ser limpa. Antes ele vivia só aqui na
+  // memória: trocar de aba ou fechar o modal perdia o appointmentId, a venda
+  // era salva solta, o agendamento nunca virava `concluido` e o cron cancelava
+  // o horário que foi atendido e pago (achado 7).
   useEffect(() => {
     const appointmentId = searchParams.get('appointmentId')
-    if (appointmentId) {
-      setTab('vendas')
-      setSalePrefill({
+    if (appointmentId && salonId) {
+      const vinculo = {
         appointmentId,
         clientId: searchParams.get('clientId') ?? undefined,
         professionalId: searchParams.get('professionalId') ?? undefined,
         serviceId: searchParams.get('serviceId') ?? undefined,
         serviceIds: searchParams.get('serviceIds')?.split(',').filter(Boolean) ?? undefined,
-      })
+        clienteNome: searchParams.get('clienteNome') ?? undefined,
+        horaLocal: searchParams.get('horaLocal') ?? undefined,
+      }
+      guardarVendaPendente(salonId, vinculo)
+      setTab('vendas')
+      setSalePrefill(vinculo)
       setSearchParams({}, { replace: true })
     }
-  }, [searchParams, setSearchParams])
+  }, [searchParams, setSearchParams, salonId])
+
+  // Voltou para o Financeiro com uma cobrança pela metade (recarregou a
+  // página, trocou de aba, fechou o modal): a pendência é restaurada em vez de
+  // desaparecer em silêncio.
+  const [vendaPendente, setVendaPendente] = useState<VendaPendente | null>(null)
+  useEffect(() => {
+    if (!salonId) return
+    setVendaPendente(lerVendaPendente(salonId))
+  }, [salonId, salePrefill])
+
+  const [concluindoSemCobrar, setConcluindoSemCobrar] = useState(false)
+
+  /**
+   * Fecha o horário sem gerar venda.
+   *
+   * Cortesia, retoque de graça, atendimento que o dono decidiu não cobrar: o
+   * atendimento ACONTECEU, e sem isto o cron o cancela como se o cliente não
+   * tivesse vindo — sujando a agenda e a taxa de cancelamento.
+   */
+  async function concluirSemCobrar() {
+    if (!vendaPendente?.appointmentId || !salonId) return
+    setConcluindoSemCobrar(true)
+    const { error } = await supabase
+      .from('appointments')
+      .update({ status: 'concluido' })
+      .eq('id', vendaPendente.appointmentId)
+    setConcluindoSemCobrar(false)
+    if (error) {
+      console.error('Erro ao concluir sem cobrar:', error)
+      toast('Não foi possível concluir o atendimento')
+      return
+    }
+    limparVendaPendente(salonId)
+    setVendaPendente(null)
+    toast('Atendimento concluído, sem cobrança')
+  }
 
   // Sem meta definida não há "meta atingida": o padrão de R$ 3.000 é só um
   // placeholder e comemorar contra ele seria mentira.
@@ -306,6 +358,40 @@ export function FinanceiroPage() {
       {/* key={tab} remonta o wrapper na troca e dispara a entrada animada. */}
       <div key={tab} className="aba-entra space-y-5">
       {tab === 'vendas' ? (
+        <>
+        {/* Cobrança pela metade: em vez de sumir, ela fica visível com as duas
+            saídas possíveis. "Concluir sem cobrar" existe porque atendimento
+            de cortesia, troca ou erro também precisa fechar o horário — senão
+            o cron cancela um atendimento que aconteceu de verdade. */}
+        {vendaPendente && !salePrefill && (
+          <div className="mb-4 rounded-xl border border-primary/40 bg-primary-soft/30 p-4 flex flex-wrap items-center gap-3">
+            <div className="flex-1 min-w-[200px]">
+              <p className="text-sm font-medium text-foreground">
+                Atendimento aguardando cobrança
+                {vendaPendente.clienteNome ? ` — ${vendaPendente.clienteNome}` : ''}
+                {vendaPendente.horaLocal ? `, ${vendaPendente.horaLocal}` : ''}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Você começou a cobrar e não terminou. Enquanto isso, o horário continua em aberto na
+                agenda.
+              </p>
+            </div>
+            <button
+              onClick={() => setSalePrefill(vendaPendente)}
+              className="btn-primary rounded-lg px-3 py-2 text-sm font-medium"
+            >
+              Cobrar agora
+            </button>
+            <button
+              onClick={concluirSemCobrar}
+              disabled={concluindoSemCobrar}
+              className="btn-secondary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
+            >
+              {concluindoSemCobrar ? 'Concluindo...' : 'Concluir sem cobrar'}
+            </button>
+          </div>
+        )}
+
         <VendasSection
           salonId={salonId}
           period={filter}
@@ -313,7 +399,12 @@ export function FinanceiroPage() {
           periodLabel={rotuloPeriodo}
           prefill={salePrefill}
           onPrefillConsumed={clearPrefill}
+          onVendaSalva={() => {
+            if (salonId) limparVendaPendente(salonId)
+            setVendaPendente(null)
+          }}
         />
+        </>
       ) : (
         <>
       <ErroInline>{error}</ErroInline>

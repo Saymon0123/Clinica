@@ -196,6 +196,16 @@ export function AppointmentDetailModal({
     if (servicos && servicos.length > 1) {
       params.set('serviceIds', servicos.map((s) => s.service_id).join(','))
     }
+    // Nome e hora viajam junto para a faixa de "cobrança pendente" dizer DE
+    // QUEM é o atendimento sem precisar consultar o banco de novo.
+    if (appointment.client_nome) params.set('clienteNome', appointment.client_nome)
+    params.set(
+      'horaLocal',
+      new Date(appointment.data_hora_inicio).toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+    )
     navigate(`/financeiro?${params.toString()}`)
   }
 

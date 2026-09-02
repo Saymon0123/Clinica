@@ -27,6 +27,7 @@ export function VendasSection({
   periodLabel,
   prefill,
   onPrefillConsumed,
+  onVendaSalva,
 }: {
   salonId: string
   period: 'dia' | 'mes'
@@ -35,6 +36,9 @@ export function VendasSection({
   periodLabel?: string
   prefill?: SalePrefill | null
   onPrefillConsumed?: () => void
+  /** Chamado quando uma venda é efetivamente salva — é o único momento em que
+   *  a cobrança pendente deixa de existir (ver lib/vendaPendente). */
+  onVendaSalva?: () => void
 }) {
   const { sales, loading, error, reload } = useVendasData(salonId, period, refMonth)
   const [modalOpen, setModalOpen] = useState(false)
@@ -119,6 +123,8 @@ export function VendasSection({
           onClose={() => setModalOpen(false)}
           onSaved={() => {
             setModalOpen(false)
+            // A venda existe: a pendência morre aqui, e só aqui.
+            onVendaSalva?.()
             reload()
           }}
         />

@@ -72,3 +72,65 @@ describe('parseCsv', () => {
     expect(r).toEqual(rows)
   })
 })
+
+/**
+ * `linhas` é o número que a importação mostra para o dono quando recusa um
+ * registro ("linha 42"). Ele vai procurar esse número na lateral do Excel, com
+ * a planilha aberta na frente. Se a contagem deslocar um degrau, a mensagem
+ * acusa o cliente de cima ou o de baixo — e o dono conserta quem estava certo,
+ * enquanto o errado entra no banco.
+ *
+ * Os casos abaixo são exatamente os que deslocam: linha em branco no meio,
+ * linha em branco no começo (que empurra o cabeçalho para baixo) e quebra de
+ * linha dentro de aspas, que ocupa duas linhas na tela e é um registro só.
+ */
+describe('parseCsv: número da linha no arquivo', () => {
+  it('conta o cabeçalho como linha 1, então o primeiro registro é a linha 2', () => {
+    const { rows, linhas } = parseCsv('nome;telefone\nAna;41999998888\nBia;41988887777')
+    expect(rows).toEqual([
+      ['Ana', '41999998888'],
+      ['Bia', '41988887777'],
+    ])
+    expect(linhas).toEqual([2, 3])
+  })
+
+  it('linha em branco no meio sai de rows sem puxar os seguintes para trás', () => {
+    const { rows, linhas } = parseCsv('nome;telefone\nAna;41999998888\n\nBia;41988887777')
+    expect(rows).toEqual([
+      ['Ana', '41999998888'],
+      ['Bia', '41988887777'],
+    ])
+    // Bia é o 2º registro, mas mora na 4ª linha do arquivo — 4 é o que o Excel mostra.
+    expect(linhas).toEqual([2, 4])
+  })
+
+  it('linha em branco no começo joga o cabeçalho para a 2 e o registro para a 3', () => {
+    const { headers, rows, linhas } = parseCsv('\nnome;telefone\nAna;41999998888')
+    expect(headers).toEqual(['nome', 'telefone'])
+    expect(rows).toEqual([['Ana', '41999998888']])
+    expect(linhas).toEqual([3])
+  })
+
+  it('quebra de linha dentro de aspas é um registro só, mas custa duas linhas', () => {
+    const { rows, linhas } = parseCsv('nome;obs\nAna;"primeira\nsegunda"\nBia;curta')
+    expect(rows).toEqual([
+      ['Ana', 'primeira\nsegunda'],
+      ['Bia', 'curta'],
+    ])
+    // A observação da Ana termina na linha 3, então Bia começa na 4 — não na 3.
+    expect(linhas).toEqual([2, 4])
+  })
+
+  it('devolve um número por registro mesmo no arquivo bagunçado', () => {
+    // Vazia no começo, campo com duas linhas, vazia solta e uma linha só com ";".
+    const { rows, linhas } = parseCsv('\nnome;obs\nAna;"uma\nduas"\n\n;\nBia;curta\n')
+    expect(rows).toEqual([
+      ['Ana', 'uma\nduas'],
+      ['Bia', 'curta'],
+    ])
+    // Quem lê a mensagem indexa rows e linhas com o mesmo i; tamanhos diferentes
+    // dariam "linha undefined" ou apontariam outro registro.
+    expect(linhas).toHaveLength(rows.length)
+    expect(linhas).toEqual([3, 7])
+  })
+})

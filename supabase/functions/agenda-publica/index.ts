@@ -29,6 +29,24 @@ const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
  *  alguém que fotografou o QR e resolveu encher a agenda. */
 const TETO_POR_HORA = 10
 
+/**
+ * A faixa do telefone: de 10 dígitos (DDD + fixo) a 13 (DDI 55 + DDD + 9).
+ *
+ * Cópia consciente da CHECK `clients_telefone_valido` / `private.telefone_valido`
+ * (migration 0128) e de `src/lib/telefone.ts` — edge function não importa de
+ * `src/`, é outro runtime. Mudou num lugar, muda nos três, e a mudança daqui só
+ * vale depois de `supabase functions deploy agenda-publica`. Mesmo arranjo do
+ * `DIAS_DE_TESTE` em `criar-minha-barbearia`.
+ *
+ * O teto é o que faltava: com só o piso, quem digitasse 14 dígitos passava
+ * daqui, quebrava no insert com 23514 e recebia "Nao foi possivel concluir" e
+ * um 500. Do lado de lá é o cliente final, sozinho, de pé no balcão com o
+ * celular na mão — ele não tem como adivinhar que o problema é o telefone, e
+ * simplesmente desiste do agendamento.
+ */
+const TELEFONE_MIN_DIGITOS = 10
+const TELEFONE_MAX_DIGITOS = 13
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -243,7 +261,16 @@ Deno.serve(async (req: Request) => {
   const inicio = body.inicio as string | undefined
 
   if (!nome) return json({ error: 'Informe seu nome.' }, 400)
-  if (telefone.length < 10) return json({ error: 'Informe um telefone com DDD.' }, 400)
+  // `telefone` já veio só com dígitos, então o length aqui é a mesma contagem
+  // que o banco faz. A mensagem diz a faixa: sem ela a pessoa apaga e digita o
+  // mesmo número de novo, achando que foi falha de conexão. Aqui o campo é
+  // obrigatório — por isso não repete o "ou deixe em branco" do aviso do CRM.
+  if (telefone.length < TELEFONE_MIN_DIGITOS || telefone.length > TELEFONE_MAX_DIGITOS) {
+    return json(
+      { error: `Telefone: informe DDD e número (${TELEFONE_MIN_DIGITOS} a ${TELEFONE_MAX_DIGITOS} dígitos).` },
+      400,
+    )
+  }
   if (!servicoId || !profissionalId || !inicio) {
     return json({ error: 'Escolha um horario.' }, 400)
   }

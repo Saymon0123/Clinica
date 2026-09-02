@@ -32,15 +32,33 @@ export function downloadCsv(filename: string, csv: string) {
 /**
  * Lê um CSV simples (separador ; ou ,) respeitando aspas.
  * Retorna a primeira linha como cabeçalho e o restante como registros.
+ *
+ * `linhas[i]` é o número da linha de `rows[i]` **no arquivo**, contando a
+ * partir de 1 — o mesmo número que aparece na lateral do Excel. Ele existe
+ * porque a importação precisa dizer *qual* linha recusou, e quem vai
+ * consertar tem a planilha aberta, não este array.
+ *
+ * Por isso a contagem é física e nasce ANTES de qualquer filtro: linha em
+ * branco no meio (ou no começo, que desloca o cabeçalho) e quebra de linha
+ * dentro de aspas contam igual. Numerar depois de descartar as vazias aponta
+ * o cliente errado, que é justamente o erro que a mensagem existe para evitar.
  */
-export function parseCsv(text: string): { headers: string[]; rows: string[][] } {
+export function parseCsv(text: string): { headers: string[]; rows: string[][]; linhas: number[] } {
   const clean = text.replace(/^﻿/, '')
-  const separator = (clean.split('\n')[0] ?? '').includes(';') ? ';' : ','
+  // Fareja o separador na primeira linha COM CONTEÚDO, não na primeira linha.
+  // Export de sistema antigo às vezes começa com uma linha em branco: olhando a
+  // linha 1 o ponto e vírgula não aparece, o parser cai na vírgula e cada linha
+  // do arquivo vira uma célula só — o cabeçalho some, a importação diz que
+  // falta a coluna "Nome" e o dono não tem como descobrir o motivo.
+  const primeiraComConteudo = clean.split('\n').find((linha) => linha.trim() !== '') ?? ''
+  const separator = primeiraComConteudo.includes(';') ? ';' : ','
 
-  const rows: string[][] = []
+  const brutas: { campos: string[]; linha: number }[] = []
   let cell = ''
   let row: string[] = []
   let inQuotes = false
+  let linha = 1
+  let inicioDaLinha = 1
 
   for (let i = 0; i < clean.length; i++) {
     const char = clean[i]
@@ -54,6 +72,9 @@ export function parseCsv(text: string): { headers: string[]; rows: string[][] } 
           inQuotes = false
         }
       } else {
+        // Quebra de linha dentro de aspas é um registro só para o Excel, mas
+        // ocupa duas linhas na tela dele — contar aqui mantém os números iguais.
+        if (char === '\n') linha++
         cell += char
       }
       continue
@@ -66,9 +87,11 @@ export function parseCsv(text: string): { headers: string[]; rows: string[][] } 
       cell = ''
     } else if (char === '\n') {
       row.push(cell)
-      rows.push(row)
+      brutas.push({ campos: row, linha: inicioDaLinha })
       row = []
       cell = ''
+      linha++
+      inicioDaLinha = linha
     } else if (char !== '\r') {
       cell += char
     }
@@ -76,10 +99,14 @@ export function parseCsv(text: string): { headers: string[]; rows: string[][] } 
 
   if (cell !== '' || row.length > 0) {
     row.push(cell)
-    rows.push(row)
+    brutas.push({ campos: row, linha: inicioDaLinha })
   }
 
-  const nonEmpty = rows.filter((r) => r.some((c) => c.trim() !== ''))
-  const headers = (nonEmpty.shift() ?? []).map((h) => h.trim())
-  return { headers, rows: nonEmpty }
+  const cheias = brutas.filter((r) => r.campos.some((c) => c.trim() !== ''))
+  const cabecalho = cheias.shift()
+  return {
+    headers: (cabecalho?.campos ?? []).map((h) => h.trim()),
+    rows: cheias.map((r) => r.campos),
+    linhas: cheias.map((r) => r.linha),
+  }
 }

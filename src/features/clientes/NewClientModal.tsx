@@ -3,6 +3,7 @@ import { Modal } from '../../components/Modal'
 import { Campo, Input, TextArea } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
 import { traduzirErroDoBanco } from '../../lib/erroDoBanco'
+import { AVISO_TELEFONE_INVALIDO, classificarTelefone } from '../../lib/telefone'
 import type { Client } from './types'
 import { ErroInline } from '../../components/ErroInline'
 
@@ -22,10 +23,24 @@ export function NewClientModal({ salonId, initial, onClose, onCreated }: Props) 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Achado 10 da revisão: este modal (que cria E edita) aceitava qualquer texto
+  // no telefone. Cliente com telefone torto não recebe lembrete nem reativação
+  // e ainda vira cadastro duplicado, porque é o número que diz que duas visitas
+  // são da mesma pessoa. A régua é a mesma que virou CHECK
+  // `clients_telefone_valido` na migration 0128 — então aqui a tela só antecipa
+  // o 23514 do servidor com uma frase que o dono entende.
+  const estadoDoTelefone = classificarTelefone(telefone)
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!nome.trim()) {
       setError('Informe o nome do cliente.')
+      return
+    }
+    // Vazio segue em frente e grava null: cliente sem WhatsApp é legítimo, e o
+    // banco também aceita nulo. Barrado mesmo é só o que não é telefone.
+    if (estadoDoTelefone === 'invalido') {
+      setError(AVISO_TELEFONE_INVALIDO)
       return
     }
 
@@ -34,7 +49,7 @@ export function NewClientModal({ salonId, initial, onClose, onCreated }: Props) 
     try {
       const payload = {
         nome: nome.trim(),
-        telefone: telefone.trim() || null,
+        telefone: estadoDoTelefone === 'vazio' ? null : telefone.trim(),
         aniversario: aniversario || null,
         observacao: observacao.trim() || null,
       }
@@ -79,7 +94,26 @@ export function NewClientModal({ salonId, initial, onClose, onCreated }: Props) 
             />
           </Campo>
 
-          <Campo rotulo="Telefone" htmlFor="telefone">
+          {/* O aviso do telefone é aviso, não erro: quem cadastra está com o
+              cliente na frente e digita o número aos poucos, e um campo
+              vermelho no terceiro dígito parece bronca. Por isso o texto sai em
+              `text-warning` sob o campo e a borda não muda (nada de `erro` no
+              Input) — vermelho fica para quem insiste e clica em salvar. */}
+          <Campo
+            rotulo="Telefone"
+            htmlFor="telefone"
+            apoio={
+              <>
+                É por ele que o cliente recebe lembrete e reativação, e é por ele que o sistema
+                sabe que duas visitas são da mesma pessoa.
+                {estadoDoTelefone === 'invalido' && (
+                  <span className="block text-warning mt-0.5">
+                    Ainda não é um telefone: com DDD, de 10 a 13 dígitos.
+                  </span>
+                )}
+              </>
+            }
+          >
             <Input
               id="telefone"
               value={telefone}

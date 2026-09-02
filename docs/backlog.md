@@ -1735,3 +1735,80 @@ cloud_api). Blindagem no CRM: o bloco "oficial" agora exige phone_number_id
 próprio, e o texto passou a explicar o híbrido.
 Pendente do Saymon: parear o QR da El Guardians e testar conversa (texto +
 áudio) — é o teste que valida o ramo Evolution e o ramo central de uma vez.
+
+---
+
+## Achados do passo 1.9 (2026-09-01) — abertos
+
+Encontrados enquanto o telefone do cliente ganhava régua única (migration
+0128). Nenhum deles é do escopo do passo, e por isso ficam aqui em vez de
+sumir no chat.
+
+### ⚠️ O `'55' ||` das views de disparo monta número que não existe — custa dinheiro
+Onze views montam o destino como `'55' || regexp_replace(telefone,'\D','','g')`
+e filtram por `length(...) >= 12`. Nenhuma tira o `55` que **já veio** no valor.
+
+Consultado em produção em 01/09, com os três clientes que o agente do WhatsApp
+cadastrou:
+
+| telefone gravado | destino montado | dígitos |
+|---|---|---|
+| `554187275895` | `55554187275895` | 14 |
+| `554184729754` | `55554184729754` | 14 |
+
+Catorze dígitos passam no filtro `>= 12` e viram mensagem para um número
+inexistente. E isso é o **padrão** para todo cliente criado pelo agente:
+`docs/n8n-integration.md` manda gravar o telefone "como veio do WhatsApp", que
+é justamente com o DDI na frente. Pelo canal oficial, cada uma dessas é um
+template cobrado que nunca chega em ninguém. Fixo de 10 dígitos também passa
+(vira 12) — mensagem de WhatsApp para telefone fixo.
+
+O conserto é uma função única de normalização (`private.destino_whatsapp`) e a
+reescrita das onze views para chamá-la, em vez de cada uma repetir a
+concatenação. Views afetadas: 0070, 0077, 0081, 0083, 0088, 0089, 0093, 0115,
+0118, 0121 e o aviso de fim de teste da 0055.
+
+**Cabe na Parte 2 do roteiro ("custam dinheiro ou cliente") como passo próprio.**
+
+### O fechamento de comanda engole o erro ao gravar preferência de aviso
+`src/features/vendas/NewSaleModal.tsx` (~linha 551) grava em `clients` o opt-in
+de aviso de retorno e as preferências de reativação, e trata a falha com
+`console.error('Preferência de aviso não salvou:', avisoError)`. A venda fecha
+normalmente e o registro de consentimento — que é o que distingue "foi avisado"
+de "nunca ouviu falar", exigência de LGPD — simplesmente não grava, sem nada na
+tela. Defeito silencioso.
+
+### n8n: a fila de convites precisa deduplicar por token, não por convite
+Com a 0128, trocar o e-mail de um convite zera `email_enviado_em` e o convite
+volta para `convites_a_enviar`. Se o fluxo que lê essa view deduplicar por `id`
+do convite ou por e-mail, o reenvio é barrado como "já mandei esse" e o
+convidado novo não recebe nada — exatamente o defeito que a 0128 veio corrigir,
+só que uma peça adiante. **A chave certa é o `token`.** Conferir no n8n.
+
+Junto disso: o corpo do e-mail deveria dizer que este link substitui qualquer
+anterior.
+
+### ⚠️ Ordem de aplicação: migration antes do deploy abre janela de quebra
+Aconteceu neste passo, e é para não repetir. A 0128 foi aplicada à mão em
+produção **antes** do commit. Entre a aplicação e o push, duas coisas ficaram
+quebradas para quem estivesse usando o CRM:
+
+- **"Trocar e-mail do convite"** respondia erro sempre: o `revoke update` já
+  valia e o código no ar ainda fazia `update` direto (a RPC só existia na
+  árvore de trabalho).
+- **Agenda pública** com telefone de 14 dígitos passava pelos dois filtros de
+  piso, batia na CHECK nova e devolvia 500 genérico, derrubando o horário que
+  a pessoa já tinha escolhido.
+
+A regra que faltava: **quando a migration APERTA uma regra, o código que a
+antecipa tem de estar no ar primeiro.** Afrouxar pode ir antes; apertar vai
+depois. E a edge function é a única das cinco peças que não sobe no push —
+`supabase functions deploy <nome>` é comando à mão, e o `.github/workflows/ci.yml`
+não faz deploy de função nenhuma.
+
+### Cliente duplicado quando o telefone fica em branco na Agenda
+Sem telefone, `NewAppointmentModal` procura o cliente pelo **nome** — e essa
+busca passa pela RLS de leitura, que pode esconder um cliente cadastrado por
+outro barbeiro. Não achando, cria outro. O índice único não barra, porque sem
+telefone `telefone_norm` é nulo. É o resto do achado 11: a RPC `garantir_cliente`
+resolveu o caminho com telefone, o caminho sem telefone continua aberto.

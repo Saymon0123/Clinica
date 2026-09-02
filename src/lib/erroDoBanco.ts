@@ -1,3 +1,5 @@
+import { AVISO_TELEFONE_INVALIDO } from './telefone'
+
 /**
  * Tradutor único de erro do Postgres para português de barbearia.
  *
@@ -10,6 +12,24 @@
  * Quem tem contexto melhor passa `especificos` e sobrepõe a frase padrão.
  */
 type ErroPostgres = { code?: string; message?: string } | null | undefined
+
+/**
+ * Regra que caiu, pelo nome da constraint.
+ *
+ * O Postgres manda o nome dentro da mensagem: 'new row for relation "clients"
+ * violates check constraint "clients_telefone_valido"'. É a única parte do
+ * erro que diz QUAL regra o dado feriu — o código sozinho (23514) só diz que
+ * alguma caiu, e vira a frase genérica "deixaria um dado inválido", que não
+ * ajuda o dono a arrumar nada. Por isso este mapa é consultado antes do mapa
+ * por código.
+ *
+ * Cresce a cada CHECK nomeada que valha uma frase própria; a chave é o nome
+ * exato da constraint no banco, então renomear lá exige mexer aqui.
+ */
+const POR_CONSTRAINT: Record<string, string> = {
+  // CHECK da migration 0128, a mesma faixa de `classificarTelefone`.
+  clients_telefone_valido: AVISO_TELEFONE_INVALIDO,
+}
 
 const PADRAO: Record<string, string> = {
   // Índice único violado. O caso real é sempre telefone de cliente.
@@ -39,6 +59,17 @@ export function traduzirErroDoBanco(
   // sabe mais do contexto que qualquer tabela genérica — usa ela.
   if (message && /[áâãéêíóôõúç]|barbearia|pacote|dono|horário|crédito/i.test(message)) {
     return message.replace(/^ERROR:\s*/i, '')
+  }
+
+  // Depois do teste acima porque a mensagem do Postgres é em inglês e nunca
+  // casa com a heurística de português: as duas checagens olham `message`,
+  // mas cada uma pega um tipo de erro diferente. E na frente de `especificos`
+  // de propósito: quem chamou escolhe a frase pelo código, que não distingue
+  // qual CHECK caiu — aqui o nome da constraint distingue.
+  if (message) {
+    for (const [constraint, frase] of Object.entries(POR_CONSTRAINT)) {
+      if (message.includes(constraint)) return frase
+    }
   }
 
   if (code && especificos?.[code]) return especificos[code]

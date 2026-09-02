@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom'
 import { Check, Clock } from 'lucide-react'
 import { invokeFunction } from '../../lib/invokeFunction'
 import { ErroInline } from '../../components/ErroInline'
+import { AVISO_TELEFONE_FORMATO, classificarTelefone } from '../../lib/telefone'
 
 /**
  * A página que o QR do balcão abre.
@@ -88,7 +89,16 @@ export function AgendaPublicaPage() {
     setErro(null)
 
     if (!nome.trim()) return setErro('Informe seu nome.')
-    if (telefone.replace(/\D/g, '').length < 10) return setErro('Informe seu WhatsApp com DDD.')
+    // A mesma régua do banco (CHECK de 10 a 13 dígitos, migration 0128). Só o
+    // piso deixava passar 14 dígitos: o insert quebrava lá atrás e voltava um
+    // 500 genérico, que aqui ainda derruba a escolha do horário e joga a pessoa
+    // de volta na lista — ela perde o que já tinha feito sem saber o motivo.
+    // Aqui, diferente do CRM, o campo é obrigatório: vazio tem aviso próprio,
+    // porque "deixe em branco" não é opção para quem precisa ser avisado do
+    // horário.
+    const estadoDoTelefone = classificarTelefone(telefone)
+    if (estadoDoTelefone === 'vazio') return setErro('Informe seu WhatsApp com DDD.')
+    if (estadoDoTelefone === 'invalido') return setErro(AVISO_TELEFONE_FORMATO)
     if (!escolhido || !servicoId) return setErro('Escolha um horário.')
 
     setEnviando(true)

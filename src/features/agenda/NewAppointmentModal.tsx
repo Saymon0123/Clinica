@@ -5,6 +5,7 @@ import { Campo, Input, Select } from '../../components/Campo'
 import { Badge } from '../../components/Badge'
 import { supabase } from '../../lib/supabase'
 import { traduzirErroDoBanco } from '../../lib/erroDoBanco'
+import { classificarTelefone, AVISO_TELEFONE_INVALIDO } from '../../lib/telefone'
 import type { Professional, Service } from './types'
 import { ErroInline } from '../../components/ErroInline'
 
@@ -99,6 +100,15 @@ export function NewAppointmentModal({
       setError('Adicione ao menos um serviço.')
       return
     }
+    // O telefone é conferido aqui, junto com as outras validações, e não lá na
+    // hora de gravar: a CHECK do banco (0128) devolve 23514 com mensagem em
+    // inglês, e ver isso no meio de um agendamento não diz ao barbeiro o que
+    // corrigir. A régua é a mesma do banco, vinda de lib/telefone.
+    const estadoDoTelefone = classificarTelefone(clientPhone)
+    if (estadoDoTelefone === 'invalido') {
+      setError(AVISO_TELEFONE_INVALIDO)
+      return
+    }
 
     setSubmitting(true)
     // Só o cliente criado NESTA tentativa pode ser desfeito. Um cliente que já
@@ -111,7 +121,14 @@ export function NewAppointmentModal({
       // dígitos): com telefone digitado, o casamento é por ele — dois "João
       // Silva" diferentes deixam de virar a mesma pessoa. Nome é o último
       // recurso, só quando não há telefone.
-      const digitos = clientPhone.replace(/\D/g, '')
+      //
+      // O caminho era escolhido contando dígitos — 10 ou mais ia para a RPC,
+      // menos de 8 buscava por nome — e sobrava um vão no meio: 8, 9 ou 14+
+      // dígitos não entravam em nenhum dos dois e escorregavam para o insert
+      // cru, que hoje bate na CHECK do banco. Os três estados de
+      // `classificarTelefone` fecham o vão porque cobrem toda entrada
+      // possível, sem faixa órfã: 'invalido' já parou lá em cima, então aqui
+      // só resta 'valido' (RPC) ou 'vazio' (nome).
       let existingClient: { id: string } | null = null
 
       // Com telefone completo, quem resolve é a RPC `garantir_cliente`: ela
@@ -119,7 +136,7 @@ export function NewAppointmentModal({
       // cadastrado por outro barbeiro era invisível na busca e o cadastro
       // batia no índice único — o barbeiro ficava travado sem saída pela tela
       // (achado 11 da revisão de 01/09).
-      if (digitos.length >= 10) {
+      if (estadoDoTelefone === 'valido') {
         const { data, error: rpcError } = await supabase.rpc('garantir_cliente', {
           p_salon_id: salonId,
           p_nome: clientName.trim(),
@@ -134,7 +151,7 @@ export function NewAppointmentModal({
         if (!resolvido.ja_existia) clienteCriadoAgora = resolvido.id
       }
 
-      if (!existingClient && digitos.length < 8) {
+      if (!existingClient && estadoDoTelefone === 'vazio') {
         // limit(1) em vez de maybeSingle: dois clientes com o mesmo nome no
         // salão fariam o maybeSingle estourar sem explicação.
         const { data, error: findError } = await supabase
@@ -150,9 +167,12 @@ export function NewAppointmentModal({
       if (existingClient) {
         clientId = existingClient.id
       } else {
+        // Só se chega aqui com o telefone vazio: com telefone válido quem cria
+        // é a RPC acima. Por isso o insert nunca leva número — e nunca mais
+        // esbarra na CHECK.
         const { data: newClient, error: createError } = await supabase
           .from('clients')
-          .insert({ salon_id: salonId, nome: clientName.trim(), telefone: clientPhone.trim() || null })
+          .insert({ salon_id: salonId, nome: clientName.trim(), telefone: null })
           .select('id')
           .single()
         if (createError) throw createError

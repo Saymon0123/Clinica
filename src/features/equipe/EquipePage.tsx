@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Check, Clock, Copy, Link2, Pencil, Percent, Plus, Power, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react'
+import { AlertTriangle, Check, Clock, Copy, Link2, Pencil, Percent, Plus, Power, Send, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { urlDoConvite } from '../../lib/appUrl'
+import { traduzirErroDoBanco } from '../../lib/erroDoBanco'
 import { formatarTelefone, linkWhatsApp } from '../../lib/telefone'
 import { Modal } from '../../components/Modal'
 import { useAuth } from '../auth/AuthContext'
@@ -34,7 +35,10 @@ const LABEL_PAPEL: Record<Papel, string> = {
 
 type Convite = {
   id: string
-  nome: string
+  // O convite de dono criado pela operação grava `nome` nulo e cai nesta mesma
+  // lista. O tipo dizia `string` e mentia: a linha aparecia em branco e o
+  // `window.confirm` de cancelar perguntava "Cancelar o convite de null?".
+  nome: string | null
   email: string
   token: string
   role: string
@@ -42,7 +46,15 @@ type Convite = {
   usado_em: string | null
 }
 
+/** O que a RPC `trocar_email_do_convite` (migration 0128) devolve. */
+type ResultadoDaTroca = { novo_token: string; novo_prazo: string; trocou: boolean }
+
 const linkDoConvite = urlDoConvite
+
+/** Convite sem nome ainda precisa ser reconhecível: o e-mail identifica. */
+function nomeDoConvite(c: Convite) {
+  return c.nome?.trim() || c.email
+}
 
 export function EquipePage() {
   const { salonId, isManager, isOwner, loading: salonLoading, recarregarUnidades } = useSalon()
@@ -57,6 +69,10 @@ export function EquipePage() {
   const [editandoEmail, setEditandoEmail] = useState<string | null>(null)
   const [emailRascunho, setEmailRascunho] = useState('')
   const [salvandoConvite, setSalvandoConvite] = useState<string | null>(null)
+  // Aviso que FICA na linha do convite (id → texto), não toast: depois de
+  // trocar o e-mail ou reenviar, o dono precisa ler com calma e copiar o link.
+  // Três segundos de toast não dão isso.
+  const [avisoDoConvite, setAvisoDoConvite] = useState<Record<string, string>>({})
   const [horarioDe, setHorarioDe] = useState<Membro | null>(null)
   const [editandoComissao, setEditandoComissao] = useState<string | null>(null)
   const [comissaoRascunho, setComissaoRascunho] = useState('')
@@ -235,33 +251,112 @@ export function EquipePage() {
     carregar()
   }
 
+  /**
+   * Achado 12: trocar o e-mail do convite era meia troca. O endereço mudava, o
+   * link antigo continuava valendo, o prazo não era renovado e nada saía por
+   * e-mail — o convidado ficava sem convite e o dono achava que tinha
+   * resolvido.
+   *
+   * A RPC `trocar_email_do_convite` (migration 0128) faz as três coisas juntas:
+   * gera token novo, dá 7 dias e zera `email_enviado_em`, que é o que devolve o
+   * convite para a fila de e-mail do n8n. O `.from('salon_invites').update(...)`
+   * que morava aqui não é nem opção: a 0128 revogou o UPDATE de `authenticated`,
+   * então aquele caminho hoje volta 42501.
+   *
+   * `trocou = false` quer dizer mesmo endereço, ou seja, reenvio: o token
+   * continua o mesmo e só o prazo e a fila são renovados.
+   */
+  async function trocarEmailDoConvite(c: Convite, email: string) {
+    setSalvandoConvite(c.id)
+    setErro(null)
+    const { data, error } = await supabase.rpc('trocar_email_do_convite', {
+      p_convite_id: c.id,
+      p_email: email,
+    })
+    setSalvandoConvite(null)
+
+    if (error) {
+      console.error('Erro ao atualizar o convite:', error)
+      // A RPC recusa com 42501 e 22023 trazendo frases em português já prontas
+      // para o dono ler ("convite já aceito", "você não gerencia esta
+      // barbearia"). Uma frase fixa aqui esconderia justamente o motivo.
+      setErro(traduzirErroDoBanco(error, undefined, 'Não foi possível atualizar o convite.'))
+      return
+    }
+
+    // A RPC é `returns table`, então a resposta chega como array de uma linha.
+    const resultado = (Array.isArray(data) ? data[0] : data) as ResultadoDaTroca | undefined
+    if (!resultado) {
+      setErro('Não foi possível atualizar o convite.')
+      return
+    }
+
+    // Token novo no state ANTES do `carregar()`: sem isso existe a janela em
+    // que "Copiar link" copia o link que a RPC acabou de matar.
+    setConvites((atuais) =>
+      atuais.map((x) =>
+        x.id === c.id
+          ? { ...x, email, token: resultado.novo_token, expira_em: resultado.novo_prazo }
+          : x,
+      ),
+    )
+
+    const prazo = new Date(resultado.novo_prazo).toLocaleDateString('pt-BR')
+    setAvisoDoConvite((atuais) => ({
+      ...atuais,
+      [c.id]: resultado.trocou
+        ? `Convite refeito para ${email}. O link anterior parou de funcionar; o link novo sai por e-mail em alguns minutos e vale até ${prazo}. Se preferir não esperar, copie o link abaixo e mande você mesmo.`
+        : `Convite reenviado para ${email}. O link continua o mesmo, o e-mail entrou na fila de novo e o prazo foi renovado até ${prazo}.`,
+    }))
+
+    // Só fecha o editor SE for o deste convite: "Reenviar" na linha de baixo
+    // chega aqui pelo mesmo caminho, e fechar de qualquer jeito jogaria fora o
+    // e-mail que o dono estava digitando em outra linha, sem avisar.
+    setEditandoEmail((atual) => (atual === c.id ? null : atual))
+    carregar()
+  }
+
   async function salvarEmail(c: Convite) {
     const novo = emailRascunho.trim().toLowerCase()
     if (!/^\S+@\S+\.\S+$/.test(novo)) {
       setErro('E-mail inválido.')
       return
     }
-    if (novo === c.email) {
-      setEditandoEmail(null)
+    // Mesmo espírito do aviso de cancelar: trocar o endereço mata o link que já
+    // foi enviado, e isso precisa ser dito antes, não descoberto depois pelo
+    // convidado. Endereço igual é reenvio e não destrói nada — não pergunta.
+    if (
+      novo !== c.email &&
+      !window.confirm(
+        `Trocar o e-mail deste convite de ${c.email} para ${novo}?\n\n` +
+          `O link já enviado para ${c.email} para de funcionar. Um link novo vai para ${novo}.`,
+      )
+    ) {
       return
     }
+    await trocarEmailDoConvite(c, novo)
+  }
 
-    setSalvandoConvite(c.id)
-    setErro(null)
-    const { error } = await supabase.from('salon_invites').update({ email: novo }).eq('id', c.id)
-    setSalvandoConvite(null)
+  /**
+   * "O convidado não recebeu" é o caso mais comum da vida real, e até aqui a
+   * única saída era cancelar e refazer o convite. Reenviar é a mesma RPC com o
+   * e-mail atual: mantém o link, renova o prazo e recoloca o convite na fila.
+   */
+  function reenviarConvite(c: Convite) {
+    return trocarEmailDoConvite(c, c.email)
+  }
 
-    if (error) {
-      console.error('Erro ao trocar o e-mail do convite:', error)
-      setErro('Não foi possível trocar o e-mail do convite.')
-      return
-    }
-    setEditandoEmail(null)
-    carregar()
+  function fecharAviso(conviteId: string) {
+    setAvisoDoConvite((atuais) => {
+      const resto = { ...atuais }
+      delete resto[conviteId]
+      return resto
+    })
   }
 
   async function cancelarConvite(c: Convite) {
-    if (!window.confirm(`Cancelar o convite de ${c.nome}? O link enviado deixa de funcionar.`)) return
+    if (!window.confirm(`Cancelar o convite de ${nomeDoConvite(c)}? O link enviado deixa de funcionar.`))
+      return
 
     setSalvandoConvite(c.id)
     setErro(null)
@@ -324,46 +419,124 @@ export function EquipePage() {
         <div className="bg-surface border border-border rounded-2xl shadow-sm p-5">
           <h2 className="text-sm font-semibold text-foreground mb-2">Convites aguardando</h2>
           <div className="divide-y divide-border">
-            {convites.map((c) => (
-              <div key={c.id} className="py-2 first:pt-0 last:pb-0">
-                {editandoEmail === c.id ? (
-                  // O erro de "e-mail já cadastrado" só aparece quando o
-                  // convidado abre o link, então o dono precisa poder corrigir
-                  // o endereço depois de o convite já existir.
-                  <div className="space-y-2">
-                    <div className="text-sm text-foreground">{c.nome}</div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Input
-                        type="email"
-                        value={emailRascunho}
-                        onChange={(e) => setEmailRascunho(e.target.value)}
-                        aria-label={`Novo e-mail do convite de ${c.nome}`}
-                        className="flex-1 min-w-[12rem]"
-                      />
-                      <button
-                        onClick={() => salvarEmail(c)}
-                        disabled={salvandoConvite === c.id}
-                        className="btn-primary rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
-                      >
-                        {salvandoConvite === c.id ? 'Salvando...' : 'Salvar'}
-                      </button>
-                      <button
-                        onClick={() => setEditandoEmail(null)}
-                        className="text-xs font-medium text-muted-foreground hover:text-foreground"
-                      >
-                        Voltar
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="text-sm text-foreground">{c.nome}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {c.email} · expira em {new Date(c.expira_em).toLocaleDateString('pt-BR')}
+            {convites.map((c) => {
+              const nome = nomeDoConvite(c)
+              const prazo = new Date(c.expira_em)
+              // A lista não filtra por prazo, e é de propósito: sumir com o
+              // convite vencido deixaria o dono esperando uma resposta que não
+              // vem mais. Então o vencido tem que se identificar como vencido e
+              // dizer como voltar a valer.
+              const vencido = prazo.getTime() < Date.now()
+              const aviso = avisoDoConvite[c.id]
+              return (
+                <div key={c.id} className="py-2 first:pt-0 last:pb-0">
+                  {editandoEmail === c.id ? (
+                    // O erro de "e-mail já cadastrado" só aparece quando o
+                    // convidado abre o link, então o dono precisa poder corrigir
+                    // o endereço depois de o convite já existir.
+                    <div className="space-y-2">
+                      <div className="text-sm text-foreground">{nome}</div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Input
+                          type="email"
+                          value={emailRascunho}
+                          onChange={(e) => setEmailRascunho(e.target.value)}
+                          aria-label={`Novo e-mail do convite de ${nome}`}
+                          className="flex-1 min-w-[12rem]"
+                        />
+                        <button
+                          onClick={() => salvarEmail(c)}
+                          disabled={salvandoConvite === c.id}
+                          className="btn-primary rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+                        >
+                          {salvandoConvite === c.id ? 'Salvando...' : 'Salvar'}
+                        </button>
+                        <button
+                          onClick={() => setEditandoEmail(null)}
+                          className="text-xs font-medium text-muted-foreground hover:text-foreground"
+                        >
+                          Voltar
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
+                  ) : (
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-sm text-foreground">{nome}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {c.email} ·{' '}
+                          {vencido ? (
+                            <span className="inline-flex items-center gap-1 font-medium text-warning">
+                              <AlertTriangle size={12} />
+                              venceu em{' '}
+                              {prazo.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                            </span>
+                          ) : (
+                            <>expira em {prazo.toLocaleDateString('pt-BR')}</>
+                          )}
+                        </div>
+                        {vencido && (
+                          <div className="mt-0.5 text-xs text-warning">
+                            Este link não abre mais. <strong>Reenviar</strong> renova o prazo por mais
+                            7 dias e manda o convite outra vez.
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <button
+                          onClick={() => copiar(c.token)}
+                          className="btn-chip btn-chip-primario flex items-center gap-1.5"
+                        >
+                          {copiado === c.token ? <Check size={14} /> : <Copy size={14} />}
+                          {copiado === c.token ? 'Link copiado!' : 'Copiar link'}
+                        </button>
+                        <button
+                          onClick={() => reenviarConvite(c)}
+                          disabled={salvandoConvite === c.id}
+                          className="btn-chip flex items-center gap-1"
+                        >
+                          <Send size={12} />
+                          {salvandoConvite === c.id ? 'Enviando...' : 'Reenviar'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditandoEmail(c.id)
+                            setEmailRascunho(c.email)
+                            setErro(null)
+                          }}
+                          className="btn-chip flex items-center gap-1"
+                        >
+                          <Pencil size={12} />
+                          Trocar e-mail
+                        </button>
+                        <button
+                          onClick={() => cancelarConvite(c)}
+                          disabled={salvandoConvite === c.id}
+                          className="btn-chip btn-chip-perigo flex items-center gap-1"
+                        >
+                          <Trash2 size={12} />
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {aviso && (
+                    <div className="mt-2 space-y-2 rounded-lg border border-success/30 bg-success-soft px-3 py-2">
+                      <div className="flex items-start gap-2">
+                        <p className="flex-1 text-xs text-foreground">{aviso}</p>
+                        <button
+                          onClick={() => fecharAviso(c.id)}
+                          aria-label="Fechar aviso"
+                          className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                      {/* O botão de copiar repetido aqui não é enfeite: quando o
+                          e-mail demora, o dono manda o link pelo WhatsApp, e ter
+                          que caçar o botão em outra linha é o atrito que faz ele
+                          desistir e refazer o convite do zero. */}
                       <button
                         onClick={() => copiar(c.token)}
                         className="btn-chip btn-chip-primario flex items-center gap-1.5"
@@ -371,30 +544,11 @@ export function EquipePage() {
                         {copiado === c.token ? <Check size={14} /> : <Copy size={14} />}
                         {copiado === c.token ? 'Link copiado!' : 'Copiar link'}
                       </button>
-                      <button
-                        onClick={() => {
-                          setEditandoEmail(c.id)
-                          setEmailRascunho(c.email)
-                          setErro(null)
-                        }}
-                        className="btn-chip flex items-center gap-1"
-                      >
-                        <Pencil size={12} />
-                        Trocar e-mail
-                      </button>
-                      <button
-                        onClick={() => cancelarConvite(c)}
-                        disabled={salvandoConvite === c.id}
-                        className="btn-chip btn-chip-perigo flex items-center gap-1"
-                      >
-                        <Trash2 size={12} />
-                        Cancelar
-                      </button>
                     </div>
-                  </div>
-                )}
-              </div>
-            ))}
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
       )}

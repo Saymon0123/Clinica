@@ -108,6 +108,19 @@ export function ConfiguracoesPage() {
       return
     }
 
+    // Campo VAZIO passava despercebido: a comparação `fecha <= abre` é falsa
+    // quando `abre` é '', então o dia era salvo como {abre: "", fecha: "19:00"}.
+    // Isso derrubava a agenda pública e o agendamento pelo agente naquele dia
+    // da semana, com erro 500 e sem nada na tela explicando (achado 5 da
+    // revisão de 01/09). Falta de valor é erro antes de qualquer comparação.
+    const incompleto = horario.find((d) => d.aberto && (!d.abre || !d.fecha))
+    if (incompleto) {
+      setErro(
+        `Em ${incompleto.label}, preencha a hora de abrir e a de fechar — ou desmarque o dia se a barbearia não abre.`,
+      )
+      return
+    }
+
     // Um dia aberto com fecha <= abre gera janela vazia, e o agente não
     // encontraria horário nenhum sem explicar o motivo.
     const invalido = horario.find((d) => d.aberto && d.fecha <= d.abre)

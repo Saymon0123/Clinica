@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Modal } from '../../components/Modal'
 import { Campo, Input } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
+import { traduzirErroDoBanco } from '../../lib/erroDoBanco'
 import type { ServiceItem } from './types'
 import { ErroInline } from '../../components/ErroInline'
 
@@ -34,8 +35,11 @@ export function NewServiceModal({ salonId, service, onClose, onSaved }: Props) {
       setError('Informe uma duração válida (em minutos).')
       return
     }
-    if (isNaN(precoValor) || precoValor < 0) {
-      setError('Informe um preço válido.')
+    // Maior que zero, como o produto (0132): serviço a R$ 0,00 no catálogo
+    // viraria um serviço que o caixa recusa — pior do que ser recusado aqui,
+    // com explicação. Cortesia é pacote ou desconto na comanda.
+    if (isNaN(precoValor) || precoValor <= 0) {
+      setError('Informe o preço — maior que zero. Cortesia se faz com pacote ou desconto na comanda.')
       return
     }
 
@@ -72,7 +76,13 @@ export function NewServiceModal({ salonId, service, onClose, onSaved }: Props) {
       onClose()
     } catch (err) {
       console.error('Erro ao salvar serviço:', err)
-      setError('Não foi possível salvar o serviço. Tente novamente.')
+      setError(
+        traduzirErroDoBanco(
+          err as { code?: string; message?: string },
+          undefined,
+          'Não foi possível salvar o serviço. Tente novamente.',
+        ),
+      )
     } finally {
       setSubmitting(false)
     }

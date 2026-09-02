@@ -265,6 +265,10 @@ export function NewSaleModal({
         setError('Escolha o cliente antes de vender um pacote — o crédito fica no nome dele.')
         return
       }
+      if (!(Number(pacote.preco) > 0)) {
+        setError(`"${pacote.nome}" está sem preço no catálogo. Corrija em Catálogo antes de vender.`)
+        return
+      }
       setError(null)
       setItems((prev) => [
         ...prev,
@@ -294,6 +298,21 @@ export function NewSaleModal({
         setError(`Estoque insuficiente de "${prod.nome}" (disponível: ${prod.estoque_atual}).`)
         return
       }
+    }
+
+    // Nada sai a R$ 0,00 por acidente (achado 14 da revisão de 01/09). O item
+    // herda o preço do catálogo; produto ou serviço gravado sem preço virava
+    // linha a zero na comanda, e a comanda fechava assim — sem comissão, sem
+    // faturamento, sem aviso. O único zero legítimo aqui é o consumo de pacote
+    // (`viaPacote`/`viaPacoteNovo`), que não passa por esta função: o cliente
+    // já pagou antes. O catálogo também recusa zero desde a 0132; esta linha
+    // é para o cadastro que entrou antes dela.
+    if (!(Number(opt.preco) > 0)) {
+      setError(
+        `"${opt.nome}" está sem preço no catálogo. Corrija em Catálogo antes de vender — ` +
+          'o único item a R$ 0,00 que a comanda aceita é o consumo de pacote.',
+      )
+      return
     }
 
     setError(null)

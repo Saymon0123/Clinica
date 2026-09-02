@@ -97,3 +97,37 @@ describe('traduzirErroDoBanco', () => {
     expect(traduzirErroDoBanco({})).toBe('Não foi possível concluir. Tente novamente.')
   })
 })
+
+// As CHECKs da 0132 entram no mapa por nome: sem isto, produto ou serviço a
+// R$ 0,00 voltaria como "essa operação não é permitida porque deixaria um dado
+// inválido" — que não diz ao dono que o problema é o preço.
+describe('traduzirErroDoBanco: preco de venda (0132)', () => {
+  it('produto a zero diz que o problema e o preco', () => {
+    expect(
+      traduzirErroDoBanco({
+        code: '23514',
+        message: 'new row for relation "products" violates check constraint "products_preco_de_venda_positivo"',
+      }),
+    ).toBe('O preço de venda precisa ser maior que zero.')
+  })
+
+  it('servico a zero diz que o problema e o preco', () => {
+    expect(
+      traduzirErroDoBanco({
+        code: '23514',
+        message: 'new row for relation "services" violates check constraint "services_preco_positivo"',
+      }),
+    ).toBe('O preço do serviço precisa ser maior que zero.')
+  })
+
+  // Produto sem preço nenhum cai no NOT NULL, que é outro código — e a frase
+  // genérica do 23502 já diz "obrigatório", que é o certo aqui.
+  it('produto sem preco cai no campo obrigatorio', () => {
+    expect(
+      traduzirErroDoBanco({
+        code: '23502',
+        message: 'null value in column "preco_venda" of relation "products" violates not-null constraint',
+      }),
+    ).toBe('Faltou preencher um campo obrigatório.')
+  })
+})

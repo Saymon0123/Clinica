@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Modal } from '../../components/Modal'
 import { Campo, Input } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
+import { traduzirErroDoBanco } from '../../lib/erroDoBanco'
 import type { ProductItem } from './types'
 import { ErroInline } from '../../components/ErroInline'
 
@@ -34,8 +35,11 @@ export function NewProductModal({ salonId, product, onClose, onSaved }: Props) {
       setError('Informe o nome do produto.')
       return
     }
-    if (vendaValor !== null && (isNaN(vendaValor) || vendaValor < 0)) {
-      setError('Informe um preço de venda válido.')
+    // Obrigatório e maior que zero (achado 14): produto sem preço virava item a
+    // R$ 0,00 na comanda, fechada sem aviso. O banco recusa desde a 0132
+    // (NOT NULL + CHECK); aqui é a mesma regra, dita antes de o servidor negar.
+    if (vendaValor === null || isNaN(vendaValor) || vendaValor <= 0) {
+      setError('Informe o preço de venda — maior que zero. Sem ele o produto entraria na comanda a R$ 0,00.')
       return
     }
 
@@ -81,7 +85,13 @@ export function NewProductModal({ salonId, product, onClose, onSaved }: Props) {
       onClose()
     } catch (err) {
       console.error('Erro ao salvar produto:', err)
-      setError('Não foi possível salvar o produto. Tente novamente.')
+      setError(
+        traduzirErroDoBanco(
+          err as { code?: string; message?: string },
+          undefined,
+          'Não foi possível salvar o produto. Tente novamente.',
+        ),
+      )
     } finally {
       setSubmitting(false)
     }

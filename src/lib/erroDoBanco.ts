@@ -29,6 +29,9 @@ type ErroPostgres = { code?: string; message?: string } | null | undefined
 const POR_CONSTRAINT: Record<string, string> = {
   // CHECK da migration 0128, a mesma faixa de `classificarTelefone`.
   clients_telefone_valido: AVISO_TELEFONE_INVALIDO,
+  // CHECKs da 0132: nada sai a R$ 0,00 por acidente.
+  products_preco_de_venda_positivo: 'O preço de venda precisa ser maior que zero.',
+  services_preco_positivo: 'O preço do serviço precisa ser maior que zero.',
 }
 
 const PADRAO: Record<string, string> = {

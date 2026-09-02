@@ -1744,31 +1744,57 @@ Encontrados enquanto o telefone do cliente ganhava régua única (migration
 0128). Nenhum deles é do escopo do passo, e por isso ficam aqui em vez de
 sumir no chat.
 
-### ⚠️ O `'55' ||` das views de disparo monta número que não existe — custa dinheiro
-Onze views montam o destino como `'55' || regexp_replace(telefone,'\D','','g')`
-e filtram por `length(...) >= 12`. Nenhuma tira o `55` que **já veio** no valor.
+### ✅ RESOLVIDO em 02/09 — o `'55' ||` das views de disparo
+Estava em cinco views (`avaliacoes_a_pedir`, `clientes_para_reativar`,
+`clientes_para_avisar_retorno`, `atrasos_para_perguntar`, `vencimentos_proximos`)
+e produzia destino de 14 dígitos para todo cliente cadastrado pelo agente.
+Migration 0129: a régua virou `private.destino_whatsapp`, e um teste pgTAP varre
+o schema inteiro atrás da concatenação — view nova escrita do jeito antigo
+derruba o CI. `reativacoes_a_enviar` ganhou a coluna `destino`, que não tinha.
 
-Consultado em produção em 01/09, com os três clientes que o agente do WhatsApp
-cadastrou:
+**Nenhuma mensagem torta chegou a sair:** todos os templates ainda estão em
+`rascunho`, então as filas nunca tiveram linha. O conserto entrou antes do
+primeiro envio.
 
-| telefone gravado | destino montado | dígitos |
+O que sobrou desta família está logo abaixo.
+
+### ⚠️ n8n: o link de "Remarcar" do lembrete monta `wa.me/55` às cegas
+Único lugar fora do banco que ainda monta destino por conta própria. No fluxo
+**CRM Salão - Lembretes de Agendamento** (id `DW0nq1Jyp9xeOJwm`, **ativo**), nó
+`Montar Texto de Reagendamento`:
+
+```
+'https://wa.me/55' + $json.telefone.replace(/\D/g,'')
+```
+
+`$json.telefone` é o telefone da **barbearia**. Medido em 02/09:
+
+| barbearia | telefone | link que o cliente recebe |
 |---|---|---|
-| `554187275895` | `55554187275895` | 14 |
-| `554184729754` | `55554184729754` | 14 |
+| Barbearia do Samuca | `5541987275895` | `wa.me/555541987275895` ❌ |
+| Gusta Barber | `1924u192` | `wa.me/551924192` ❌ |
+| Curitiba / São José | (vazio) | `wa.me/55` ❌ |
+| El Guardians | `41984729754` | `wa.me/5541984729754` ✓ |
 
-Catorze dígitos passam no filtro `>= 12` e viram mensagem para um número
-inexistente. E isso é o **padrão** para todo cliente criado pelo agente:
-`docs/n8n-integration.md` manda gravar o telefone "como veio do WhatsApp", que
-é justamente com o DDI na frente. Pelo canal oficial, cada uma dessas é um
-template cobrado que nunca chega em ninguém. Fixo de 10 dígitos também passa
-(vira 12) — mensagem de WhatsApp para telefone fixo.
+Este é o único da família que **já chega ao cliente**: o lembrete está ativo, e
+quem responde "Remarcar" recebe um link morto. A correção é aplicar a mesma
+régua no expression e cair na frase de reserva ("é só chamar no WhatsApp de
+sempre") quando não houver destino válido — o ternário para isso já existe no nó.
 
-O conserto é uma função única de normalização (`private.destino_whatsapp`) e a
-reescrita das onze views para chamá-la, em vez de cada uma repetir a
-concatenação. Views afetadas: 0070, 0077, 0081, 0083, 0088, 0089, 0093, 0115,
-0118, 0121 e o aviso de fim de teste da 0055.
+### `salons.telefone` não tem régua nenhuma
+A 0128 trancou `clients.telefone` em 10–13 dígitos. O telefone da **barbearia**
+continua aceitando qualquer coisa: "Gusta Barber" está com `1924u192` gravado, e
+a aba Configurações não valida o campo. É o mesmo defeito de uma casa ao lado, e
+alimenta o link de remarcar acima, o `whatsappBarbearia` da página de gestão do
+horário e o rodapé de mensagens.
 
-**Cabe na Parte 2 do roteiro ("custam dinheiro ou cliente") como passo próprio.**
+### Fixo de 10 dígitos vira destino de WhatsApp
+`private.destino_whatsapp` aceita 10 dígitos e devolve 12, porque foi decidido
+preservar o comportamento de hoje. Mas telefone fixo não tem WhatsApp: pelo
+canal oficial isso é um template cobrado que nunca chega. Distinguir fixo de
+celular antigo pelo primeiro dígito depois do DDD é heurística, e errar nela
+significa deixar de falar com um cliente de verdade — por isso ficou de fora do
+conserto. Decidir com dado na mão quando houver volume.
 
 ### O fechamento de comanda engole o erro ao gravar preferência de aviso
 `src/features/vendas/NewSaleModal.tsx` (~linha 551) grava em `clients` o opt-in

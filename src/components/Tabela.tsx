@@ -1,4 +1,4 @@
-import type { ReactNode, TdHTMLAttributes, ThHTMLAttributes } from 'react'
+import type { KeyboardEvent, ReactNode, TdHTMLAttributes, ThHTMLAttributes } from 'react'
 
 /**
  * A tabela única do CRM (leva 2 da modernização).
@@ -29,9 +29,41 @@ export function Th({ className, ...props }: ThHTMLAttributes<HTMLTableCellElemen
   )
 }
 
-export function Linha({ className, children }: { className?: string; children: ReactNode }) {
+/**
+ * `onClick` é opcional e não mexe em nenhum uso antigo: sem ele a linha
+ * continua sendo um `<tr>` inerte. Com ele a linha vira alvo de verdade —
+ * cursor, foco por teclado e Enter/Espaço — porque um `<button>` dentro de
+ * `<td>` só deixaria clicável a célula, e a fileira inteira é o que o dedo
+ * mira no celular.
+ */
+export function Linha({
+  className,
+  onClick,
+  children,
+}: {
+  className?: string
+  onClick?: () => void
+  children: ReactNode
+}) {
   return (
-    <tr className={`border-b border-border/60 last:border-b-0 hover:bg-surface-2/60 transition-colors ${className ?? ''}`}>
+    <tr
+      className={`border-b border-border/60 last:border-b-0 hover:bg-surface-2/60 transition-colors ${
+        onClick ? 'cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary' : ''
+      } ${className ?? ''}`}
+      {...(onClick
+        ? {
+            onClick,
+            role: 'button',
+            tabIndex: 0,
+            onKeyDown: (e: KeyboardEvent<HTMLTableRowElement>) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onClick()
+              }
+            },
+          }
+        : {})}
+    >
       {children}
     </tr>
   )

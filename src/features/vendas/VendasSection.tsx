@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Plus, Receipt } from 'lucide-react'
 import { useVendasData } from './useVendasData'
 import { NewSaleModal, type SalePrefill } from './NewSaleModal'
+import { VendaDetalheModal } from './VendaDetalheModal'
 import { PAYMENT_LABELS } from './types'
 import { Tabela, Th, Linha, Td } from '../../components/Tabela'
 import { EstadoVazio } from '../../components/EstadoVazio'
@@ -43,6 +44,8 @@ export function VendasSection({
   const { sales, loading, error, reload } = useVendasData(salonId, period, refMonth)
   const [modalOpen, setModalOpen] = useState(false)
   const [activePrefill, setActivePrefill] = useState<SalePrefill | null>(null)
+  // Comanda aberta para detalhe/estorno (achado 8).
+  const [detalheId, setDetalheId] = useState<string | null>(null)
 
   // Abre a venda já preenchida quando vem do "Concluir e cobrar" da agenda.
   useEffect(() => {
@@ -98,7 +101,7 @@ export function VendasSection({
           </thead>
           <tbody>
             {sales.map((s) => (
-              <Linha key={s.id}>
+              <Linha key={s.id} onClick={() => setDetalheId(s.id)}>
                 <Td className="text-foreground whitespace-nowrap">
                   {formatDateTime(s.closed_at ?? s.created_at)}
                 </Td>
@@ -127,6 +130,14 @@ export function VendasSection({
             onVendaSalva?.()
             reload()
           }}
+        />
+      )}
+
+      {detalheId && (
+        <VendaDetalheModal
+          saleId={detalheId}
+          onClose={() => setDetalheId(null)}
+          onEstornada={reload}
         />
       )}
     </div>

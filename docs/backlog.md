@@ -1867,3 +1867,18 @@ acesso_ate + 3)` — folga de 3 dias quando a coluna é nula. São dois números
 a mesma ideia ("quanto tempo o WhatsApp continua depois do acesso vencer"), e
 qual vale depende de a coluna estar preenchida ou não. Unificar quando alguém
 mexer nessa área.
+
+---
+
+## Achados do passo 2.2 — acesso, status e saída (2026-09-03)
+
+### O "hoje" do bloqueio e o "hoje" das views não são o mesmo relógio
+`situacao_do_acesso` (0131) decide "bloqueado" e "atendendo" pela data de
+**São Paulo**: às 22h do último dia pago, o UTC já virou, e dizer "venceu" para
+quem ainda tem duas horas é tirar o que ele pagou. As views `salons_atendendo` e
+`salons_com_automacao` usam `current_date`, que no Supabase é **UTC**. Entre
+21h e 0h (horário de Brasília) as duas podem discordar por algumas horas —
+janela pequena, mas é o mesmo tipo de "duas verdades" que o achado 20 fechou
+para a régua dos 3 dias. Quando alguém mexer nas views, trocar por
+`(now() at time zone 'America/Sao_Paulo')::date`, que é o que a cobrança
+(`fechar_mes_de_uso`) já usa.

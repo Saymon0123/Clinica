@@ -57,7 +57,14 @@ export function PedidoDeHumanoBanner({
                   onClick={async () => {
                     setResolvendo(p.id)
                     const ok = await onResolver(p.id)
-                    if (ok) toast('Pedido resolvido')
+                    // A falha tem de aparecer: sem isto o pedido continuava
+                    // no banner sem explicação, e o dono clicava de novo
+                    // achando que não tinha pegado.
+                    toast(
+                      ok
+                        ? 'Pedido resolvido. O agente volta a responder este cliente.'
+                        : 'Não foi possível devolver a conversa ao agente. Tente de novo.',
+                    )
                     setResolvendo(null)
                   }}
                   disabled={resolvendo === p.id}

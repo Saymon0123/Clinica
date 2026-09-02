@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { invokeFunction } from '../../lib/invokeFunction'
 
 export type PedidoDeHumano = {
   id: string
@@ -75,12 +76,26 @@ export function usePedidosDeHumano(salonId: string | null) {
     }
   }, [salonId, reload])
 
+  // "Resolvido" devolve a conversa ao AGENTE, não só apaga o pedido.
+  //
+  // Antes isto era `update({ needs_human: false })` direto na tabela. O pedido
+  // sumia do banner — e `agent_paused` ficava como estava. O caminho que mudava
+  // aquele campo: o dono abre o /web e RESPONDE ao cliente, e a edge function
+  // marca `agent_paused: true` ("o dono assumiu"), deixando `needs_human` de
+  // propósito para ele resolver depois. Se ele resolvia pelo banner em vez de
+  // pelo "Devolver ao agente" do /web, o pedido sumia e a pausa ficava: o
+  // cliente mandava mensagem, ninguém respondia, e nada na tela dizia isso
+  // (achado 15 da revisão de 01/09). Agora o banner passa pela mesma edge
+  // function que o /web usa, que zera os dois campos juntos — um caminho só
+  // para "devolver ao agente", e o n8n nunca toca em `agent_paused`.
   const resolver = useCallback(
     async (id: string) => {
-      const { error } = await supabase
-        .from('whatsapp_conversations')
-        .update({ needs_human: false })
-        .eq('id', id)
+      if (!salonId) return false
+      const { error } = await invokeFunction(
+        'whatsapp',
+        { body: { action: 'resume_agent', conversationId: id, salonId } },
+        'Não foi possível devolver a conversa ao agente.',
+      )
       if (error) {
         console.error('Erro ao resolver o pedido:', error)
         return false
@@ -88,7 +103,7 @@ export function usePedidosDeHumano(salonId: string | null) {
       await reload()
       return true
     },
-    [reload],
+    [salonId, reload],
   )
 
   return { pedidos, resolver }

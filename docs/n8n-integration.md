@@ -145,9 +145,12 @@ O CRM já toca som e acende o botão "WEB" sozinho quando `needs_human` virar
 
 **Importante:** uma vez que o agente marcou `needs_human = true`, o n8n
 **nunca** deve voltar a marcar `false` sozinho. Esse campo só volta a
-`false` quando o dono clica em "Devolver ao agente" no CRM — mesmo que o
-dono já tenha respondido manualmente, a conversa continua aparecendo na
-aba "Solicitou falar com o dono" até ele resolver explicitamente por lá.
+`false` quando o dono devolve a conversa ao agente no CRM — pelo
+"Devolver ao agente" do `/web` ou pelo "Resolvido" do banner de pedido de
+humano, que desde 03/09 passam pela mesma edge function e zeram `needs_human`
+e `agent_paused` juntos. Mesmo que o dono já tenha respondido manualmente, a
+conversa continua aparecendo na aba "Solicitou falar com o dono" até ele
+resolver explicitamente por um dos dois.
 
 ### ⚠️ Handoff dono ↔ agente (`agent_paused`) — leia antes de montar a resposta automática
 

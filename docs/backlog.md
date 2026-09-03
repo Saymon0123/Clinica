@@ -1920,3 +1920,72 @@ menos de duas unidades próprias, sem baixar `carregando`. Hoje é inalcançáve
 porque o componente devolve `null` exatamente nessas condições (linha do
 `if (!isNetwork || ...) return null`). Se a guarda de renderização for
 afrouxada um dia, a tela vira esqueleto para sempre.
+
+---
+
+## Achados dos passos 3.5 a 3.10 — Parte 3 (2026-09-03)
+
+### O QR da Evolution não diz quando vence
+`ConexaoPage` marca o código como vencido aos 40 s por estimativa
+(`QR_VALIDADE_MS`); a Evolution não devolve a validade. Se a API expuser o
+prazo, a edge function `whatsapp` (action `connect`) deve repassá-lo e a tela
+usar o número real em vez da estimativa.
+
+### O teto do fechamento de comissão
+`FechamentoComissaoModal` pede 1000 linhas e avisa quando bate no teto. A
+saída definitiva é uma RPC que agrupe por profissional no banco; por ora,
+salão com mais de 1000 comissões no mês fecha por quinzena. (A produção por
+barbeiro da Rede sem reload já está registrada no 3.4.)
+
+### Exportar: o nome do pacote é atribuído por ordem
+Item de pacote em `order_items` não guarda o modelo; o export (e o detalhe da
+venda) casa os itens com `pacotes_do_cliente` na ordem de criação. Comanda
+com dois pacotes diferentes pode trocar os nomes entre si. Corrige-se
+guardando `pacote_id` em `order_items` (migration) — o mesmo defeito do
+`VendaDetalheModal`.
+
+### Sistema visual: o que ficou de fora do 3.10
+- `botoesDoSistema.test.ts` é uma catraca (teto por tela), não zero: abas,
+  seletores de período e ícones de fechar ainda são botões à mão. A varredura
+  "volta vazia" do roteiro exige converter esses restantes (AgendaPage 6,
+  FinanceiroPage 10, EquipePage 10, ClientesPage 4, os demais 0 a 3).
+- D6 inteiro segue aberto: `.btn-ghost` com uso único, badges ok/marca iguais
+  no escuro, sombras de camada flutuante, `<CardHeader>`/`<Segmentado>`/
+  `<FolhaInferior>`, `jsx-a11y` no oxlint, `viewport-fit=cover`.
+- A pilha de avisos (z-50) fica por cima de modais (também z-50, por ordem no
+  DOM): um "novo agendamento" pode cobrir o topo de um modal aberto por 15 s.
+
+---
+
+## Achados da Parte 4 — divergências de caminho (2026-09-03)
+
+### Regra de "cobrável" e o n8n
+`agendamentos_cobraveis` (0136) é lida pela view do mês, pela fatura e pelo
+painel da Conexão. O n8n não lê nenhuma das três; se um dia o agente precisar
+dizer "quantos agendamentos este mês", ler da view, não recontar.
+
+### Senha mínima no painel do Supabase Auth (fora do repositório)
+O CRM exige 8 em todas as telas (`lib/senha.ts`). O mínimo configurado no
+Auth do Supabase precisa ser 8 também, senão a API aceita o que a tela
+recusa. Painel → Authentication → Providers → Email → Minimum password length.
+
+### Mensagens fixas que ainda não passam pelo tradutor
+O 4.5 converteu agenda, equipe, configurações, meta e fechamento. Ficaram com
+frase fixa após erro do banco: `CaixaSection` (troco e fechar caixa),
+`CobrancaDaRede` (ações), `useVendasData` e `ExportReportModal` (carga),
+`NovaUnidadeModal`. Próxima varredura: todo `setErro('Não foi possível…')`
+que tenha um `error` do supabase à mão passa por `traduzirErroDoBanco`.
+
+### Estoque: o backfill da 0137 não encontrou nada
+Em produção, nenhum produto tinha saldo diferente da soma dos movimentos na
+hora da migração (03/09). A view `estoque_conferido` fica para conferir a
+qualquer hora: `select * from estoque_conferido where diferenca <> 0` deve
+voltar vazio para sempre.
+
+### Lição de processo: commit depois do heredoc
+No 4.3 o typecheck falhou e o commit rodou mesmo assim, porque a linha do
+`git commit` veio DEPOIS do terminador do heredoc anterior — vira um comando
+separado, fora do `&&`. Produção ficou com um `ReferenceError` por alguns
+minutos (`21f359b` corrigiu). Regra: uma cadeia por comando, commit só depois
+de ver as checagens verdes, e toda troca por script com `assert` na contagem
+(a inserção do import falhou em silêncio por causa de um `\r`).

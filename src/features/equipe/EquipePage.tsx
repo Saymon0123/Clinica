@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { AlertTriangle, Check, Clock, Copy, Link2, Pencil, Percent, Plus, Power, Send, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react'
+import { AlertTriangle, Check, Clock, Copy, Link2, Pencil, Percent, Plus, Power, Scissors, Send, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { urlDoConvite } from '../../lib/appUrl'
 import { traduzirErroDoBanco } from '../../lib/erroDoBanco'
-import { formatarTelefone, linkWhatsApp } from '../../lib/telefone'
+import { AVISO_TELEFONE_INVALIDO, classificarTelefone, formatarTelefone, linkWhatsApp } from '../../lib/telefone'
 import { Modal } from '../../components/Modal'
 import { useAuth } from '../auth/AuthContext'
 import { useSalon, type Papel } from '../auth/useSalon'
@@ -65,6 +65,7 @@ export function EquipePage() {
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
   const [modalAberto, setModalAberto] = useState(false)
+  const [queroAtenderAberto, setQueroAtenderAberto] = useState(false)
   const [copiado, setCopiado] = useState<string | null>(null)
   const [editandoEmail, setEditandoEmail] = useState<string | null>(null)
   const [emailRascunho, setEmailRascunho] = useState('')
@@ -79,6 +80,15 @@ export function EquipePage() {
   const [salvandoMembro, setSalvandoMembro] = useState<string | null>(null)
   // Tirar da equipe é irreversível pelo CRM: confirma antes, dizendo o nome.
   const [tirandoDaEquipe, setTirandoDaEquipe] = useState<{ vinculo: string; nome: string } | null>(null)
+
+  // Dono DESTA unidade (o papel mora em user_salons, não em `isOwner`, que é
+  // "dono em alguma") que ainda não tem linha em `professionals`. Só ele vê o
+  // "Quero atender também"; quem já atende — ativo ou desligado — resolve na
+  // própria lista.
+  const donoSemCadeira =
+    !!user &&
+    vinculos.some((v) => v.user_id === user.id && v.role === 'owner') &&
+    !membros.some((m) => m.user_id === user.id)
 
   const carregar = useCallback(async () => {
     if (!salonId) return
@@ -402,13 +412,28 @@ export function EquipePage() {
         titulo="Equipe"
         subtitulo="Barbeiros que atendem nesta barbearia"
         acoes={
-          <button
-            onClick={() => setModalAberto(true)}
-            className="flex items-center gap-2 btn-primary rounded-full px-5 py-2 text-sm font-medium"
-          >
-            <Plus size={16} />
-            Convidar para a equipe
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* O dono que não atende não tinha como virar barbeiro: a Equipe
+                só cria por convite, e convidar a si mesmo pede outro e-mail
+                (achado 24 da revisão de 01/09). O botão só aparece para o
+                dono desta unidade que ainda não está na lista. */}
+            {donoSemCadeira && (
+              <button
+                onClick={() => setQueroAtenderAberto(true)}
+                className="flex items-center gap-2 btn-secondary rounded-full px-4 py-2 text-sm font-medium"
+              >
+                <Scissors size={16} />
+                Quero atender também
+              </button>
+            )}
+            <button
+              onClick={() => setModalAberto(true)}
+              className="flex items-center gap-2 btn-primary rounded-full px-5 py-2 text-sm font-medium"
+            >
+              <Plus size={16} />
+              Convidar para a equipe
+            </button>
+          </div>
         }
       />
 
@@ -733,6 +758,14 @@ export function EquipePage() {
         Faturamento da barbearia, WhatsApp e catálogo ficam só com você.
       </p>
 
+      {queroAtenderAberto && salonId && (
+        <QueroAtenderModal
+          salonId={salonId}
+          onClose={() => setQueroAtenderAberto(false)}
+          onFeito={carregar}
+        />
+      )}
+
       {horarioDe && (
         <HorarioBarbeiroModal
           professionalId={horarioDe.id}
@@ -928,6 +961,112 @@ function ConviteModal({
             </button>
           </form>
         )}
+    </Modal>
+  )
+}
+
+/**
+ * O dono se cadastra como barbeiro da própria unidade (achado 24).
+ *
+ * Quem cria a barbearia pela operação com "dono atende = não", ou entra por
+ * convite de dono sem atender, fica sem linha em `professionals` — e a Equipe
+ * só criava barbeiro por convite, que pede OUTRO e-mail. A RPC `quero_atender`
+ * (migration 0133) cria o profissional, a jornada derivada do horário do salão
+ * e o vínculo com todos os serviços ativos numa transação só: o barbeiro nunca
+ * nasce pela metade. O dono ajusta jornada e serviços depois, na própria aba.
+ */
+function QueroAtenderModal({
+  salonId,
+  onClose,
+  onFeito,
+}: {
+  salonId: string
+  onClose: () => void
+  onFeito: () => Promise<void> | void
+}) {
+  const [nome, setNome] = useState('')
+  const [telefone, setTelefone] = useState('')
+  const [salvando, setSalvando] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+
+  const estadoDoTelefone = classificarTelefone(telefone)
+
+  async function confirmar(e: FormEvent) {
+    e.preventDefault()
+    if (!nome.trim()) {
+      setErro('Informe o nome que vai aparecer na agenda.')
+      return
+    }
+    if (estadoDoTelefone === 'invalido') {
+      setErro(AVISO_TELEFONE_INVALIDO)
+      return
+    }
+    setSalvando(true)
+    setErro(null)
+    const { error } = await supabase.rpc('quero_atender', {
+      p_salon_id: salonId,
+      p_nome: nome.trim(),
+      p_telefone: estadoDoTelefone === 'vazio' ? null : telefone.trim(),
+    })
+    setSalvando(false)
+    if (error) {
+      console.error('Erro ao entrar na equipe como barbeiro:', error)
+      setErro(traduzirErroDoBanco(error, undefined, 'Não foi possível entrar na equipe. Tente novamente.'))
+      return
+    }
+    toast('Pronto: você atende nesta barbearia. Ajuste a jornada e os serviços se precisar.')
+    await onFeito()
+    onClose()
+  }
+
+  return (
+    <Modal
+      onClose={onClose}
+      titulo={
+        <span className="flex items-center gap-2">
+          <Scissors size={18} />
+          Quero atender também
+        </span>
+      }
+      tamanho="sm"
+    >
+      <form onSubmit={confirmar} className="space-y-4">
+        <p className="text-xs text-muted-foreground">
+          Você passa a aparecer na agenda como barbeiro desta barbearia, com a jornada do horário
+          de funcionamento e todos os serviços do catálogo. Dá para ajustar os dois depois, aqui
+          mesmo na Equipe.
+        </p>
+        <Campo rotulo="Seu nome na agenda" htmlFor="atender-nome">
+          <Input
+            id="atender-nome"
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            placeholder="Como os clientes te chamam"
+            autoFocus
+          />
+        </Campo>
+        <Campo rotulo="Telefone (opcional)" htmlFor="atender-telefone">
+          <Input
+            id="atender-telefone"
+            value={telefone}
+            onChange={(e) => setTelefone(e.target.value)}
+            placeholder="(11) 90000-0000"
+          />
+        </Campo>
+        <ErroInline>{erro}</ErroInline>
+        <div className="flex gap-2 pt-1">
+          <button type="button" onClick={onClose} className="flex-1 btn-secondary rounded-lg px-3 py-2 text-sm font-medium">
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={salvando}
+            className="flex-1 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
+          >
+            {salvando ? 'Entrando...' : 'Entrar na equipe'}
+          </button>
+        </div>
+      </form>
     </Modal>
   )
 }

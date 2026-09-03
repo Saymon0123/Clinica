@@ -45,6 +45,14 @@ export function RedePage() {
 
   // A rede é do dono: unidades onde ele é só gerente não entram no comparativo.
   const gerenciadas = unidades.filter((u) => u.role === 'owner')
+
+  // De onde a unidade nova copia catálogo e horário. O dono de rede chega
+  // nesta aba SEM unidade escolhida (o layout o manda para cá justamente por
+  // isso), e antes o modal só abria com `salonId`: o clique em "Nova unidade"
+  // não fazia nada — e, como o estado ficava armado, o modal estourava sozinho
+  // quando ele escolhia uma unidade minutos depois (achado 23 da revisão de
+  // 01/09). Sem escolha, a origem é a primeira unidade própria.
+  const origemDaNovaUnidade = salonId ?? gerenciadas[0]?.salonId ?? null
   const { resumos, serieDiaria, loading, erro, recarregar } = useRedeData(gerenciadas, periodo)
   const desdeISO = inicioDoPeriodoISO(periodo)
   const { producao, erro: erroProducao } = useProducaoBarbeiros(gerenciadas, desdeISO)
@@ -325,9 +333,9 @@ export function RedePage() {
         )}
       </div>
 
-      {modalAberto && salonId && (
+      {modalAberto && origemDaNovaUnidade && (
         <NovaUnidadeModal
-          salonId={salonId}
+          salonId={origemDaNovaUnidade}
           primeiraUnidade={!organizationId}
           onClose={() => setModalAberto(false)}
           onCriada={async () => {

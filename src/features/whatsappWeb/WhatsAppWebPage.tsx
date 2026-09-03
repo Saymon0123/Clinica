@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { ArrowLeft, AlertCircle, Bot, Building2, MessageCircle, Search, Send, Sparkles } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { enterEnvia, ponteiroFino } from './teclado'
 import { useSalon } from '../auth/useSalon'
 import { useConversations } from './useConversations'
 import { useMessages } from './useMessages'
@@ -36,7 +38,11 @@ function formatTime(iso: string | null) {
 
 export function WhatsAppWebPage() {
   const { salonId, loading: salonLoading } = useSalon()
-  const [tab, setTab] = useState<Tab>('todas')
+  // ?tab=precisa_dono: o "e mais N pessoas esperando" do banner cai direto na
+  // aba certa.
+  const [tab, setTab] = useState<Tab>(() =>
+    new URLSearchParams(window.location.search).get('tab') === 'precisa_dono' ? 'precisa_dono' : 'todas',
+  )
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const [busca, setBusca] = useState('')
@@ -65,6 +71,24 @@ export function WhatsAppWebPage() {
   const [resuming, setResuming] = useState(false)
   const [resumeError, setResumeError] = useState<string | null>(null)
   const [contextPopup, setContextPopup] = useState<{ nome: string; resumo: string } | null>(null)
+
+  /**
+   * O compositor no celular (achado 34 da revisão de 01/09).
+   *
+   * Enter só envia com ponteiro fino (mouse/trackpad); no toque, Enter é a
+   * tecla de pular linha e quem envia é o botão. Decidido uma vez na abertura:
+   * o tipo de ponteiro não muda no meio da conversa. A caixa cresce com o
+   * texto até ~5 linhas (antes era uma linha fixa: ele escrevia às cegas) e
+   * volta ao tamanho de uma quando o rascunho esvazia.
+   */
+  const enviaComEnter = useRef(ponteiroFino())
+  const caixaRef = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => {
+    const el = caixaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`
+  }, [draft])
 
   /**
    * Rolagem da conversa.
@@ -191,9 +215,21 @@ export function WhatsAppWebPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-background">
+    // 100dvh, não h-screen: no celular, 100vh inclui a barra do navegador e o
+    // compositor ficava atrás dela (achado 34).
+    <div className="h-[100dvh] flex flex-col bg-background">
       {/* Top bar com as duas opções centralizadas */}
       <header className="bg-surface border-b border-border px-4 py-3 flex items-center justify-center relative">
+        {/* Volta ao CRM: pelo menu do celular o /web abre na mesma aba, e sem
+            isto a única saída era o "voltar" do navegador (achado 33). */}
+        <Link
+          to="/"
+          aria-label="Voltar ao CRM"
+          className="absolute left-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 p-2 text-xs font-medium text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft size={16} />
+          <span className="hidden sm:inline">CRM</span>
+        </Link>
         <div className="flex items-center gap-1 bg-surface-2 rounded-lg p-1">
           <button
             onClick={() => {
@@ -504,17 +540,18 @@ export function WhatsAppWebPage() {
                 <div className="mb-2"><ErroInline>{sendError}</ErroInline></div>
                 <div className="flex items-end gap-2">
                   <TextArea
+                    ref={caixaRef}
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
+                      if (enterEnvia(e, enviaComEnter.current)) {
                         e.preventDefault()
                         handleSend(e)
                       }
                     }}
                     placeholder="Digite uma mensagem"
                     rows={1}
-                    className="flex-1 resize-none max-h-32"
+                    className="flex-1 resize-none max-h-40 overflow-y-auto"
                   />
                   <button
                     type="submit"

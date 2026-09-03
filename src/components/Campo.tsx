@@ -1,9 +1,4 @@
-import type {
-  InputHTMLAttributes,
-  ReactNode,
-  SelectHTMLAttributes,
-  TextareaHTMLAttributes,
-} from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 
 /**
  * O campo de formulário único do CRM (leva 2 da modernização).
@@ -33,27 +28,18 @@ function classes(erro?: string, extra?: string) {
 
 type ComErro = { erro?: string }
 
-export function Input({
-  erro,
-  className,
-  ...props
-}: InputHTMLAttributes<HTMLInputElement> & ComErro) {
+// `ComponentProps<'input'>` em vez de `InputHTMLAttributes`: inclui `ref`, que
+// no React 19 chega como prop comum e passa direto ao elemento — o compositor
+// do /web precisa medir a caixa para crescer com o texto (achado 34).
+export function Input({ erro, className, ...props }: ComponentProps<'input'> & ComErro) {
   return <input aria-invalid={erro ? true : undefined} className={classes(erro, className)} {...props} />
 }
 
-export function TextArea({
-  erro,
-  className,
-  ...props
-}: TextareaHTMLAttributes<HTMLTextAreaElement> & ComErro) {
+export function TextArea({ erro, className, ...props }: ComponentProps<'textarea'> & ComErro) {
   return <textarea aria-invalid={erro ? true : undefined} className={classes(erro, className)} {...props} />
 }
 
-export function Select({
-  erro,
-  className,
-  ...props
-}: SelectHTMLAttributes<HTMLSelectElement> & ComErro) {
+export function Select({ erro, className, ...props }: ComponentProps<'select'> & ComErro) {
   return <select aria-invalid={erro ? true : undefined} className={classes(erro, className)} {...props} />
 }
 

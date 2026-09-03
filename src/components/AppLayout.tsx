@@ -13,6 +13,7 @@ import {
   Building2,
   CreditCard,
   MoreHorizontal,
+  MessageCircle,
 } from 'lucide-react'
 import { PilhaDeAvisos } from './PilhaDeAvisos'
 import { ProfileMenu } from './ProfileMenu'
@@ -67,6 +68,12 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     title: 'WhatsApp',
     items: [
       { to: '/conexao', label: 'Conexão', icon: Link2, somenteGestor: true },
+      // A porta do /web no celular (achado 33 da revisão de 01/09): o botão
+      // flutuante é só do desktop, e a tela — feita responsiva de propósito —
+      // não tinha entrada nenhuma no telefone além do banner de pedido de
+      // humano, que só existe quando há pedido. Mesma guarda da rota
+      // (`RequireManager`).
+      { to: '/web', label: 'Conversas', icon: MessageCircle, somenteGestor: true },
     ],
   },
 ]

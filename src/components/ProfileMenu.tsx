@@ -28,7 +28,7 @@ const LABEL_PAPEL: Record<string, string> = {
  */
 export function ProfileMenu({ direcao = 'baixo' }: { direcao?: 'baixo' | 'cima' } = {}) {
   const { user, signOut } = useAuth()
-  const { unidades, salonId, salonName, role, isOwner, selecionarUnidade } = useSalon()
+  const { unidades, salonId, salonName, role, podeVerRede, selecionarUnidade } = useSalon()
   const [aberto, setAberto] = useState(false)
   const [feedbackAberto, setFeedbackAberto] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -69,7 +69,7 @@ export function ProfileMenu({ direcao = 'baixo' }: { direcao?: 'baixo' | 'cima' 
 
     return (
       <>
-        {isOwner && (
+        {podeVerRede && (
           <>
             {/* Link de verdade (âncora) em vez de navigate() no onClick:
                 funciona mesmo se algum handler engolir o clique, e permite

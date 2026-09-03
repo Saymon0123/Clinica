@@ -93,8 +93,7 @@ export function AppLayout() {
     salonId,
     salonName,
     isManager,
-    isOwner,
-    isNetwork,
+    podeVerRede,
     loading,
     erroAoCarregar,
     unidades,
@@ -110,9 +109,8 @@ export function AppLayout() {
   // preocupação sem ação possível.
   const { assinatura } = useAssinatura(salonId)
 
-  // "Rede" e "Equipe da rede" são exclusivas do dono de mais de uma unidade.
-  // Gerente e barbeiro nunca veem, mesmo administrando a unidade inteira.
-  const podeVerRede = isOwner && isNetwork
+  // "Rede" e "Equipe da rede" são exclusivas do dono de mais de uma unidade
+  // (`podeVerRede`, do contexto — passo 4.3). Gerente e barbeiro nunca veem.
 
   // Barbeiro fica só com Agenda, Financeiro e Catálogo (o banco também
   // bloqueia o resto). Enquanto o dono não escolher uma barbearia, o menu

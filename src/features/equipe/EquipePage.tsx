@@ -64,7 +64,7 @@ function nomeDoConvite(c: Convite) {
 }
 
 export function EquipePage() {
-  const { salonId, isManager, isOwner, loading: salonLoading, recarregarUnidades } = useSalon()
+  const { salonId, isManager, ehDonoDesta, podeVerRede, loading: salonLoading, recarregarUnidades } = useSalon()
   const { user } = useAuth()
   const [membros, setMembros] = useState<Membro[]>([])
   const [vinculos, setVinculos] = useState<Vinculo[]>([])
@@ -460,7 +460,7 @@ export function EquipePage() {
   if (salonLoading) return <SkeletonPagina />
 
   // Dono de rede sem unidade escolhida: a equipe é por unidade.
-  if (isOwner && !salonId) {
+  if (podeVerRede && !salonId) {
     return (
       <p className="text-sm text-muted-foreground">
         Escolha uma unidade no topo para gerenciar a equipe dela.
@@ -812,7 +812,8 @@ export function EquipePage() {
               {(() => {
                 const vinculo = m.user_id ? vinculos.find((v) => v.user_id === m.user_id) : null
                 // Só o dono promove e rebaixa — gerente vê a função como texto.
-                if (!isOwner || !vinculo) return null
+                // Dono DESTA unidade (passo 4.3): é o que definir_papel_do_membro exige.
+                if (!ehDonoDesta || !vinculo) return null
                 return (
                   <select
                     value={vinculo.role}

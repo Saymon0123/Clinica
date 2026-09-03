@@ -19,8 +19,12 @@ export type SalonContextValue = {
   role: Papel | null
   /** Dono ou gerente: enxerga e edita tudo da unidade. */
   isManager: boolean
-  /** Dono da rede: além da unidade, tem o painel analítico consolidado. */
+  /** Dono de ALGUMA unidade. Para "dono desta" ou "dono de rede", ver abaixo. */
   isOwner: boolean
+  /** Dono da unidade selecionada — o que as RPCs e a RLS checam (passo 4.3). */
+  ehDonoDesta: boolean
+  /** Dono de mais de uma unidade: painel da rede, item de menu, guarda de rota. */
+  podeVerRede: boolean
   loading: boolean
   /**
    * Falhou ao carregar os vínculos — que NÃO é a mesma coisa que "não tem
@@ -156,23 +160,22 @@ export function SalonProvider({ children }: { children: ReactNode }) {
   )
 
   const value = useMemo<SalonContextValue>(() => {
-    const atual = unidades.find((u) => u.salonId === selecionada) ?? null
-    const role = atual?.role ?? null
-    // A rede é do dono. Gerente administra a unidade dele e não enxerga o
-    // comparativo entre as barbearias, mesmo que gerencie mais de uma.
-    const proprias = unidades.filter((u) => u.role === 'owner')
-    const donoEmAlguma = proprias.length > 0
+    // As três noções de "dono" vêm de um lugar só (passo 4.3): ver permissoes.ts.
+    const p = permissoes(unidades, selecionada)
+    const atual = p.atual
 
     return {
       salonId: atual?.salonId ?? null,
       salonName: atual?.nome ?? null,
-      role,
-      isManager: role === 'owner' || role === 'gerente',
-      isOwner: donoEmAlguma,
+      role: p.role,
+      isManager: p.isManager,
+      isOwner: p.isOwner,
+      ehDonoDesta: p.ehDonoDesta,
+      podeVerRede: p.podeVerRede,
       loading,
       erroAoCarregar,
       unidades,
-      isNetwork: proprias.length > 1,
+      isNetwork: p.isNetwork,
       organizationId: atual?.organizationId ?? null,
       selecionarUnidade,
       recarregarUnidades: carregar,

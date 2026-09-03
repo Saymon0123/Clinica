@@ -11,7 +11,7 @@ import { SkeletonPagina } from '../../components/Skeleton'
  * a agenda.
  */
 export function RequireNetworkOwner({ children }: { children: ReactNode }) {
-  const { isOwner, isNetwork, loading } = useSalon()
+  const { podeVerRede, loading } = useSalon()
 
   if (loading) {
     return (
@@ -21,7 +21,7 @@ export function RequireNetworkOwner({ children }: { children: ReactNode }) {
     )
   }
 
-  if (!isOwner || !isNetwork) {
+  if (!podeVerRede) {
     return <Navigate to="/" replace />
   }
 

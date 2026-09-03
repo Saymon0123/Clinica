@@ -29,7 +29,7 @@ import {
  * não consegue atualizar aqui passa a ter o agente marcando fora da realidade.
  */
 export function ConfiguracoesPage() {
-  const { salonId, salonName, isManager, isOwner, isNetwork, organizationId, unidades, recarregarUnidades, selecionarUnidade } =
+  const { salonId, salonName, isManager, ehDonoDesta, isNetwork, organizationId, unidades, recarregarUnidades, selecionarUnidade } =
     useSalon()
   const navigate = useNavigate()
   const [modalUnidade, setModalUnidade] = useState(false)
@@ -388,7 +388,7 @@ export function ConfiguracoesPage() {
       {/* Rede não é um cadastro, é uma promoção: a barbearia avulsa vira rede
           no primeiro "Adicionar unidade". Por isso o botão mora AQUI, onde a
           avulsa chega — a aba Rede só existe para quem já tem duas. */}
-      {isOwner && (
+      {ehDonoDesta && (
         <section className="bg-surface border border-border rounded-2xl shadow-sm p-5 space-y-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">

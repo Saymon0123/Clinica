@@ -1895,3 +1895,28 @@ isso só acontece em corrida — a lista oferecida já respeita a folga —, mas
 quando acontecer a frase vai dizer "pego" para um horário que só encostou em
 outro. O conserto é o mesmo das telas do CRM: mostrar a mensagem do banco
 quando ela vier em português, e cair na frase fixa só sem ela.
+
+---
+
+## Achados do passo 3.4 — carregando, vazio e erro (2026-09-03)
+
+### "Tentar de novo" na Rede não recarrega a produção por barbeiro
+O banner de erro da aba Rede chama `recarregar` de `useRedeData`. A produção
+por barbeiro vem de `useProducaoBarbeiros`, que não expõe reload — só refaz a
+consulta quando o período muda. Se só ela falhar, o botão não a alcança; o
+caminho hoje é trocar o período e voltar. Quando alguém mexer no hook, expor o
+`recarregar` e ligar os dois no mesmo botão.
+
+### Sob erro, o gráfico de clientes e a barra de meta do Financeiro ficam vazios
+Os cards e o total da meta viraram "—", e as listas calam o vazio. O gráfico
+de crescimento de clientes (`data.clientsGrowth`) e a barra de progresso da
+meta não afirmam número nenhum, mas desenham uma área vazia e uma barra em
+zero debaixo do banner. Não é um "R$ 0,00", mas é o mesmo tipo de silêncio;
+o conserto é o mesmo das listas da Rede: "não foi possível carregar" no lugar.
+
+### `carregar` da Cobrança da rede deixa `carregando` preso se a guarda mudar
+`CobrancaDaRede.carregar` retorna cedo quando não há `organizationId` ou há
+menos de duas unidades próprias, sem baixar `carregando`. Hoje é inalcançável
+porque o componente devolve `null` exatamente nessas condições (linha do
+`if (!isNetwork || ...) return null`). Se a guarda de renderização for
+afrouxada um dia, a tela vira esqueleto para sempre.

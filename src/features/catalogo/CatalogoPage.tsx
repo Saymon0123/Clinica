@@ -18,6 +18,7 @@ import { SkeletonPagina } from '../../components/Skeleton'
 import { PageHeader } from '../../components/PageHeader'
 import type { ServiceItem, ProductItem } from './types'
 import { ErroInline } from '../../components/ErroInline'
+import { ErroDeCarga } from '../../components/ErroDeCarga'
 
 type Tab = 'servicos' | 'produtos' | 'pacotes'
 
@@ -167,11 +168,17 @@ export function CatalogoPage() {
             </button>
           </div>
 
+          {/* Erro de carga e erro de ação são coisas diferentes: o primeiro
+              tem "tentar de novo" e cala o vazio; o segundo é a linha de
+              sempre, e a lista continua na tela (achado 31). */}
           {(servicesError || actionError) && (
-            <div className="mb-3"><ErroInline>{servicesError || actionError}</ErroInline></div>
+            <div className="mb-3 space-y-2">
+              <ErroDeCarga mensagem={servicesError} aoTentarDeNovo={reloadServices} tentando={loadingServices} />
+              <ErroInline>{actionError}</ErroInline>
+            </div>
           )}
 
-          {!loadingServices && services.length === 0 ? (
+          {servicesError && services.length === 0 ? null : !loadingServices && services.length === 0 ? (
             <div className="bg-surface rounded-2xl border border-border shadow-sm">
               <EstadoVazio
                 icone={Tag}
@@ -252,10 +259,13 @@ export function CatalogoPage() {
           )}
 
           {(pacotesError || actionError) && (
-            <div className="mb-3"><ErroInline>{pacotesError || actionError}</ErroInline></div>
+            <div className="mb-3 space-y-2">
+              <ErroDeCarga mensagem={pacotesError} aoTentarDeNovo={reloadPacotes} tentando={loadingPacotes} />
+              <ErroInline>{actionError}</ErroInline>
+            </div>
           )}
 
-          {!loadingPacotes && pacotes.length === 0 ? (
+          {pacotesError && pacotes.length === 0 ? null : !loadingPacotes && pacotes.length === 0 ? (
             <div className="bg-surface rounded-2xl border border-border shadow-sm">
               <EstadoVazio
                 icone={Boxes}
@@ -352,10 +362,13 @@ export function CatalogoPage() {
           )}
 
           {(productsError || actionError) && (
-            <div className="mb-3"><ErroInline>{productsError || actionError}</ErroInline></div>
+            <div className="mb-3 space-y-2">
+              <ErroDeCarga mensagem={productsError} aoTentarDeNovo={reloadProducts} tentando={loadingProducts} />
+              <ErroInline>{actionError}</ErroInline>
+            </div>
           )}
 
-          {!loadingProducts && products.length === 0 ? (
+          {productsError && products.length === 0 ? null : !loadingProducts && products.length === 0 ? (
             <div className="bg-surface rounded-2xl border border-border shadow-sm">
               <EstadoVazio
                 icone={Package}

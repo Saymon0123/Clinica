@@ -9,12 +9,12 @@ import { buildCsv, downloadCsv } from '../../lib/csv'
 import { formatarTelefone, linkWhatsApp, somenteDigitos } from '../../lib/telefone'
 import { Tabela, Th, Td } from '../../components/Tabela'
 import { EstadoVazio } from '../../components/EstadoVazio'
+import { ErroDeCarga } from '../../components/ErroDeCarga'
 import { SkeletonPagina } from '../../components/Skeleton'
 import { Input } from '../../components/Campo'
 import { PageHeader } from '../../components/PageHeader'
 import { Pessoa } from '../../components/Pessoa'
 import type { Client } from './types'
-import { ErroInline } from '../../components/ErroInline'
 
 function formatDate(iso: string | null) {
   if (!iso) return '—'
@@ -172,9 +172,17 @@ export function ClientesPage() {
         </div>
       )}
 
-      <div className="mb-3"><ErroInline>{error}</ErroInline></div>
+      <div className="mb-3">
+        <ErroDeCarga mensagem={error} aoTentarDeNovo={reload} tentando={loading} />
+      </div>
 
-      {!loading && clients.length === 0 ? (
+      {/* Erro NÃO é vazio (achado 31 da revisão de 01/09): com a consulta
+          falhando, o array ficava vazio e a tela dizia "comece a adicionar
+          clientes" para quem tem duzentos. Sob erro sem nada carregado, o
+          banner acima é o estado. Se a lista anterior existe (o hook não a
+          descarta), ela fica: dado antigo com aviso é melhor que tela em
+          branco. */}
+      {error && clients.length === 0 ? null : !loading && clients.length === 0 ? (
         <div className="bg-surface rounded-2xl border border-border shadow-sm flex flex-col items-center justify-center text-center py-16 px-4">
           <Inbox size={40} className="text-muted-foreground/40 mb-4" />
           <h2 className="text-base font-semibold text-foreground mb-1">Comece a adicionar clientes</h2>

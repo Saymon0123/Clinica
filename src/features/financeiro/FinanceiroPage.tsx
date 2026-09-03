@@ -23,6 +23,7 @@ import { useSalon } from '../auth/useSalon'
 import { useFinanceiroData, type MetricKey, type PeriodFilter } from './useFinanceiroData'
 import { StatsCard } from '../../components/StatsCard'
 import { EstadoVazio } from '../../components/EstadoVazio'
+import { ErroDeCarga } from '../../components/ErroDeCarga'
 import { SkeletonPagina } from '../../components/Skeleton'
 import { RadialGoal } from '../../components/RadialGoal'
 import { PageHeader } from '../../components/PageHeader'
@@ -39,7 +40,6 @@ import {
 import { EditGoalModal } from './EditGoalModal'
 import { ExportReportModal } from './ExportReportModal'
 import { GoalReachedModal } from './GoalReachedModal'
-import { ErroInline } from '../../components/ErroInline'
 
 function formatCurrency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -407,7 +407,7 @@ export function FinanceiroPage() {
         </>
       ) : (
         <>
-      <ErroInline>{error}</ErroInline>
+      <ErroDeCarga mensagem={error} aoTentarDeNovo={reload} tentando={loading} />
 
       {/* Cards de métrica com mini-gráfico animado */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -425,7 +425,11 @@ export function FinanceiroPage() {
               icon={<Icon size={16} />}
               label={label}
               value={loading ? 0 : metric.value}
-              formattedValue={(n) => (format === 'currency' ? formatCurrency(n) : Math.round(n).toString())}
+              // Sob erro o número é "—", nunca zero: "R$ 0,00" com a rede
+              // caída era lido como faturamento zerado (achado 31).
+              formattedValue={(n) =>
+                error ? '—' : format === 'currency' ? formatCurrency(n) : Math.round(n).toString()
+              }
               badge={<ChangeBadge pct={metric.changePct} invert={invert} emHero={key === 'faturamento'} />}
               bars={bars}
               hero={key === 'faturamento'}
@@ -562,7 +566,7 @@ export function FinanceiroPage() {
           </div>
           <div className="mt-3 text-center space-y-2">
             <p className="text-sm font-medium text-foreground">
-              {formatCurrency(data.revenueCurrent)}
+              {error ? '—' : formatCurrency(data.revenueCurrent)}
               <span className="text-muted-foreground font-normal"> / {formatCurrency(data.revenueGoal)}</span>
             </p>
             {metaAtingida && (
@@ -588,7 +592,7 @@ export function FinanceiroPage() {
           <p className="text-xs text-muted-foreground">{rotuloPeriodo} · por faturamento</p>
         </div>
 
-        {data.topServices.length === 0 ? (
+        {error ? null : data.topServices.length === 0 ? (
           <EstadoVazio
             icone={TrendingUp}
             titulo="Nenhuma venda registrada no período."
@@ -641,7 +645,7 @@ export function FinanceiroPage() {
           )}
         </div>
 
-        {data.commissions.length === 0 ? (
+        {error ? null : data.commissions.length === 0 ? (
           <EstadoVazio
             icone={HandCoins}
             titulo="Nenhuma comissão no período"

@@ -16,12 +16,12 @@ import {
 import { NovaUnidadeModal } from './NovaUnidadeModal'
 import { Badge } from '../../components/Badge'
 import { EstadoVazio } from '../../components/EstadoVazio'
+import { ErroDeCarga } from '../../components/ErroDeCarga'
 import { SkeletonLinhas } from '../../components/Skeleton'
 import { PageHeader } from '../../components/PageHeader'
 import { useSalon } from '../auth/useSalon'
 import { useProducaoBarbeiros } from './useProducaoBarbeiros'
 import { useRedeData, type Periodo } from './useRedeData'
-import { ErroInline } from '../../components/ErroInline'
 
 function moeda(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -122,7 +122,9 @@ export function RedePage() {
       </>}
       />
 
-      <ErroInline>{erro ?? erroProducao}</ErroInline>
+      {/* "Tentar de novo" recarrega os números da rede; a produção por
+          barbeiro tem o próprio hook e recarrega ao trocar o período. */}
+      <ErroDeCarga mensagem={erro ?? erroProducao} aoTentarDeNovo={recarregar} tentando={loading} />
 
       {/* Totais da rede */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
@@ -131,28 +133,30 @@ export function RedePage() {
             <TrendingUp size={14} />
             Faturamento
           </div>
-          <div className="text-xl font-semibold text-foreground mt-1">{moeda(totalFaturamento)}</div>
+          {/* Sob erro, "—" em vez de R$ 0,00: total zerado com a rede caída
+              era lido como faturamento zerado (achado 31). */}
+          <div className="text-xl font-semibold text-foreground mt-1">{erro ? '—' : moeda(totalFaturamento)}</div>
         </div>
         <div className="bg-surface border border-border rounded-2xl shadow-sm p-4">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Receipt size={14} />
             Ticket médio
           </div>
-          <div className="text-xl font-semibold text-foreground mt-1">{moeda(ticketRede)}</div>
+          <div className="text-xl font-semibold text-foreground mt-1">{erro ? '—' : moeda(ticketRede)}</div>
         </div>
         <div className="bg-surface border border-border rounded-2xl shadow-sm p-4">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <CalendarDays size={14} />
             Agendamentos
           </div>
-          <div className="text-xl font-semibold text-foreground mt-1">{totalAgendamentos}</div>
+          <div className="text-xl font-semibold text-foreground mt-1">{erro ? '—' : totalAgendamentos}</div>
         </div>
         <div className="bg-surface border border-border rounded-2xl shadow-sm p-4">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Users size={14} />
             Clientes novos
           </div>
-          <div className="text-xl font-semibold text-foreground mt-1">{totalClientes}</div>
+          <div className="text-xl font-semibold text-foreground mt-1">{erro ? '—' : totalClientes}</div>
         </div>
         <div className="bg-surface border border-border rounded-2xl shadow-sm p-4">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -160,7 +164,7 @@ export function RedePage() {
             Cancelamento
           </div>
           <div className="text-xl font-semibold text-foreground mt-1">
-            {taxaCancelamento.toFixed(1)}%
+            {erro ? '—' : `${taxaCancelamento.toFixed(1)}%`}
           </div>
         </div>
       </div>
@@ -170,7 +174,9 @@ export function RedePage() {
         <div className="bg-surface border border-border rounded-2xl shadow-sm p-5">
           <h2 className="text-sm font-semibold text-foreground mb-1">Faturamento por dia</h2>
           <p className="text-xs text-muted-foreground mb-3">Rede inteira somada</p>
-          {serieDiaria.length === 0 ? (
+          {erro ? (
+            <p className="text-sm text-muted-foreground py-10 text-center">Não foi possível carregar.</p>
+          ) : serieDiaria.length === 0 ? (
             <p className="text-sm text-muted-foreground py-10 text-center">Sem vendas no período.</p>
           ) : (
             <div style={{ height: 220 }}>
@@ -199,7 +205,9 @@ export function RedePage() {
         <div className="bg-surface border border-border rounded-2xl shadow-sm p-5">
           <h2 className="text-sm font-semibold text-foreground mb-1">Faturamento por unidade</h2>
           <p className="text-xs text-muted-foreground mb-3">Quem puxa o resultado da rede</p>
-          {resumos.length === 0 ? (
+          {erro ? (
+            <p className="text-sm text-muted-foreground py-10 text-center">Não foi possível carregar.</p>
+          ) : resumos.length === 0 ? (
             <p className="text-sm text-muted-foreground py-10 text-center">Sem dados no período.</p>
           ) : (
             <div style={{ height: 220 }}>
@@ -243,6 +251,8 @@ export function RedePage() {
           <div className="p-4">
             <SkeletonLinhas />
           </div>
+        ) : erro ? (
+          <p className="p-4 text-sm text-muted-foreground">Não foi possível carregar o comparativo.</p>
         ) : resumos.length === 0 ? (
           <EstadoVazio icone={Building2} titulo="Nenhuma unidade para comparar." />
         ) : (
@@ -302,7 +312,9 @@ export function RedePage() {
           <p className="text-xs text-muted-foreground">Quem mais produz na rede, em todas as unidades</p>
         </div>
 
-        {producao.length === 0 ? (
+        {erroProducao ? (
+          <p className="p-4 text-sm text-muted-foreground">Não foi possível carregar a produção.</p>
+        ) : producao.length === 0 ? (
           <EstadoVazio icone={Users} titulo="Nenhum barbeiro com venda no período." />
         ) : (
           <div className="divide-y divide-border">

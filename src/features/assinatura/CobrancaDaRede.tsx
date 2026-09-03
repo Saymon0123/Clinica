@@ -6,6 +6,7 @@ import { useSalon } from '../auth/useSalon'
 import { Campo, Input } from '../../components/Campo'
 import { SkeletonLinhas } from '../../components/Skeleton'
 import { ErroInline } from '../../components/ErroInline'
+import { ErroDeCarga } from '../../components/ErroDeCarga'
 import { formatarDocumento, problemaNoDocumento } from '../../lib/documento'
 
 function moeda(v: number) {
@@ -42,6 +43,9 @@ export function CobrancaDaRede() {
   const [carregando, setCarregando] = useState(true)
   const [agindo, setAgindo] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  // Separado de `erro` (que é de ação/validação): o erro de carga cala a
+  // lista e o total, os outros convivem com eles (achado 31).
+  const [erroDeCarga, setErroDeCarga] = useState<string | null>(null)
 
   const carregar = useCallback(async () => {
     if (!organizationId || proprias.length < 2) return
@@ -61,6 +65,15 @@ export function CobrancaDaRede() {
           proprias.map((u) => u.salonId),
         ),
     ])
+
+    // Sem isto a falha virava lista vazia e "total R$ 0,00" — a rede lendo
+    // que não deve nada quando, na verdade, a consulta nem chegou.
+    if (org.error || uso.error) {
+      setErroDeCarga('Não foi possível carregar a cobrança da rede.')
+      setCarregando(false)
+      return
+    }
+    setErroDeCarga(null)
 
     const dadosDaRede = org.data
     if (dadosDaRede) {
@@ -127,6 +140,8 @@ export function CobrancaDaRede() {
 
       {carregando ? (
         <SkeletonLinhas />
+      ) : erroDeCarga ? (
+        <ErroDeCarga mensagem={erroDeCarga} aoTentarDeNovo={carregar} />
       ) : (
         <>
           <ul className="divide-y divide-border rounded-lg border border-border">

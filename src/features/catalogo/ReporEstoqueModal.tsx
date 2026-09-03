@@ -3,6 +3,7 @@ import { PackagePlus } from 'lucide-react'
 import { Modal } from '../../components/Modal'
 import { Campo, Input } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
+import { traduzirErroDoBanco } from '../../lib/erroDoBanco'
 import { toast } from '../../components/Toast'
 import type { ProductItem } from './types'
 import { ErroInline } from '../../components/ErroInline'
@@ -48,7 +49,7 @@ export function ReporEstoqueModal({
     setSalvando(false)
     if (movErro) {
       console.error('Erro ao registrar a reposição:', movErro)
-      setErro('Não foi possível registrar a reposição.')
+      setErro(traduzirErroDoBanco(movErro, undefined, 'Não foi possível registrar a reposição.'))
       return
     }
 

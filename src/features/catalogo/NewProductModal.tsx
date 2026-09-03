@@ -17,7 +17,13 @@ export function NewProductModal({ salonId, product, onClose, onSaved }: Props) {
   const [nome, setNome] = useState(product?.nome ?? '')
   const [precoVenda, setPrecoVenda] = useState(product ? String(product.preco_venda ?? '') : '')
   const [precoCusto, setPrecoCusto] = useState(product ? String(product.preco_custo ?? '') : '')
-  const [estoqueAtual, setEstoqueAtual] = useState(String(product?.estoque_atual ?? 0))
+  // Estoque com uma porta só (passo 4.4 da revisão de 01/09): a tela nunca
+  // escreve `estoque_atual`. Criar: o estoque inicial vira um MOVIMENTO de
+  // entrada. Editar: um ajuste com sinal (+ chegou, − saiu), também
+  // movimento — nunca "total novo menos total velho", que reintroduzia a
+  // corrida que o trigger da 0109 tinha resolvido.
+  const [estoqueInicial, setEstoqueInicial] = useState('0')
+  const [ajuste, setAjuste] = useState('')
   const [estoqueMinimo, setEstoqueMinimo] = useState(String(product?.estoque_minimo ?? 0))
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -28,7 +34,8 @@ export function NewProductModal({ salonId, product, onClose, onSaved }: Props) {
 
     const vendaValor = precoVenda.trim() ? parseFloat(precoVenda.replace(',', '.')) : null
     const custoValor = precoCusto.trim() ? parseFloat(precoCusto.replace(',', '.')) : null
-    const atual = parseInt(estoqueAtual, 10) || 0
+    const inicial = parseInt(estoqueInicial, 10) || 0
+    const ajusteQtd = parseInt(ajuste, 10) || 0
     const minimo = parseInt(estoqueMinimo, 10) || 0
 
     if (!nome.trim()) {
@@ -59,26 +66,39 @@ export function NewProductModal({ salonId, product, onClose, onSaved }: Props) {
           })
           .eq('id', product.id)
         if (updateError) throw updateError
-        const delta = atual - product.estoque_atual
-        if (delta !== 0) {
+        if (ajusteQtd !== 0) {
           const { error: movError } = await supabase.from('stock_movements').insert({
             product_id: product.id,
-            tipo: delta > 0 ? 'entrada' : 'saida',
-            quantidade: Math.abs(delta),
+            tipo: ajusteQtd > 0 ? 'entrada' : 'saida',
+            quantidade: Math.abs(ajusteQtd),
             motivo: 'ajuste manual (edição do produto)',
           })
           if (movError) throw movError
         }
       } else {
-        const { error: insertError } = await supabase.from('products').insert({
-          salon_id: salonId,
-          nome: nome.trim(),
-          preco_venda: vendaValor,
-          preco_custo: custoValor,
-          estoque_atual: atual,
-          estoque_minimo: minimo,
-        })
-        if (insertError) throw insertError
+        // Sem `estoque_atual` no insert: desde a 0137 a coluna nem aceita
+        // escrita da tela — a soma dos movimentos é o saldo, sempre.
+        const { data: criado, error: insertError } = await supabase
+          .from('products')
+          .insert({
+            salon_id: salonId,
+            nome: nome.trim(),
+            preco_venda: vendaValor,
+            preco_custo: custoValor,
+            estoque_minimo: minimo,
+          })
+          .select('id')
+          .single()
+        if (insertError || !criado) throw insertError ?? new Error('Falha ao criar o produto')
+        if (inicial > 0) {
+          const { error: movError } = await supabase.from('stock_movements').insert({
+            product_id: criado.id,
+            tipo: 'entrada',
+            quantidade: inicial,
+            motivo: 'estoque inicial',
+          })
+          if (movError) throw movError
+        }
       }
 
       onSaved()
@@ -107,7 +127,8 @@ export function NewProductModal({ salonId, product, onClose, onSaved }: Props) {
         nome !== (product?.nome ?? '') ||
         precoVenda !== (product ? String(product.preco_venda ?? '') : '') ||
         precoCusto !== (product ? String(product.preco_custo ?? '') : '') ||
-        estoqueAtual !== String(product?.estoque_atual ?? 0) ||
+        estoqueInicial !== '0' ||
+        ajuste.trim() !== '' ||
         estoqueMinimo !== String(product?.estoque_minimo ?? 0)
       }
     >
@@ -144,15 +165,34 @@ export function NewProductModal({ salonId, product, onClose, onSaved }: Props) {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <Campo rotulo="Estoque atual" htmlFor="estoqueAtual">
-              <Input
-                id="estoqueAtual"
-                type="number"
-                min={0}
-                value={estoqueAtual}
-                onChange={(e) => setEstoqueAtual(e.target.value)}
-              />
-            </Campo>
+            {product ? (
+              <Campo
+                rotulo="Ajuste de estoque"
+                htmlFor="ajusteEstoque"
+                apoio={`Hoje: ${product.estoque_atual}. Quantas entraram (+) ou saíram (−)${
+                  ajuste.trim() ? ` → fica ${product.estoque_atual + (parseInt(ajuste, 10) || 0)}` : ''
+                }.`}
+              >
+                <Input
+                  id="ajusteEstoque"
+                  type="number"
+                  inputMode="numeric"
+                  value={ajuste}
+                  onChange={(e) => setAjuste(e.target.value)}
+                  placeholder="+5 ou -2"
+                />
+              </Campo>
+            ) : (
+              <Campo rotulo="Estoque inicial" htmlFor="estoqueInicial">
+                <Input
+                  id="estoqueInicial"
+                  type="number"
+                  min={0}
+                  value={estoqueInicial}
+                  onChange={(e) => setEstoqueInicial(e.target.value)}
+                />
+              </Campo>
+            )}
             <Campo rotulo="Estoque mínimo" htmlFor="estoqueMinimo">
               <Input
                 id="estoqueMinimo"

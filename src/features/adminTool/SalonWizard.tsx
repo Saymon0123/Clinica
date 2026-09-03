@@ -336,7 +336,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
                     <button
                       onClick={() => setUnidades((prev) => prev.filter((_, idx) => idx !== i))}
                       aria-label={`Remover unidade ${i + 1}`}
-                      className="text-muted-foreground hover:text-danger"
+                      className="text-danger"
                     >
                       <Trash2 size={14} />
                     </button>

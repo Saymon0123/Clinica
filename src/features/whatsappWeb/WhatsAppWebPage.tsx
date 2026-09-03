@@ -256,7 +256,7 @@ export function WhatsAppWebPage() {
             {/* O contador transforma "tem alguém esperando" em "três pessoas
                 esperando" — e some quando não há ninguém, para não virar ruído. */}
             {aguardandoDono.length > 0 && (
-              <span className="ml-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-danger text-white text-[11px] font-semibold flex items-center justify-center">
+              <span className="ml-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-danger text-danger-foreground text-[11px] font-semibold flex items-center justify-center">
                 {aguardandoDono.length}
               </span>
             )}

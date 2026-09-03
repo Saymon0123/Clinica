@@ -350,8 +350,10 @@ export function AppLayout() {
       {isManager && (
       <button
         onClick={() => window.open('/web', '_blank', 'noopener,noreferrer')}
-        className={`hidden md:flex fixed bottom-6 right-4 z-20 items-center gap-2 text-white rounded-full pl-3 pr-4 py-3 shadow-lg transition-colors ${
-          hasPending ? 'bg-danger hover:brightness-95 animate-pulse' : 'bg-primary hover:bg-primary-hover'
+        className={`hidden md:flex fixed bottom-6 right-4 z-20 items-center gap-2 rounded-full pl-3 pr-4 py-3 shadow-lg transition-colors ${
+          hasPending
+            ? 'bg-danger text-danger-foreground hover:brightness-95 animate-pulse'
+            : 'bg-primary text-primary-foreground hover:bg-primary-hover'
         }`}
       >
         <Globe size={18} />

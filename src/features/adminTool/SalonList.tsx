@@ -140,7 +140,7 @@ export function SalonList({ secret, refreshKey }: { secret: string; refreshKey: 
                 disabled={busy}
                 aria-label={s.ativo ? `Desativar ${s.nome}` : `Reativar ${s.nome}`}
                 className={`p-1.5 rounded-md hover:bg-surface-2 ${
-                  s.ativo ? 'text-muted-foreground hover:text-danger' : 'text-success'
+                  s.ativo ? 'text-danger' : 'text-success'
                 }`}
               >
                 <Power size={16} />

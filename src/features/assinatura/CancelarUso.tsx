@@ -64,7 +64,7 @@ export function CancelarUso({ salonId, onMudou }: { salonId: string; onMudou: ()
   return (
     <button
       onClick={() => setConfirmando(true)}
-      className="text-sm text-muted-foreground hover:text-danger hover:underline"
+      className="text-sm text-danger hover:underline"
     >
       Cancelar o uso do sistema
     </button>

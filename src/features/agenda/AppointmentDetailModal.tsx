@@ -381,16 +381,15 @@ export function AppointmentDetailModal({
                   Cancelar? O horário volta a ficar disponível.
                 </span>
                 <div className="flex gap-2 shrink-0">
-                  <button
-                    onClick={() => setConfirmCancel(false)}
-                    className="text-xs font-medium text-muted-foreground hover:text-foreground"
-                  >
+                  <button onClick={() => setConfirmCancel(false)} className="btn-chip">
                     Voltar
                   </button>
+                  {/* Chip com piso de toque (D4): a confirmacao da acao
+                      irreversivel era o menor alvo da tela, 12px sem padding. */}
                   <button
                     onClick={() => updateStatus('cancelado')}
                     disabled={busy}
-                    className="text-xs font-medium text-danger hover:underline disabled:opacity-50"
+                    className="btn-chip btn-chip-perigo"
                   >
                     Sim, cancelar
                   </button>
@@ -423,17 +422,10 @@ export function AppointmentDetailModal({
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs text-danger">Excluir de vez? Não dá para desfazer.</span>
               <div className="flex gap-2">
-                <button
-                  onClick={() => setConfirmDelete(false)}
-                  className="text-xs font-medium text-muted-foreground hover:text-foreground"
-                >
+                <button onClick={() => setConfirmDelete(false)} className="btn-chip">
                   Voltar
                 </button>
-                <button
-                  onClick={handleDelete}
-                  disabled={busy}
-                  className="text-xs font-medium text-danger disabled:opacity-50"
-                >
+                <button onClick={handleDelete} disabled={busy} className="btn-chip btn-chip-perigo">
                   Sim, excluir
                 </button>
               </div>
@@ -441,7 +433,7 @@ export function AppointmentDetailModal({
           ) : (
             <button
               onClick={() => setConfirmDelete(true)}
-              className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-danger"
+              className="flex items-center gap-1.5 text-xs font-medium text-danger"
             >
               <Trash2 size={14} />
               Excluir agendamento

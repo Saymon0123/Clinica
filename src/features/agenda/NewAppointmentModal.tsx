@@ -366,7 +366,7 @@ export function NewAppointmentModal({
                     onClick={() => removeService(idx)}
                     type="button"
                     aria-label={`Remover ${s.nome}`}
-                    className="text-muted-foreground hover:text-danger shrink-0"
+                    className="text-danger shrink-0"
                   >
                     <Trash2 size={14} />
                   </button>

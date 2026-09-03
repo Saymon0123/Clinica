@@ -176,7 +176,7 @@ export function CobrancaDaRede() {
                 type="button"
                 onClick={alternar}
                 disabled={agindo}
-                className="text-sm text-muted-foreground hover:text-danger hover:underline disabled:opacity-50"
+                className="text-sm text-danger hover:underline disabled:opacity-50"
               >
                 {agindo ? 'Salvando...' : 'Voltar a um boleto por unidade'}
               </button>

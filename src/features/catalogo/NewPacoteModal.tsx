@@ -187,7 +187,7 @@ export function NewPacoteModal({
                       type="button"
                       onClick={() => setItens((prev) => prev.filter((x) => x.service_id !== i.service_id))}
                       aria-label="Remover"
-                      className="text-muted-foreground hover:text-danger shrink-0"
+                      className="text-danger shrink-0"
                     >
                       <Trash2 size={14} />
                     </button>

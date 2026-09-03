@@ -57,6 +57,11 @@
   */
   --danger: #be123c;
   --danger-soft: #ffe4ec;
+  /* O que fala sobre o carmim solido (D2 da revisao de 01/09): antes era
+     `text-white` cru, e no tema escuro o carmim vira coral claro -- branco
+     sobre ele dava 2,74:1. Regra: nunca text-white/text-black sobre fundo
+     de token; cada fundo solido tem o seu -foreground. */
+  --danger-foreground: #ffffff;
   --warning: #f59e0b;
   /* O fundo dos avisos. Faltava, e sete avisos (o de pacote com prejuízo entre
      eles) ficavam sem fundo: o Tailwind não reclama de classe sem token, só
@@ -132,6 +137,7 @@
   --success-soft: #16302a;
   --danger: #fb7185;
   --danger-soft: #4c1a2a;
+  --danger-foreground: #200b12;
   --warning: #fbbf24;
   --warning-soft: #3a2a0e;
   --chart-line: #7cc5a0;
@@ -169,6 +175,7 @@
   --color-success-soft: var(--success-soft);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
+  --color-danger-foreground: var(--danger-foreground);
   --color-warning: var(--warning);
   --color-warning-soft: var(--warning-soft);
   --color-chart-line: var(--chart-line);
@@ -265,8 +272,11 @@ body {
   transform: translateY(0) scale(0.98);
   box-shadow: 0 4px 10px -4px color-mix(in srgb, var(--primary) 45%, transparent);
 }
+/* So a primaria nao definia opacidade no desabilitado, e ~40 chamadas
+   repetiam `disabled:opacity-50` a mao (uma ja tinha divergido para 40). */
 .btn-primary:disabled {
   cursor: not-allowed;
+  opacity: 0.5;
 }
 
 /* Hover so onde ha cursor de verdade: no toque, :hover dispara junto do tap e
@@ -311,8 +321,9 @@ body {
 .btn-danger:disabled { cursor: not-allowed; opacity: 0.5; }
 
 /* Chip de acao para dentro de tabelas e listas: o mesmo texto que era um link
-   sublinhado de 24px, agora com area de toque digna de dedo (~40px com o
-   padding da celula). */
+   sublinhado de 24px. Sozinho ele mede ~27px (o padding da celula fica FORA
+   do botao -- o comentario antigo dizia ~40px e nao procedia); no toque
+   ganha o piso de 44px definido mais abaixo. */
 .btn-chip {
   font-size: 0.75rem;
   font-weight: 500;
@@ -324,7 +335,9 @@ body {
   white-space: nowrap;
 }
 .btn-chip-primario { background: var(--primary-soft); color: var(--primary-soft-foreground); }
-.btn-chip-perigo { color: var(--danger); }
+/* Fundo proprio (D3): o chip destrutivo se distingue em repouso, nao so no
+   hover -- que no celular nao existe. */
+.btn-chip-perigo { background: var(--danger-soft); color: var(--danger); }
 .btn-chip:disabled { cursor: not-allowed; opacity: 0.5; }
 
 @media (hover: hover) and (pointer: fine) {
@@ -332,6 +345,47 @@ body {
   .btn-ghost:hover:not(:disabled) { background-color: var(--surface-2); color: var(--foreground); }
   .btn-danger:hover:not(:disabled) { background-color: var(--danger-soft); }
   .btn-chip:hover:not(:disabled) { filter: brightness(0.96); }
+}
+
+/* As classes nascem completas (D5 da revisao de 01/09): forma, padding,
+   fonte e alinhamento. 72 botoes usavam 32 assinaturas -- dois raios, seis
+   alturas, tres fontes. Em @layer components DE PROPOSITO: as utilities do
+   Tailwind vencem esta camada, entao quem ja escolhe `rounded-full px-5`
+   continua mandando; a classe so preenche o que a tela nao disse. */
+@layer components {
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost,
+  .btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+  }
+  .btn-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+  }
+}
+
+/* Alvo de toque (D4): 44px onde o ponteiro e o dedo. No desktop a altura
+   segue o padding, para as linhas compactas (fechamento, convites) nao
+   crescerem. */
+@media (pointer: coarse) {
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost,
+  .btn-danger,
+  .btn-chip {
+    min-height: 2.75rem;
+  }
 }
 
 /* ---------------------------------------------------------------------------

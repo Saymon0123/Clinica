@@ -940,7 +940,7 @@ export function NewSaleModal({
                     <button
                       onClick={() => removeItem(idx)}
                       aria-label={`Remover ${i.nome}`}
-                      className="text-muted-foreground hover:text-danger"
+                      className="text-danger"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -984,7 +984,7 @@ export function NewSaleModal({
                         type="button"
                         onClick={() => removerPagamento(idx)}
                         aria-label="Remover esta parte do pagamento"
-                        className="text-muted-foreground hover:text-danger p-1"
+                        className="text-danger p-1"
                       >
                         <Trash2 size={14} />
                       </button>

@@ -853,7 +853,7 @@ export function EquipePage() {
                 onClick={() => alternarAtivo(m)}
                 aria-label={m.ativo ? `Desativar ${m.nome}` : `Reativar ${m.nome}`}
                 className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-md hover:bg-surface-2 ${
-                  m.ativo ? 'text-muted-foreground hover:text-danger' : 'text-success'
+                  m.ativo ? 'text-danger' : 'text-success'
                 }`}
               >
                 <Power size={16} />
@@ -871,7 +871,7 @@ export function EquipePage() {
                     })
                   }
                   aria-label={`Tirar ${m.nome} da equipe`}
-                  className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-md text-muted-foreground hover:text-danger hover:bg-surface-2"
+                  className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-md text-danger hover:bg-surface-2"
                 >
                   <UserMinus size={16} />
                   <span className="text-[10px] leading-none">Tirar</span>

@@ -41,11 +41,12 @@ insert into appointments (id, salon_id, professional_id, service_id, data_hora_i
   (:'a_crm', :'salao', :'barbeiro', :'corte', now() - interval '11 hours', now() - interval '10 hours', 'agendado', 'crm', null),
   (:'a_bloq', :'salao', :'barbeiro', null, now() - interval '13 hours', now() - interval '12 hours', 'bloqueio', 'agente', null);
 
--- O agendado pelo agente tem serviços combinados (Corte + Barba = 80); o
--- cancelado não tem linha em appointment_services e cai no principal (50); a
--- reativação confirmada vale a Barba (30). Total cobrável: 3 horários, R$ 160.
+-- O agendado pelo agente tem serviços combinados: a 0120 já espelha o
+-- serviço principal em appointment_services no insert (por isso só a Barba
+-- entra aqui — inserir o Corte de novo duplica a chave), Corte + Barba = 80.
+-- O cancelado vale o principal (50) e a reativação confirmada, a Barba (30).
+-- Total cobrável: 3 horários, R$ 160.
 insert into appointment_services (appointment_id, service_id, ordem) values
-  (:'a_agente', :'corte', 1),
   (:'a_agente', :'barba', 2);
 
 select is(

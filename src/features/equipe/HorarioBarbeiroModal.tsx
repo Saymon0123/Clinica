@@ -143,10 +143,11 @@ export function HorarioBarbeiroModal({
               automático não oferecer horário em dia de folga.
             </p>
 
-            {/* `warning-soft` não existe nos tokens; a opacidade sobre
-                `--color-warning` dá o mesmo efeito sem inventar um token. */}
+            {/* Mesmo fundo dos outros avisos do app: `--warning-soft` existe
+                desde o passo 2.5 (antes era opacidade sobre `--warning`, um
+                amarelo diferente do resto). */}
             {nuncaSalvo && (
-              <p className="text-xs text-warning bg-warning/10 border border-warning/30 rounded-lg px-3 py-2">
+              <p className="text-xs text-warning bg-warning-soft border border-warning/30 rounded-lg px-3 py-2">
                 <strong className="font-medium">Ainda não salvo.</strong> Estes são horários
                 sugeridos — enquanto não salvar, o atendimento automático não tem quando marcar e
                 não vai conseguir agendar nada.

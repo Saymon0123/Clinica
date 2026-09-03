@@ -58,6 +58,10 @@
   --danger: #be123c;
   --danger-soft: #ffe4ec;
   --warning: #f59e0b;
+  /* O fundo dos avisos. Faltava, e sete avisos (o de pacote com prejuízo entre
+     eles) ficavam sem fundo: o Tailwind não reclama de classe sem token, só
+     deixa de gerar. src/lib/tokensDeCor.test.ts quebra se isto sumir. */
+  --warning-soft: #fef3c7;
   --chart-line: #1f5d42;
   --chart-track: #dde4df;
   --sidebar: #ffffff;
@@ -129,6 +133,7 @@
   --danger: #fb7185;
   --danger-soft: #4c1a2a;
   --warning: #fbbf24;
+  --warning-soft: #3a2a0e;
   --chart-line: #7cc5a0;
   --chart-track: #2a332c;
   --sidebar: #121b17;
@@ -165,6 +170,7 @@
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
   --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
   --color-chart-line: var(--chart-line);
   --color-chart-track: var(--chart-track);
   --color-sidebar: var(--sidebar);

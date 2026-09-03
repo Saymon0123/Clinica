@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Building2, CalendarDays, ChevronLeft, ChevronRight, Plus, Users } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { traduzirErroDoBanco } from '../../lib/erroDoBanco'
 import { useSalon } from '../auth/useSalon'
 import { useAgendaData } from './useAgendaData'
 import { MiniCalendar } from './MiniCalendar'
@@ -260,11 +261,18 @@ export function AgendaPage() {
       await reload()
     } catch (err) {
       console.error('Erro ao reagendar:', err)
-      const code = (err as { code?: string } | null)?.code
+      // Pelo tradutor, e não por uma frase fixa para 23P01: desde a 0134 a
+      // folga entre atendimentos também recusa com 23P01, e a frase do banco
+      // diz qual dos dois foi ("fica a menos de 5 minutos de outro
+      // atendimento..."). Dizer "já existe um agendamento nesse horário" para
+      // uma folga de 5 minutos mandaria o barbeiro procurar um choque que não
+      // existe.
       setRescheduleError(
-        code === '23P01'
-          ? 'Já existe um agendamento nesse horário para este profissional. Escolha outro horário.'
-          : 'Não foi possível reagendar. Verifique sua conexão e tente novamente.',
+        traduzirErroDoBanco(
+          err as { code?: string; message?: string },
+          { '23P01': 'Já existe um agendamento nesse horário para este profissional. Escolha outro horário.' },
+          'Não foi possível reagendar. Verifique sua conexão e tente novamente.',
+        ),
       )
     } finally {
       setRescheduling(false)

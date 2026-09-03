@@ -131,3 +131,33 @@ describe('traduzirErroDoBanco: preco de venda (0132)', () => {
     ).toBe('Faltou preencher um campo obrigatório.')
   })
 })
+
+// O trigger da folga (0134) levanta 23P01 -- o mesmo codigo do choque de
+// horario -- com a explicacao em portugues. As telas de remarcar passam uma
+// frase fixa para 23P01 ("ja existe um agendamento nesse horario"); ela so
+// pode valer quando o banco NAO disse nada melhor, senao a folga de 5 minutos
+// vira um choque que nao existe.
+describe('traduzirErroDoBanco: folga entre atendimentos (0134)', () => {
+  const FIXA = 'Já existe um agendamento nesse horário para este profissional. Escolha outro horário.'
+
+  it('a frase da folga vence a frase fixa do 23P01', () => {
+    expect(
+      traduzirErroDoBanco(
+        {
+          code: '23P01',
+          message: 'Fica a menos de 5 minutos de outro atendimento do barbeiro (das 15:00 às 15:30). A barbearia exige essa folga entre um e outro.',
+        },
+        { '23P01': FIXA },
+      ),
+    ).toBe('Fica a menos de 5 minutos de outro atendimento do barbeiro (das 15:00 às 15:30). A barbearia exige essa folga entre um e outro.')
+  })
+
+  it('o choque de verdade (mensagem em ingles da constraint) continua na frase fixa', () => {
+    expect(
+      traduzirErroDoBanco(
+        { code: '23P01', message: 'conflicting key value violates exclusion constraint "appointments_sem_sobreposicao"' },
+        { '23P01': FIXA },
+      ),
+    ).toBe(FIXA)
+  })
+})

@@ -1882,3 +1882,16 @@ janela pequena, mas é o mesmo tipo de "duas verdades" que o achado 20 fechou
 para a régua dos 3 dias. Quando alguém mexer nas views, trocar por
 `(now() at time zone 'America/Sao_Paulo')::date`, que é o que a cobrança
 (`fechar_mes_de_uso`) já usa.
+
+---
+
+## Achados do passo 2.8 — folga entre atendimentos (2026-09-03)
+
+### O QR chama de "acabou de ser pego" o que pode ser folga
+`agenda-publica/index.ts` mapeia qualquer `23P01` no insert para "Esse horario
+acabou de ser pego. Escolha outro." Desde a 0134 a folga entre atendimentos
+também levanta `23P01` (com a explicação em português na mensagem). Pelo QR
+isso só acontece em corrida — a lista oferecida já respeita a folga —, mas
+quando acontecer a frase vai dizer "pego" para um horário que só encostou em
+outro. O conserto é o mesmo das telas do CRM: mostrar a mensagem do banco
+quando ela vier em português, e cair na frase fixa só sem ela.

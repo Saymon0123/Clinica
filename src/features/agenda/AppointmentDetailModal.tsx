@@ -4,6 +4,7 @@ import { CalendarClock, Trash2, XCircle, Receipt } from 'lucide-react'
 import { Modal } from '../../components/Modal'
 import { Input } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
+import { traduzirErroDoBanco } from '../../lib/erroDoBanco'
 import { toast } from '../../components/Toast'
 import type { Appointment } from './types'
 import { ErroInline } from '../../components/ErroInline'
@@ -145,10 +146,15 @@ export function AppointmentDetailModal({
 
     if (updateError) {
       console.error('Erro ao reagendar:', updateError)
+      // 23P01 pode ser choque OU folga (trigger da 0134). A frase do banco,
+      // em português, diz qual; o tradutor a mostra como veio e só cai na
+      // frase fixa quando não há uma melhor.
       setError(
-        updateError.code === '23P01'
-          ? 'Já existe um agendamento nesse horário para este profissional. Escolha outro horário.'
-          : 'Não foi possível alterar a data. Tente novamente.',
+        traduzirErroDoBanco(
+          updateError,
+          { '23P01': 'Já existe um agendamento nesse horário para este profissional. Escolha outro horário.' },
+          'Não foi possível alterar a data. Tente novamente.',
+        ),
       )
       return
     }

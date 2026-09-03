@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CalendarClock, Trash2, XCircle, Receipt } from 'lucide-react'
 import { Modal } from '../../components/Modal'
-import { Input } from '../../components/Campo'
+import { Input, Select } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
 import { traduzirErroDoBanco } from '../../lib/erroDoBanco'
+import { useSalon } from '../auth/useSalon'
 import { toast } from '../../components/Toast'
 import type { Appointment } from './types'
 import { ErroInline } from '../../components/ErroInline'
@@ -80,11 +81,17 @@ export function AppointmentDetailModal({
   const [editingDate, setEditingDate] = useState(false)
   const [dateValue, setDateValue] = useState(() => toDateInput(appointment.data_hora_inicio))
   const [timeValue, setTimeValue] = useState(() => toTimeInput(appointment.data_hora_inicio))
+  // Trocar o barbeiro por aqui (achado 29 da revisão de 01/09): arrastar o
+  // bloco entre colunas não funciona no toque, e no celular esse era o ÚNICO
+  // caminho — remarcar de barbeiro exigia cancelar e criar de novo.
+  const [professionalValue, setProfessionalValue] = useState(appointment.professional_id)
+  const [profissionais, setProfissionais] = useState<{ id: string; nome: string }[]>([])
 
   // Corte + barba num agendamento só (item 6): a lista completa vem da view
   // `servicos_do_agendamento`. Com 1 item só, cai de volta no rótulo simples
   // que já existia (service_nome).
   const [servicos, setServicos] = useState<ServicoDoAgendamento[] | null>(null)
+  const { salonId } = useSalon()
 
   useEffect(() => {
     let cancelado = false
@@ -105,6 +112,30 @@ export function AppointmentDetailModal({
       cancelado = true
     }
   }, [appointment.id])
+
+  // Só quando a pessoa abre "Alterar data/horário": a lista serve ao seletor
+  // de barbeiro e não precisa carregar para quem só veio ler o detalhe.
+  useEffect(() => {
+    if (!editingDate || !salonId) return
+    let cancelado = false
+    supabase
+      .from('professionals')
+      .select('id, nome')
+      .eq('salon_id', salonId)
+      .eq('ativo', true)
+      .order('nome')
+      .then(({ data, error: fetchError }) => {
+        if (cancelado) return
+        if (fetchError) {
+          console.error('Erro ao buscar os barbeiros:', fetchError)
+          return
+        }
+        setProfissionais((data ?? []) as { id: string; nome: string }[])
+      })
+    return () => {
+      cancelado = true
+    }
+  }, [editingDate, salonId])
 
   const duracaoTotalMin =
     servicos && servicos.length > 0
@@ -138,6 +169,7 @@ export function AppointmentDetailModal({
     const { error: updateError } = await supabase
       .from('appointments')
       .update({
+        professional_id: professionalValue,
         data_hora_inicio: newStart.toISOString(),
         data_hora_fim: newEnd.toISOString(),
       })
@@ -279,6 +311,19 @@ export function AppointmentDetailModal({
                     />
                   </div>
                 </div>
+                {profissionais.length > 1 && (
+                  <Select
+                    value={professionalValue}
+                    onChange={(e) => setProfessionalValue(e.target.value)}
+                    aria-label="Barbeiro"
+                  >
+                    {profissionais.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nome}
+                      </option>
+                    ))}
+                  </Select>
+                )}
                 <p className="text-xs text-muted-foreground">
                   A duração do serviço é mantida automaticamente.
                 </p>
@@ -288,6 +333,7 @@ export function AppointmentDetailModal({
                       setEditingDate(false)
                       setDateValue(toDateInput(appointment.data_hora_inicio))
                       setTimeValue(toTimeInput(appointment.data_hora_inicio))
+                      setProfessionalValue(appointment.professional_id)
                       setError(null)
                     }}
                     className="flex-1 btn-secondary rounded-lg px-3 py-2 text-sm font-medium"

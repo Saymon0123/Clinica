@@ -82,17 +82,31 @@ function AppointmentBlock({
   const top = (minutesSinceStart(appt.data_hora_inicio) / 60) * ROW_HEIGHT
   const durationMin =
     (new Date(appt.data_hora_fim).getTime() - new Date(appt.data_hora_inicio).getTime()) / 60000
-  const height = Math.max((durationMin / 60) * ROW_HEIGHT, 24)
+  // Piso de 32px (achado 36 da revisão de 01/09): um bloco de 15 minutos tinha
+  // 16px de altura — impossível de acertar com o dedo. O piso vale para o TOQUE,
+  // não para a escala: um bloco curto ainda começa na hora certa e só avança um
+  // pouco sobre o vizinho, que continua clicável pelo resto da área dele.
+  const height = Math.max((durationMin / 60) * ROW_HEIGHT, 32)
   const style = BLOCK_STYLES[appt.status] ?? BLOCK_STYLES.default
   // Cancelado e faltou liberam o horário, então um agendamento novo pode nascer
   // por cima. O finalizado fica ATRÁS (zIndex menor) para o ativo continuar
   // clicável — e não arrasta: mover um cancelamento não significa nada.
   const finalizado = appt.status === 'cancelado' || appt.status === 'faltou' || appt.status === 'concluido'
+  const rotuloStatus =
+    appt.status === 'cancelado' ? 'cancelado' :
+    appt.status === 'faltou' ? 'não veio' :
+    appt.status === 'concluido' ? 'concluído' :
+    appt.status === 'confirmado' ? 'confirmado' :
+    appt.status === 'bloqueio' ? 'bloqueio' : 'agendado'
 
+  // `<button>`, e não `<div onClick>`: leitor de tela e teclado passam a
+  // alcançar o bloco, e o rótulo diz o que ele é sem precisar ler a grade.
+  // Continua arrastável — botão aceita `draggable` como qualquer elemento.
   return (
-    <div
+    <button
+      type="button"
       draggable={!finalizado}
-      onDragStart={(e: DragEvent<HTMLDivElement>) => {
+      onDragStart={(e: DragEvent<HTMLButtonElement>) => {
         if (finalizado) return
         e.dataTransfer.setData('text/plain', appt.id)
         e.dataTransfer.effectAllowed = 'move'
@@ -100,7 +114,10 @@ function AppointmentBlock({
       }}
       onDragEnd={onDragEnd}
       onClick={onClick}
-      className={`absolute inset-x-1 rounded-lg border-l-2 px-2 py-1 overflow-hidden cursor-pointer select-none ${style.container} ${
+      aria-label={`${formatTime(appt.data_hora_inicio)}, ${appt.client_nome ?? 'cliente'}${
+        appt.service_nome ? `, ${appt.service_nome}` : ''
+      }, ${rotuloStatus}. Abrir detalhes.`}
+      className={`absolute inset-x-1 text-left rounded-lg border-l-2 px-2 py-1 overflow-hidden cursor-pointer select-none focus-visible:ring-2 focus-visible:ring-primary ${style.container} ${
         dragging ? 'opacity-40' : ''
       }`}
       style={{ top, height, zIndex: finalizado ? 1 : 2 }}
@@ -114,7 +131,7 @@ function AppointmentBlock({
           {!!appt.servicos_extras && ` +${appt.servicos_extras}`}
         </div>
       )}
-    </div>
+    </button>
   )
 }
 
@@ -358,11 +375,17 @@ export function AgendaPage() {
           <div
             ref={scrollRef}
             className="bg-surface rounded-2xl border border-border shadow-sm overflow-auto"
-            style={{ maxHeight: 'calc(100vh - 260px)' }}
+            // `dvh`, não `vh`: no celular a barra do navegador entra na conta do
+            // `vh` e o fim da grade ficava escondido; e a barra de navegação
+            // inferior do app (só no celular) também é descontada, senão as
+            // últimas horas do dia ficam atrás dela (achado 37).
+            style={{ maxHeight: 'calc(100dvh - 260px - var(--barra-inferior, 0px))' }}
           >
             {/* Header com nomes dos profissionais */}
             <div className="flex border-b border-border sticky top-0 bg-surface z-10 min-w-fit">
-              <div className="w-14 shrink-0" />
+              {/* O canto gruda nos dois eixos, com fundo, para a régua não
+                  passar por baixo dos nomes ao rolar para o lado. */}
+              <div className="w-14 shrink-0 sticky left-0 bg-surface z-[4]" />
               {professionals.map((p) => (
                 <div
                   key={p.id}
@@ -394,7 +417,11 @@ export function AgendaPage() {
             {/* Grade */}
             <div className="flex min-w-fit pt-3 pb-3 relative">
               <LinhaDeAgora selectedDate={selectedDate} />
-              <div className="w-14 shrink-0 relative" style={{ height: gridHeight }}>
+              {/* A régua de horas gruda à esquerda com fundo (achado 36 da
+                  revisão): com dois barbeiros a grade rola para o lado no
+                  celular, e as horas sumiam junto — o barbeiro rolava até o
+                  colega e não sabia mais que hora era aquela linha. */}
+              <div className="w-14 shrink-0 relative sticky left-0 bg-surface z-[3]" style={{ height: gridHeight }}>
                 {hours.map((h) => (
                   <div
                     key={h}
@@ -489,8 +516,11 @@ export function AgendaPage() {
             </span>
           </div>
           <div className="mt-1 flex items-baseline gap-2">
+            {/* Só reserva viva (achado 38): cancelado, não veio e bloqueio
+                entravam na soma, e o número do card não batia com a grade —
+                "8 reservas" num dia com 5 cortes e 3 desistências. */}
             <span className="num-destaque text-3xl leading-none">
-              {appointments.length}
+              {appointments.filter((a) => a.status !== 'cancelado' && a.status !== 'faltou' && a.status !== 'bloqueio').length}
             </span>
             <span className="text-xs text-primary-foreground/70">
               {selectedDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}

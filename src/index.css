@@ -773,3 +773,16 @@ body {
     font-size: 16px;
   }
 }
+
+/* Altura da barra de navegação inferior do celular (AppLayout, `md:hidden`),
+   para as telas que precisam descontá-la — a grade da agenda, por exemplo, que
+   escondia as últimas horas do dia atrás dela (achado 37). No desktop não há
+   barra: zero. */
+:root {
+  --barra-inferior: 0px;
+}
+@media (max-width: 767px) {
+  :root {
+    --barra-inferior: calc(3.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}

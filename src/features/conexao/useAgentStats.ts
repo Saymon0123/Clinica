@@ -43,6 +43,13 @@ function startOf(period: AgentPeriod): Date {
   return new Date(now.getFullYear(), now.getMonth(), 1)
 }
 
+/** 'YYYY-MM-DD' local, para comparar com `dia_de_criacao` da view. */
+function chaveDoDia(d: Date) {
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const dia = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${m}-${dia}`
+}
+
 type MessageRow = {
   conversation_id: string
   direction: 'in' | 'out'
@@ -89,12 +96,14 @@ export function useAgentStats(salonId: string | null, period: AgentPeriod) {
         .in('conversation_id', conversationIds)
         .gte('created_at', startISO)
         .order('created_at', { ascending: true }),
+      // A MESMA regra da cobrança (view agendamentos_cobraveis, 0136): antes
+      // este painel excluía cancelados e ignorava a reativação, e mostrava um
+      // número diferente da aba Assinatura para o mesmo mês (passo 4.1).
       supabase
-        .from('appointments')
-        .select('status, origem, created_at')
+        .from('agendamentos_cobraveis')
+        .select('status')
         .eq('salon_id', salonId)
-        .eq('origem', 'agente')
-        .gte('created_at', startISO),
+        .gte('dia_de_criacao', chaveDoDia(startOf(period))),
       supabase
         .from('reativacao_resumo')
         .select('enviados, confirmados, remarcados, cancelados, receita_concluida')
@@ -142,7 +151,9 @@ export function useAgentStats(salonId: string | null, period: AgentPeriod) {
       conversas: conversasAtivas.size,
       mensagensAgente: messages.filter((m) => m.sender === 'agente').length,
       tempoRespostaMedioSeg: tempos.length ? tempos.reduce((a, b) => a + b, 0) / tempos.length : null,
-      agendamentos: appointments.filter((a) => a.status !== 'cancelado').length,
+      // Cancelado depois CONTA como agendamento (o trabalho de marcar foi
+      // feito, e é assim que se cobra); o cancelamento aparece ao lado.
+      agendamentos: appointments.length,
       cancelamentos: appointments.filter((a) => a.status === 'cancelado').length,
       pedidosDono: (convData ?? []).filter((c) => c.needs_human).length,
       reativacao: reatResult.error

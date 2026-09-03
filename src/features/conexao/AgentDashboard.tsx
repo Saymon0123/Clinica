@@ -95,7 +95,7 @@ export function AgentDashboard({ salonId }: { salonId: string }) {
           icon={<CalendarCheck size={16} />}
           label="Agendamentos"
           value={loading ? '—' : stats.agendamentos}
-          hint="feitos pelo agente (a cobrança na aba Assinatura usa o mês fechado)"
+          hint="cobráveis — o mesmo número da aba Assinatura"
         />
         <StatCard
           icon={<CalendarX size={16} />}
@@ -112,8 +112,10 @@ export function AgentDashboard({ salonId }: { salonId: string }) {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Agendamentos e cancelamentos contam apenas os que passaram pelo agente no WhatsApp — o que você
-        faz direto na agenda não entra aqui.
+        Agendamentos e cancelamentos contam o que passou pelo agente no WhatsApp (e a reativação que o
+        cliente confirmou) — o que você faz direto na agenda não entra aqui. É a mesma conta da
+        cobrança: um agendamento cancelado depois continua contando, porque o trabalho de marcar foi
+        feito.
       </p>
 
       {/* Reativação: o sistema reserva o próximo horário de quem topou o

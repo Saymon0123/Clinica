@@ -37,7 +37,9 @@ export function useAgendaData(salonId: string | null, date: Date) {
     const { start, end } = dayBounds(date)
 
     const [profResult, servResult, apptResult, jornadaResult] = await Promise.all([
-      supabase.from('professionals').select('id, nome, ativo').eq('salon_id', salonId).eq('ativo', true).order('nome'),
+      // Todos, não só os ativos: o inativo com horário marcado no dia continua
+      // com coluna (achado 42) — filtrado logo abaixo, com os agendamentos na mão.
+      supabase.from('professionals').select('id, nome, ativo').eq('salon_id', salonId).order('nome'),
       supabase.from('services').select('id, nome, duracao_minutos, preco').eq('salon_id', salonId).eq('ativo', true).order('nome'),
       supabase
         .from('appointments')
@@ -84,7 +86,21 @@ export function useAgendaData(salonId: string | null, date: Date) {
     }
     setJornadas(mapaJornadas)
 
-    setProfessionals(profResult.data ?? [])
+    // Desativar um barbeiro sumia com os agendamentos dele da tela (achado 42
+    // da revisão de 01/09): a agenda só carregava ativos, e os horários
+    // continuavam no banco sem coluna onde aparecer. Agora o inativo fica na
+    // grade enquanto tiver horário vivo no dia exibido — com selo, e sem
+    // receber reserva nova (os modais recebem só os ativos). Ativos primeiro.
+    const comHorarioNoDia = new Set(
+      ((apptResult.data ?? []) as { professional_id: string | null; status: string }[])
+        .filter((a) => a.status !== 'cancelado' && a.professional_id)
+        .map((a) => a.professional_id as string),
+    )
+    const todos = (profResult.data ?? []) as Professional[]
+    setProfessionals([
+      ...todos.filter((p) => p.ativo),
+      ...todos.filter((p) => !p.ativo && comHorarioNoDia.has(p.id)),
+    ])
     setServices(servResult.data ?? [])
     setAppointments(
       (apptResult.data ?? []).map((row) => {

@@ -42,8 +42,15 @@ type Convite = {
   email: string
   token: string
   role: string
+  comissao_percentual: number | null
   expira_em: string
   usado_em: string | null
+}
+
+const LABEL_PAPEL_DO_CONVITE: Record<string, string> = {
+  owner: 'Dono',
+  gerente: 'Gerente',
+  barbeiro: 'Barbeiro',
 }
 
 /** O que a RPC `trocar_email_do_convite` (migration 0128) devolve. */
@@ -80,6 +87,13 @@ export function EquipePage() {
   const [salvandoMembro, setSalvandoMembro] = useState<string | null>(null)
   // Tirar da equipe é irreversível pelo CRM: confirma antes, dizendo o nome.
   const [tirandoDaEquipe, setTirandoDaEquipe] = useState<{ vinculo: string; nome: string } | null>(null)
+  // Desativar pede confirmação dizendo quantos horários futuros ele tem (achado 42).
+  const [desativando, setDesativando] = useState<{ membro: Membro; futuros: number } | null>(null)
+  // Função e comissão do convite pendente são editáveis (achado 44), pela RPC
+  // `editar_convite` — o UPDATE direto em salon_invites foi revogado na 0128.
+  const [editandoConvite, setEditandoConvite] = useState<string | null>(null)
+  const [papelDoConvite, setPapelDoConvite] = useState<'barbeiro' | 'gerente'>('barbeiro')
+  const [comissaoDoConvite, setComissaoDoConvite] = useState('')
 
   // Dono DESTA unidade (o papel mora em user_salons, não em `isOwner`, que é
   // "dono em alguma") que ainda não tem linha em `professionals`. Só ele vê o
@@ -101,7 +115,7 @@ export function EquipePage() {
         .order('nome'),
       supabase
         .from('salon_invites')
-        .select('id, nome, email, token, role, expira_em, usado_em')
+        .select('id, nome, email, token, role, comissao_percentual, expira_em, usado_em')
         .eq('salon_id', salonId)
         .is('usado_em', null)
         .order('created_at', { ascending: false }),
@@ -216,14 +230,40 @@ export function EquipePage() {
     // Trava de clique duplo: dois toques rápidos no power disparavam updates
     // concorrentes que se anulavam.
     if (salvandoMembro) return
+    if (!m.ativo) {
+      await aplicarAtivo(m, true)
+      return
+    }
+    // Desativar era um toque, e os horários futuros dele sumiam da agenda sem
+    // aviso (achado 42 da revisão de 01/09). Conta antes e pergunta dizendo o
+    // número — é o que faz o dono lembrar de remarcar.
     setSalvandoMembro(m.id)
-    const { error } = await supabase.from('professionals').update({ ativo: !m.ativo }).eq('id', m.id)
+    setErro(null)
+    const { count, error } = await supabase
+      .from('appointments')
+      .select('id', { count: 'exact', head: true })
+      .eq('professional_id', m.id)
+      .gte('data_hora_inicio', new Date().toISOString())
+      .in('status', ['agendado', 'confirmado'])
     setSalvandoMembro(null)
+    if (error) {
+      console.error('Erro ao contar os horários futuros:', error)
+      setErro('Não foi possível conferir a agenda dele. Tente de novo.')
+      return
+    }
+    setDesativando({ membro: m, futuros: count ?? 0 })
+  }
+
+  async function aplicarAtivo(m: Membro, ativo: boolean) {
+    setSalvandoMembro(m.id)
+    const { error } = await supabase.from('professionals').update({ ativo }).eq('id', m.id)
+    setSalvandoMembro(null)
+    setDesativando(null)
     if (error) {
       setErro('Não foi possível alterar o status.')
       return
     }
-    toast(m.ativo ? 'Barbeiro desativado' : 'Barbeiro reativado')
+    toast(ativo ? 'Barbeiro reativado' : 'Barbeiro desativado')
     carregar()
   }
 
@@ -356,6 +396,36 @@ export function EquipePage() {
     return trocarEmailDoConvite(c, c.email)
   }
 
+  /**
+   * Função e comissão do convite pendente (achado 44): antes só o e-mail
+   * podia ser corrigido depois de gerado; o resto era cancelar e refazer,
+   * matando o link já enviado.
+   */
+  async function salvarConvite(c: Convite) {
+    const texto = comissaoDoConvite.trim().replace(',', '.')
+    const comissao = texto === '' ? null : Number(texto)
+    if (comissao !== null && (!Number.isFinite(comissao) || comissao < 0 || comissao > 100)) {
+      setErro('A comissão deve ser um número entre 0 e 100.')
+      return
+    }
+    setSalvandoConvite(c.id)
+    setErro(null)
+    const { error } = await supabase.rpc('editar_convite', {
+      p_convite_id: c.id,
+      p_role: papelDoConvite,
+      p_comissao: comissao,
+    })
+    setSalvandoConvite(null)
+    if (error) {
+      console.error('Erro ao alterar o convite:', error)
+      setErro(traduzirErroDoBanco(error, undefined, 'Não foi possível alterar o convite.'))
+      return
+    }
+    setEditandoConvite(null)
+    toast('Convite atualizado')
+    carregar()
+  }
+
   function fecharAviso(conviteId: string) {
     setAvisoDoConvite((atuais) => {
       const resto = { ...atuais }
@@ -484,11 +554,58 @@ export function EquipePage() {
                         </button>
                       </div>
                     </div>
+                  ) : editandoConvite === c.id ? (
+                    <div className="space-y-2">
+                      <div className="text-sm text-foreground">{nome}</div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Select
+                          value={papelDoConvite}
+                          onChange={(e) => setPapelDoConvite(e.target.value as 'barbeiro' | 'gerente')}
+                          aria-label={`Função do convite de ${nome}`}
+                          className="w-40"
+                        >
+                          <option value="barbeiro">Barbeiro</option>
+                          <option value="gerente">Gerente</option>
+                        </Select>
+                        <div className="w-28">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={comissaoDoConvite}
+                            onChange={(e) => setComissaoDoConvite(e.target.value)}
+                            placeholder="sem comissão"
+                            aria-label={`Comissão do convite de ${nome} em porcentagem`}
+                          />
+                        </div>
+                        <span className="text-xs text-muted-foreground">%</span>
+                        <button
+                          onClick={() => salvarConvite(c)}
+                          disabled={salvandoConvite === c.id}
+                          className="btn-primary rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+                        >
+                          {salvandoConvite === c.id ? 'Salvando...' : 'Salvar'}
+                        </button>
+                        <button
+                          onClick={() => setEditandoConvite(null)}
+                          className="text-xs font-medium text-muted-foreground hover:text-foreground"
+                        >
+                          Voltar
+                        </button>
+                      </div>
+                    </div>
                   ) : (
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="min-w-0">
-                        <div className="text-sm text-foreground">{nome}</div>
+                        <div className="flex items-center gap-2 text-sm text-foreground">
+                          {nome}
+                          {vencido && <Badge variante="atencao">Vencido</Badge>}
+                        </div>
                         <div className="text-xs text-muted-foreground">
+                          {LABEL_PAPEL_DO_CONVITE[c.role] ?? c.role}
+                          {c.comissao_percentual != null &&
+                            ` · Comissão ${Number(c.comissao_percentual).toFixed(0)}%`}
+                          {' · '}
                           {c.email} ·{' '}
                           {vencido ? (
                             <span className="inline-flex items-center gap-1 font-medium text-warning">
@@ -502,8 +619,8 @@ export function EquipePage() {
                         </div>
                         {vencido && (
                           <div className="mt-0.5 text-xs text-warning">
-                            Este link não abre mais. <strong>Reenviar</strong> renova o prazo por mais
-                            7 dias e manda o convite outra vez.
+                            Este link não abre mais. <strong>Renovar link</strong> dá mais 7 dias ao
+                            mesmo link e manda o convite outra vez.
                           </div>
                         )}
                       </div>
@@ -521,8 +638,24 @@ export function EquipePage() {
                           className="btn-chip flex items-center gap-1"
                         >
                           <Send size={12} />
-                          {salvandoConvite === c.id ? 'Enviando...' : 'Reenviar'}
+                          {salvandoConvite === c.id ? 'Enviando...' : vencido ? 'Renovar link' : 'Reenviar'}
                         </button>
+                        {c.role !== 'owner' && (
+                          <button
+                            onClick={() => {
+                              setEditandoConvite(c.id)
+                              setPapelDoConvite(c.role === 'gerente' ? 'gerente' : 'barbeiro')
+                              setComissaoDoConvite(
+                                c.comissao_percentual != null ? String(Number(c.comissao_percentual)) : '',
+                              )
+                              setErro(null)
+                            }}
+                            className="btn-chip flex items-center gap-1"
+                          >
+                            <Percent size={12} />
+                            Função
+                          </button>
+                        )}
                         <button
                           onClick={() => {
                             setEditandoEmail(c.id)
@@ -780,6 +913,47 @@ export function EquipePage() {
           onClose={() => setModalAberto(false)}
           onCriado={carregar}
         />
+      )}
+
+      {desativando && (
+        <Modal
+          onClose={() => setDesativando(null)}
+          titulo="Desativar barbeiro"
+          tamanho="sm"
+          bloquearFechamento={salvandoMembro === desativando.membro.id}
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-foreground">
+              <strong>{desativando.membro.nome}</strong>{' '}
+              {desativando.futuros === 0
+                ? 'não tem horário marcado daqui para frente.'
+                : `tem ${desativando.futuros} ${
+                    desativando.futuros === 1 ? 'horário marcado' : 'horários marcados'
+                  } daqui para frente.`}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Ele deixa de receber reserva nova (agente, QR e agenda).{' '}
+              {desativando.futuros > 0 &&
+                'Os horários já marcados continuam na agenda, com a coluna dele marcada como inativo, até serem atendidos ou remarcados. '}
+              O acesso dele ao sistema não muda — para tirar o acesso, use "Tirar".
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => aplicarAtivo(desativando.membro, false)}
+                disabled={salvandoMembro === desativando.membro.id}
+                className="flex-1 btn-danger rounded-lg px-3 py-2.5 text-sm font-medium disabled:opacity-50"
+              >
+                {salvandoMembro === desativando.membro.id ? 'Desativando...' : 'Desativar'}
+              </button>
+              <button
+                onClick={() => setDesativando(null)}
+                className="flex-1 btn-secondary rounded-lg px-3 py-2.5 text-sm font-medium"
+              >
+                Manter
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {tirandoDaEquipe && (

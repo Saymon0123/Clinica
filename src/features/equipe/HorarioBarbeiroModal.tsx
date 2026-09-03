@@ -4,6 +4,7 @@ import { Modal } from '../../components/Modal'
 import { Input } from '../../components/Campo'
 import { SkeletonLinhas } from '../../components/Skeleton'
 import { supabase } from '../../lib/supabase'
+import { traduzirErroDoBanco } from '../../lib/erroDoBanco'
 import { ErroInline } from '../../components/ErroInline'
 
 type Dia = { dia_semana: number; label: string; trabalha: boolean; inicio: string; fim: string }
@@ -85,37 +86,28 @@ export function HorarioBarbeiroModal({
     setSalvando(true)
     setErro(null)
 
-    // Regrava tudo: mais simples e evita sobras de dias removidos.
-    const { error: deleteError } = await supabase
-      .from('professional_schedules')
-      .delete()
-      .eq('professional_id', professionalId)
-
-    if (deleteError) {
-      console.error('Erro ao limpar horários:', deleteError)
-      setErro('Não foi possível salvar. Tente novamente.')
-      setSalvando(false)
-      return
-    }
-
-    const paraSalvar = dias
-      .filter((d) => d.trabalha)
-      .map((d) => ({
-        professional_id: professionalId,
+    // Uma transação só (achado 43 da revisão de 01/09). Antes era DELETE e
+    // INSERT em duas chamadas: a rede caindo entre as duas deixava o barbeiro
+    // sem jornada nenhuma — e sem jornada o agente e o QR não marcam nada. A
+    // RPC `salvar_jornada` (0135) valida, apaga e grava juntos, e grava os 7
+    // dias: folga é `ativo = false`, não ausência de linha.
+    const { error } = await supabase.rpc('salvar_jornada', {
+      p_professional_id: professionalId,
+      p_dias: dias.map((d) => ({
         dia_semana: d.dia_semana,
+        ativo: d.trabalha,
         hora_inicio: d.inicio,
         hora_fim: d.fim,
-        ativo: true,
-      }))
+      })),
+    })
 
-    if (paraSalvar.length > 0) {
-      const { error: insertError } = await supabase.from('professional_schedules').insert(paraSalvar)
-      if (insertError) {
-        console.error('Erro ao salvar horários:', insertError)
-        setErro('Não foi possível salvar. Tente novamente.')
-        setSalvando(false)
-        return
-      }
+    if (error) {
+      console.error('Erro ao salvar a jornada:', error)
+      setErro(
+        traduzirErroDoBanco(error, undefined, 'Não foi possível salvar. A jornada anterior continua valendo — tente de novo.'),
+      )
+      setSalvando(false)
+      return
     }
 
     setSalvando(false)

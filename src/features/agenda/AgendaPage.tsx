@@ -395,6 +395,12 @@ export function AgendaPage() {
                     {p.nome.trim().charAt(0).toUpperCase()}
                   </span>
                   <span className="text-sm font-medium text-foreground truncate">{p.nome}</span>
+                  {/* Inativo com horário no dia (achado 42): a coluna fica, com selo. */}
+                  {!p.ativo && (
+                    <span className="shrink-0 rounded-full bg-surface-2 border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                      Inativo
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
@@ -438,8 +444,12 @@ export function AgendaPage() {
                   key={p.id}
                   className="flex-1 min-w-[160px] relative border-l border-border"
                   style={{ height: gridHeight }}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => handleDrop(e, p.id)}
+                  onDragOver={(e) => {
+                    if (p.ativo) e.preventDefault()
+                  }}
+                  onDrop={(e) => {
+                    if (p.ativo) handleDrop(e, p.id)
+                  }}
                 >
                   {/* Fora da jornada fica cinza; branco = disponível. */}
                   {sombrasDaColuna(p.id).map(([topo, altura], i) => (
@@ -540,7 +550,7 @@ export function AgendaPage() {
         <NewAppointmentModal
           salonId={salonId}
           date={selectedDate}
-          professionals={professionals}
+          professionals={professionals.filter((p) => p.ativo)}
           services={services}
           defaultProfessionalId={modalState.professionalId}
           defaultTime={modalState.time}

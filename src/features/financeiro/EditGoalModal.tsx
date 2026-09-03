@@ -1,3 +1,4 @@
+import { traduzirErroDoBanco } from '../../lib/erroDoBanco'
 import { useState, type FormEvent } from 'react'
 import { Modal } from '../../components/Modal'
 import { Campo, Input } from '../../components/Campo'
@@ -37,7 +38,7 @@ export function EditGoalModal({
 
     if (updateError) {
       console.error('Erro ao salvar meta:', updateError)
-      setError('Não foi possível salvar a meta. Tente novamente.')
+      setError(traduzirErroDoBanco(updateError, undefined, 'Não foi possível salvar a meta. Tente novamente.'))
       return
     }
     onSaved()

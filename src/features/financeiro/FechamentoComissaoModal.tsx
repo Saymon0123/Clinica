@@ -1,3 +1,5 @@
+import { mesCorrente } from '../../lib/periodo'
+import { traduzirErroDoBanco } from '../../lib/erroDoBanco'
 import { useCallback, useEffect, useState } from 'react'
 import { Check, HandCoins, Undo2 } from 'lucide-react'
 import { Modal } from '../../components/Modal'
@@ -60,7 +62,7 @@ export function FechamentoComissaoModal({
   const [agindo, setAgindo] = useState<string | null>(null)
   const [confirmando, setConfirmando] = useState<Confirmacao | null>(null)
   const [incompleta, setIncompleta] = useState(false)
-  const [mes, setMes] = useState(() => mesInicial ?? new Date().toISOString().slice(0, 7))
+  const [mes, setMes] = useState(() => mesInicial ?? mesCorrente())
 
   const fechado = mesFechado(mes)
 
@@ -124,7 +126,13 @@ export function FechamentoComissaoModal({
     setConfirmando(null)
     if (error) {
       console.error('Erro ao registrar o fechamento de comissão:', error)
-      setErro(pago ? 'Não foi possível registrar o pagamento.' : 'Não foi possível desfazer o pagamento.')
+      setErro(
+        traduzirErroDoBanco(
+          error,
+          undefined,
+          pago ? 'Não foi possível registrar o pagamento.' : 'Não foi possível desfazer o pagamento.',
+        ),
+      )
       return
     }
     toast(pago ? 'Comissão marcada como paga' : 'Pagamento desfeito: as comissões voltaram para "a pagar"')

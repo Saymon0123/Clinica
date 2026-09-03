@@ -1,3 +1,4 @@
+import { traduzirErroDoBanco } from '../../lib/erroDoBanco'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Building2, Check, Plus, Save } from 'lucide-react'
@@ -149,7 +150,7 @@ export function ConfiguracoesPage() {
 
     if (error) {
       console.error('Erro ao salvar a barbearia:', error)
-      setErro('Não foi possível salvar. Tente novamente.')
+      setErro(traduzirErroDoBanco(error, undefined, 'Não foi possível salvar. Tente novamente.'))
       return
     }
 

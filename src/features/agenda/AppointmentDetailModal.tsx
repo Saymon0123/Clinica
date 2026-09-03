@@ -204,7 +204,7 @@ export function AppointmentDetailModal({
     setBusy(false)
     if (updateError) {
       console.error('Erro ao atualizar agendamento:', updateError)
-      setError('Não foi possível atualizar o agendamento. Tente novamente.')
+      setError(traduzirErroDoBanco(updateError, undefined, 'Não foi possível atualizar o agendamento. Tente novamente.'))
       return
     }
     if (status === 'cancelado') toast('Agendamento cancelado — o horário voltou a ficar livre')
@@ -219,7 +219,7 @@ export function AppointmentDetailModal({
     setBusy(false)
     if (deleteError) {
       console.error('Erro ao excluir agendamento:', deleteError)
-      setError('Não foi possível excluir o agendamento. Tente novamente.')
+      setError(traduzirErroDoBanco(deleteError, undefined, 'Não foi possível excluir o agendamento. Tente novamente.'))
       return
     }
     onChanged()

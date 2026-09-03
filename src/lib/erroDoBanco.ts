@@ -32,6 +32,8 @@ const POR_CONSTRAINT: Record<string, string> = {
   // CHECKs da 0132: nada sai a R$ 0,00 por acidente.
   products_preco_de_venda_positivo: 'O preço de venda precisa ser maior que zero.',
   services_preco_positivo: 'O preço do serviço precisa ser maior que zero.',
+  // Índice único de telefone normalizado por salão: o 23505 real do CRM.
+  uq_clients_salon_telefone_norm: 'Já existe um cliente cadastrado com esse telefone.',
 }
 
 const PADRAO: Record<string, string> = {
@@ -48,6 +50,8 @@ const PADRAO: Record<string, string> = {
   '42501': 'Você não tem permissão para fazer isso.',
   // Coluna obrigatória sem valor.
   '23502': 'Faltou preencher um campo obrigatório.',
+  // Chave estrangeira: apagar algo que outra linha ainda usa.
+  '23503': 'Esse registro está ligado a outro e não pode ser removido.',
 }
 
 export function traduzirErroDoBanco(

@@ -161,3 +161,26 @@ describe('traduzirErroDoBanco: folga entre atendimentos (0134)', () => {
     ).toBe(FIXA)
   })
 })
+
+// Passo 4.5: o mesmo erro do banco produz a mesma frase em qualquer tela.
+describe('a mesma frase em qualquer tela', () => {
+  it('telefone duplicado diz o mesmo em Clientes e na Agenda', () => {
+    const erro = {
+      code: '23505',
+      message: 'duplicate key value violates unique constraint "uq_clients_salon_telefone_norm"',
+    }
+    const frase = 'Já existe um cliente cadastrado com esse telefone.'
+    expect(traduzirErroDoBanco(erro)).toBe(frase)
+    expect(traduzirErroDoBanco(erro, undefined, 'Não foi possível criar a reserva.')).toBe(frase)
+  })
+
+  it('sobreposição (23P01), formato inválido (22P02) e chave estrangeira (23503) têm frase própria', () => {
+    expect(traduzirErroDoBanco({ code: '23P01' })).toBe('Esse horário já está ocupado. Escolha outro.')
+    expect(traduzirErroDoBanco({ code: '22P02' })).toBe(
+      'Algum campo veio com formato inválido. Confira e tente de novo.',
+    )
+    expect(traduzirErroDoBanco({ code: '23503' })).toBe(
+      'Esse registro está ligado a outro e não pode ser removido.',
+    )
+  })
+})

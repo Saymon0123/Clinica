@@ -248,7 +248,7 @@ export function EquipePage() {
     setSalvandoMembro(null)
     if (error) {
       console.error('Erro ao contar os horários futuros:', error)
-      setErro('Não foi possível conferir a agenda dele. Tente de novo.')
+      setErro(traduzirErroDoBanco(error, undefined, 'Não foi possível conferir a agenda dele. Tente de novo.'))
       return
     }
     setDesativando({ membro: m, futuros: count ?? 0 })
@@ -260,7 +260,7 @@ export function EquipePage() {
     setSalvandoMembro(null)
     setDesativando(null)
     if (error) {
-      setErro('Não foi possível alterar o status.')
+      setErro(traduzirErroDoBanco(error, undefined, 'Não foi possível alterar o status.'))
       return
     }
     toast(ativo ? 'Barbeiro reativado' : 'Barbeiro desativado')
@@ -293,7 +293,7 @@ export function EquipePage() {
 
     if (error) {
       console.error('Erro ao salvar comissão:', error)
-      setErro('Não foi possível salvar a comissão.')
+      setErro(traduzirErroDoBanco(error, undefined, 'Não foi possível salvar a comissão.'))
       return
     }
     setEditandoComissao(null)
@@ -445,7 +445,7 @@ export function EquipePage() {
 
     if (error) {
       console.error('Erro ao cancelar o convite:', error)
-      setErro('Não foi possível cancelar o convite.')
+      setErro(traduzirErroDoBanco(error, undefined, 'Não foi possível cancelar o convite.'))
       return
     }
     carregar()

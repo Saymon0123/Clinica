@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { BadgeCheck, Building2, CheckCircle2, MessageCircle, RefreshCw } from 'lucide-react'
+import { AlertTriangle, BadgeCheck, Building2, CheckCircle2, MessageCircle, PowerOff, RefreshCw } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
 import { AgentDashboard } from './AgentDashboard'
@@ -19,6 +19,13 @@ type Conexao = {
 }
 
 type EstadoConexao = { conexao: Conexao | null; erro: boolean }
+
+/**
+ * Quanto tempo o QR da Evolution vale na tela (achado 45 da revisão de 01/09).
+ * O código expira em menos de um minuto e nada avisava: o dono apontava o
+ * celular para um código morto e achava que o sistema tinha travado.
+ */
+export const QR_VALIDADE_MS = 40_000
 
 async function callWhatsapp(action: 'connect' | 'status' | 'disconnect', salonId: string) {
   // salonId é obrigatório: numa rede, sem ele a função cairia na primeira
@@ -169,6 +176,11 @@ function ConexaoEvolutionLegada({ salonId }: { salonId: string }) {
   const [webhookAviso, setWebhookAviso] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const failuresRef = useRef(0)
+  const [qrVencido, setQrVencido] = useState(false)
+  const qrTimerRef = useRef<number | null>(null)
+  // Desconectar pergunta antes (achado 45): um toque parava o agente até
+  // alguém ler um QR novo no celular do salão.
+  const [confirmandoDesconexao, setConfirmandoDesconexao] = useState(false)
 
   const checkStatus = useCallback(async () => {
     try {
@@ -178,6 +190,11 @@ function ConexaoEvolutionLegada({ salonId }: { salonId: string }) {
       setStatus(result.status)
       if (result.status === 'open') {
         setQrCode(null)
+        setQrVencido(false)
+        if (qrTimerRef.current) {
+          clearTimeout(qrTimerRef.current)
+          qrTimerRef.current = null
+        }
         if (pollRef.current) {
           clearInterval(pollRef.current)
           pollRef.current = null
@@ -203,6 +220,7 @@ function ConexaoEvolutionLegada({ salonId }: { salonId: string }) {
     checkStatus()
     return () => {
       if (pollRef.current) clearInterval(pollRef.current)
+      if (qrTimerRef.current) clearTimeout(qrTimerRef.current)
     }
   }, [checkStatus])
 
@@ -218,6 +236,11 @@ function ConexaoEvolutionLegada({ salonId }: { salonId: string }) {
       setStatus(result.status)
       setQrCode(result.qrCode ?? null)
       setWebhookAviso(result.webhookOk === false)
+      setQrVencido(false)
+      if (qrTimerRef.current) clearTimeout(qrTimerRef.current)
+      if (result.qrCode) {
+        qrTimerRef.current = window.setTimeout(() => setQrVencido(true), QR_VALIDADE_MS)
+      }
 
       failuresRef.current = 0
       if (pollRef.current) clearInterval(pollRef.current)
@@ -246,6 +269,7 @@ function ConexaoEvolutionLegada({ salonId }: { salonId: string }) {
       setError('Não foi possível desconectar agora.')
     } finally {
       setLoading(false)
+      setConfirmandoDesconexao(false)
     }
   }
 
@@ -294,26 +318,46 @@ function ConexaoEvolutionLegada({ salonId }: { salonId: string }) {
         </div>
       ) : qrCode ? (
         <div className="flex flex-col items-center gap-3 mb-4">
-          <img
-            src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`}
-            alt="QR code para conectar o WhatsApp"
-            className="w-56 h-56 border border-border rounded-md"
-          />
+          <div className="relative">
+            <img
+              src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`}
+              alt="QR code para conectar o WhatsApp"
+              className={`w-56 h-56 border border-border rounded-md ${qrVencido ? 'opacity-20' : ''}`}
+            />
+            {qrVencido && (
+              <div
+                role="status"
+                className="absolute inset-0 flex flex-col items-center justify-center gap-1 px-4 text-center"
+              >
+                <AlertTriangle size={20} className="text-warning" />
+                <p className="text-sm font-medium text-foreground">Este código venceu.</p>
+                <p className="text-xs text-muted-foreground">Gere um novo e leia em até 40 segundos.</p>
+              </div>
+            )}
+          </div>
           <p className="text-xs text-muted-foreground text-center">
-            Abra o WhatsApp no celular do salão → Aparelhos conectados → Conectar um aparelho, e escaneie o código.
+            {qrVencido
+              ? 'O código vale menos de um minuto. Toque em "Gerar novo QR code" e leia logo em seguida.'
+              : 'Abra o WhatsApp no celular do salão → Aparelhos conectados → Conectar um aparelho, e escaneie o código.'}
           </p>
         </div>
       ) : null}
 
-      <div data-tour="conexao-acao" className="flex gap-2">
+      {/* Desconectar saiu do lugar do "Conectar" (achado 45): era um botão de
+          largura total exatamente onde o construtivo ficava, sem confirmação.
+          Agora é um link discreto à direita, e pergunta antes. */}
+      <div data-tour="conexao-acao" className={`flex gap-2 ${status === 'open' ? 'justify-end' : ''}`}>
         {status === 'open' ? (
-          <button
-            onClick={handleDisconnect}
-            disabled={loading}
-            className="flex-1 btn-secondary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
-          >
-            {loading ? 'Desconectando...' : 'Desconectar'}
-          </button>
+          !confirmandoDesconexao && (
+            <button
+              onClick={() => setConfirmandoDesconexao(true)}
+              disabled={loading}
+              className="inline-flex items-center gap-1.5 py-1.5 text-xs font-medium text-danger hover:underline disabled:opacity-50"
+            >
+              <PowerOff size={14} />
+              Desconectar este número
+            </button>
+          )
         ) : (
           <button
             onClick={handleConnect}
@@ -325,6 +369,31 @@ function ConexaoEvolutionLegada({ salonId }: { salonId: string }) {
           </button>
         )}
       </div>
+
+      {status === 'open' && confirmandoDesconexao && (
+        <div className="mt-2 border border-border-strong rounded-lg px-3 py-3 space-y-3">
+          <p className="text-xs text-danger">
+            Desconectar este número? O agente para de atender na hora e só volta quando alguém ler
+            um QR code novo no celular do salão.
+          </p>
+          <div className="flex gap-2 justify-end">
+            <button
+              onClick={() => setConfirmandoDesconexao(false)}
+              disabled={loading}
+              className="btn-secondary rounded-lg px-3 py-2 text-sm font-medium"
+            >
+              Voltar
+            </button>
+            <button
+              onClick={handleDisconnect}
+              disabled={loading}
+              className="btn-danger rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
+            >
+              {loading ? 'Desconectando...' : 'Sim, desconectar'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

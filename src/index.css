@@ -755,3 +755,21 @@ body {
     display: none;
   }
 }
+
+/* O zoom do iPhone (achado 30 da revisão de 01/09).
+
+   O iOS aproxima a tela ao focar qualquer campo com fonte menor que 16px. O
+   `Campo.tsx` já resolve isso para os 81 campos que passam por ele; esta regra
+   é a rede para os 39 que não passam (login, criar conta, agenda pública, a
+   comanda...). Fica FORA de qualquer `@layer` de propósito: no Tailwind v4, CSS
+   sem camada vence as utilities, então o `text-sm` que um campo solto carregue
+   perde para isto no celular — sem precisar caçar os 39 um a um, e sem que um
+   campo novo escrito à mão volte a dar zoom. Checkbox, rádio, arquivo e range
+   não recebem texto e ficam de fora. */
+@media (max-width: 767px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='range']):not([type='color']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}

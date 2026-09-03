@@ -17,8 +17,14 @@ import type {
  *   mensagem colada no campo culpado (não num <p> perdido no fim do form).
  * - Label: um dialeto só, via `Campo`.
  */
+// 16px no celular, 14px no desktop (achado 30 da revisão de 01/09). O iPhone dá
+// zoom automático em qualquer campo com fonte menor que 16px: com `text-sm`
+// em tudo, cada toque num campo aproximava a tela e o barbeiro ficava
+// desfazendo o zoom a cada cliente. O padding também cresce no toque — alvo
+// de ~44px, o mínimo que um dedo acerta sem mirar. Os campos que NÃO passam
+// por aqui (há 39 soltos) são cobertos pela regra global em `index.css`.
 const BASE =
-  'w-full border bg-surface text-foreground rounded-lg px-3 py-2 text-sm ' +
+  'w-full border bg-surface text-foreground rounded-lg px-3 py-2.5 text-base md:py-2 md:text-sm ' +
   'transition-colors outline-none focus:border-primary disabled:opacity-50 disabled:cursor-not-allowed'
 
 function classes(erro?: string, extra?: string) {

@@ -110,7 +110,9 @@ export function VendasSection({
                   {s.professional_nome ?? '—'}
                 </Td>
                 <Td className="text-muted-foreground">
-                  {s.forma_pagamento ? (PAYMENT_LABELS[s.forma_pagamento] ?? s.forma_pagamento) : '—'}
+                  {s.formas_pagamento.length > 0
+                    ? s.formas_pagamento.map((f) => PAYMENT_LABELS[f] ?? f).join(' + ')
+                    : '—'}
                 </Td>
                 <Td className="text-right font-medium text-foreground">{formatCurrency(s.total)}</Td>
               </Linha>

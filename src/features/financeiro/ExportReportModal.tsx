@@ -5,8 +5,8 @@ import { supabase } from '../../lib/supabase'
 import { buildCsv, downloadCsv } from '../../lib/csv'
 import { PAYMENT_LABELS } from '../vendas/types'
 import { ErroInline } from '../../components/ErroInline'
-
-type Range = 'semana' | 'mes'
+import { intervaloDoRelatorio, type PeriodoDoRelatorio } from './periodoDoRelatorio'
+import type { PeriodFilter } from './useFinanceiroData'
 
 type OrderRow = {
   id: string
@@ -15,6 +15,7 @@ type OrderRow = {
   clients: { nome: string } | { nome: string }[] | null
   professionals: { nome: string } | { nome: string }[] | null
   payments: { forma_pagamento: string; valor: number }[]
+  pacotes_do_cliente: { pacotes: { nome: string } | { nome: string }[] | null }[] | null
   order_items: {
     tipo: string
     quantidade: number
@@ -24,42 +25,58 @@ type OrderRow = {
   }[]
 }
 
+const TIPO_LABELS: Record<string, string> = {
+  servico: 'Serviço',
+  produto: 'Produto',
+  pacote: 'Pacote',
+}
+
 function one<T>(rel: T | T[] | null): T | null {
   if (!rel) return null
   return Array.isArray(rel) ? (rel[0] ?? null) : rel
 }
 
-function startOf(range: Range): Date {
-  const now = new Date()
-  if (range === 'semana') {
-    const d = new Date(now)
-    // Semana começando na segunda-feira.
-    const weekday = (d.getDay() + 6) % 7
-    d.setDate(d.getDate() - weekday)
-    d.setHours(0, 0, 0, 0)
-    return d
-  }
-  return new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0)
+function dinheiro(v: number) {
+  return v.toFixed(2).replace('.', ',')
 }
 
-export function ExportReportModal({ salonId, onClose }: { salonId: string; onClose: () => void }) {
-  const [range, setRange] = useState<Range>('mes')
+/**
+ * Exporta o período que está na TELA (achado 39 da revisão de 01/09): o mês
+ * navegado, ou hoje, ou esta semana — e o arquivo diz qual no nome.
+ */
+export function ExportReportModal({
+  salonId,
+  refMonth,
+  filtro,
+  onClose,
+}: {
+  salonId: string
+  /** 'YYYY-MM' do mês exibido na página. */
+  refMonth: string
+  /** O filtro da página escolhe a opção inicial. */
+  filtro: PeriodFilter
+  onClose: () => void
+}) {
+  const [periodo, setPeriodo] = useState<PeriodoDoRelatorio>(filtro === 'dia' ? 'dia' : 'mes')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const intervalo = intervaloDoRelatorio(periodo, refMonth)
+  const rotuloDoMes = intervaloDoRelatorio('mes', refMonth).rotulo.replace(/^em /, '')
 
   async function handleExport() {
     setBusy(true)
     setError(null)
 
-    const start = startOf(range)
     const { data, error: fetchError } = await supabase
       .from('orders')
       .select(
-        'id, created_at, closed_at, clients(nome), professionals(nome), payments(forma_pagamento, valor), order_items(tipo, quantidade, preco_unitario, services(nome), products(nome))',
+        'id, created_at, closed_at, clients(nome), professionals(nome), payments(forma_pagamento, valor), pacotes_do_cliente(pacotes(nome)), order_items(tipo, quantidade, preco_unitario, services(nome), products(nome))',
       )
       .eq('salon_id', salonId)
       .eq('status', 'fechada')
-      .gte('closed_at', start.toISOString())
+      .gte('closed_at', intervalo.inicio.toISOString())
+      .lt('closed_at', intervalo.fim.toISOString())
       .order('closed_at', { ascending: true })
 
     setBusy(false)
@@ -72,7 +89,7 @@ export function ExportReportModal({ salonId, onClose }: { salonId: string; onClo
 
     const orders = (data ?? []) as unknown as OrderRow[]
     if (orders.length === 0) {
-      setError(`Nenhuma venda registrada ${range === 'semana' ? 'nesta semana' : 'neste mês'}.`)
+      setError(`Nenhuma venda registrada ${intervalo.rotulo}.`)
       return
     }
 
@@ -80,21 +97,32 @@ export function ExportReportModal({ salonId, onClose }: { salonId: string; onClo
     const rows: unknown[][] = []
     for (const o of orders) {
       const data_venda = o.closed_at ?? o.created_at
-      const pagamento = o.payments[0]?.forma_pagamento
+      // Pagamento dividido (achado 41) sai por extenso: "Pix 30,00 + Dinheiro 20,00".
+      const pagamento =
+        o.payments.length > 1
+          ? o.payments
+              .map((p) => `${PAYMENT_LABELS[p.forma_pagamento] ?? p.forma_pagamento} ${dinheiro(Number(p.valor))}`)
+              .join(' + ')
+          : (o.payments[0] ? (PAYMENT_LABELS[o.payments[0].forma_pagamento] ?? o.payments[0].forma_pagamento) : '')
+      // Item de pacote não guarda o modelo em order_items; o nome vem do
+      // crédito criado pela venda, na ordem em que foi criado.
+      const nomesDePacote = (o.pacotes_do_cliente ?? []).map((p) => one(p.pacotes)?.nome ?? '').filter(Boolean)
+      let pacotesUsados = 0
       for (const item of o.order_items) {
-        const nomeItem =
+        let nomeItem =
           item.tipo === 'servico' ? one(item.services)?.nome : one(item.products)?.nome
+        if (!nomeItem && item.tipo === 'pacote') nomeItem = nomesDePacote[pacotesUsados++] ?? 'Pacote'
         rows.push([
           new Date(data_venda).toLocaleDateString('pt-BR'),
           new Date(data_venda).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
           one(o.clients)?.nome ?? '',
           one(o.professionals)?.nome ?? '',
-          item.tipo === 'servico' ? 'Serviço' : 'Produto',
+          TIPO_LABELS[item.tipo] ?? item.tipo,
           nomeItem ?? '',
           item.quantidade,
-          Number(item.preco_unitario).toFixed(2).replace('.', ','),
-          (item.quantidade * Number(item.preco_unitario)).toFixed(2).replace('.', ','),
-          pagamento ? (PAYMENT_LABELS[pagamento] ?? pagamento) : '',
+          dinheiro(Number(item.preco_unitario)),
+          dinheiro(item.quantidade * Number(item.preco_unitario)),
+          pagamento,
         ])
       }
     }
@@ -107,72 +135,59 @@ export function ExportReportModal({ salonId, onClose }: { salonId: string; onClo
       0,
     )
     rows.push([])
-    rows.push(['', '', '', '', '', '', '', 'TOTAL', total.toFixed(2).replace('.', ','), ''])
+    rows.push(['', '', '', '', '', '', '', 'TOTAL', dinheiro(total), ''])
 
     const csv = buildCsv(
-      [
-        'Data',
-        'Hora',
-        'Cliente',
-        'Profissional',
-        'Tipo',
-        'Item',
-        'Qtd',
-        'Preço unit.',
-        'Subtotal',
-        'Pagamento',
-      ],
+      ['Data', 'Hora', 'Cliente', 'Profissional', 'Tipo', 'Item', 'Qtd', 'Preço unit.', 'Subtotal', 'Pagamento'],
       rows,
     )
 
-    const hoje = new Date().toISOString().slice(0, 10)
-    downloadCsv(`financeiro-${range}-${hoje}.csv`, csv)
+    downloadCsv(`financeiro-${intervalo.sufixo}.csv`, csv)
     onClose()
   }
 
+  const opcoes: { valor: PeriodoDoRelatorio; rotulo: string }[] = [
+    { valor: 'dia', rotulo: 'Hoje' },
+    { valor: 'semana', rotulo: 'Esta semana' },
+    { valor: 'mes', rotulo: rotuloDoMes },
+  ]
+
   return (
     <Modal onClose={onClose} titulo="Exportar relatório" tamanho="sm">
-        <div>
-          <span className="text-xs font-medium text-muted-foreground">Período</span>
-          <div className="mt-1.5 grid grid-cols-2 gap-2">
+      <div>
+        <span className="text-xs font-medium text-muted-foreground">Período</span>
+        <div className="mt-1.5 grid grid-cols-3 gap-2">
+          {opcoes.map((op) => (
             <button
-              onClick={() => setRange('semana')}
-              className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-                range === 'semana'
+              key={op.valor}
+              onClick={() => setPeriodo(op.valor)}
+              className={`rounded-lg border px-2 py-2 text-sm font-medium transition-colors ${
+                periodo === op.valor
                   ? 'border-primary bg-primary-soft text-primary-soft-foreground'
                   : 'border-border-strong text-foreground hover:bg-surface-2'
               }`}
             >
-              Esta semana
+              {op.rotulo}
             </button>
-            <button
-              onClick={() => setRange('mes')}
-              className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-                range === 'mes'
-                  ? 'border-primary bg-primary-soft text-primary-soft-foreground'
-                  : 'border-border-strong text-foreground hover:bg-surface-2'
-              }`}
-            >
-              Este mês
-            </button>
-          </div>
+          ))}
         </div>
+      </div>
 
-        <p className="text-xs text-muted-foreground">
-          Gera um arquivo CSV (abre no Excel) com uma linha por item vendido: data, cliente,
-          profissional, serviço/produto, valores e forma de pagamento.
-        </p>
+      <p className="text-xs text-muted-foreground">
+        Gera um arquivo CSV (abre no Excel) com uma linha por item vendido: data, cliente,
+        profissional, serviço/produto/pacote, valores e forma de pagamento.
+      </p>
 
-        <ErroInline>{error}</ErroInline>
+      <ErroInline>{error}</ErroInline>
 
-        <button
-          onClick={handleExport}
-          disabled={busy}
-          className="w-full flex items-center justify-center gap-2 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
-        >
-          <Download size={16} />
-          {busy ? 'Gerando...' : 'Baixar relatório'}
-        </button>
+      <button
+        onClick={handleExport}
+        disabled={busy}
+        className="w-full flex items-center justify-center gap-2 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
+      >
+        <Download size={16} />
+        {busy ? 'Gerando...' : 'Baixar relatório'}
+      </button>
     </Modal>
   )
 }

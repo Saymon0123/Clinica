@@ -687,10 +687,24 @@ export function FinanceiroPage() {
         />
       )}
 
-      {exporting && <ExportReportModal salonId={salonId} onClose={() => setExporting(false)} />}
+      {/* Os dois modais herdam o mês navegado na página (achados 39 e 40):
+          exportar agosto traz agosto, e o fechamento abre no mês que o dono
+          está olhando. */}
+      {exporting && (
+        <ExportReportModal
+          salonId={salonId}
+          refMonth={refMonth}
+          filtro={filter}
+          onClose={() => setExporting(false)}
+        />
+      )}
 
       {fechamentoAberto && salonId && (
-        <FechamentoComissaoModal salonId={salonId} onClose={() => setFechamentoAberto(false)} />
+        <FechamentoComissaoModal
+          salonId={salonId}
+          mesInicial={refMonth}
+          onClose={() => setFechamentoAberto(false)}
+        />
       )}
 
       {editingGoal && (

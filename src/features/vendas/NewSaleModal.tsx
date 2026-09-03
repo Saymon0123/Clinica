@@ -9,6 +9,14 @@ import { useSalon } from '../auth/useSalon'
 import type { SaleItemDraft } from './types'
 import { PAYMENT_LABELS } from './types'
 import { ErroInline } from '../../components/ErroInline'
+import {
+  faltaOuSobra,
+  itemComPrecoValido,
+  lerValor,
+  pagamentosDaComanda,
+  restante,
+  type LinhaDePagamento,
+} from './pagamentos'
 
 type Option = { id: string; nome: string; preco: number }
 type ClientOption = { id: string; nome: string }
@@ -65,7 +73,12 @@ export function NewSaleModal({
   const [clientId, setClientId] = useState<string>(prefill?.clientId ?? '')
   const [professionalId, setProfessionalId] = useState<string>(prefill?.professionalId ?? '')
   const [items, setItems] = useState<SaleItemDraft[]>([])
-  const [payment, setPayment] = useState<string>('pix')
+  /**
+   * Pagamento dividido (achado 41 da revisão de 01/09). Uma linha = uma
+   * forma com o total; mais linhas = cada uma com o seu valor, e a última se
+   * preenche sozinha com o que falta.
+   */
+  const [pagamentos, setPagamentos] = useState<LinhaDePagamento[]>([{ forma: 'pix', valor: '' }])
 
   const [itemType, setItemType] = useState<'servico' | 'produto' | 'pacote'>('servico')
   const [itemRef, setItemRef] = useState('')
@@ -324,6 +337,48 @@ export function NewSaleModal({
     setItemQty(1)
   }
 
+  /**
+   * Preço editável por item (achado 41): "R$ 5 de desconto" era feito mudando
+   * o preço no catálogo — para todo mundo. O consumo de pacote não passa por
+   * aqui (fica a R$ 0, o cliente já pagou).
+   */
+  function alterarPreco(index: number, texto: string) {
+    const valor = lerValor(texto)
+    setItems((prev) =>
+      prev.map((it, i) => (i === index ? { ...it, preco_unitario: Number.isFinite(valor) ? valor : 0 } : it)),
+    )
+  }
+
+  function alterarPagamento(index: number, mudanca: Partial<LinhaDePagamento>) {
+    setPagamentos((prev) => {
+      const linhas = prev.map((l, i) => (i === index ? { ...l, ...mudanca } : l))
+      // Mexeu numa parte que não é a última: a última recebe o que falta.
+      if (linhas.length > 1 && index !== linhas.length - 1 && mudanca.valor !== undefined) {
+        const ultima = linhas.length - 1
+        linhas[ultima] = { ...linhas[ultima], valor: restante(linhas, total, ultima).toFixed(2) }
+      }
+      return linhas
+    })
+  }
+
+  function dividirPagamento() {
+    setPagamentos((prev) => {
+      const linhas = prev.map((l) => ({ ...l, valor: l.valor || total.toFixed(2) }))
+      const proximaForma = linhas.some((l) => l.forma === 'dinheiro') ? 'pix' : 'dinheiro'
+      return [...linhas, { forma: proximaForma, valor: '0.00' }]
+    })
+  }
+
+  function removerPagamento(index: number) {
+    setPagamentos((prev) => {
+      const linhas = prev.filter((_, i) => i !== index)
+      if (linhas.length === 1) return [{ ...linhas[0], valor: '' }]
+      const ultima = linhas.length - 1
+      linhas[ultima] = { ...linhas[ultima], valor: restante(linhas, total, ultima).toFixed(2) }
+      return linhas
+    })
+  }
+
   function removeItem(index: number) {
     setItems((prev) => {
       const alvo = prev[index]
@@ -411,6 +466,16 @@ export function NewSaleModal({
       setError('O saldo de pacote usado não é do cliente escolhido. Remova o item e use o pacote de novo.')
       return
     }
+    const semPreco = items.find((i) => !itemComPrecoValido(i))
+    if (semPreco) {
+      setError(`"${semPreco.nome}" está sem preço. Informe um valor maior que zero.`)
+      return
+    }
+    const resultadoPagamentos = pagamentosDaComanda(pagamentos, total)
+    if (!resultadoPagamentos.ok) {
+      setError(resultadoPagamentos.erro)
+      return
+    }
 
     setSaving(true)
     setError(null)
@@ -458,12 +523,10 @@ export function NewSaleModal({
         .select('id, tipo, service_id, quantidade, preco_unitario')
       if (itemsError || !insertedItems) throw itemsError ?? new Error('Falha nos itens')
 
-      // 3. Pagamento
-      const { error: paymentError } = await supabase.from('payments').insert({
-        order_id: order.id,
-        forma_pagamento: payment,
-        valor: total,
-      })
+      // 3. Pagamento — uma linha por parte (Pix 30 + dinheiro 20 são duas).
+      const { error: paymentError } = await supabase
+        .from('payments')
+        .insert(resultadoPagamentos.pagamentos.map((p) => ({ order_id: order.id, ...p })))
       if (paymentError) throw paymentError
 
       // 4. Baixa de estoque dos produtos vendidos.
@@ -851,9 +914,29 @@ export function NewSaleModal({
                     <span className="text-muted-foreground"> · {i.tipo === 'servico' ? 'Serviço' : i.tipo === 'pacote' ? 'Pacote' : 'Produto'}</span>
                   </span>
                   <span className="flex items-center gap-2 shrink-0">
-                    <span className="font-medium text-foreground">
-                      {formatCurrency(i.quantidade * i.preco_unitario)}
-                    </span>
+                    {i.viaPacote || i.viaPacoteNovo ? (
+                      <span className="font-medium text-foreground">{formatCurrency(0)}</span>
+                    ) : (
+                      <>
+                        {/* Não controlado de propósito: controlado por número,
+                            "12," virava 12 antes de dar tempo de digitar o
+                            resto. A chave é o índice, então remover um item
+                            remonta os de baixo com o preço certo. */}
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          min={0.01}
+                          step="0.01"
+                          defaultValue={i.preco_unitario}
+                          onChange={(e) => alterarPreco(idx, e.target.value)}
+                          aria-label={`Preço unitário de ${i.nome}`}
+                          className="w-24 border border-border-strong bg-surface text-foreground rounded-lg px-2 py-1 text-sm text-right"
+                        />
+                        <span className="font-medium text-foreground w-20 text-right">
+                          {formatCurrency(i.quantidade * i.preco_unitario)}
+                        </span>
+                      </>
+                    )}
                     <button
                       onClick={() => removeItem(idx)}
                       aria-label={`Remover ${i.nome}`}
@@ -868,19 +951,63 @@ export function NewSaleModal({
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
-            <Campo rotulo="Forma de pagamento" htmlFor="venda-pagamento">
-              <Select
-                id="venda-pagamento"
-                value={payment}
-                onChange={(e) => setPayment(e.target.value)}
-              >
-                {Object.entries(PAYMENT_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
-            </Campo>
+            <div className="space-y-2">
+              <span className="block text-sm text-muted-foreground">Forma de pagamento</span>
+              {pagamentos.map((linha, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <Select
+                    aria-label={`Forma de pagamento ${idx + 1}`}
+                    value={linha.forma}
+                    onChange={(e) => alterarPagamento(idx, { forma: e.target.value })}
+                    className="flex-1"
+                  >
+                    {Object.entries(PAYMENT_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </Select>
+                  {pagamentos.length > 1 && (
+                    <>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        min={0.01}
+                        step="0.01"
+                        value={linha.valor}
+                        onChange={(e) => alterarPagamento(idx, { valor: e.target.value })}
+                        aria-label={`Valor em ${PAYMENT_LABELS[linha.forma] ?? linha.forma}`}
+                        placeholder="0,00"
+                        className="w-28 border border-border-strong bg-surface text-foreground rounded-lg px-2 py-2 text-sm text-right"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removerPagamento(idx)}
+                        aria-label="Remover esta parte do pagamento"
+                        className="text-muted-foreground hover:text-danger p-1"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </>
+                  )}
+                </div>
+              ))}
+              <button type="button" onClick={dividirPagamento} className="btn-chip">
+                <Plus size={12} />
+                Dividir pagamento
+              </button>
+              {(() => {
+                const diferenca = faltaOuSobra(pagamentos, total)
+                if (diferenca === null || Math.abs(diferenca) < 0.005) return null
+                return (
+                  <p className="text-xs text-warning">
+                    {diferenca > 0
+                      ? `Falta ${formatCurrency(diferenca)} para fechar o total.`
+                      : `Sobra ${formatCurrency(-diferenca)} em relação ao total.`}
+                  </p>
+                )
+              })()}
+            </div>
 
             <div className="text-right">
               <span className="text-xs text-muted-foreground">Total</span>

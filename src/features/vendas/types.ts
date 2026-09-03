@@ -20,7 +20,8 @@ export type Sale = {
   client_nome: string | null
   professional_nome: string | null
   total: number
-  forma_pagamento: string | null
+  /** Uma entrada por parte do pagamento; vazio = comanda sem pagamento gravado. */
+  formas_pagamento: string[]
 }
 
 export const PAYMENT_LABELS: Record<string, string> = {

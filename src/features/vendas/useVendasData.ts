@@ -71,7 +71,9 @@ export function useVendasData(salonId: string | null, period: Period, refMonth?:
         client_nome: one(r.clients)?.nome ?? null,
         professional_nome: one(r.professionals)?.nome ?? null,
         total: r.order_items.reduce((acc, i) => acc + i.quantidade * Number(i.preco_unitario), 0),
-        forma_pagamento: r.payments[0]?.forma_pagamento ?? null,
+        // Todas as partes do pagamento (achado 41): antes só a primeira
+        // aparecia, e "Pix + dinheiro" virava "Pix" na lista.
+        formas_pagamento: r.payments.map((p) => p.forma_pagamento),
       })),
     )
     setLoading(false)

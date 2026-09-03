@@ -60,9 +60,14 @@ export function AgendaPublicaPage() {
   const [tokenGestao, setTokenGestao] = useState<string | null>(null)
 
   const consultar = useCallback(
-    async (servico?: string) => {
+    async (servico?: string, opcoes?: { manterErro?: boolean }) => {
       setCarregando(true)
-      setErro(null)
+      // A recarga depois de um "não" NÃO apaga o motivo (achado 25 da revisão
+      // de 01/09). Antes apagava: a mensagem era gravada e, uma linha depois,
+      // esta consulta a zerava — o cliente via a lista piscar e nada explicava
+      // por que não deu. Quem está sozinho no balcão com o celular na mão não
+      // tenta descobrir; desiste.
+      if (!opcoes?.manterErro) setErro(null)
       const { data, error } = await invokeFunction<Consulta>('agenda-publica', {
         body: { salonId, acao: 'consultar', servicoId: servico },
       })
@@ -73,6 +78,17 @@ export function AgendaPublicaPage() {
       }
       setDados(data)
       setServicoId(data.servicoEscolhido ?? null)
+      // O horário escolhido só sobrevive se ainda estiver na lista nova. Se
+      // alguém o pegou no meio, ele some da tela sem a pessoa precisar clicar —
+      // e a mensagem de cima diz o porquê.
+      setEscolhido((atual) =>
+        atual &&
+        data.horarios.some(
+          (h) => h.inicio === atual.inicio && h.professional_id === atual.professional_id,
+        )
+          ? atual
+          : null,
+      )
       // Trocar de serviço muda a lista inteira: volta ao topo, senão ele fica
       // olhando o fim do dia de um serviço que nem escolheu mais.
       setVerTodos(false)
@@ -120,10 +136,12 @@ export function AgendaPublicaPage() {
 
     if (error || !data?.ok) {
       setErro(error ?? 'Não foi possível agendar.')
-      // Horário tomado enquanto ela preenchia: volta para a lista já
-      // atualizada, em vez de deixá-la tentando de novo no mesmo horário.
-      setEscolhido(null)
-      consultar(servicoId ?? undefined)
+      // A lista se atualiza (horário tomado no meio do preenchimento some
+      // dela), mas o motivo fica na tela e o que a pessoa já preencheu também.
+      // Se o horário dela ainda estiver livre — erro de telefone, por exemplo
+      // — ele continua escolhido: ela corrige o campo e tenta de novo, sem
+      // recomeçar do zero.
+      consultar(servicoId ?? undefined, { manterErro: true })
       return
     }
     setTokenGestao(data.tokenGestao ?? null)

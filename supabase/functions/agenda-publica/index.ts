@@ -339,20 +339,30 @@ Deno.serve(async (req: Request) => {
 
   let clientId = existente?.id ?? null
 
-  // Um agendamento futuro ativo por pessoa. Impede a mesma pessoa de tomar a
-  // agenda inteira, e é a trava que funciona mesmo com nome falso.
+  // Um agendamento futuro ativo por pessoa PELO QR. Impede a mesma pessoa de
+  // tomar a agenda inteira, e é a trava que funciona mesmo com nome falso.
+  //
+  // Só conta o que nasceu aqui (`origem = 'publico'`). Antes contava qualquer
+  // horário futuro — o que o barbeiro marcou no balcão, o que o agente marcou
+  // no WhatsApp — e o cliente com corte marcado para quinta não conseguia usar
+  // o QR na terça (achado 26 da revisão de 01/09). A trava é contra abuso do
+  // QR, não contra ter dois horários; e quem abusa do QR o faz pelo QR.
+  //
+  // Lista positiva de status, em vez de "tudo menos cancelado e concluído":
+  // é a mesma que o cancelamento pelo link usa, e não deixa passar um status
+  // novo por esquecimento.
   if (clientId) {
     const { count: emAberto } = await admin
       .from('appointments')
       .select('id', { count: 'exact', head: true })
       .eq('client_id', clientId)
-      .neq('status', 'cancelado')
-      .neq('status', 'concluido')
+      .eq('origem', 'publico')
+      .in('status', ['agendado', 'confirmado'])
       .gte('data_hora_inicio', new Date().toISOString())
 
     if ((emAberto ?? 0) > 0) {
       return json(
-        { error: 'Voce ja tem um horario marcado. Fale com a barbearia para mudar.' },
+        { error: 'Voce ja marcou um horario por aqui e ele ainda esta de pe. Para mudar, fale com a barbearia.' },
         409,
       )
     }

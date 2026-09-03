@@ -137,7 +137,18 @@ export function NewPacoteModal({
   }
 
   return (
-    <Modal onClose={onClose} titulo={pacote ? 'Editar pacote' : 'Novo pacote'} tamanho="md">
+    <Modal
+      onClose={onClose}
+      titulo={pacote ? 'Editar pacote' : 'Novo pacote'}
+      tamanho="md"
+      bloquearFechamento={salvando}
+      confirmarFechamento={
+        nome !== (pacote?.nome ?? '') ||
+        preco !== (pacote ? String(pacote.preco) : '') ||
+        validade !== (pacote?.validade_dias ? String(pacote.validade_dias) : '') ||
+        (!pacote && servicos.length > 0)
+      }
+    >
         <form onSubmit={salvar} className="space-y-4">
           <Campo rotulo="Nome do pacote" htmlFor="nome-pacote">
             <Input

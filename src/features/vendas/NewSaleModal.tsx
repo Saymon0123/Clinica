@@ -624,7 +624,13 @@ export function NewSaleModal({
           }))
 
   return (
-    <Modal onClose={onClose} titulo="Nova venda" tamanho="lg">
+    <Modal
+      onClose={onClose}
+      titulo="Nova venda"
+      tamanho="lg"
+      bloquearFechamento={saving}
+      confirmarFechamento={items.length > 0 ? 'Descartar esta comanda? Os itens lançados se perdem.' : false}
+    >
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Campo rotulo="Cliente (opcional)" htmlFor="venda-cliente">

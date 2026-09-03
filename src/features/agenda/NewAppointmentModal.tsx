@@ -267,7 +267,13 @@ export function NewAppointmentModal({
   }
 
   return (
-    <Modal onClose={onClose} titulo="Nova reserva" tamanho="md">
+    <Modal
+      onClose={onClose}
+      titulo="Nova reserva"
+      tamanho="md"
+      bloquearFechamento={submitting}
+      confirmarFechamento={clientName.trim() !== '' || clientPhone.trim() !== '' || selectedServices.length > 0}
+    >
         <form onSubmit={handleSubmit} className="space-y-4">
           <Campo rotulo="Cliente" htmlFor="clientName">
             <Input

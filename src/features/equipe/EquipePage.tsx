@@ -879,6 +879,8 @@ function ConviteModal({
         </span>
       }
       tamanho="sm"
+      bloquearFechamento={salvando}
+      confirmarFechamento={!link && (nome.trim() !== '' || email.trim() !== '')}
     >
         {link ? (
           <div className="space-y-3">
@@ -1029,6 +1031,8 @@ function QueroAtenderModal({
         </span>
       }
       tamanho="sm"
+      bloquearFechamento={salvando}
+      confirmarFechamento={nome.trim() !== '' || telefone.trim() !== ''}
     >
       <form onSubmit={confirmar} className="space-y-4">
         <p className="text-xs text-muted-foreground">

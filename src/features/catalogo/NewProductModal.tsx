@@ -98,7 +98,19 @@ export function NewProductModal({ salonId, product, onClose, onSaved }: Props) {
   }
 
   return (
-    <Modal onClose={onClose} titulo={product ? 'Editar produto' : 'Novo produto'} tamanho="md">
+    <Modal
+      onClose={onClose}
+      titulo={product ? 'Editar produto' : 'Novo produto'}
+      tamanho="md"
+      bloquearFechamento={submitting}
+      confirmarFechamento={
+        nome !== (product?.nome ?? '') ||
+        precoVenda !== (product ? String(product.preco_venda ?? '') : '') ||
+        precoCusto !== (product ? String(product.preco_custo ?? '') : '') ||
+        estoqueAtual !== String(product?.estoque_atual ?? 0) ||
+        estoqueMinimo !== String(product?.estoque_minimo ?? 0)
+      }
+    >
         <form onSubmit={handleSubmit} className="space-y-4">
           <Campo rotulo="Nome do produto" htmlFor="nome">
             <Input

@@ -58,7 +58,13 @@ export function ReporEstoqueModal({
   }
 
   return (
-    <Modal onClose={onClose} titulo={`Repor ${product.nome}`} tamanho="xs">
+    <Modal
+      onClose={onClose}
+      titulo={`Repor ${product.nome}`}
+      tamanho="xs"
+      bloquearFechamento={salvando}
+      confirmarFechamento={quantidade.trim() !== ''}
+    >
         <form onSubmit={handleSubmit} className="space-y-3">
           <Campo rotulo="Quantas unidades chegaram?" htmlFor="quantidade-reposicao">
             <Input

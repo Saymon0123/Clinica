@@ -89,7 +89,17 @@ export function NewServiceModal({ salonId, service, onClose, onSaved }: Props) {
   }
 
   return (
-    <Modal onClose={onClose} titulo={service ? 'Editar serviço' : 'Novo serviço'} tamanho="md">
+    <Modal
+      onClose={onClose}
+      titulo={service ? 'Editar serviço' : 'Novo serviço'}
+      tamanho="md"
+      bloquearFechamento={submitting}
+      confirmarFechamento={
+        nome !== (service?.nome ?? '') ||
+        duracao !== String(service?.duracao_minutos ?? 30) ||
+        preco !== String(service?.preco ?? '')
+      }
+    >
         <form onSubmit={handleSubmit} className="space-y-4">
           <Campo rotulo="Nome do serviço" htmlFor="nome">
             <Input

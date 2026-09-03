@@ -84,6 +84,10 @@ export function NovaUnidadeModal({
   return (
     <Modal
       onClose={onClose}
+      bloquearFechamento={salvando}
+      confirmarFechamento={
+        nome.trim() !== '' || nomeRede.trim() !== '' || endereco.trim() !== '' || telefone.trim() !== ''
+      }
       titulo={
         <span className="flex items-center gap-2">
           <Building2 size={18} />

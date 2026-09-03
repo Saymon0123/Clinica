@@ -69,7 +69,12 @@ export function FeedbackModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Modal onClose={onClose} tamanho="md">
+    <Modal
+      onClose={onClose}
+      tamanho="md"
+      bloquearFechamento={enviando}
+      confirmarFechamento={mensagem.trim() !== '' && !enviado}
+    >
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">

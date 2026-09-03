@@ -126,6 +126,7 @@ export function HorarioBarbeiroModal({
   return (
     <Modal
       onClose={onClose}
+      bloquearFechamento={salvando}
       titulo={
         <span className="flex items-center gap-2">
           <Clock size={18} />

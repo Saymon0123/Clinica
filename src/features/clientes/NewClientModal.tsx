@@ -82,7 +82,18 @@ export function NewClientModal({ salonId, initial, onClose, onCreated }: Props) 
   }
 
   return (
-    <Modal onClose={onClose} titulo={isEditing ? 'Editar cliente' : 'Adicionar cliente'} tamanho="md">
+    <Modal
+      onClose={onClose}
+      titulo={isEditing ? 'Editar cliente' : 'Adicionar cliente'}
+      tamanho="md"
+      bloquearFechamento={submitting}
+      confirmarFechamento={
+        nome !== (initial?.nome ?? '') ||
+        telefone !== (initial?.telefone ?? '') ||
+        aniversario !== (initial?.aniversario ?? '') ||
+        observacao !== (initial?.observacao ?? '')
+      }
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
           <Campo rotulo="Nome" htmlFor="nome">
             <Input

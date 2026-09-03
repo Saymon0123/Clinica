@@ -327,7 +327,13 @@ export function ImportClientsModal({
   const nadaAImportar = previa !== null && previa.prontos.length === 0
 
   return (
-    <Modal onClose={onClose} titulo="Importar clientes" tamanho="sm">
+    <Modal
+      onClose={onClose}
+      titulo="Importar clientes"
+      tamanho="sm"
+      bloquearFechamento={busy}
+      confirmarFechamento={arquivo !== null && result === null ? 'Sair sem importar? O arquivo lido se perde.' : false}
+    >
         {result ? (
           <div className="space-y-3">
             <p className="text-sm text-foreground">

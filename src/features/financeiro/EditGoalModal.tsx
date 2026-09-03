@@ -45,7 +45,13 @@ export function EditGoalModal({
   }
 
   return (
-    <Modal onClose={onClose} titulo="Meta de faturamento" tamanho="xs">
+    <Modal
+      onClose={onClose}
+      titulo="Meta de faturamento"
+      tamanho="xs"
+      bloquearFechamento={saving}
+      confirmarFechamento={value !== String(currentGoal)}
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
         <Campo rotulo="Meta mensal (R$)" htmlFor="meta-mensal">
           <Input

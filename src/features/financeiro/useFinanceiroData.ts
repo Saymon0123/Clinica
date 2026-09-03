@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { agruparPorProfissional } from './fechamentoDeComissao'
 
 export type PeriodFilter = 'dia' | 'mes'
 
@@ -136,6 +137,8 @@ function changePct(value: number, previous: number): number | null {
 type ApptRow = { client_id: string | null; status: string; data_hora_inicio: string }
 type CancelRow = { cancelado_em: string }
 type CommissionDbRow = {
+  id: string
+  pago: boolean
   professional_id: string
   percentual_aplicado: number
   valor_calculado: number
@@ -216,7 +219,7 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter, 
       supabase
         .from('commissions')
         .select(
-          'professional_id, percentual_aplicado, valor_calculado, order_items!inner(preco_unitario, quantidade, orders!inner(salon_id, status, closed_at))',
+          'id, pago, professional_id, percentual_aplicado, valor_calculado, order_items!inner(preco_unitario, quantidade, orders!inner(salon_id, status, closed_at))',
         )
         .eq('order_items.orders.salon_id', salonId)
         .eq('order_items.orders.status', 'fechada')
@@ -352,22 +355,26 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter, 
     // Comissões do período: registros congelados da tabela `commissions`,
     // com o percentual aplicado na hora da venda. O percentual exibido é a
     // média ponderada (valor/base) — cobre o caso de mudar no meio do mês.
-    const commissionByProf = new Map<string, { base: number; valor: number }>()
-    for (const row of commissionRows) {
-      const base = Number(row.order_items.preco_unitario) * (row.order_items.quantidade ?? 1)
-      const acc = commissionByProf.get(row.professional_id) ?? { base: 0, valor: 0 }
-      acc.base += base
-      acc.valor += Number(row.valor_calculado)
-      commissionByProf.set(row.professional_id, acc)
-    }
-    const commissions: CommissionRow[] = [...commissionByProf.entries()]
-      .map(([profId, { base, valor }]) => ({
-        professionalNome: professionalsInfo.get(profId)?.nome ?? 'Profissional',
-        percentual: base > 0 ? (valor / base) * 100 : 0,
-        base,
-        valor,
+    // A MESMA função do modal de fechamento (passo 4.2 da revisão de 01/09):
+    // antes o card somava por comanda e o modal por profissional, e os dois
+    // mostravam valores diferentes na mesma tela para o mesmo mês.
+    const commissions: CommissionRow[] = agruparPorProfissional(
+      commissionRows.map((row) => ({
+        id: row.id,
+        valor_calculado: row.valor_calculado,
+        pago: row.pago,
+        professional_id: row.professional_id,
+        nome: professionalsInfo.get(row.professional_id)?.nome ?? 'Profissional',
+        base: Number(row.order_items.preco_unitario) * (row.order_items.quantidade ?? 1),
+      })),
+    )
+      .filter((g) => g.valor > 0)
+      .map((g) => ({
+        professionalNome: g.nome,
+        percentual: g.base > 0 ? (g.valor / g.base) * 100 : 0,
+        base: g.base,
+        valor: g.valor,
       }))
-      .filter((c) => c.valor > 0)
       .sort((a, b) => b.valor - a.valor)
 
     setData({

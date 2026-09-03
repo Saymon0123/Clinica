@@ -1,6 +1,13 @@
 /**
- * As regras do fechamento de comissão fora do modal, para serem testadas
- * (achado 40 da revisão de 01/09).
+ * A conta de comissão, num lugar só (achado 40 e passo 4.2 da revisão de
+ * 01/09).
+ *
+ * O card do Financeiro somava por comanda e filtrava `> 0`; o modal de
+ * fechamento somava por profissional, sem filtrar status, com seletor de mês
+ * próprio — e os dois mostravam valores diferentes na mesma tela para o mesmo
+ * mês. Agora as duas telas passam as linhas de `commissions` por esta função
+ * e leem os mesmos campos: `valor` (tudo), `pendenteValor` e `pagoValor`
+ * (o que falta e o que já foi), `base` (sobre o que se calculou).
  */
 export type LinhaDeComissao = {
   id: string
@@ -8,6 +15,8 @@ export type LinhaDeComissao = {
   pago: boolean
   professional_id: string
   nome: string
+  /** preço × quantidade do item que gerou a comissão; opcional para quem não precisa da base. */
+  base?: number
 }
 
 export type PorProfissional = {
@@ -17,6 +26,9 @@ export type PorProfissional = {
   pendenteValor: number
   pagoIds: string[]
   pagoValor: number
+  /** pendente + pago: o total do período, que o card do Financeiro mostra. */
+  valor: number
+  base: number
 }
 
 /**
@@ -41,6 +53,7 @@ export function mesFechado(mes: string, hoje: Date = new Date()): boolean {
   return ano < hoje.getFullYear() || (ano === hoje.getFullYear() && m < hoje.getMonth() + 1)
 }
 
+/** Ordenado por quem tem mais a receber; empate, por quem tem mais no total. */
 export function agruparPorProfissional(linhas: LinhaDeComissao[]): PorProfissional[] {
   const porProf = new Map<string, PorProfissional>()
   for (const linha of linhas) {
@@ -51,6 +64,8 @@ export function agruparPorProfissional(linhas: LinhaDeComissao[]): PorProfission
       pendenteValor: 0,
       pagoIds: [],
       pagoValor: 0,
+      valor: 0,
+      base: 0,
     }
     const valor = Number(linha.valor_calculado) || 0
     if (linha.pago) {
@@ -60,7 +75,11 @@ export function agruparPorProfissional(linhas: LinhaDeComissao[]): PorProfission
       atual.pendenteValor += valor
       atual.pendenteIds.push(linha.id)
     }
+    atual.valor += valor
+    atual.base += Number(linha.base) || 0
     porProf.set(linha.professional_id, atual)
   }
-  return [...porProf.values()].sort((a, b) => b.pendenteValor - a.pendenteValor)
+  return [...porProf.values()].sort(
+    (a, b) => b.pendenteValor - a.pendenteValor || b.valor - a.valor,
+  )
 }

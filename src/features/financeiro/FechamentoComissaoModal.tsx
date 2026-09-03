@@ -73,9 +73,11 @@ export function FechamentoComissaoModal({
     const { data, error } = await supabase
       .from('commissions')
       .select(
-        'id, valor_calculado, pago, professional_id, professionals!inner(nome, salon_id), order_items!inner(orders!inner(closed_at))',
+        'id, valor_calculado, pago, professional_id, professionals!inner(nome, salon_id), order_items!inner(orders!inner(status, closed_at))',
       )
       .eq('professionals.salon_id', salonId)
+      // Mesmo recorte do card do Financeiro (passo 4.2): só comanda fechada.
+      .eq('order_items.orders.status', 'fechada')
       .gte('order_items.orders.closed_at', inicio.toISOString())
       .lt('order_items.orders.closed_at', fim.toISOString())
       .limit(TETO_DE_LINHAS)
@@ -98,7 +100,7 @@ export function FechamentoComissaoModal({
           professional_id: l.professional_id,
           nome: primeiro(l.professionals)?.nome ?? 'Profissional',
         })),
-      ),
+      ).filter((g) => g.valor > 0),
     )
     setCarregando(false)
   }, [salonId, mes])

@@ -14,6 +14,7 @@ import {
   CreditCard,
   MoreHorizontal,
 } from 'lucide-react'
+import { PilhaDeAvisos } from './PilhaDeAvisos'
 import { ProfileMenu } from './ProfileMenu'
 import { supabase } from '../lib/supabase'
 import { useSalon } from '../features/auth/useSalon'
@@ -64,7 +65,9 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   },
   {
     title: 'WhatsApp',
-    items: [{ to: '/conexao', label: 'Conexão', icon: Link2, somenteGestor: true }],
+    items: [
+      { to: '/conexao', label: 'Conexão', icon: Link2, somenteGestor: true },
+    ],
   },
 ]
 
@@ -349,11 +352,14 @@ export function AppLayout() {
       </button>
       )}
 
-      <AppointmentAlertBanner alerts={alerts} onDismiss={dismiss} />
-
-      {/* O /web não usa o AppLayout, então o alerta nunca cobre a própria
-          tela de resposta — lá a conversa pendente já fica destacada. */}
-      <PedidoDeHumanoBanner pedidos={pedidos} onResolver={resolver} />
+      {/* Uma pilha só para os avisos flutuantes, abaixo do cabeçalho no
+          celular (achado 35). O /web não usa o AppLayout, então o alerta
+          nunca cobre a própria tela de resposta — lá a conversa pendente já
+          fica destacada. */}
+      <PilhaDeAvisos>
+        <AppointmentAlertBanner alerts={alerts} onDismiss={dismiss} />
+        <PedidoDeHumanoBanner pedidos={pedidos} onResolver={resolver} />
+      </PilhaDeAvisos>
       <Toasts />
     </div>
   )

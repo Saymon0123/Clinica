@@ -1,16 +1,26 @@
 import { useState } from 'react'
-import { Check, Hand, MessageCircle } from 'lucide-react'
+import { Check, Clock, Hand, MessageCircle } from 'lucide-react'
 import { formatarTelefone } from '../../lib/telefone'
 import { toast } from '../../components/Toast'
+import { adiar, estaAdiado, lerAdiados } from './adiados'
 import type { PedidoDeHumano } from './usePedidosDeHumano'
+
+/** Acima disto a pilha vira parede: o resto é resumido numa linha. */
+const MAXIMO_NA_TELA = 3
 
 /**
  * O alerta global de "cliente pedindo você": nome, o que ele quer e o atalho
  * para responder no /web — visível em qualquer tela do CRM.
  *
- * "Responder" abre o /web já na conversa certa. Quando a coexistência da Meta
- * chegar (número de volta no aplicativo do celular), este botão passa a abrir
- * o wa.me do cliente e o /web se aposenta.
+ * Sem posição própria: quem o coloca na tela é a `PilhaDeAvisos` do layout,
+ * abaixo do cabeçalho no celular (achado 35 da revisão de 01/09). Três
+ * saídas: "Responder" abre o /web na conversa certa; "Resolvido" devolve o
+ * cliente ao agente (grava no banco); "Depois" só esconde aqui, nesta aba, e
+ * volta sozinho se o cliente mandar outra mensagem — antes não havia como
+ * tirar o aviso da frente sem gravar uma mentira.
+ *
+ * Quando a coexistência da Meta chegar (número de volta no aplicativo do
+ * celular), "Responder" passa a abrir o wa.me do cliente e o /web se aposenta.
  */
 export function PedidoDeHumanoBanner({
   pedidos,
@@ -20,14 +30,20 @@ export function PedidoDeHumanoBanner({
   onResolver: (id: string) => Promise<boolean>
 }) {
   const [resolvendo, setResolvendo] = useState<string | null>(null)
+  const [adiados, setAdiados] = useState(lerAdiados)
 
-  if (pedidos.length === 0) return null
+  const abertos = pedidos.filter((p) => !estaAdiado(adiados, p.id, p.last_message_at))
+  if (abertos.length === 0) return null
+
+  const visiveis = abertos.slice(0, MAXIMO_NA_TELA)
+  const escondidos = abertos.length - visiveis.length
 
   return (
-    <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 w-[calc(100vw-2rem)] max-w-sm">
-      {pedidos.map((p) => (
+    <>
+      {visiveis.map((p) => (
         <div
           key={p.id}
+          role="status"
           className="bg-surface border border-warning/50 rounded-xl shadow-lg p-4"
         >
           <div className="flex items-start gap-3">
@@ -43,12 +59,12 @@ export function PedidoDeHumanoBanner({
                   {p.resumo_contexto ?? p.last_message_preview}
                 </div>
               )}
-              <div className="flex items-center gap-3 mt-2">
+              <div className="flex flex-wrap items-center gap-3 mt-2">
                 <a
                   href={`/web?conversa=${p.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 btn-primary rounded-lg px-2.5 py-1 text-xs font-medium"
+                  className="inline-flex items-center gap-1.5 btn-primary rounded-lg px-2.5 py-1.5 text-xs font-medium"
                 >
                   <MessageCircle size={14} />
                   Responder
@@ -68,16 +84,35 @@ export function PedidoDeHumanoBanner({
                     setResolvendo(null)
                   }}
                   disabled={resolvendo === p.id}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground disabled:opacity-50"
+                  className="inline-flex items-center gap-1 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground disabled:opacity-50"
                 >
                   <Check size={14} />
                   {resolvendo === p.id ? 'Resolvendo...' : 'Resolvido'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAdiados(adiar(adiados, p.id, p.last_message_at))}
+                  title="Esconde por enquanto. Volta se o cliente mandar outra mensagem."
+                  className="ml-auto inline-flex items-center gap-1 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+                >
+                  <Clock size={14} />
+                  Depois
                 </button>
               </div>
             </div>
           </div>
         </div>
       ))}
-    </div>
+      {escondidos > 0 && (
+        <a
+          href="/web?tab=precisa_dono"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-primary text-right pr-1 hover:underline"
+        >
+          e mais {escondidos} {escondidos === 1 ? 'pessoa esperando' : 'pessoas esperando'}
+        </a>
+      )}
+    </>
   )
 }

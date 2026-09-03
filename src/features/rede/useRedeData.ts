@@ -1,3 +1,4 @@
+import { inicioDaSemana, inicioDoMes } from '../../lib/periodo'
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import type { Unidade } from '../auth/useSalon'
@@ -21,16 +22,8 @@ export type PontoDiario = { dia: string; total: number }
 export type Periodo = 'mes' | 'semana'
 
 function inicioDoPeriodo(periodo: Periodo) {
-  const d = new Date()
-  if (periodo === 'semana') {
-    // Segunda-feira, como nas outras telas (Clientes, agente) — "esta semana"
-    // precisa ser a mesma janela no sistema inteiro.
-    d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
-  } else {
-    d.setDate(1)
-  }
-  d.setHours(0, 0, 0, 0)
-  return d.toISOString()
+  // Um helper só para "esta semana" e "este mês" no sistema inteiro (passo 4.6).
+  return (periodo === 'semana' ? inicioDaSemana() : inicioDoMes()).toISOString()
 }
 
 /**

@@ -1,3 +1,4 @@
+import { AVISO_SENHA_CURTA, SENHA_MINIMA } from '../../lib/senha'
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
@@ -18,8 +19,8 @@ export function ResetPasswordPage() {
     e.preventDefault()
     setError(null)
 
-    if (password.length < 6) {
-      setError('A senha precisa ter pelo menos 6 caracteres.')
+    if (password.length < SENHA_MINIMA) {
+      setError(AVISO_SENHA_CURTA)
       return
     }
     if (password !== confirmPassword) {
@@ -58,7 +59,7 @@ export function ResetPasswordPage() {
               id="password"
               type={showPassword ? 'text' : 'password'}
               required
-              minLength={6}
+              minLength={SENHA_MINIMA}
               autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -81,7 +82,7 @@ export function ResetPasswordPage() {
             id="confirmPassword"
             type={showPassword ? 'text' : 'password'}
             required
-            minLength={6}
+            minLength={SENHA_MINIMA}
             autoComplete="new-password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}

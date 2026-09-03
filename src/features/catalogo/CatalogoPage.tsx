@@ -202,7 +202,11 @@ export function CatalogoPage() {
                   <Th>Serviço</Th>
                   <Th>Duração</Th>
                   <Th>Preço</Th>
-                  <Th title="Vendas de comandas fechadas no mês corrente">Vendas no mês</Th>
+                  {/* O barbeiro vê só as comandas dele (RLS); o gestor, a barbearia
+                      inteira. A coluna diz de quem é o número (passo 4.6). */}
+                  <Th title="Vendas de comandas fechadas no mês corrente">
+                    {isManager ? 'Vendas no mês' : 'Suas vendas no mês'}
+                  </Th>
                   <Th>Status</Th>
                   <Th className="text-right">Ações</Th>
                 </tr>
@@ -297,7 +301,10 @@ export function CatalogoPage() {
                   <Th>Inclui</Th>
                   <Th>Preço</Th>
                   <Th>Economia</Th>
-                  <Th>Vendidos no mês</Th>
+                  {/* Pacotes vendidos pela barbearia inteira, para qualquer papel. */}
+                  <Th title="Pacotes vendidos pela barbearia inteira no mês corrente">
+                    {isManager ? 'Vendidos no mês' : 'Vendidos no mês (barbearia)'}
+                  </Th>
                   <Th>Status</Th>
                   <Th className="text-right">Ações</Th>
                 </tr>

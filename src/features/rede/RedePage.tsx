@@ -1,3 +1,4 @@
+import { inicioDaSemana, inicioDoMes } from '../../lib/periodo'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Building2, Plus, TrendingUp, Users, CalendarDays, Receipt, CalendarX } from 'lucide-react'
@@ -29,11 +30,10 @@ function moeda(v: number) {
 
 /** Mesma janela usada pelo comparativo, para os números baterem entre si. */
 function inicioDoPeriodoISO(periodo: Periodo) {
-  const d = new Date()
-  if (periodo === 'semana') d.setDate(d.getDate() - d.getDay())
-  else d.setDate(1)
-  d.setHours(0, 0, 0, 0)
-  return d.toISOString()
+  // Segunda-feira, como o hook da mesma tela e o resto do sistema (passo
+  // 4.6): aqui começava no domingo, e dois blocos da mesma página usavam
+  // janelas diferentes.
+  return (periodo === 'semana' ? inicioDaSemana() : inicioDoMes()).toISOString()
 }
 
 export function RedePage() {

@@ -1,3 +1,4 @@
+import { chaveDoDia, inicioDaSemana, inicioDoDia } from '../../lib/periodo'
 /**
  * O período do relatório exportado (achado 39 da revisão de 01/09).
  *
@@ -34,28 +35,20 @@ const MESES = [
   'dezembro',
 ]
 
-function chaveDoDia(d: Date) {
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const dia = String(d.getDate()).padStart(2, '0')
-  return `${d.getFullYear()}-${m}-${dia}`
-}
-
 export function intervaloDoRelatorio(
   periodo: PeriodoDoRelatorio,
   refMonth: string,
   agora: Date = new Date(),
 ): Intervalo {
   if (periodo === 'dia') {
-    const inicio = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate())
+    const inicio = inicioDoDia(agora)
     const fim = new Date(inicio)
     fim.setDate(fim.getDate() + 1)
     return { inicio, fim, rotulo: 'hoje', sufixo: `dia-${chaveDoDia(inicio)}` }
   }
 
   if (periodo === 'semana') {
-    // Semana começando na segunda-feira.
-    const inicio = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate())
-    inicio.setDate(inicio.getDate() - ((inicio.getDay() + 6) % 7))
+    const inicio = inicioDaSemana(agora)
     const fim = new Date(inicio)
     fim.setDate(fim.getDate() + 7)
     return { inicio, fim, rotulo: 'nesta semana', sufixo: `semana-${chaveDoDia(inicio)}` }

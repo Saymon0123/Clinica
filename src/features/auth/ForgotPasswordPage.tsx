@@ -1,3 +1,4 @@
+import { AVISO_SENHA_CURTA, SENHA_MINIMA } from '../../lib/senha'
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
@@ -76,8 +77,8 @@ export function ForgotPasswordPage() {
       setErro('Código incompleto. Confira o que chegou no e-mail.')
       return
     }
-    if (senha.length < 6) {
-      setErro('A senha precisa ter pelo menos 6 caracteres.')
+    if (senha.length < SENHA_MINIMA) {
+      setErro(AVISO_SENHA_CURTA)
       return
     }
     if (senha !== confirmar) {
@@ -197,7 +198,7 @@ export function ForgotPasswordPage() {
                   id="senha"
                   type={mostrarSenha ? 'text' : 'password'}
                   required
-                  minLength={6}
+                  minLength={SENHA_MINIMA}
                   autoComplete="new-password"
                   value={senha}
                   onChange={(e) => setSenha(e.target.value)}
@@ -222,7 +223,7 @@ export function ForgotPasswordPage() {
                 id="confirmar"
                 type={mostrarSenha ? 'text' : 'password'}
                 required
-                minLength={6}
+                minLength={SENHA_MINIMA}
                 autoComplete="new-password"
                 value={confirmar}
                 onChange={(e) => setConfirmar(e.target.value)}

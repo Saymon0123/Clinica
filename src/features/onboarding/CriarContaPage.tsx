@@ -1,3 +1,4 @@
+import { SENHA_MINIMA } from '../../lib/senha'
 import { useState, type FormEvent } from 'react'
 import { MarcaClubCut } from '../../components/MarcaClubCut'
 import { Link } from 'react-router-dom'
@@ -21,7 +22,6 @@ import { ErroInline } from '../../components/ErroInline'
  * A barbearia **não** é criada aqui. Ela vem no passo 2, depois de confirmar o
  * e-mail e entrar — ver `CriarBarbeariaPage`.
  */
-const SENHA_MINIMA = 8
 
 export function CriarContaPage() {
   const [email, setEmail] = useState('')

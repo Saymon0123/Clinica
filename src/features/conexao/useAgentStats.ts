@@ -1,3 +1,4 @@
+import { chaveDoDia, inicioDaSemana, inicioDoMes } from '../../lib/periodo'
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 
@@ -33,21 +34,7 @@ const EMPTY: AgentStats = {
 }
 
 function startOf(period: AgentPeriod): Date {
-  const now = new Date()
-  if (period === 'semana') {
-    const d = new Date(now)
-    d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
-    d.setHours(0, 0, 0, 0)
-    return d
-  }
-  return new Date(now.getFullYear(), now.getMonth(), 1)
-}
-
-/** 'YYYY-MM-DD' local, para comparar com `dia_de_criacao` da view. */
-function chaveDoDia(d: Date) {
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const dia = String(d.getDate()).padStart(2, '0')
-  return `${d.getFullYear()}-${m}-${dia}`
+  return period === 'semana' ? inicioDaSemana() : inicioDoMes()
 }
 
 type MessageRow = {

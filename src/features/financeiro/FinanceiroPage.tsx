@@ -1,3 +1,4 @@
+import { mesCorrente } from '../../lib/periodo'
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
@@ -43,12 +44,6 @@ import { GoalReachedModal } from './GoalReachedModal'
 
 function formatCurrency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-}
-
-/** 'YYYY-MM' do mês corrente. */
-function mesCorrente() {
-  const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 }
 
 function somaMes(refMonth: string, delta: number) {
@@ -219,7 +214,9 @@ export function FinanceiroPage() {
   // corrente: revisitar julho não deve estourar confete de novo.
   useEffect(() => {
     if (loading || !metaAtingida || !salonId || !isManager || !ehMesCorrente) return
-    const mesAtual = new Date().toISOString().slice(0, 7)
+    // Local, não UTC (passo 4.6): entre 21h e meia-noite do último dia, o
+    // ISO já estava no mês seguinte e a comemoração podia repetir.
+    const mesAtual = mesCorrente()
     const chave = `crm_meta_celebrada_${salonId}_${mesAtual}`
     if (localStorage.getItem(chave)) return
     localStorage.setItem(chave, '1')

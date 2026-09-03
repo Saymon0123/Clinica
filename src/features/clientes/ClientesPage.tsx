@@ -1,3 +1,4 @@
+import { inicioDaSemana, inicioDoMes } from '../../lib/periodo'
 import { useMemo, useState } from 'react'
 import { Download, Inbox, Plus, Search, Upload, UserPlus } from 'lucide-react'
 import { useSalon } from '../auth/useSalon'
@@ -43,16 +44,7 @@ export function ClientesPage() {
 
   // Clientes novos no período escolhido
   const novosCount = useMemo(() => {
-    const agora = new Date()
-    const inicio =
-      novosPeriodo === 'semana'
-        ? (() => {
-            const d = new Date(agora)
-            d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
-            d.setHours(0, 0, 0, 0)
-            return d
-          })()
-        : new Date(agora.getFullYear(), agora.getMonth(), 1)
+    const inicio = novosPeriodo === 'semana' ? inicioDaSemana() : inicioDoMes()
     return clients.filter((c) => new Date(c.created_at) >= inicio).length
   }, [clients, novosPeriodo])
 

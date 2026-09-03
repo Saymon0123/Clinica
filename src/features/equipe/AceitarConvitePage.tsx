@@ -1,3 +1,4 @@
+import { AVISO_SENHA_CURTA, SENHA_MINIMA } from '../../lib/senha'
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Check, Eye, EyeOff, Scissors } from 'lucide-react'
@@ -70,8 +71,8 @@ export function AceitarConvitePage() {
       setErro('É preciso aceitar os termos de uso para continuar.')
       return
     }
-    if (senha.length < 8) {
-      setErro('A senha precisa ter pelo menos 8 caracteres.')
+    if (senha.length < SENHA_MINIMA) {
+      setErro(AVISO_SENHA_CURTA)
       return
     }
     // Quem já tem conta digita a senha EXISTENTE — repetição não prova nada

@@ -1,3 +1,4 @@
+import { permissoes } from './permissoes'
 import { createContext, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '../../lib/supabase'
 import { sessaoExpirou } from '../../lib/authErrors'

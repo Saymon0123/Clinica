@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from 'react'
 import { MarcaClubCut } from '../../components/MarcaClubCut'
 import { useParams } from 'react-router-dom'
-import { Check, Clock } from 'lucide-react'
+import { Check, Clock, MessageCircle } from 'lucide-react'
 import { invokeFunction } from '../../lib/invokeFunction'
 import { ErroInline } from '../../components/ErroInline'
 import { AVISO_TELEFONE_FORMATO, classificarTelefone } from '../../lib/telefone'
@@ -31,9 +31,34 @@ type Servico = { id: string; nome: string; preco: number; duracao_minutos: numbe
 type Horario = { professional_id: string; profissional: string; inicio: string; hora_local: string }
 type Consulta = {
   salao: string
+  /** Ja pronto para o wa.me: DDI + DDD + numero, so digitos. Pode faltar. */
+  whatsappBarbearia?: string | null
   servicos: Servico[]
   servicoEscolhido?: string
   horarios: Horario[]
+}
+
+/**
+ * A saida que TODO beco desta pagina oferece.
+ *
+ * Achado de 04/09/2026: os tres finais de linha -- sem horario hoje, recurso
+ * desligado, barbearia sem cadastro -- diziam "fale com a barbearia" sem dizer
+ * como. O numero ja estava no banco e o `/meu-horario` ja o usava; faltava
+ * aqui, justamente onde a pessoa nao tem mais o que fazer sozinha.
+ */
+function FalarComABarbearia({ numero }: { numero?: string | null }) {
+  if (!numero) return null
+  return (
+    <a
+      href={`https://wa.me/${numero}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mt-3 flex w-full items-center justify-center gap-2 btn-primary rounded-lg px-3 py-3 text-sm font-semibold"
+    >
+      <MessageCircle size={16} />
+      Falar com a barbearia
+    </a>
+  )
 }
 
 export function AgendaPublicaPage() {
@@ -58,6 +83,13 @@ export function AgendaPublicaPage() {
   const [pronto, setPronto] = useState(false)
   // O link de gestão: é a única chave para cancelar este horário depois.
   const [tokenGestao, setTokenGestao] = useState<string | null>(null)
+  // Guardado FORA de `dados` porque o caso que mais precisa dele é justamente
+  // aquele em que `dados` fica nulo: recurso desligado, teto batido, falha de
+  // carga. Vem no corpo da resposta mesmo quando ela é de erro.
+  const [whatsapp, setWhatsapp] = useState<string | null>(null)
+  // Idem para o nome: no 403 de recurso desligado a barbearia existe, e dizer
+  // o nome dela confirma que a pessoa abriu o link certo.
+  const [nomeSalao, setNomeSalao] = useState<string | null>(null)
 
   const consultar = useCallback(
     async (servico?: string, opcoes?: { manterErro?: boolean }) => {
@@ -68,14 +100,19 @@ export function AgendaPublicaPage() {
       // por que não deu. Quem está sozinho no balcão com o celular na mão não
       // tenta descobrir; desiste.
       if (!opcoes?.manterErro) setErro(null)
-      const { data, error } = await invokeFunction<Consulta>('agenda-publica', {
+      const { data, error, corpo } = await invokeFunction<Consulta>('agenda-publica', {
         body: { salonId, acao: 'consultar', servicoId: servico },
       })
       setCarregando(false)
+      const doCorpo = corpo as Consulta | undefined
+      if (doCorpo?.whatsappBarbearia) setWhatsapp(doCorpo.whatsappBarbearia)
+      if (doCorpo?.salao) setNomeSalao(doCorpo.salao)
       if (error || !data) {
         setErro(error ?? 'Não foi possível carregar os horários.')
         return
       }
+      setWhatsapp(data.whatsappBarbearia ?? null)
+      setNomeSalao(data.salao)
       setDados(data)
       setServicoId(data.servicoEscolhido ?? null)
       // O horário escolhido só sobrevive se ainda estiver na lista nova. Se
@@ -118,7 +155,7 @@ export function AgendaPublicaPage() {
     if (!escolhido || !servicoId) return setErro('Escolha um horário.')
 
     setEnviando(true)
-    const { data, error } = await invokeFunction<{ ok: boolean; conflito?: boolean; tokenGestao?: string }>(
+    const { data, error, corpo } = await invokeFunction<{ ok: boolean; conflito?: boolean; tokenGestao?: string }>(
       'agenda-publica',
       {
         body: {
@@ -135,6 +172,8 @@ export function AgendaPublicaPage() {
     setEnviando(false)
 
     if (error || !data?.ok) {
+      const numeroDoCorpo = (corpo as Consulta | undefined)?.whatsappBarbearia ?? null
+      if (numeroDoCorpo) setWhatsapp(numeroDoCorpo)
       setErro(error ?? 'Não foi possível agendar.')
       // A lista se atualiza (horário tomado no meio do preenchimento some
       // dela), mas o motivo fica na tela e o que a pessoa já preencheu também.
@@ -160,8 +199,12 @@ export function AgendaPublicaPage() {
           <span className="flex items-center justify-center w-11 h-11 rounded-xl bg-primary text-primary-foreground shrink-0">
             <MarcaClubCut size={20} />
           </span>
+          {/* Enquanto o erro nao chegou, "Carregando..." e verdade. Depois dele,
+              vira mentira: a tela mostrava a caixa vermelha "Barbearia nao
+              encontrada" com o cabecalho ainda dizendo que carregava, e o
+              conjunto parecia sistema quebrado (achado de 04/09/2026). */}
           <span className="text-lg font-bold tracking-tight text-foreground leading-tight">
-            {dados?.salao ?? 'Carregando...'}
+            {nomeSalao ?? (erro ? 'Agendar horário' : 'Carregando...')}
           </span>
         </div>
 
@@ -195,7 +238,10 @@ export function AgendaPublicaPage() {
         ) : carregando ? (
           <p className="text-sm text-muted-foreground">Carregando horários...</p>
         ) : !dados ? (
-          <ErroInline>{erro}</ErroInline>
+          <>
+            <ErroInline>{erro}</ErroInline>
+            <FalarComABarbearia numero={whatsapp} />
+          </>
         ) : escolhido ? (
           // ---------- Passo 3: quem é você ----------
           <form onSubmit={agendar} className="surge space-y-4">
@@ -243,6 +289,7 @@ export function AgendaPublicaPage() {
             </label>
 
             <ErroInline>{erro}</ErroInline>
+            {erro && <FalarComABarbearia numero={whatsapp} />}
 
             <button
               type="submit"
@@ -281,8 +328,9 @@ export function AgendaPublicaPage() {
 
               {dados.horarios.length === 0 ? (
                 <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
-                  Não há horário livre hoje para esse serviço. Tente outro serviço ou fale com a
-                  barbearia.
+                  Não há horário livre hoje para esse serviço. Tente outro serviço acima — ou fale
+                  com a barbearia para marcar em outro dia.
+                  <FalarComABarbearia numero={whatsapp} />
                 </div>
               ) : (
                 <div key={servicoId ?? 'todos'} className="surge-stagger grid grid-cols-2 gap-2">

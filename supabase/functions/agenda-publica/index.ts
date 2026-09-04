@@ -98,7 +98,7 @@ Deno.serve(async (req: Request) => {
   try {
     body = await req.json()
   } catch {
-    return json({ error: 'Corpo invalido.' }, 400)
+    return json({ error: 'Corpo inválido.' }, 400)
   }
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
@@ -110,7 +110,7 @@ Deno.serve(async (req: Request) => {
   if (body.acao === 'meu_horario' || body.acao === 'cancelar_horario') {
     const token = (body.token as string | undefined)?.trim() ?? ''
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
-      return json({ error: 'Link invalido.' }, 400)
+      return json({ error: 'Link inválido.' }, 400)
     }
     // Freio contra varredura de tokens: uuid aleatório já torna o chute
     // inviável, mas martelar também não fica de graça.
@@ -125,7 +125,7 @@ Deno.serve(async (req: Request) => {
       )
       .eq('token_gestao', token)
       .maybeSingle()
-    if (!ag) return json({ error: 'Agendamento nao encontrado.' }, 404)
+    if (!ag) return json({ error: 'Agendamento não encontrado.' }, 404)
 
     type Rel = { nome: string | null } | { nome: string | null }[] | null
     const nomeDe = (r: Rel) => (Array.isArray(r) ? r[0]?.nome : r?.nome) ?? null
@@ -150,7 +150,7 @@ Deno.serve(async (req: Request) => {
     // Cancelar: só horário ainda de pé, e com antecedência mínima — cancelar
     // em cima da hora é conversa com a barbearia, não botão.
     if (!['agendado', 'confirmado'].includes(ag.status)) {
-      return json({ ...info, error: 'Esse horario ja nao esta mais de pe.' }, 409)
+      return json({ ...info, error: 'Esse horário já não está mais de pé.' }, 409)
     }
     const doisHoras = 2 * 3600000
     if (new Date(ag.data_hora_inicio).getTime() - Date.now() < doisHoras) {
@@ -165,26 +165,39 @@ Deno.serve(async (req: Request) => {
       .eq('id', ag.id)
     if (erroCancela) {
       console.error('Erro ao cancelar pelo token:', erroCancela)
-      return json({ error: 'Nao foi possivel cancelar. Tente novamente.' }, 500)
+      return json({ error: 'Não foi possível cancelar. Tente novamente.' }, 500)
     }
     return json({ ...info, status: 'cancelado', ok: true })
   }
 
   const salonId = body.salonId as string | undefined
-  if (!salonId) return json({ error: 'Barbearia nao informada.' }, 400)
+  if (!salonId) return json({ error: 'Barbearia não informada.' }, 400)
 
   // A barbearia existe, está ativa, está sendo atendida e tem o recurso ligado?
   //
   // `salons_atendendo` já embute "ativa e em dia" — reusar em vez de repetir a
   // regra é o que impede a página pública de continuar marcando horário numa
   // barbearia que parou de pagar.
+  //
+  // `telefone` entra no select por causa do achado de 04/09: TODO caminho que
+  // termina em "não dá" precisa oferecer a conversa com a barbearia. O número
+  // já existe no banco e o `/meu-horario` já o usa; faltava aqui, justamente
+  // nas telas em que a pessoa não tem mais o que fazer sozinha.
   const { data: salao } = await admin
     .from('salons_atendendo')
-    .select('id, nome')
+    .select('id, nome, telefone')
     .eq('id', salonId)
     .maybeSingle()
 
-  if (!salao) return json({ error: 'Barbearia nao encontrada.' }, 404)
+  // Sem barbearia não há WhatsApp para oferecer: é o único beco que continua
+  // beco, e por isso a frase diz para conferir o link em vez de mandar esperar.
+  if (!salao) {
+    return json({ error: 'Barbearia não encontrada. Confira o link ou peça outro à barbearia.' }, 404)
+  }
+
+  const whatsappBarbearia = salao.telefone
+    ? '55' + String(salao.telefone).replace(/\D/g, '').replace(/^55/, '')
+    : null
 
   const { data: temRecurso } = await admin
     .from('recursos_ativos')
@@ -194,7 +207,14 @@ Deno.serve(async (req: Request) => {
     .maybeSingle()
 
   if (!temRecurso?.ativo) {
-    return json({ error: 'Esta barbearia nao usa agendamento pelo QR.' }, 403)
+    return json(
+      {
+        error: 'Esta barbearia não marca horário por aqui. Chame no WhatsApp que eles resolvem.',
+        salao: salao.nome,
+        whatsappBarbearia,
+      },
+      403,
+    )
   }
 
   // ------------------------------------------------------------------
@@ -212,7 +232,7 @@ Deno.serve(async (req: Request) => {
     const escolhido = servicos?.find((s) => s.id === servicoId) ?? servicos?.[0]
 
     if (!escolhido) {
-      return json({ salao: salao.nome, servicos: [], horarios: [] })
+      return json({ salao: salao.nome, whatsappBarbearia, servicos: [], horarios: [] })
     }
 
     // Só HOJE. O QR está no balcão: quem escaneou está lá agora, e abrir a
@@ -228,11 +248,12 @@ Deno.serve(async (req: Request) => {
 
     if (erroHorarios) {
       console.error('Erro ao calcular horarios:', erroHorarios)
-      return json({ error: 'Nao foi possivel carregar os horarios.' }, 500)
+      return json({ error: 'Não foi possível carregar os horários.', whatsappBarbearia }, 500)
     }
 
     return json({
       salao: salao.nome,
+      whatsappBarbearia,
       servicos: servicos ?? [],
       servicoEscolhido: escolhido.id,
       horarios: horarios ?? [],
@@ -242,7 +263,7 @@ Deno.serve(async (req: Request) => {
   // ------------------------------------------------------------------
   // Agendar.
   // ------------------------------------------------------------------
-  if (body.acao !== 'agendar') return json({ error: 'Acao invalida.' }, 400)
+  if (body.acao !== 'agendar') return json({ error: 'Ação inválida.' }, 400)
 
   // Freio do giro de 2026-08-25: sem ele, um robo criava um cliente novo por
   // requisicao e ocupava a grade inteira. 8 agendamentos por IP a cada 10 min
@@ -272,7 +293,7 @@ Deno.serve(async (req: Request) => {
     )
   }
   if (!servicoId || !profissionalId || !inicio) {
-    return json({ error: 'Escolha um horario.' }, 400)
+    return json({ error: 'Escolha um horário.' }, 400)
   }
 
   // Disjuntor: alguém fotografou o QR e resolveu encher a agenda.
@@ -286,7 +307,10 @@ Deno.serve(async (req: Request) => {
 
   if ((recentes ?? 0) >= TETO_POR_HORA) {
     console.warn('Teto de agendamentos publicos atingido:', salonId)
-    return json({ error: 'Muitos agendamentos agora. Fale com a barbearia.' }, 429)
+    return json(
+      { error: 'Muitos agendamentos agora. Fale com a barbearia pelo WhatsApp.', whatsappBarbearia },
+      429,
+    )
   }
 
   const { data: servico } = await admin
@@ -297,7 +321,7 @@ Deno.serve(async (req: Request) => {
     .eq('ativo', true)
     .maybeSingle()
 
-  if (!servico) return json({ error: 'Servico indisponivel.' }, 400)
+  if (!servico) return json({ error: 'Serviço indisponível.' }, 400)
 
   // O horário pedido é mesmo um dos livres de hoje?
   //
@@ -323,7 +347,7 @@ Deno.serve(async (req: Request) => {
   )
 
   if (!valido) {
-    return json({ error: 'Esse horario nao esta mais disponivel. Escolha outro.', conflito: true }, 409)
+    return json({ error: 'Esse horário não está mais disponível. Escolha outro.', conflito: true }, 409)
   }
 
   // Cliente: casa pelo TELEFONE, nunca pelo nome. Casar por nome junta dois
@@ -362,7 +386,11 @@ Deno.serve(async (req: Request) => {
 
     if ((emAberto ?? 0) > 0) {
       return json(
-        { error: 'Voce ja marcou um horario por aqui e ele ainda esta de pe. Para mudar, fale com a barbearia.' },
+        {
+          error:
+            'Você já marcou um horário por aqui e ele ainda está de pé. Para mudar, fale com a barbearia.',
+          whatsappBarbearia,
+        },
         409,
       )
     }
@@ -377,7 +405,7 @@ Deno.serve(async (req: Request) => {
       .single()
     if (erroCliente || !novo) {
       console.error('Erro ao criar cliente:', erroCliente)
-      return json({ error: 'Nao foi possivel concluir. Tente novamente.' }, 500)
+      return json({ error: 'Não foi possível concluir. Tente novamente.' }, 500)
     }
     clientId = novo.id
     clienteCriadoAgora = true
@@ -416,8 +444,8 @@ Deno.serve(async (req: Request) => {
     return json(
       {
         error: conflito
-          ? 'Esse horario acabou de ser pego. Escolha outro.'
-          : 'Nao foi possivel agendar. Tente novamente.',
+          ? 'Esse horário acabou de ser pego. Escolha outro.'
+          : 'Não foi possível agendar. Tente novamente.',
         conflito,
       },
       conflito ? 409 : 500,

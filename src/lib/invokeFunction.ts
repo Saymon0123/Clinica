@@ -8,11 +8,23 @@ import { supabase } from './supabase'
  * original em `error.context` — sem ler dali, o app perde mensagens úteis
  * como "Já existe uma conta com esse e-mail" e mostra um texto vago.
  */
+/**
+ * `corpo` é o JSON da resposta MESMO quando ela é de erro.
+ *
+ * Existe desde 04/09/2026: a agenda pública passou a devolver o WhatsApp da
+ * barbearia junto com o "não dá" (403 de recurso desligado, 429 de teto), para
+ * a tela poder oferecer a conversa em vez de virar beco. Sem isto, só a frase
+ * sobrevivia ao erro e o número ia embora com o resto do corpo.
+ *
+ * Campo novo em vez de devolver `data` preenchido no erro: quem chama hoje
+ * confia em "erro implica data nulo", e mexer nisso quebraria treze telas em
+ * silêncio.
+ */
 export async function invokeFunction<T = Record<string, unknown>>(
   name: string,
   options: { body?: Record<string, unknown>; headers?: Record<string, string> } = {},
   fallbackMessage = 'Não foi possível concluir a operação.',
-): Promise<{ data: T | null; error: string | null }> {
+): Promise<{ data: T | null; error: string | null; corpo?: unknown }> {
   try {
     const { data, error } = await supabase.functions.invoke(name, options)
 
@@ -21,7 +33,7 @@ export async function invokeFunction<T = Record<string, unknown>>(
       if (context && typeof context.json === 'function') {
         try {
           const body = await context.json()
-          if (body?.error) return { data: null, error: String(body.error) }
+          if (body?.error) return { data: null, error: String(body.error), corpo: body }
         } catch {
           // Corpo não era JSON — segue para a mensagem padrão.
         }

@@ -2095,9 +2095,9 @@ investigação inteira.
 5. (dono) Supabase Auth: trocar o Site URL
 6. (dono) Vercel: `VITE_APP_URL=https://clubcut.space` em Production
 7. (dono) Supabase: secret `APP_URL=https://clubcut.space` das edge functions
-8. (Claude) commit para disparar o build — o Vite embute em build time
-9. (Claude) trocar o link fixo no workflow de convite do n8n
-10. testar: cadastro, convite de equipe, QR do balcão
+8. ~~(Claude) commit para disparar o build~~ FEITO (4f9d51a)
+9. ~~(Claude) trocar o link fixo no workflow de convite do n8n~~ FEITO
+10. testar: cadastro, convite de equipe, QR do balcão — PENDENTE, exige o dono
 
 **Ferramentas que não existem** (registrado para não prometer de novo): não há
 MCP da Vercel para variável de ambiente nem para adicionar domínio, e não há
@@ -2139,3 +2139,33 @@ que um domínio estabelecido, e trocar um remetente `@gmail.com` — que carrega
 a reputação do Google — por `@clubcut.space` recém-registrado pode **piorar** a
 entrega no curto prazo. O DMARC está em `p=none`, que só observa e não protege.
 Medir a entrega antes de trocar, não depois de os convites sumirem no spam.
+
+### Editar nó no n8n pelo MCP cria RASCUNHO, não publica (2026-09-04)
+`update_workflow` respondeu `appliedOperations: 1`, `validationWarnings: []`,
+e mesmo assim o fluxo continuou executando o código antigo. A resposta do
+`get_workflow_details` mostra por quê: há dois campos, e eles divergiam.
+
+- `versionId` — o rascunho recém-salvo, já com `clubcut.space`
+- `activeVersionId` — a versão que **roda**, ainda com `clubcut.vercel.app`
+
+O fluxo estava `active: true` e dispara a cada 10 minutos, então teria
+continuado mandando convite com o link velho por tempo indeterminado. Resolvido
+com `publish_workflow(workflowId, versionId)`, que move o `activeVersionId`.
+
+**A regra:** depois de mexer em nó pelo MCP, comparar `versionId` com
+`activeVersionId`. Iguais, está no ar. Diferentes, é rascunho e falta publicar.
+"Aplicado com sucesso" na resposta da ferramenta não quer dizer "em produção".
+
+Metadados são outra história: a correção de descrição de 04/09 no fluxo de
+avaliação (`NsHcELIXrETknywa`) valeu na hora, sem publicar — descrição não é
+versionada junto com os nós. A armadilha é só para mudança de nó.
+
+### VITE_APP_URL: como conferir sem acesso ao painel (2026-09-04)
+Não existe ferramenta MCP para ler variável de ambiente da Vercel, mas o Vite
+embute o valor como literal no bundle, então dá para provar de fora.
+
+Só que o `appUrl` mora num chunk carregado sob demanda: procurar nos assets que
+o `index.html` referencia dá **falso negativo**. É preciso seguir o grafo de
+imports de forma transitiva — 42 chunks na primeira camada contra 96 no total.
+O valor apareceu em `appUrl-<hash>.js` como
+``var e = `https://clubcut.space`.replace(/\/+$/,``)``.

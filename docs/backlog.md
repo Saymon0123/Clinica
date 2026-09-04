@@ -2032,11 +2032,17 @@ Ficaram 5 instâncias `salon-<uuid>`, uma delas com status `open`. O script
 function e na credencial do n8n. Sem args ele lista e não altera nada.
 Também ficaram 2 clientes no Asaas (`cus_000192278757`, `cus_000194207151`).
 
-### Descrição errada no workflow de avaliação do n8n
-`CRM Salão - Avaliação Pós-Atendimento` (`NsHcELIXrETknywa`) tem descrição
+### ~~Descrição errada no workflow de avaliação do n8n~~ — RESOLVIDO em 04/09
+`CRM Salão - Avaliação Pós-Atendimento` (`NsHcELIXrETknywa`) tinha descrição
 "pede nota via Evolution API", mas o nó de envio é `n8n-nodes-base.whatsApp`,
 o oficial da Meta — como manda a regra de 01/09 e como o próprio sticky note
-do fluxo explica. É a descrição que está velha, não o fluxo.
+do fluxo já explicava. Era a descrição que estava velha, não o fluxo.
+
+Corrigida pelo MCP do n8n, com operação só de metadados: os 6 nós, as
+conexões e o estado ativo ficaram intactos. A descrição agora diz que o envio
+sai pelo número central na API oficial, com template aprovado, e termina com
+"NÃO usa Evolution" — a frase existe para quem só lê a lista de workflows não
+repetir a confusão.
 
 ### Teste com relógio diferente do da função (2026-09-04)
 `cadeia_de_cobranca.test.sql` quebrou o CI num commit que só mexia em

@@ -36,6 +36,18 @@ const SECOES: Secao[] = [
         ],
       },
       {
+        p: 'Posso marcar corte e barba no mesmo horário?',
+        passos: [
+          'Na **Nova reserva**, escolha o primeiro serviço na listinha e toque em **Adicionar**.',
+          'Escolha o segundo e toque em **Adicionar** de novo. Os dois ficam listados, na ordem em que entraram.',
+          'Salve. O bloco na agenda já sai com a duração somada dos dois.',
+        ],
+        dicas: [
+          { t: 'O tempo reservado é a soma: corte de 40 com barba de 30 ocupa 70 minutos na grade, e ninguém marca por cima.' },
+          { t: 'Na hora de fechar a comanda, os dois serviços já vêm lançados — e a comissão sai sobre os dois.' },
+        ],
+      },
+      {
         p: 'Como mudo o horário ou o barbeiro de um agendamento?',
         intro:
           'Do jeito rápido: **arraste o cartão** do agendamento para o novo horário ou para a coluna de outro barbeiro. Se o lugar estiver ocupado, o sistema avisa e devolve o cartão.',
@@ -77,6 +89,31 @@ const SECOES: Secao[] = [
         ],
         dicas: [
           { t: 'Vendeu produto? O estoque baixa sozinho. O barbeiro tem comissão? Ela é calculada sozinha, com o percentual dele.' },
+        ],
+      },
+      {
+        p: 'Errei uma venda. Como desfaço?',
+        passos: [
+          'Em **Financeiro → Vendas**, clique na linha da venda para abrir o detalhe.',
+          'Confira os itens, quem atendeu e como foi pago.',
+          'Toque em **Estornar venda** e confirme.',
+        ],
+        dicas: [
+          { t: 'O estorno arruma tudo junto: o faturamento cai, a comissão do barbeiro é desfeita, o produto **volta para o estoque** e o crédito de pacote usado volta para o cliente.' },
+          { t: 'A venda estornada **não some** — fica registrada como cancelada. Apagar histórico de dinheiro é pior que mostrar o erro.', atencao: true },
+        ],
+      },
+      {
+        p: 'O cliente quer pagar metade no Pix e metade em dinheiro. Dá?',
+        passos: [
+          'Monte a comanda normalmente.',
+          'Na forma de pagamento, toque em **Dividir pagamento**.',
+          'Escolha a forma e o valor da primeira parte. A última linha se preenche sozinha com o que falta.',
+          'Finalize. A venda aparece na lista com as duas formas ("Pix + Dinheiro").',
+        ],
+        dicas: [
+          { t: 'A soma das partes precisa bater com o total, senão o sistema não deixa finalizar — é o que evita a comanda fechar com diferença.' },
+          { t: 'Precisa dar um desconto? Toque no **preço do item** na comanda e digite o valor combinado. Isso muda só esta venda, não o preço do catálogo.' },
         ],
       },
       {
@@ -132,12 +169,17 @@ const SECOES: Secao[] = [
         ],
         dicas: [
           { t: 'O percentual usado é sempre o que valia no dia de cada venda. Mudar a comissão de alguém hoje não mexe no passado.' },
+          { t: 'Marcou como pago sem querer? Enquanto o mês não virar, aparece **Desfazer** ao lado. Passado o mês, o fechamento é definitivo.' },
         ],
       },
       {
         p: 'Como baixo um relatório das vendas?',
         intro:
-          'Em **Financeiro**, toque em **Exportar**, escolha **Esta semana** ou **Este mês** e depois **Baixar relatório**. Sai uma planilha com todas as vendas, item por item.',
+          'Em **Financeiro**, toque em **Exportar** e escolha o período: **Hoje**, **Esta semana** ou o **mês que está na tela**. Depois, **Baixar relatório**. Sai uma planilha com todas as vendas, item por item.',
+        dicas: [
+          { t: 'O mês exportado é o que você está vendo. Navegou para agosto com as setinhas? O relatório sai de agosto, e o nome do arquivo diz qual mês é.' },
+          { t: 'Pagamento dividido aparece por extenso na planilha ("Pix 30,00 + Dinheiro 20,00"), e pacote aparece como Pacote com o nome dele.' },
+        ],
       },
     ],
   },
@@ -199,12 +241,14 @@ const SECOES: Secao[] = [
       {
         p: 'Como cadastro produtos e controlo o estoque?',
         passos: [
-          'Em **Catálogo → Produtos**, toque em **Novo produto**: nome, preço de venda, estoque atual e o **estoque mínimo** (o nível de alerta).',
+          'Em **Catálogo → Produtos**, toque em **Novo produto**: nome, preço de venda, **estoque inicial** e o **estoque mínimo** (o nível de alerta).',
           'Vendeu? O estoque baixa sozinho pela comanda.',
           'Chegou mercadoria? Toque em **Repor** na linha do produto e diga só **quantas unidades chegaram** — o sistema soma.',
+          'Contou a prateleira e não bateu? Toque em **Editar** no produto e use **Ajuste de estoque**: digite quanto entrou (+5) ou saiu (−2). A tela mostra em quanto vai ficar antes de você salvar.',
         ],
         dicas: [
           { t: 'Quando um produto chega ao mínimo, você recebe um **e-mail automático** avisando — não precisa ficar olhando a tela.' },
+          { t: 'O saldo nunca é digitado por cima: toda mudança vira um movimento (entrada, saída, venda, ajuste). É isso que deixa o estoque sempre explicável — dá para saber de onde veio cada unidade.' },
         ],
       },
     ],
@@ -222,6 +266,17 @@ const SECOES: Secao[] = [
         ],
         dicas: [
           { t: 'O link vale 7 dias e só funciona uma vez. Errou o e-mail? Toque em **Trocar e-mail** no convite pendente.' },
+          { t: 'Passou dos 7 dias? O convite aparece como **Vencido** e o botão vira **Renovar link** — não precisa convidar de novo do zero.' },
+          { t: 'Errou a função ou a comissão antes de ele aceitar? Dá para corrigir no próprio convite pendente, sem cancelar nada.' },
+        ],
+      },
+      {
+        p: 'Eu também corto. Como apareço na agenda?',
+        intro:
+          'Se você criou a barbearia dizendo que **não** atende, você não tem coluna na agenda. Em **Equipe**, toque em **Quero atender**: o sistema cria o seu cadastro de barbeiro, copia a jornada do horário da barbearia e liga você a todos os serviços.',
+        dicas: [
+          { t: 'Depois disso é só ajustar o que quiser: sua jornada pelo ícone de relógio e sua comissão pelo **%**.' },
+          { t: 'Não precisa se convidar por e-mail. Convite pede um endereço diferente do seu, e era esse o beco antes.' },
         ],
       },
       {
@@ -252,7 +307,13 @@ const SECOES: Secao[] = [
       {
         p: 'Um barbeiro saiu. Como tiro ele do sistema?',
         intro:
-          'Toque no ícone de **energia** ao lado do nome para **desativar**. Ele some da agenda, das vendas e do WhatsApp na hora — mas todo o histórico dele fica guardado. Se voltar, é só reativar.',
+          'Toque em **Desativar** ao lado do nome. O sistema pergunta antes e diz **quantos horários futuros** ele ainda tem marcados, para você não descobrir depois que dois clientes ficaram sem barbeiro.',
+        extra:
+          'Confirmando, ele some da agenda, das vendas e do WhatsApp na hora — mas todo o histórico fica guardado. Se voltar, é só reativar.',
+        dicas: [
+          { t: 'Os horários que já estavam marcados com ele **não somem**: continuam na agenda daquele dia, com a etiqueta "Inativo", para você remarcar com calma. O que ele deixa de receber são horários novos.' },
+          { t: '**Desativar é diferente de tirar da equipe.** Desativar é reversível; tirar da equipe corta o acesso dele ao sistema.', atencao: true },
+        ],
       },
     ],
   },
@@ -289,6 +350,24 @@ const SECOES: Secao[] = [
           'Em **Configurações → QR do balcão**, toque em **Baixar cartaz em PDF** e imprima. O cliente que escanear cai numa página para marcar horário sozinho, sem falar com ninguém.',
       },
       {
+        p: 'O cliente que marcou pelo QR consegue desmarcar sozinho?',
+        intro:
+          'Consegue. Quando ele termina de marcar, a tela dá um **link do horário dele** e pede para salvar ou tirar um print. Por esse link ele vê o que marcou e pode **cancelar** — liberando a vaga na hora.',
+        dicas: [
+          { t: 'O link é só daquele horário e é impossível de adivinhar. Ninguém vê nem mexe no horário de outra pessoa.' },
+          { t: 'Faltando menos de 2 horas, o botão de cancelar sai do ar e a tela manda ele falar com a barbearia. Cancelamento em cima da hora é conversa, não botão.' },
+          { t: 'Remarcar pelo link não existe de propósito: o link abre o WhatsApp da barbearia para vocês combinarem.' },
+        ],
+      },
+      {
+        p: 'Não quero que marquem pelo QR. Como desligo?',
+        intro:
+          'Em **Configurações → QR do balcão**, toque em **Desativar o QR desta barbearia**. Quem abrir o link passa a ver um aviso e um botão para falar com você no WhatsApp — não fica sem saída.',
+        dicas: [
+          { t: 'Para religar é no mesmo lugar, com **Ativar o QR do balcão**. Toda barbearia nova já vem com ele ligado.' },
+        ],
+      },
+      {
         p: 'Abri uma segunda barbearia. Como coloco no sistema?',
         passos: [
           'Em **Configurações → Unidades**, toque em **Adicionar unidade**.',
@@ -309,6 +388,15 @@ const SECOES: Secao[] = [
           {
             t: 'Cliente que voltou pela reativação: se ele **confirmou** o horário, esse horário é cobrado como qualquer outro do atendimento automático. Se ele não respondeu, o sistema cancela sozinho e **nada é cobrado** — você só paga por quem de fato voltou.',
           },
+        ],
+      },
+      {
+        p: 'Como funciona o período de teste?',
+        intro:
+          'Ao criar a barbearia você tem **7 dias com tudo liberado**, e nada é cobrado nesses dias — nem os agendamentos que o atendimento automático fizer neles. A aba **Assinatura** mostra quantos dias faltam e a data exata em que acaba.',
+        dicas: [
+          { t: 'Quando o teste está perto do fim, você recebe um aviso no WhatsApp: 3 dias antes e no dia.' },
+          { t: 'Terminado o teste, você passa a pagar só pelo que usar. Mês sem agendamento pelo WhatsApp continua sendo mês sem cobrança.' },
         ],
       },
       {
@@ -338,6 +426,25 @@ const SECOES: Secao[] = [
         ],
         dicas: [
           { t: 'Enquanto você está na conversa, o atendimento automático fica em silêncio — ele nunca responde por cima de você.' },
+          { t: 'Perdeu o aviso? Nada some: em **Conversas** (no menu, dentro de **Mais** no celular) tem a aba **Solicitou falar com o dono** com tudo que está esperando você.' },
+        ],
+      },
+      {
+        p: 'Onde vejo todas as conversas do WhatsApp?',
+        intro:
+          'No menu, em **Conversas** — no celular ele fica dentro de **Mais**. Ali estão todas as conversas do número da barbearia, com busca por nome ou telefone, e a aba de quem pediu para falar com você.',
+        dicas: [
+          { t: 'No celular, **Enter** pula linha e quem envia é o botão — para não mandar mensagem pela metade sem querer. No computador, Enter envia.' },
+        ],
+      },
+      {
+        p: 'O sistema pede avaliação para os meus clientes?',
+        intro:
+          'Pede, sozinho, algumas horas depois do atendimento. O cliente recebe uma mensagem com três botões: **Ótimo**, **Bom** e **Podia melhorar**. Quem responde Ótimo recebe o link para avaliar no Google; nota baixa **não** vai para lugar nenhum público — chega em você.',
+        dicas: [
+          { t: 'Cole o seu link do Google em **Configurações → Link de avaliação no Google**. Sem ele, quem gostou não tem para onde ir.' },
+          { t: 'No máximo um pedido por cliente a cada 8 semanas. Pesquisa repetida é o caminho mais rápido para o cliente bloquear o número.' },
+          { t: 'Não custa nada: pedido de avaliação não é agendamento, e agendamento é a única coisa cobrada.' },
         ],
       },
       {

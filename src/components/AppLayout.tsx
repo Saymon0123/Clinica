@@ -14,6 +14,7 @@ import {
   CreditCard,
   MoreHorizontal,
   MessageCircle,
+  HelpCircle,
 } from 'lucide-react'
 import { PilhaDeAvisos } from './PilhaDeAvisos'
 import { ProfileMenu } from './ProfileMenu'
@@ -74,6 +75,17 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       // humano, que só existe quando há pedido. Mesma guarda da rota
       // (`RequireManager`).
       { to: '/web', label: 'Conversas', icon: MessageCircle, somenteGestor: true },
+    ],
+  },
+  {
+    title: 'Ajuda',
+    items: [
+      // Estava só no menu do avatar (achado de 04/09). São dois menus
+      // diferentes para destino secundário — cinco itens em "Mais" e três no
+      // avatar —, e quem procura ajuda não adivinha em qual olhar. Sem
+      // `somenteGestor`: o barbeiro também precisa dos tutoriais das telas
+      // dele. O link do avatar continua onde está, para quem já se acostumou.
+      { to: '/ajuda', label: 'Central de Ajuda', icon: HelpCircle, semUnidade: true },
     ],
   },
 ]

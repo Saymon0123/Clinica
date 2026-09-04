@@ -37,7 +37,17 @@ function formatTime(iso: string | null) {
 }
 
 export function WhatsAppWebPage() {
-  const { salonId, loading: salonLoading } = useSalon()
+  const { salonId, salonName, loading: salonLoading } = useSalon()
+
+  // O título da aba mora no `AppLayout` para as demais telas, e esta rota fica
+  // FORA dele (tem cabeçalho próprio, sem menu). Sem esta linha, Conversas era
+  // a única tela que continuava com o título genérico do `index.html` depois
+  // do conserto — e é justamente a que se deixa aberta o dia inteiro numa aba
+  // ao lado da agenda.
+  useEffect(() => {
+    const partes = ['Conversas', salonName].filter(Boolean)
+    document.title = `${partes.join(' · ')} — Club Cut`
+  }, [salonName])
   // ?tab=precisa_dono: o "e mais N pessoas esperando" do banner cai direto na
   // aba certa.
   const [tab, setTab] = useState<Tab>(() =>

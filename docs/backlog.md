@@ -2037,3 +2037,18 @@ Também ficaram 2 clientes no Asaas (`cus_000192278757`, `cus_000194207151`).
 "pede nota via Evolution API", mas o nó de envio é `n8n-nodes-base.whatsApp`,
 o oficial da Meta — como manda a regra de 01/09 e como o próprio sticky note
 do fluxo explica. É a descrição que está velha, não o fluxo.
+
+### Teste com relógio diferente do da função (2026-09-04)
+`cadeia_de_cobranca.test.sql` quebrou o CI num commit que só mexia em
+documentação. A causa: `estender_acesso_sem_debito` trabalha em
+`America/Sao_Paulo` e grava `acesso_ate = hoje_SP + 1`, enquanto a asserção
+comparava com `current_date`, que no runner é UTC. Entre 21h e meia-noite de
+Brasília as duas datas divergem em um dia e o `>` vira falso. Corrigido com um
+`pg_temp.hoje()` no próprio teste.
+
+A armadilha só morde onde a comparação tem **margem zero**. Os outros três
+testes que usam `current_date` (`gating_de_plano`, `folga_entre_atendimentos`,
+`situacao_do_acesso`) comparam com folga de dias, e o último já traz um
+comentário explicando o caso. Regra para o próximo: se a asserção compara com
+o resultado de uma função que usa `America/Sao_Paulo`, o teste tem que usar o
+mesmo relógio, não `current_date`.

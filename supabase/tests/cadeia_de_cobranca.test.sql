@@ -17,6 +17,15 @@ set search_path = public, extensions;
 begin;
 select plan(17);
 
+-- O relogio deste teste e o MESMO de `estender_acesso_sem_debito`: America/
+-- Sao_Paulo. `current_date` no runner do CI e UTC, e entre 21h e meia-noite de
+-- Brasilia as duas datas divergem em um dia -- a funcao gravava `acesso_ate =
+-- hoje_SP + 1` e a assercao comparava com `hoje_UTC`, que ja era o mesmo dia,
+-- fazendo o `>` virar falso. O teste quebrou assim em 04/09/2026, as 02:31 UTC,
+-- num commit que so mexia em documentacao.
+create or replace function pg_temp.hoje() returns date
+language sql stable as $$ select (now() at time zone 'America/Sao_Paulo')::date $$;
+
 \set salao_trial   'aaaa9000-0000-0000-0000-000000000001'
 \set salao_cancela 'aaaa9000-0000-0000-0000-000000000002'
 \set salao_devendo 'aaaa9000-0000-0000-0000-000000000003'
@@ -69,7 +78,7 @@ select is(
 -- guarda do teste é de fato exercida. Com prazo folgado, o job não mexeria
 -- nele de qualquer jeito e o teste passaria sem provar nada.
 insert into subscriptions (salon_id, status, acesso_ate)
-values (:'salao_em_teste', 'trial', current_date);
+values (:'salao_em_teste', 'trial', pg_temp.hoje());
 
 -- `gerar_fatura_de_uso` devolve um COMPOSTO, não um conjunto: chamada em FROM
 -- ela sempre rende uma linha, com as colunas nulas quando não há fatura. Contar
@@ -140,20 +149,20 @@ select is(
 -- Terminou o teste, acesso vencido, e a fatura que tem é de R$ 0,00 sem boleto
 -- emitido. Era este que ficava bloqueado para sempre, devendo nada.
 insert into subscriptions (salon_id, status, acesso_ate, trial_ate)
-values (:'salao_devendo', 'ativa', current_date - 5, current_date - 30);
+values (:'salao_devendo', 'ativa', pg_temp.hoje() - 5, pg_temp.hoje() - 30);
 
-update subscriptions set acesso_ate = current_date - 5 where salon_id = :'salao_trial';
+update subscriptions set acesso_ate = pg_temp.hoje() - 5 where salon_id = :'salao_trial';
 
 -- Este deve de verdade: fatura com valor, boleto emitido e vencido sem pagar.
 insert into faturas_de_uso (salon_id, periodo_inicio, periodo_fim, motivo,
                             barbeiros, preco_unitario, agendamentos, lembretes, reativacoes,
                             valor, valor_gerado, detalhe, boleto_vencimento)
 values (:'salao_devendo', date '2026-06-01', date '2026-06-30', 'mensal',
-        1, 0.75, 40, 0, 0, 30, 0, '[]'::jsonb, current_date - 2);
+        1, 0.75, 40, 0, 0, 30, 0, '[]'::jsonb, pg_temp.hoje() - 2);
 
 -- Cancelou: o acesso corre até a data que já tem e acaba ali.
 insert into subscriptions (salon_id, status, acesso_ate, trial_ate)
-values (:'salao_cancelou', 'cancelada', current_date - 5, current_date - 30);
+values (:'salao_cancelou', 'cancelada', pg_temp.hoje() - 5, pg_temp.hoje() - 30);
 
 select lives_ok(
   $$select estender_acesso_sem_debito()$$,
@@ -161,22 +170,22 @@ select lives_ok(
 );
 
 select ok(
-  (select acesso_ate from subscriptions where salon_id = :'salao_trial') > current_date,
+  (select acesso_ate from subscriptions where salon_id = :'salao_trial') > pg_temp.hoje(),
   'quem terminou o teste e nao deve nada volta a ter acesso'
 );
 
 select ok(
-  (select acesso_ate from subscriptions where salon_id = :'salao_devendo') < current_date,
+  (select acesso_ate from subscriptions where salon_id = :'salao_devendo') < pg_temp.hoje(),
   'quem tem boleto vencido em aberto continua bloqueado'
 );
 
 select ok(
-  (select acesso_ate from subscriptions where salon_id = :'salao_em_teste') = current_date,
+  (select acesso_ate from subscriptions where salon_id = :'salao_em_teste') = pg_temp.hoje(),
   'quem ainda esta em teste nao ganha prazo extra'
 );
 
 select ok(
-  (select acesso_ate from subscriptions where salon_id = :'salao_cancelou') < current_date,
+  (select acesso_ate from subscriptions where salon_id = :'salao_cancelou') < pg_temp.hoje(),
   'quem cancelou nao volta a ter acesso'
 );
 

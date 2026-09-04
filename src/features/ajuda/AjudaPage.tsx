@@ -304,7 +304,12 @@ const SECOES: Secao[] = [
       {
         p: 'Quanto eu pago pelo Club Cut?',
         intro:
-          'Você paga **por agendamento feito pelo atendimento automático do WhatsApp** — o valor unitário está na aba **Assinatura**. Sem mensalidade fixa, sem mínimo: mês sem agendamento pelo WhatsApp é mês sem cobrança. Agendamentos que você marca na agenda ou que chegam pelo QR do balcão **não são cobrados**. Lembretes e reativações também não.',
+          'Você paga **por agendamento feito pelo atendimento automático do WhatsApp** — o valor unitário está na aba **Assinatura**. Sem mensalidade fixa, sem mínimo: mês sem agendamento pelo WhatsApp é mês sem cobrança. Agendamentos que você marca na agenda ou que chegam pelo QR do balcão **não são cobrados**. As **mensagens** de lembrete e de reativação também não custam nada — o que se cobra é o horário, não o recado.',
+        dicas: [
+          {
+            t: 'Cliente que voltou pela reativação: se ele **confirmou** o horário, esse horário é cobrado como qualquer outro do atendimento automático. Se ele não respondeu, o sistema cancela sozinho e **nada é cobrado** — você só paga por quem de fato voltou.',
+          },
+        ],
       },
       {
         p: 'Como pago a minha fatura?',

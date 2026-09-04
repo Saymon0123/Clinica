@@ -106,10 +106,20 @@ export function UsoDoSistema() {
           <Activity size={18} />
           Uso do sistema
         </h2>
+        {/* A frase separa MENSAGEM de AGENDAMENTO, e não é preciosismo.
+            A redação anterior juntava lembrete e reativação numa isenção só,
+            enquanto a regra da fatura (`agendamentos_cobraveis`, migration
+            0136) cobra o horário de reativação que o cliente confirma. Os dois
+            cartões abaixo contam mensagens enviadas; o cartão "Agendamentos
+            cobráveis" conta horários. Quem lesse aquilo entenderia que o
+            cliente trazido de volta pela reativação sai de graça — e receberia
+            R$ 0,75 por ele na fatura. Decisão de 04/09/2026: a regra fica, o
+            texto muda. A catraca está em `promessaDeCobranca.test.ts`. */}
         <p className="text-sm text-muted-foreground mt-1">
-          Você paga por agendamento feito pelo atendimento do WhatsApp —{' '}
-          {uso ? `${moeda(Number(uso.preco_unitario))} cada` : 'carregando...'}. Lembretes e
-          reativações não são cobrados.
+          Você paga por agendamento que o atendimento automático marcou —{' '}
+          {uso ? `${moeda(Number(uso.preco_unitario))} cada` : 'carregando...'}. Entra também o
+          horário de reativação que o cliente confirmou. As mensagens de lembrete e de reativação
+          não custam nada.
         </p>
       </div>
 
@@ -143,14 +153,20 @@ export function UsoDoSistema() {
                 <MessageSquareText size={14} /> Lembretes
               </div>
               <div className="text-xl font-semibold text-foreground mt-1">{uso.lembretes}</div>
-              <div className="text-[11px] text-muted-foreground">sem custo</div>
+              {/* "mensagens" no rótulo, e não só "sem custo": este cartão conta
+                  envios, não horários — a diferença é a que confundia acima. */}
+              <div className="text-[11px] text-muted-foreground">mensagens, sem custo</div>
             </div>
             <div className="bg-surface-2 rounded-lg p-3">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <RotateCcw size={14} /> Reativações
               </div>
               <div className="text-xl font-semibold text-foreground mt-1">{uso.reativacoes}</div>
-              <div className="text-[11px] text-muted-foreground">sem custo</div>
+              {/* O cartão mais perigoso da tela: "Reativações — sem custo" lia-se
+                  como "cliente trazido de volta é de graça". Conta ENVIOS
+                  (`reativacao_envios`); o horário confirmado que sair daí está
+                  no cartão de cobráveis. */}
+              <div className="text-[11px] text-muted-foreground">mensagens, sem custo</div>
             </div>
           </div>
           <p className="text-xs text-muted-foreground">

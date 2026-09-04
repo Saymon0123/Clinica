@@ -11,7 +11,7 @@ import { usePacotesData, type Pacote } from './usePacotesData'
 import { NewPacoteModal } from './NewPacoteModal'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../../components/Toast'
-import { Tabela, Th, Linha, Td } from '../../components/Tabela'
+import { Tabela, Th, Linha, Td, COLUNA_FIXA_A_DIREITA } from '../../components/Tabela'
 import { Badge } from '../../components/Badge'
 import { EstadoVazio } from '../../components/EstadoVazio'
 import { SkeletonPagina } from '../../components/Skeleton'
@@ -208,7 +208,7 @@ export function CatalogoPage() {
                     {isManager ? 'Vendas no mês' : 'Suas vendas no mês'}
                   </Th>
                   <Th>Status</Th>
-                  <Th className="text-right">Ações</Th>
+                  <Th className={`text-right ${COLUNA_FIXA_A_DIREITA}`}>Ações</Th>
                 </tr>
               </thead>
               <tbody>
@@ -221,7 +221,7 @@ export function CatalogoPage() {
                     <Td>
                       <Badge variante={s.ativo ? 'ok' : 'neutro'}>{s.ativo ? 'Ativo' : 'Inativo'}</Badge>
                     </Td>
-                    <Td className="text-right space-x-2">
+                    <Td className={`text-right space-x-2 whitespace-nowrap ${COLUNA_FIXA_A_DIREITA}`}>
                       {podeMexer(s) ? (
                         <>
                           <button onClick={() => setEditingService(s)} className="btn-chip">
@@ -306,7 +306,7 @@ export function CatalogoPage() {
                     {isManager ? 'Vendidos no mês' : 'Vendidos no mês (barbearia)'}
                   </Th>
                   <Th>Status</Th>
-                  <Th className="text-right">Ações</Th>
+                  <Th className={`text-right ${COLUNA_FIXA_A_DIREITA}`}>Ações</Th>
                 </tr>
               </thead>
               <tbody>
@@ -327,7 +327,7 @@ export function CatalogoPage() {
                     <Td>
                       <Badge variante={pac.ativo ? 'ok' : 'neutro'}>{pac.ativo ? 'Ativo' : 'Inativo'}</Badge>
                     </Td>
-                    <Td className="text-right space-x-2 whitespace-nowrap">
+                    <Td className={`text-right space-x-2 whitespace-nowrap ${COLUNA_FIXA_A_DIREITA}`}>
                       {isManager ? (
                         <>
                           <button onClick={() => setEditingPacote(pac)} className="btn-chip">
@@ -402,7 +402,7 @@ export function CatalogoPage() {
                   <Th>Preço de venda</Th>
                   <Th>Estoque</Th>
                   <Th>Status</Th>
-                  <Th className="text-right">Ações</Th>
+                  <Th className={`text-right ${COLUNA_FIXA_A_DIREITA}`}>Ações</Th>
                 </tr>
               </thead>
               <tbody>
@@ -419,7 +419,7 @@ export function CatalogoPage() {
                     <Td>
                       <Badge variante={p.ativo ? 'ok' : 'neutro'}>{p.ativo ? 'Ativo' : 'Inativo'}</Badge>
                     </Td>
-                    <Td className="text-right space-x-2 whitespace-nowrap">
+                    <Td className={`text-right space-x-2 whitespace-nowrap ${COLUNA_FIXA_A_DIREITA}`}>
                       {/* Produto é do gestor — RLS bloqueia o barbeiro, então
                           mostrar os botões para ele era um clique que fingia
                           funcionar. */}

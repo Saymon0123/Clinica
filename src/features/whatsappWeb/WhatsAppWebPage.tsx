@@ -297,6 +297,10 @@ export function WhatsAppWebPage() {
 
           <div className="p-4"><ErroInline>{error}</ErroInline></div>
 
+          {/* Único estado vazio do sistema que só tinha título, sem dizer por
+              que está vazio nem o que fazer (achado de 04/09) — justo na tela
+              que depende de um WhatsApp que pode nem estar conectado. O
+              componente já previa `descricao` e `acao`; faltava usar. */}
           {!loading && conversations.length === 0 && (
             <EstadoVazio
               icone={MessageCircle}
@@ -306,6 +310,23 @@ export function WhatsAppWebPage() {
                   : tab === 'precisa_dono'
                     ? 'Nenhuma conversa aguardando o dono.'
                     : 'Nenhuma conversa ainda.'
+              }
+              descricao={
+                busca.trim()
+                  ? 'Tente outro nome ou parte do telefone.'
+                  : tab === 'precisa_dono'
+                    ? 'Quando um cliente pedir para falar com você, ele aparece aqui — e um aviso aparece em qualquer tela do CRM.'
+                    : 'As conversas aparecem aqui assim que o WhatsApp da barbearia estiver conectado e um cliente escrever.'
+              }
+              acao={
+                !busca.trim() && tab !== 'precisa_dono' ? (
+                  <Link
+                    to="/conexao"
+                    className="btn-secondary rounded-lg px-3 py-2 text-sm font-medium"
+                  >
+                    Ver a conexão do WhatsApp
+                  </Link>
+                ) : undefined
               }
             />
           )}

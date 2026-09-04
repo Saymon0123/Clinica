@@ -100,6 +100,24 @@ export function AppLayout() {
     recarregarUnidades,
   } = useSalon()
   const location = useLocation()
+
+  /**
+   * O título da aba diz onde a pessoa está e em qual barbearia.
+   *
+   * Antes era "Club Cut — atendimento no WhatsApp para barbearia" em TODA tela,
+   * do `index.html` (achado de 04/09). Quem trabalha com várias abas abertas —
+   * agenda numa, financeiro noutra — não tinha como distinguir; e o dono de
+   * rede com duas unidades abertas muito menos.
+   *
+   * Mora aqui e não em cada página porque o rótulo já existe no menu: repetir
+   * catorze vezes é catorze lugares para divergir.
+   */
+  useEffect(() => {
+    const item = NAV_GROUPS.flatMap((g) => g.items).find((i) => i.to === location.pathname)
+    const partes = [item?.label, salonName].filter(Boolean)
+    document.title = partes.length ? `${partes.join(' · ')} — Club Cut` : 'Club Cut'
+  }, [location.pathname, salonName])
+
   const { alerts, dismiss } = useAppointmentAlerts(salonId)
   const { hasPending } = usePendingConversations(isManager ? salonId : null)
   const { pedidos, resolver } = usePedidosDeHumano(isManager ? salonId : null)

@@ -187,10 +187,19 @@ export function AgendaPage() {
   )
   const gridHeight = (HOUR_END - HOUR_START) * ROW_HEIGHT
 
-  // Abre a grade já rolada perto da hora atual quando o dia exibido é hoje.
-  // Antes ela abria sempre às 06:00 — de tarde, meio dia de vazio até o que
-  // interessa. Só no primeiro carregamento de cada dia, para não roubar o
-  // scroll de quem já está navegando.
+  // Abre a grade já rolada no que interessa, e não no topo.
+  //
+  // Hoje: perto da hora atual. Antes abria sempre às 06:00 — de tarde, meio
+  // dia de vazio até o que interessa.
+  //
+  // Outro dia: na abertura da barbearia. A grade vai das 6h às 22h porque
+  // encaixe fora do expediente é permitido, mas quem navega para amanhã caía
+  // em três horas mortas antes da primeira jornada começar (achado de 04/09).
+  // Ancora na jornada mais cedo do dia, que é o mesmo dado que desenha as
+  // sombras de fora-do-expediente logo abaixo.
+  //
+  // Só no primeiro carregamento de cada dia, para não roubar o scroll de quem
+  // já está navegando.
   const scrollRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (loading || !scrollRef.current) return
@@ -199,10 +208,25 @@ export function AgendaPage() {
       agora.getFullYear() === selectedDate.getFullYear() &&
       agora.getMonth() === selectedDate.getMonth() &&
       agora.getDate() === selectedDate.getDate()
-    if (!ehHoje) return
-    const minutos = (agora.getHours() - HOUR_START) * 60 + agora.getMinutes()
-    // 90 min de contexto acima da linha de agora.
-    const alvo = Math.max(0, ((minutos - 90) / 60) * ROW_HEIGHT)
+
+    let minutos: number
+    let contexto: number
+    if (ehHoje) {
+      minutos = (agora.getHours() - HOUR_START) * 60 + agora.getMinutes()
+      contexto = 90
+    } else {
+      // `null` na jornada é folga, e não conta como abertura. Sem nenhuma
+      // jornada viva no dia, fica no topo — é o comportamento neutro de
+      // barbearia que ainda não configurou horário.
+      const aberturas = Object.values(jornadas)
+        .filter((j): j is NonNullable<typeof j> => j !== null)
+        .map((j) => j.inicioMin)
+      if (aberturas.length === 0) return
+      minutos = Math.min(...aberturas) - HOUR_START * 60
+      contexto = 30
+    }
+
+    const alvo = Math.max(0, ((minutos - contexto) / 60) * ROW_HEIGHT)
     scrollRef.current.scrollTop = alvo
     // selectedDate na dependência: trocar de dia e voltar re-ancora.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -409,10 +433,27 @@ export function AgendaPage() {
                 cabeçalho (sticky acompanha o scroll). O CTA é o mesmo botão
                 Nova reserva de sempre. */}
             {!loading && appointments.length === 0 && (
-              <div className="sticky top-[52px] z-[5] h-0 flex justify-center pointer-events-none">
-                <div className="translate-y-5 pointer-events-auto flex items-center gap-3 bg-surface border border-border shadow-sm rounded-full pl-4 pr-1.5 py-1.5 text-sm text-muted-foreground">
-                  Nenhuma reserva {WEEKDAY_FULL[selectedDate.getDay()] === 'sábado' || WEEKDAY_FULL[selectedDate.getDay()] === 'domingo' ? 'neste' : 'nesta'}{' '}
-                  {WEEKDAY_FULL[selectedDate.getDay()]}
+              // `items-start` é o que conserta o vazamento (achado de 04/09).
+              // O contêiner é `h-0` de propósito, para o aviso flutuar sobre a
+              // grade sem empurrá-la. Só que `flex` sem alinhamento declarado é
+              // `stretch`: o filho era espremido para a altura do pai, ou seja
+              // zero, e media 14px com um botão de 44px dentro. Resultado no
+              // celular: a frase quebrava em duas linhas, saía do fundo
+              // arredondado e caía por cima das linhas de hora.
+              <div className="sticky top-[52px] z-[5] h-0 flex items-start justify-center pointer-events-none">
+                {/* Enrola em vez de espremer: a 375px a frase e o botão não
+                    cabem lado a lado. Enrolado, um retângulo arredondado lê
+                    melhor que uma pílula de duas linhas — daí o raio mudar com
+                    a largura. */}
+                <div className="translate-y-5 pointer-events-auto max-w-[calc(100%-1rem)] flex flex-wrap items-center justify-center gap-x-3 gap-y-2 bg-surface border border-border shadow-sm rounded-2xl sm:rounded-full px-4 py-2 text-sm text-muted-foreground text-center">
+                  <span>
+                    Nenhuma reserva{' '}
+                    {WEEKDAY_FULL[selectedDate.getDay()] === 'sábado' ||
+                    WEEKDAY_FULL[selectedDate.getDay()] === 'domingo'
+                      ? 'neste'
+                      : 'nesta'}{' '}
+                    {WEEKDAY_FULL[selectedDate.getDay()]}
+                  </span>
                   <button onClick={() => setModalState({})} className="btn-chip btn-chip-primario">
                     Nova reserva
                   </button>

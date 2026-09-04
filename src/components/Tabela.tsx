@@ -20,6 +20,22 @@ export function Tabela({ children }: { children: ReactNode }) {
   )
 }
 
+/**
+ * A coluna que não pode sair da tela quando a tabela rola de lado.
+ *
+ * Medido em 04/09/2026: o Catálogo tem 566px de tabela dentro de 343px de
+ * contêiner no celular. A rolagem está contida (a página não anda de lado, que
+ * é o certo), mas a consequência é que "Editar" e "Desativar" nascem fora da
+ * tela — e nada na tela sugere que aquela tabela rola. Para desativar um
+ * serviço pelo celular o dono precisava descobrir sozinho.
+ *
+ * Grudar a última coluna resolve sem virar cartão: a informação continua
+ * rolando, a ação fica. A sombra à esquerda é o que denuncia que há conteúdo
+ * cortado embaixo dela.
+ */
+export const COLUNA_FIXA_A_DIREITA =
+  'sticky right-0 bg-surface shadow-[-10px_0_10px_-10px_color-mix(in_srgb,var(--foreground)_35%,transparent)]'
+
 export function Th({ className, ...props }: ThHTMLAttributes<HTMLTableCellElement>) {
   return (
     <th

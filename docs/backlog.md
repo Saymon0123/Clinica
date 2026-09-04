@@ -2058,3 +2058,84 @@ testes que usam `current_date` (`gating_de_plano`, `folga_entre_atendimentos`,
 comentário explicando o caso. Regra para o próximo: se a asserção compara com
 o resultado de uma função que usa `America/Sao_Paulo`, o teste tem que usar o
 mesmo relógio, não `current_date`.
+
+### Domínio próprio: clubcut.space (2026-09-04)
+Comprados na Hostinger em 04/09: o domínio `clubcut.space` (R$ 182,08/ano,
+auto-renovação ligada, vence 04/09/2027) e a caixa `contato@clubcut.space`
+(Starter Business Email, R$ 11,99/mês, 1 assento).
+
+Fica registrado que `clubcut.com.br` continuava disponível a R$ 39,99 no
+primeiro ano e R$ 64,99 na renovação — quase um terço do `.space` ao longo de
+três anos (R$ 169,97 contra R$ 546,24). A restrição do Registro.br é
+`requires_cpf_or_cnpj`. Decisão do dono em 04/09: fica o `.space` por ora.
+
+**O que segura o domínio hoje:** nada. O `A @` aponta para `2.57.91.91`, a
+página de estacionamento da Hostinger. O DNS de e-mail (MX, SPF, DKIM,
+autodiscover) já veio completo e correto — **não mexer nesses registros**.
+
+**Onde `clubcut.vercel.app` está escrito** (inventário fechado em 04/09):
+- `supabase/functions/admin-create-salon/index.ts:10` — fallback de `APP_URL`
+- `supabase/functions/admin-invite-salon/index.ts:26` — fallback de `APP_URL`
+- n8n `CRM Salao - Convite de Equipe por Email` (`Fy9aqg14kCkhhNHW`), nó
+  `Montar Email do Convite`: `const link = 'https://clubcut.vercel.app/convite/'`
+  — **fixo, sem variável de ambiente que sobreponha**
+- Nada nas migrations: as views montam texto sem URL do app.
+
+**A ordem importa, pelo mesmo motivo das migrations.** O allow-list do Supabase
+Auth precisa aceitar o domínio novo ANTES de `VITE_APP_URL` mudar. Invertendo,
+`emailRedirectTo` aponta para endereço não autorizado e o Supabase cai
+silenciosamente no Site URL — o mesmo fluxo implícito que já custou uma
+investigação inteira.
+
+1. ~~(dono) adicionar `clubcut.space` e `www.clubcut.space` ao projeto~~ FEITO
+2. ~~(Claude) gravar no DNS da Hostinger os registros que a Vercel pedir~~ FEITO
+3. ~~esperar a Vercel validar e emitir o certificado~~ FEITO
+4. (dono) Supabase Auth: incluir `https://clubcut.space/**` no allow-list,
+   **sem remover** o `clubcut.vercel.app`
+5. (dono) Supabase Auth: trocar o Site URL
+6. (dono) Vercel: `VITE_APP_URL=https://clubcut.space` em Production
+7. (dono) Supabase: secret `APP_URL=https://clubcut.space` das edge functions
+8. (Claude) commit para disparar o build — o Vite embute em build time
+9. (Claude) trocar o link fixo no workflow de convite do n8n
+10. testar: cadastro, convite de equipe, QR do balcão
+
+**Ferramentas que não existem** (registrado para não prometer de novo): não há
+MCP da Vercel para variável de ambiente nem para adicionar domínio, e não há
+MCP do Supabase para secret nem para configuração de Auth. Os passos 1, 4, 5,
+6 e 7 são no painel, na mão.
+
+**Passos 1 a 3, fechados em 04/09 07:26.** Registros que a Vercel pediu e que
+foram gravados na Hostinger (o CNAME é próprio do projeto — o genérico
+`cname.vercel-dns.com` teria falhado):
+
+| Tipo | Nome | Valor |
+|---|---|---|
+| A | `@` | `216.198.79.1` |
+| CNAME | `www` | `5686dea13e78b272.vercel-dns-017.com.` |
+
+O `overwrite` da API da Hostinger só apaga registros que batem em nome E tipo,
+então MX, SPF, DKIM, DMARC, autodiscover e autoconfig sobreviveram intactos —
+conferido relendo a zona e, de fora, pelo DNS público do Google.
+
+**Canônico: o apex.** A Vercel monta com `www` canônico por padrão; foi
+invertido a pedido do dono em 04/09. Hoje `clubcut.space` responde 200 e
+`www.clubcut.space` devolve 308 para ele. O motivo não é técnico e sim de
+produto: o endereço vai impresso no cartaz do balcão, onde quatro caracteres a
+menos contam, e o retorno do login deixa de ter um salto de redirecionamento
+no meio — justo o fluxo implícito que já custou uma investigação.
+
+**`clubcut.vercel.app` não morre** quando o domínio novo entra — a Vercel
+mantém os domínios antigos. Nada quebra durante a troca e os links já enviados
+continuam abrindo. É por isso que o passo 9 pode esperar sem risco.
+
+### Convite de equipe sai do Gmail pessoal (2026-09-04)
+O nó `Enviar Convite` do workflow de convite manda com
+`fromEmail: Club Cut <castrocollin01@gmail.com>`. Com `contato@clubcut.space`
+comprado no mesmo dia, o remetente natural passa a ser esse. Exige criar a
+credencial SMTP da Hostinger no n8n, o que é ação no painel.
+
+**Ressalva antes de fazer:** `.space` tem reputação pior nos filtros de spam
+que um domínio estabelecido, e trocar um remetente `@gmail.com` — que carrega
+a reputação do Google — por `@clubcut.space` recém-registrado pode **piorar** a
+entrega no curto prazo. O DMARC está em `p=none`, que só observa e não protege.
+Medir a entrega antes de trocar, não depois de os convites sumirem no spam.

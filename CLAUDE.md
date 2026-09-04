@@ -31,3 +31,30 @@ Rules:
 - If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+
+## A régua: caminhos, design e verdade
+
+Três regras que valem para **tudo** neste projeto — analisar, criar, mudar.
+A versão longa, com o checklist inteiro, está na skill `olhar-critico`
+(`.claude/skills/olhar-critico/SKILL.md`). Estas três linhas são a versão
+curta, que nunca deixa de ser lida.
+
+1. **Os caminhos que ninguém previu.** Não parar no fluxo que dá certo.
+   Percorrer o que a pessoa faz quando quer outro momento, outra opção, mudar
+   de ideia, chegar por outra porta, ou não fazer nada — e o que o outro lado
+   enxerga quando isso acontece. Vale para o cliente final e para o dono.
+   Ao entregar, dizer quais caminhos foram cobertos e quais ficaram de fora.
+
+2. **O design da página, não só a função.** Hierarquia, os quatro estados
+   (carregando, vazio, erro, cheio), celular primeiro, claro e escuro, e os
+   tokens que já existem em vez de cor solta. Funcionar não é estar pronto.
+
+3. **A verdade, não o agrado.** Ruim é ruim, dito na cara com o motivo. Bom é
+   bom, sem defeito inventado para parecer rigoroso. Discordar antes de fazer,
+   não depois. Separar o que foi verificado do que foi deduzido.
+
+**Por que isso existe:** a agenda pública passou na vistoria de funcionamento
+e só depois ficou claro que quem abre o link às 23h bate num muro, que o
+cliente não recebe confirmação nenhuma, e que o recurso nem vem ligado numa
+barbearia nova. O fluxo feliz funcionava. Ele quase sempre funciona, e por
+isso não prova nada.

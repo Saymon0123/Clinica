@@ -1989,3 +1989,51 @@ separado, fora do `&&`. Produção ficou com um `ReferenceError` por alguns
 minutos (`21f359b` corrigiu). Regra: uma cadeia por comando, commit só depois
 de ver as checagens verdes, e toda troca por script com `assert` na contagem
 (a inserção do import falhou em silêncio por causa de um `\r`).
+
+## Central de Ajuda desatualizada e produção zerada (2026-09-03)
+
+### A Central de Ajuda parou em 31/08 e ficou 45 commits atrás
+`AjudaPage.tsx` diz na própria abertura que "quando uma tela mudar de
+comportamento, o tutorial correspondente muda JUNTO, no mesmo commit". A regra
+não foi seguida em nenhum passo de 1.1 a 4.6. Último commit que tocou o arquivo:
+`70bc18a` (31/08).
+
+Funcionalidade nova que a ajuda não menciona: estornar venda e detalhe da
+comanda (0127); dividir pagamento e editar preço do item na venda (3.7);
+vários serviços no mesmo agendamento (0120); avaliação pós-atendimento
+(0118/0121); cancelar e remarcar pelo link do próprio horário (0118,
+`/meu-horario/:token`); "Quero atender" (0133); "Conversas" no menu (3.6);
+desfazer comissão paga (3.7); renovar link e editar convite (3.8).
+
+Texto que hoje contradiz a tela: cadastro de produto diz "estoque atual"
+(virou "Estoque inicial" ao criar e "Ajuste de estoque" ao editar, 4.4);
+exportar diz "Esta semana ou Este mês" (são três opções, e o mês segue a tela,
+3.7); desativar barbeiro não avisa que agora mostra os horários futuros (3.8);
+teste grátis passou de 14 para 7 dias e a ajuda não fala de teste.
+
+### Produção zerada a pedido de Saymon
+Para testar a jornada desde o cadastro, foram apagadas as 6 contas (inclusive
+a dele) e as 6 barbearias, com tudo que pendurava nelas. Backup das 485 linhas
+fora do repositório, em `~/Documents/clubcut-backups/` — não entra no git
+porque tem e-mail, telefone e conversa de WhatsApp, e o repositório é público.
+
+Duas lições da execução. A cascata de `salons` não basta: `appointment_services
+.service_id` e `order_items.service_id` referenciam `services` com "no action",
+então apagar `salons` chega em `services` antes de limpar quem aponta para ele
+(23503). O caminho que funciona é das folhas para a raiz, explicitamente. E a
+ordem entre `salons` e `auth.users` importa: `cash_registers.aberto_por`
+referencia `auth.users` com "no action", então salão primeiro, usuário depois.
+
+### Instâncias órfãs na Evolution (fora do repositório)
+Apagar a barbearia no banco não remove a instância no servidor Evolution.
+Ficaram 5 instâncias `salon-<uuid>`, uma delas com status `open`. O script
+`scripts/evolution-remover-instancias.mjs` fecha essa ponta, mas exige
+`EVOLUTION_API_URL` e `EVOLUTION_API_KEY`, que só existem nos secrets da edge
+function e na credencial do n8n. Sem args ele lista e não altera nada.
+Também ficaram 2 clientes no Asaas (`cus_000192278757`, `cus_000194207151`).
+
+### Descrição errada no workflow de avaliação do n8n
+`CRM Salão - Avaliação Pós-Atendimento` (`NsHcELIXrETknywa`) tem descrição
+"pede nota via Evolution API", mas o nó de envio é `n8n-nodes-base.whatsApp`,
+o oficial da Meta — como manda a regra de 01/09 e como o próprio sticky note
+do fluxo explica. É a descrição que está velha, não o fluxo.

@@ -4,6 +4,8 @@ import { useSalon } from '../auth/useSalon'
 import { useRecurso } from '../recursos/useRecurso'
 import { APP_URL } from '../../lib/appUrl'
 import { ErroInline } from '../../components/ErroInline'
+import { supabase } from '../../lib/supabase'
+import { traduzirErroDoBanco } from '../../lib/erroDoBanco'
 
 /**
  * O cartaz do balcão, em PDF.
@@ -25,16 +27,39 @@ import { ErroInline } from '../../components/ErroInline'
  */
 export function QrDoBalcao() {
   const { salonId, salonName } = useSalon()
-  const temAgendaPublica = useRecurso('agenda_publica')
+  const { ativo: temAgendaPublica, carregando, definir } = useRecurso('agenda_publica')
 
   const [gerando, setGerando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  const [mudando, setMudando] = useState(false)
 
-  // Sem o recurso ligado, o link responde 403 — mostrar o cartaz seria oferecer
-  // algo que não funciona.
-  if (!temAgendaPublica || !salonId) return null
+  const link = salonId ? `${APP_URL}/agendar/${salonId}` : ''
 
-  const link = `${APP_URL}/agendar/${salonId}`
+  /**
+   * Ligar e desligar, pela RPC.
+   *
+   * Antes de 04/09/2026 o bloco inteiro sumia com o recurso desligado, e
+   * NENHUM lugar do sistema escrevia em `recursos_do_salao` — o dono não tinha
+   * como ligar, nem como saber que existia. A 0138 fez o recurso nascer ligado
+   * e abriu esta porta única para desligar.
+   */
+  async function alternar(novo: boolean) {
+    if (!salonId) return
+    setMudando(true)
+    setErro(null)
+    const { error } = await supabase.rpc('definir_agenda_publica', {
+      p_salon_id: salonId,
+      p_ativo: novo,
+    })
+    setMudando(false)
+    if (error) {
+      setErro(traduzirErroDoBanco(error, undefined, 'Não foi possível mudar isso agora.'))
+      return
+    }
+    // Otimista de propósito: a RPC já respondeu ok, e reconsultar só para ler
+    // o que acabamos de gravar deixaria o botão parado por mais um ida e volta.
+    definir(novo)
+  }
 
   async function gerarPdf() {
     setGerando(true)
@@ -93,6 +118,10 @@ export function QrDoBalcao() {
     }
   }
 
+  // Sem barbearia escolhida não há link para gerar. O bloco em si continua
+  // aparecendo assim que houver — o que sumia antes era ele inteiro.
+  if (!salonId || carregando) return null
+
   return (
     <div className="rounded-2xl border border-border bg-surface p-5 space-y-3">
       <div className="flex items-center gap-2">
@@ -105,25 +134,60 @@ export function QrDoBalcao() {
         livres de hoje e marca sozinho — sem tirar você da cadeira.
       </p>
 
-      <button
-        onClick={gerarPdf}
-        disabled={gerando}
-        className="flex items-center justify-center gap-2 w-full btn-primary rounded-lg px-3 py-2.5 text-sm font-medium disabled:opacity-50"
-      >
-        <Download size={16} />
-        {gerando ? 'Gerando...' : 'Baixar cartaz em PDF'}
-      </button>
+      {temAgendaPublica ? (
+        <>
+          <button
+            onClick={gerarPdf}
+            disabled={gerando}
+            className="flex items-center justify-center gap-2 w-full btn-primary rounded-lg px-3 py-2.5 text-sm font-medium disabled:opacity-50"
+          >
+            <Download size={16} />
+            {gerando ? 'Gerando...' : 'Baixar cartaz em PDF'}
+          </button>
 
-      <ErroInline>{erro}</ErroInline>
+          <ErroInline>{erro}</ErroInline>
 
-      <div>
-        <div className="text-[11px] text-muted-foreground mb-1">
-          Ou mande este link direto para o cliente:
-        </div>
-        <code className="block bg-surface-2 rounded-lg px-3 py-2 text-xs break-all text-foreground">
-          {link}
-        </code>
-      </div>
+          <div>
+            <div className="text-[11px] text-muted-foreground mb-1">
+              Ou mande este link direto para o cliente:
+            </div>
+            <code className="block bg-surface-2 rounded-lg px-3 py-2 text-xs break-all text-foreground">
+              {link}
+            </code>
+          </div>
+
+          {/* Discreto e à direita, como o "Desconectar" da Conexão (passo 3.9):
+              desligar é raro e não disputa espaço com a ação principal. */}
+          <div className="flex justify-end pt-1">
+            <button
+              onClick={() => alternar(false)}
+              disabled={mudando}
+              className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+            >
+              {mudando ? 'Desativando...' : 'Desativar o QR desta barbearia'}
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* O estado desligado agora se explica em vez de sumir. Sem isto, o
+              dono não descobria que a funcionalidade existe (achado de 04/09). */}
+          <p className="text-sm text-muted-foreground">
+            Está <strong className="text-foreground">desativado</strong>. Quem abrir o link vê um
+            aviso e é mandado para o WhatsApp da barbearia.
+          </p>
+
+          <button
+            onClick={() => alternar(true)}
+            disabled={mudando}
+            className="w-full btn-primary rounded-lg px-3 py-2.5 text-sm font-medium disabled:opacity-50"
+          >
+            {mudando ? 'Ativando...' : 'Ativar o QR do balcão'}
+          </button>
+
+          <ErroInline>{erro}</ErroInline>
+        </>
+      )}
     </div>
   )
 }

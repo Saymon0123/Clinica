@@ -1,10 +1,13 @@
 import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { MarcaClubCut } from '../../components/MarcaClubCut'
 import { invokeFunction } from '../../lib/invokeFunction'
+import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
 import { useAuth } from '../auth/AuthContext'
 import { VERSAO_DOS_TERMOS } from '../../lib/termos'
 import { ErroInline } from '../../components/ErroInline'
+import { ehFalhaDeSessao } from './sessaoPerdida'
 
 /**
  * Segundo passo do cadastro: a pessoa já tem conta e cria a própria barbearia.
@@ -33,6 +36,9 @@ export function CriarBarbeariaPage() {
   const [aceitou, setAceitou] = useState(false)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  // Sessão sumiu no meio do caminho: não é erro de preenchimento, e por isso
+  // não vai para o `erro` — pede uma tela própria, com saída.
+  const [semSessao, setSemSessao] = useState(false)
 
   async function criar(e: FormEvent) {
     e.preventDefault()
@@ -46,6 +52,29 @@ export function CriarBarbeariaPage() {
     if (!aceitou) return setErro('É preciso aceitar os termos de uso para continuar.')
 
     setSalvando(true)
+
+    // O token vai no cabeçalho EXPLICITAMENTE, e não pela conveniência do
+    // `functions.invoke`.
+    //
+    // Em 04/09/2026 esta chamada saiu de um iPhone sem `Authorization` nenhum,
+    // com o React ainda achando que havia sessão — o `RequireAuth` deixou
+    // passar, o formulário apareceu, e a função devolveu 401 "Não autorizado".
+    // O log da requisição prova a ausência do cabeçalho (corpo de 47 bytes, o
+    // mesmo do ramo "sem autorização"). Acontece quando o link do e-mail é
+    // aberto no navegador embutido do app de e-mail: a sessão nasce em memória
+    // e o armazenamento daquele contexto não a devolve na leitura seguinte.
+    //
+    // Ler a sessão aqui faz o caso virar uma tela com saída, em vez de um erro
+    // do servidor que a pessoa não tem como interpretar. O `refreshSession`
+    // fica antes de desistir porque o caso comum é token velho, não ausente.
+    let sessao = (await supabase.auth.getSession()).data.session
+    if (!sessao) sessao = (await supabase.auth.refreshSession()).data.session
+    if (!sessao) {
+      setSalvando(false)
+      setSemSessao(true)
+      return
+    }
+
     const { error } = await invokeFunction('criar-minha-barbearia', {
       body: {
         nome: nome.trim(),
@@ -53,10 +82,18 @@ export function CriarBarbeariaPage() {
         telefone: telefone.trim(),
         versaoTermos: VERSAO_DOS_TERMOS,
       },
+      headers: { Authorization: `Bearer ${sessao.access_token}` },
     })
 
     if (error) {
       setSalvando(false)
+      // As duas frases de 401 da função: sem cabeçalho e com token que o
+      // servidor não aceitou. Nos dois casos entrar de novo resolve, e repetir
+      // a frase do servidor não ajudaria ninguém.
+      if (ehFalhaDeSessao(error)) {
+        setSemSessao(true)
+        return
+      }
       setErro(error)
       return
     }
@@ -64,6 +101,47 @@ export function CriarBarbeariaPage() {
     // Não desliga o "salvando": recarregar troca a tela inteira, e voltar o
     // botão ao normal por um instante daria a impressão de que nada aconteceu.
     await recarregarUnidades()
+  }
+
+  if (semSessao) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-4 py-10">
+        <div className="w-full max-w-sm bg-surface border border-border rounded-2xl shadow-sm p-5 space-y-4">
+          <div className="flex items-center gap-2.5">
+            <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary text-primary-foreground">
+              <MarcaClubCut size={18} />
+            </span>
+            <span className="font-semibold text-foreground">Club Cut</span>
+          </div>
+
+          <div>
+            <h1 className="text-base font-semibold text-foreground">Entre de novo para continuar</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Sua conta está criada e o e-mail confirmado — só a sessão deste navegador se perdeu.
+              Isso acontece quando o link do e-mail abre num navegador diferente do que você está
+              usando agora.
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Entre com o mesmo e-mail e senha e a criação da barbearia continua de onde parou.
+            </p>
+          </div>
+
+          <Link
+            to="/login"
+            className="block w-full text-center btn-primary rounded-lg px-3 py-2.5 text-sm font-medium"
+          >
+            Entrar de novo
+          </Link>
+
+          <button
+            onClick={() => setSemSessao(false)}
+            className="w-full text-xs text-muted-foreground hover:text-foreground"
+          >
+            Voltar ao formulário
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (

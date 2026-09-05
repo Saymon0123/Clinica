@@ -28,9 +28,9 @@ import { Reveal } from './primitivos'
  * até 70%" dos concorrentes por não conseguir provar, prometer dinheiro de
  * indicação sem sistema por trás era a contradição mais cara do site.
  *
- * O que substituiu não foi outra lista: foi dizer que a placa é o prêmio
- * inteiro. A ausência de benefício vira o argumento, do mesmo jeito que a
- * seção "Não vamos prometer 70%" faz com a ausência do número.
+ * O que substituiu não foi outra lista: é o reconhecimento em si. A placa
+ * não vale pelo que vem junto — vale pelo que ela diz na parede, para quem
+ * senta na cadeira e para quem é do ofício.
  *
  * **O critério é o único número que já existe.** Horário confirmado pelo
  * sistema é o que a fatura cobra (`faturas_de_uso`), então a pessoa pode
@@ -115,13 +115,18 @@ export function ReconhecimentoAura() {
             Cada patente é uma placa de verdade, na parede de verdade da sua barbearia.
           </p>
           {/*
-            A frase que substituiu a régua de benefícios. Dizer que não vem
-            nada junto é mais forte do que uma lista morna — e é a única
-            versão verdadeira: hoje a placa é, de fato, o programa inteiro.
+            A frase que substituiu a régua de benefícios.
+
+            A primeira versão dizia "sem desconto, sem brinde, sem benefício
+            escondido" — três negações seguidas, e o leitor soma zero: "então
+            não ganho nada?". Uma placa não vale pelo que vem junto com ela,
+            vale pelo que ela faz na parede, na frente de quem senta na
+            cadeira. Então a frase lidera pelo valor e não pela ausência: o
+            reconhecimento é o benefício, não o consolo por não ter outro.
           */}
           <p className="mt-2 max-w-[62ch] text-[14px] leading-relaxed text-[var(--l-fg-faint)]">
-            A placa é o prêmio inteiro: sem desconto, sem brinde, sem benefício escondido. É o
-            registro, na parede, de que a sua barbearia chegou lá.
+            É reconhecimento, não brinde: quem senta na cadeira vê na parede até onde essa
+            barbearia chegou — e quem é do ofício sabe o que cada patente exigiu.
           </p>
           <p className="mt-2 max-w-[62ch] text-[14px] leading-relaxed text-[var(--l-fg-faint)]">
             Sobe de patente por horário confirmado pelo sistema — o mesmo número que aparece na

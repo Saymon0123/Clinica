@@ -54,11 +54,24 @@ export const PRECO_POR_AGENDAMENTO = 0.75
  * mudar as faixas, mudar aqui junto.
  */
 export const FAIXAS_DE_USO = [
-  { rotulo: '1 a 3 barbeiros', preco: 0.75 },
-  { rotulo: '4 a 7', preco: 0.7 },
-  { rotulo: '8 a 10', preco: 0.65 },
-  { rotulo: '11 ou mais', preco: 0.6 },
+  { rotulo: '1 a 3 barbeiros', ate: 3, preco: 0.75 },
+  { rotulo: '4 a 7', ate: 7, preco: 0.7 },
+  { rotulo: '8 a 10', ate: 10, preco: 0.65 },
+  { rotulo: '11 ou mais', ate: Number.POSITIVE_INFINITY, preco: 0.6 },
 ] as const
+
+/**
+ * O preço por agendamento de uma equipe deste tamanho.
+ *
+ * O `ate` existe para isto: antes, quem precisasse do preço de uma equipe
+ * tinha de interpretar o rótulo ("4 a 7") em texto, e a primeira faixa nova
+ * quebraria o parse sem ninguém perceber. A conta vive aqui, ao lado da
+ * tabela, e não na tela que desenha o gráfico.
+ */
+export function precoPorAgendamento(barbeiros: number): number {
+  const faixa = FAIXAS_DE_USO.find((f) => barbeiros <= f.ate)
+  return (faixa ?? FAIXAS_DE_USO[FAIXAS_DE_USO.length - 1]).preco
+}
 
 /** O piso da escada, para o texto "cai até R$0,60" não repetir número solto. */
 export const PRECO_MINIMO_POR_AGENDAMENTO = FAIXAS_DE_USO[FAIXAS_DE_USO.length - 1].preco

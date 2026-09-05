@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Reveal, RevealGrupo, RevealItem } from './primitivos'
+import { Reveal } from './primitivos'
 
 /**
  * O programa de patentes do Club Cut.
@@ -15,55 +15,28 @@ import { Reveal, RevealGrupo, RevealItem } from './primitivos'
  * destaque do título, `landing-label` nas etiquetas, mesma borda de cartão
  * usada no resto da página.
  *
- * **Fica entre os depoimentos e "como começa" de propósito.** É a última
- * peça antes do CTA de criar conta: depois de ver quem já usa (a faixa) e o
- * que essas pessoas dizem (os depoimentos), esta seção mostra o que a
- * barbearia ganha por continuar — antes do "como começa" levar a pessoa
- * para a ação.
+ * **Fica depois do preço.** É benefício de quem JÁ decidiu ("e ainda tem
+ * isso"), e no meio do funil era a seção mais longa interrompendo o corredor
+ * prova -> preço (auditoria 2026-08-28). Depois da poda de 02/09 ela também
+ * é curta, o que a torna um respiro antes do FAQ em vez de um desvio.
  *
- * **A cor dourada da patente General não é um token da paleta.** É a única
- * exceção de cor na página inteira, e existe porque a moldura dourada é o
- * objeto físico de verdade — a mesma lógica do ouro em qualquer sistema de
- * medalhas: reservado para o topo, e só para ele.
+ * **A régua de benefícios saiu em 02/09.** Ela listava, por patente, um
+ * relatório mensal no WhatsApp, uma revisão de agenda trimestral, acesso
+ * antecipado a automações, divulgação nas redes e comissão por indicação —
+ * e NADA disso existia: nem tabela, nem coluna, nem rotina no n8n, nem
+ * controle de pagamento para a comissão. Numa página que recusa o "reduza
+ * até 70%" dos concorrentes por não conseguir provar, prometer dinheiro de
+ * indicação sem sistema por trás era a contradição mais cara do site.
  *
- * **Sem link "veja como funciona".** O mockup original tinha um `href="#"`
- * que não levava a lugar nenhum. Um link morto é pior que nenhum link — a
- * seção termina na régua de benefícios e deixa o CTA para "como começa",
- * que já vem na sequência.
+ * O que substituiu não foi outra lista: é o reconhecimento em si. A placa
+ * não vale pelo que vem junto — vale pelo que ela diz na parede, para quem
+ * senta na cadeira e para quem é do ofício.
  *
- * **Cada patente soma, não substitui.** A régua listava só o benefício
- * NOVO de cada patente, sem dizer se ele troca o da anterior ou se acumula.
- * O rótulo `+` antes de cada benefício e a frase de abertura resolvem isso:
- * virar General significa ter o que o Capitão tem, mais o que é só do
- * General — nenhuma barbearia perde o relatório mensal ao subir de patente.
+ * **O critério é o único número que já existe.** Horário confirmado pelo
+ * sistema é o que a fatura cobra (`faturas_de_uso`), então a pessoa pode
+ * conferir a própria régua sem depender da nossa palavra. Faixas por
+ * patente NÃO entram na página enquanto não existirem no banco.
  */
-const PATENTES = [
-  {
-    nome: 'Recruta',
-    cor: 'text-[var(--l-fg-faint)]',
-    beneficio:
-      'Todo mês, no seu WhatsApp: quanto entrou, quem voltou e que horário ficou parado.',
-  },
-  {
-    nome: 'Sargento',
-    cor: 'text-[var(--l-fg-mute)]',
-    beneficio:
-      'De 3 em 3 meses, o time do Club Cut olha sua agenda com você e mostra onde está vazando dinheiro.',
-  },
-  {
-    nome: 'Capitão',
-    cor: 'text-[var(--l-accent-ink)]',
-    beneficio:
-      'Você testa as automações novas antes de todo mundo — e o que você pedir entra na frente da fila.',
-  },
-  {
-    nome: 'General',
-    // Única cor fora da paleta da página — ver nota no topo do arquivo.
-    cor: 'text-[#d4af5a]',
-    beneficio:
-      'Conversa direta com os fundadores de 3 em 3 meses, sua barbearia nas nossas redes, e comissão por cada barbearia que você indicar.',
-  },
-] as const
 
 /**
  * A foto das quatro placas, aparecendo em vez de pipocando.
@@ -141,47 +114,25 @@ export function ReconhecimentoAura() {
             </strong>{' '}
             Cada patente é uma placa de verdade, na parede de verdade da sua barbearia.
           </p>
-          <p className="mt-2 text-[14px] leading-relaxed text-[var(--l-fg-faint)]">
-            E os benefícios sobem junto: cada patente nova soma aos benefícios das anteriores —
-            nada do que veio antes some.
+          {/*
+            A frase que substituiu a régua de benefícios.
+
+            A primeira versão dizia "sem desconto, sem brinde, sem benefício
+            escondido" — três negações seguidas, e o leitor soma zero: "então
+            não ganho nada?". Uma placa não vale pelo que vem junto com ela,
+            vale pelo que ela faz na parede, na frente de quem senta na
+            cadeira. Então a frase lidera pelo valor e não pela ausência: o
+            reconhecimento é o benefício, não o consolo por não ter outro.
+          */}
+          <p className="mt-2 max-w-[62ch] text-[14px] leading-relaxed text-[var(--l-fg-faint)]">
+            É reconhecimento, não brinde: quem senta na cadeira vê na parede até onde essa
+            barbearia chegou — e quem é do ofício sabe o que cada patente exigiu.
+          </p>
+          <p className="mt-2 max-w-[62ch] text-[14px] leading-relaxed text-[var(--l-fg-faint)]">
+            Sobe de patente por horário confirmado pelo sistema — o mesmo número que aparece na
+            sua fatura.
           </p>
         </Reveal>
-
-        {/*
-          Grade com "gap preenchido": o container pinta a cor da linha e cada
-          célula cobre por cima com o próprio fundo, deixando só 1px de vão
-          à mostra. Em vez de bordas condicionais por índice — que quebram
-          toda vez que o número de colunas muda de 1 para 2 para 4 conforme
-          a largura da tela — o vão sozinho já desenha a divisória certa em
-          qualquer contagem de colunas, sem lógica nenhuma.
-        */}
-        <RevealGrupo
-          className="mt-9 grid grid-cols-1 gap-px overflow-hidden rounded-[var(--r-md)] border border-[var(--l-line)] bg-[var(--l-line)] sm:grid-cols-2 lg:grid-cols-4"
-          intervalo={0.08}
-        >
-          {PATENTES.map((p) => (
-            <RevealItem key={p.nome}>
-              {/*
-                Só a cor de fundo muda no hover, sem deslocamento: as células
-                vivem numa grade de `gap-px` onde o vão é o próprio fundo do
-                container fazendo as vezes de divisória. Qualquer `translate`
-                aqui descolaria a célula e mostraria uma tira da linha por
-                baixo — o efeito pareceria defeito, não resposta.
-              */}
-              <div className="h-full bg-[var(--l-bg)] p-6 transition-colors duration-200 ease-[var(--ease-out)] hover:bg-[var(--l-bg-lift)]">
-                <div className={`landing-label mb-3.5 ${p.cor}`}>{p.nome}</div>
-                <p className="text-[14px] leading-relaxed text-[var(--l-fg-mute)]">
-                  {/* O "+" é o que diz "soma", não "troca" — sem ele a régua lê como
-                      quatro planos concorrentes, e não como uma escada. */}
-                  <span aria-hidden="true" className={`mr-1 font-semibold ${p.cor}`}>
-                    +
-                  </span>
-                  {p.beneficio}
-                </p>
-              </div>
-            </RevealItem>
-          ))}
-        </RevealGrupo>
       </div>
     </section>
   )

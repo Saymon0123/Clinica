@@ -137,29 +137,13 @@ export function Comparativo() {
       </div>
 
       <div className="border-t border-[var(--l-line)] px-5 py-5 sm:px-6">
-        {/* O exemplo com conta feita: R$164,50 é o preço público de um dos
-            sistemas mais conhecidos para 3 profissionais (fonte no topo do
-            arquivo). 120 × 0,75 = 90. */}
-        <p className="max-w-[62ch] text-[14px] leading-relaxed text-[var(--l-fg-mute)]">
-          Na prática: uma barbearia com 3 barbeiros e 120 agendamentos no mês paga{' '}
-          {/* `whitespace-nowrap` nos valores: sem ele o parágrafo quebrava a
-              linha entre o "R$" e o número — e um preço partido ao meio, em
-              negrito, lia como texto riscado. Dinheiro não quebra de linha. */}
-          <span className="landing-num whitespace-nowrap text-[var(--l-fg)]">R$ 164,50</span> num
-          sistema típico por mensalidade — e{' '}
-          <span className="landing-num whitespace-nowrap text-[var(--l-accent-ink)]">
-            {moedaComCentavos(120 * PRECO_POR_AGENDAMENTO).replace(',00', '')}
-          </span>{' '}
-          aqui.
-        </p>
         {/* A escada inteira, aberta: esconder as faixas e mostrar só o menor
             preço seria o "até 70%" dos concorrentes ao contrário. */}
-        <p className="mt-3 max-w-[62ch] text-[13px] leading-relaxed text-[var(--l-fg-faint)]">
+        <p className="max-w-[62ch] text-[13px] leading-relaxed text-[var(--l-fg-faint)]">
           As faixas: {FAIXAS_DE_USO.map((f) => `${f.rotulo} · ${moedaComCentavos(f.preco)}`).join(
             '  —  ',
           )}
-          . Preço do sistema por mensalidade levantado da página pública de preços de um dos mais
-          conhecidos da categoria, reconferido em setembro de 2026.
+          .
         </p>
       </div>
     </div>

@@ -12,6 +12,15 @@ import { FaqAccordion } from './landing/FaqAccordion'
 import { Calculadora } from './landing/Calculadora'
 import { CalculadoraPreco } from './landing/CalculadoraPreco'
 import { Comparativo } from './landing/Comparativo'
+import { GraficoPreco } from './landing/GraficoPreco'
+import {
+  BalaoMini,
+  CaixaMini,
+  CampoMini,
+  LembreteMini,
+  QrMini,
+  ServicoMini,
+} from './landing/MicroVisuais'
 import { CtaFixo } from './landing/CtaFixo'
 import { WhatsAppPopup } from './landing/WhatsAppPopup'
 import { Cta, Reveal, RevealGrupo, RevealItem } from './landing/primitivos'
@@ -290,28 +299,30 @@ function Hero() {
 
 /* -------------------------------------------------------------------------- */
 
+/**
+ * As três cenas, cada uma com o horário na frente.
+ *
+ * Eram três frases longas alternadas à esquerda e à direita — 70 palavras
+ * sem nenhum ponto de descanso para o olho. O horário é o que a cena tem de
+ * mais concreto, e número grande é imagem: quem passa o olho lê "15h20" e
+ * "22h" antes de ler qualquer palavra, e já sabe do que a página está
+ * falando. As frases encolheram porque o marcador passou a dizer o quando.
+ */
 const DORES = [
-  'Está com a máquina na mão e o celular toca. Ou você para o corte, ou o cliente espera, e às vezes desiste.',
-  'Marcou alguém às 15h. Às 15h20 a cadeira continua vazia, e aquele horário não volta.',
-  'Alguém perguntou o preço da barba às 22h. Você respondeu no dia seguinte, e ele já tinha cortado em outro lugar.',
+  {
+    quando: 'agora',
+    cena: 'Máquina na mão, o celular toca. Ou você para o corte, ou o cliente espera.',
+  },
+  {
+    quando: '15h20',
+    cena: 'Marcou às 15h. A cadeira continua vazia, e aquele horário não volta.',
+  },
+  {
+    quando: '22h',
+    cena: 'Perguntaram o preço da barba. Você respondeu no outro dia; ele já tinha cortado em outro lugar.',
+  },
 ]
 
-/**
- * As três cenas do dia ruim.
- *
- * É a melhor copy da página, e estava com o tratamento mais fraco: cinza
- * apagado, 22px, encostada na margem esquerda com metade da tela vazia à
- * direita. Passou a ser lida como o que é, o momento em que o dono se
- * reconhece, e não como uma lista de apoio.
- *
- * **A numeração saiu.** As três cenas são paralelas, não uma sequência: o
- * celular tocando durante o corte não vem antes da cadeira vazia das 15h20.
- * Numerar ali era enfeite vestido de estrutura, e gastava o significado que o
- * número tem em "Como começa", onde a ordem é informação de verdade.
- *
- * A alternância de lado ocupa a metade direita que sobrava e mantém as três no
- * mesmo peso, sem sugerir ordem, que é o que uma escada de recuo faria.
- */
 function Dor() {
   return (
     <section className={SECAO_BRANCA}>
@@ -320,16 +331,22 @@ function Dor() {
           <h2 className={TITULO_NARRATIVA}>Não é falta de <em className="landing-serif">jeito</em>. É que suas mãos estavam ocupadas.</h2>
         </Reveal>
 
-        <RevealGrupo className="mt-12 flex flex-col gap-10 sm:gap-14" intervalo={0.11}>
-          {DORES.map((d, i) => (
-            <RevealItem key={d}>
-              <p
-                className={`max-w-[30ch] text-[clamp(1.3rem,2.9vw,2rem)] font-medium leading-[1.32] tracking-[-0.02em] text-[var(--l-fg)] ${
-                  i % 2 === 1 ? 'sm:ml-auto sm:text-right' : ''
-                }`}
-              >
-                {d}
-              </p>
+        <RevealGrupo className="mt-12 flex flex-col gap-9 sm:gap-11" intervalo={0.11}>
+          {DORES.map((d) => (
+            <RevealItem key={d.quando}>
+              {/*
+                O horário à esquerda, largo o bastante para os três ficarem
+                alinhados entre si: sem largura fixa, "agora" empurra a frase
+                para um lugar e "22h" para outro, e a coluna deixa de existir.
+              */}
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-baseline sm:gap-8">
+                <span className="landing-num shrink-0 text-[clamp(2rem,5vw,3.25rem)] leading-none tracking-[-0.03em] text-[var(--l-accent-ink)] sm:w-[3.6em]">
+                  {d.quando}
+                </span>
+                <p className="max-w-[34ch] text-[clamp(1.15rem,2.3vw,1.6rem)] font-medium leading-[1.34] tracking-[-0.015em] text-[var(--l-fg)]">
+                  {d.cena}
+                </p>
+              </div>
             </RevealItem>
           ))}
         </RevealGrupo>
@@ -346,22 +363,23 @@ const RECURSOS = [
     icone: MessageCircle,
     titulo: 'Atende no WhatsApp, sozinho',
     texto:
-      'Responde preço, horário e o que a barbearia faz. Marca, remarca e cancela. Às 23h40 de um domingo, ele responde igual.',
+      'Responde preço e horário, marca, remarca e cancela. Às 23h40 de um domingo, ele responde igual.',
     span: 'md:col-span-2',
+    visual: BalaoMini,
   },
   {
     icone: Smartphone,
     titulo: 'Você sabe da falta às 14h50',
-    texto:
-      'Uma hora antes, o lembrete pergunta se ele vem. Dez minutos antes, um "está a caminho?". Dá tempo de chamar outro.',
+    texto: 'Uma hora antes, o lembrete pergunta se ele vem. Dá tempo de chamar outro.',
     span: '',
+    visual: LembreteMini,
   },
   {
     icone: Wallet,
     titulo: 'O dinheiro do dia, fechado',
-    texto:
-      'Comanda, caixa e a comissão de cada barbeiro calculada sozinha. Você fecha o dia sabendo quanto entrou e quanto é de cada um.',
+    texto: 'Comanda, caixa e a comissão de cada barbeiro, calculada sozinha.',
     span: 'md:col-span-3',
+    visual: CaixaMini,
   },
 ]
 
@@ -399,6 +417,12 @@ function Recursos() {
                 <p className="mt-3 max-w-[46ch] text-[15px] leading-relaxed text-[var(--l-fg-mute)]">
                   {f.texto}
                 </p>
+                {/* A peça pequena mostra o que a frase acabou de descrever.
+                    `max-w` para ela não esticar no card largo e virar o
+                    assunto do cartão — ela ilustra, não narra. */}
+                <div className="mt-6 max-w-[300px]">
+                  <f.visual />
+                </div>
               </div>
             </RevealItem>
           ))}
@@ -530,7 +554,17 @@ function ComoCobramos() {
           </p>
         </Reveal>
 
+        {/*
+          O gráfico vem ANTES da tabela: ele entrega o argumento em um
+          segundo, e quem quiser conferir linha a linha continua com a tabela
+          logo abaixo. Na ordem inversa, a tabela cobra leitura de quem ainda
+          não sabe por que deveria ler.
+        */}
         <Reveal delay={0.1} className="mt-11">
+          <GraficoPreco />
+        </Reveal>
+
+        <Reveal delay={0.14} className="mt-10">
           <Comparativo />
         </Reveal>
       </div>
@@ -541,15 +575,21 @@ function ComoCobramos() {
 /* -------------------------------------------------------------------------- */
 
 const PASSOS = [
-  ['Crie sua conta', 'E-mail e senha. Você confirma pelo e-mail e já entra.'],
-  [
-    'Conecte seu WhatsApp',
-    'Você lê um QR code com o celular da barbearia, o mesmo número que seus clientes já usam. Não precisa de número novo.',
-  ],
-  [
-    'Ajuste o que não servir',
-    'A barbearia já vem com horário e serviços preenchidos. Você muda preço, duração e horário em dois minutos.',
-  ],
+  {
+    titulo: 'Crie sua conta',
+    texto: 'E-mail e senha. Confirma pelo e-mail e já entra.',
+    visual: CampoMini,
+  },
+  {
+    titulo: 'Conecte seu WhatsApp',
+    texto: 'Leia o código com o celular da barbearia — o mesmo número que seus clientes já usam.',
+    visual: QrMini,
+  },
+  {
+    titulo: 'Ajuste o que não servir',
+    texto: 'A barbearia já vem com horário e serviços preenchidos. Você muda em dois minutos.',
+    visual: ServicoMini,
+  },
 ]
 
 /**
@@ -591,13 +631,12 @@ function ComoComeca() {
             style={{ scaleY: semMovimento ? 1 : preenchimento }}
           />
 
-          {PASSOS.map(([titulo, texto], i) => (
+          {PASSOS.map((passo, i) => (
             <PassoNaLinha
-              key={titulo}
+              key={passo.titulo}
               indice={i}
               total={PASSOS.length}
-              titulo={titulo}
-              texto={texto}
+              passo={passo}
               progresso={preenchimento}
               semMovimento={!!semMovimento}
             />
@@ -611,15 +650,13 @@ function ComoComeca() {
 function PassoNaLinha({
   indice,
   total,
-  titulo,
-  texto,
+  passo,
   progresso,
   semMovimento,
 }: {
   indice: number
   total: number
-  titulo: string
-  texto: string
+  passo: (typeof PASSOS)[number]
   progresso: ReturnType<typeof useSpring>
   semMovimento: boolean
 }) {
@@ -640,13 +677,23 @@ function PassoNaLinha({
           {indice + 1}
         </motion.span>
       </span>
-      <div className="pt-1.5">
-        <div className="text-[19px] font-semibold tracking-[-0.015em] text-[var(--l-fg)]">
-          {titulo}
+      {/*
+        Texto e peça lado a lado a partir de `sm`: empilhados, os três visuais
+        empurram o passo seguinte para fora da tela e o trilho vira um rolo
+        comprido. Lado a lado, o passo continua cabendo de uma olhada só.
+      */}
+      <div className="flex flex-1 flex-col gap-4 pt-1.5 sm:flex-row sm:items-start sm:gap-7">
+        <div className="flex-1">
+          <div className="text-[19px] font-semibold tracking-[-0.015em] text-[var(--l-fg)]">
+            {passo.titulo}
+          </div>
+          <p className="mt-2.5 max-w-[42ch] text-[15px] leading-relaxed text-[var(--l-fg-mute)]">
+            {passo.texto}
+          </p>
         </div>
-        <p className="mt-2.5 max-w-[46ch] text-[15px] leading-relaxed text-[var(--l-fg-mute)]">
-          {texto}
-        </p>
+        <div className="w-full shrink-0 sm:w-[188px]">
+          <passo.visual />
+        </div>
       </div>
     </li>
   )
@@ -710,13 +757,22 @@ function SemPromessa() {
  * completo é mais simples e mais honesto do que manter uma divisão que só
  * fazia sentido com mensalidade.
  */
+/**
+ * O que está incluso, em chip.
+ *
+ * Eram seis frases inteiras numa lista de duas colunas — 46 palavras que
+ * ninguém lê linha a linha nesse ponto da página, porque a pessoa já
+ * decidiu que quer saber o preço. Em chip, a mesma informação se lê de
+ * relance: o que importa aqui é a QUANTIDADE de coisas inclusas, não a
+ * redação de cada uma. O detalhe de cada recurso já está lá em cima.
+ */
 const RECURSOS_INCLUSOS = [
-  'Ele atende no WhatsApp que a barbearia já tem',
-  'A agenda e quem já cortou com você',
-  'O caixa do dia e a comissão de cada um',
-  'Seus serviços, seus preços, sua duração',
-  'Lembrete 1h antes, perguntando se o cliente confirma',
-  'Confirmação 10 min antes, para você saber do atraso antes da cadeira esfriar',
+  'WhatsApp que você já usa',
+  'Agenda e clientes',
+  'Caixa e comissão',
+  'Seus serviços e preços',
+  'Lembrete 1h antes',
+  'Confirmação 10 min antes',
 ]
 
 function Preco() {
@@ -763,14 +819,17 @@ function Preco() {
               Equipe maior paga menos: o preço cai por faixa, até R$ 0,60 por agendamento.
             </p>
 
-            <ul className="mt-9 grid gap-3.5 sm:grid-cols-2">
+            <ul className="mt-9 flex flex-wrap gap-2">
               {RECURSOS_INCLUSOS.map((i) => (
-                <li key={i} className="flex gap-3 text-[15px] text-[var(--l-fg-mute)]">
+                <li
+                  key={i}
+                  className="flex items-center gap-2 rounded-full border border-[var(--l-line)] bg-[var(--l-bg)] py-2 pl-2.5 pr-4 text-[14px] text-[var(--l-fg-mute)]"
+                >
                   <Check
-                    size={17}
-                    strokeWidth={2}
+                    size={15}
+                    strokeWidth={2.5}
                     aria-hidden="true"
-                    className="mt-0.5 shrink-0 text-[var(--l-accent-ink)]"
+                    className="shrink-0 text-[var(--l-accent-ink)]"
                   />
                   {i}
                 </li>

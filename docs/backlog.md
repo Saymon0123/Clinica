@@ -2273,3 +2273,34 @@ elas em mãos, três achados mudam:
 - **D2 — SEGUE ABERTO, por limite de escopo:** a API key do Asaas só responde
   `/v3/finance/balance` (customers/subscriptions/payments = 401). Não consigo inventariar
   recorrências órfãs; é no painel. Saldo = 0 é indício fraco, não prova.
+
+### Agente de WhatsApp vivo de novo — a causa era o secret N8N_WEBHOOK_URL (2026-09-06)
+Tier 0 / item 1 fechado. O agente estava mudo desde 23/08 porque o webhook
+carimbado na instância Evolution apontava para o **host da própria Evolution**
+(`https://evolution-api-8lfe...`), não para o n8n.
+
+- **Causa-raiz:** o secret `N8N_WEBHOOK_URL` (edge `whatsapp`) estava com valor
+  errado — a URL da Evolution. A edge carimba fielmente o que está no secret.
+  **NÃO** era bug de código, **NÃO** era a questão do UUID que a auditoria (B1) e
+  eu supusemos — corrige as duas hipóteses. Provado no teste-conserto: o
+  `/webhook/set` da Evolution 2.3.7 só aceita o formato **aninhado**
+  `{"webhook":{...}}` (o formato "topo" dá HTTP 400), e aninhado é exatamente o
+  que a edge manda ([whatsapp/index.ts:141-149](supabase/functions/whatsapp/index.ts)).
+- **Conserto durável:** o dono corrigiu o secret para
+  `https://n8n-m5uf.srv1833354.hstgr.cloud/webhook/salao-atendimento`. Antes disso
+  eu havia remendado a instância via API para poder testar.
+- **Prova ponta a ponta** (execução 18761, webhook, success, 23s): mensagem do
+  cliente gravada (`in`/`cliente`), agente gpt-4o-mini respondeu com os **preços do
+  catálogo real** (validação anti-alucinação funcionando), resposta gravada
+  (`out`/`agente`) e enviada pela Evolution ao número de teste; **o dono confirmou
+  o recebimento** no celular. `whatsapp_messages` tem o par in/out.
+- A prova do re-stamp (secret novo aplicado num `connect`) fica para o próximo
+  reconectar; até lá a instância está correta pelo remendo. O alerta de "zero
+  mensagens" (Tier 2) é o que protege contra um re-break silencioso.
+
+**FOLLOW-UPS abertos:**
+- `webhookBase64: true` **não é honrado** pela Evolution 2.3.7 no `/webhook/set`
+  (fica `false` mesmo com HTTP 201). Áudio e imagem chegam vazios ao agente; **só
+  texto funciona**. Investigar (nome do campo na 2.3.7 ou env global tipo
+  `WEBHOOK_BASE64`).
+- O webhook do agente segue **sem autenticação** (B2 = Tier 1 / item 4).

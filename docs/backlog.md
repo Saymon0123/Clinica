@@ -1964,10 +1964,20 @@ guardando `pacote_id` em `order_items` (migration) — o mesmo defeito do
 painel da Conexão. O n8n não lê nenhuma das três; se um dia o agente precisar
 dizer "quantos agendamentos este mês", ler da view, não recontar.
 
-### Senha mínima no painel do Supabase Auth (fora do repositório)
-O CRM exige 8 em todas as telas (`lib/senha.ts`). O mínimo configurado no
-Auth do Supabase precisa ser 8 também, senão a API aceita o que a tela
-recusa. Painel → Authentication → Providers → Email → Minimum password length.
+### ~~Senha mínima no painel do Supabase Auth~~ — RESOLVIDO em 04/09/2026
+O CRM exige 8 em todas as telas (`lib/senha.ts`). O mínimo do Auth ficou em 8
+também; antes a API aceitava o que a tela recusava. Ajustado pelo dono no
+painel (Authentication → Providers → Email → Minimum password length).
+
+Foi tratado como urgente, e não como faxina, por um motivo que separa este
+item dos outros dois do mesmo bloco: **ele piorava com o tempo.** Instância
+órfã e cliente no Asaas custam o mesmo para limpar hoje ou daqui a meio ano;
+o mínimo de senha, não — toda conta criada enquanto ele estava em 6 ficava
+com senha fraca permitida, e subir o ajuste depois não corrige quem já entrou.
+
+Não há ferramenta MCP que leia configuração de Auth do Supabase, então isto
+está registrado pela palavra do dono, não por verificação. O jeito de provar
+é tentar criar conta com 7 caracteres e ver a API recusar.
 
 ### Mensagens fixas que ainda não passam pelo tradutor
 O 4.5 converteu agenda, equipe, configurações, meta e fechamento. Ficaram com
@@ -2169,3 +2179,97 @@ o `index.html` referencia dá **falso negativo**. É preciso seguir o grafo de
 imports de forma transitiva — 42 chunks na primeira camada contra 96 no total.
 O valor apareceu em `appUrl-<hash>.js` como
 ``var e = `https://clubcut.space`.replace(/\/+$/,``)``.
+
+### Avaliação geral das 8 peças (2026-09-04) — leitura, nada alterado
+Varredura peça por peça a pedido do dono. Estado medido, com o que não deu
+para verificar marcado como tal. Vira os dois relatórios (raio-X e aula).
+
+**Supabase** — 138 migrations, 45 tabelas (todas com RLS ativo, 63 policies),
+39 views, 236 funções public + 8 private, 20 triggers, 7 cron jobs ativos,
+12 edge functions, 14 testes pgTAP. Advisor de segurança: 0 ERROR, ~30 WARN
+(SECURITY DEFINER exposto — esperado, cada uma checa dono por dentro),
+12 INFO (RLS sem policy — tabelas de service_role, falham fechado).
+Performance: 124 avisos, todos INFO/WARN (95 multiple_permissive_policies,
+19 unindexed_foreign_keys, 10 unused_index) — dívida de escala, não bug.
+Leaked password protection: DESLIGADO (é um clique).
+
+**Meta / WABA** — WABA 975811062135581 "Club Cut": account_review APPROVED,
+business_verification **verified**, ownership SELF. Número +55 41 8475-4172:
+quality GREEN, code VERIFIED, throughput STANDARD. App 1054189290929803
+inscrito no webhook da WABA. **name_status: DECLINED** — o nome de exibição
+"Club Cut" foi recusado pela Meta; reenviar. **Templates: 1 na Meta
+(hello_world) contra 25 rascunho no Postgres — os 25 nunca foram submetidos.**
+messaging_limit_tier e config de webhook do app não são legíveis com
+whatsapp_business_management (o segundo pede App Secret); ficam sem verificar.
+
+**VPS Hostinger** — KVM 2 (2 vCPU, 8 GB, 100 GB), Ubuntu 24 + Docker +
+Traefik. 3 projetos: evolution-api-8lfe (api+postgres+redis), n8n-m5uf,
+traefik. **firewall_group_id: null e lista de firewalls vazia.** Evolution
+(:32770) e n8n (:32769) publicados em 0.0.0.0 — contornam o Traefik, expostos
+por HTTP puro sem firewall. É o achado de segurança mais concreto.
+
+**n8n** — 13 workflows, 12 ativos. 8.819 execuções no total; as 80 mais
+recentes **todas success**, zero falha. Feedback dos donos e lembretes rodam
+de 5 em 5 min; avaliação e uso a cada 30 min.
+
+**Asaas** — edge `asaas` e `asaas-webhook` com fallback
+`https://api-sandbox.asaas.com`. Se o secret ASAAS_BASE_URL não estiver
+sobrescrevendo para produção, a cobrança está em SANDBOX. **Não verificável
+por aqui** (não há MCP para secret do Supabase); confirmar no painel. Webhook
+protegido por token no header `asaas-access-token`.
+
+**Vercel** — projeto clubcut, framework vite, domínio clubcut.space (apex
+canônico), VITE_APP_URL confirmado. Plano Hobby.
+
+**Evolution** — sobe (3 contêineres, up 3 dias). Não-oficial por desenho
+(0115): conversa do cliente sai pelo número real da barbearia; plataforma
+manda lembrete/reativação/aviso pelo número central na Cloud API.
+
+**CRM** — React/Vite, 22 features, 24 rotas, 30 arquivos de teste, ~31k
+linhas. Fala com o backend por 12 RPC e 3 edge (admin-create-salon,
+criar-minha-barbearia, whatsapp).
+
+**Integração ponta a ponta — o furo:** a base de mensageria está saudável
+(número GREEN, webhook assinado por HMAC, trava de template no banco), mas
+**as automações iniciadas pela empresa estão mudas** porque os 25 templates
+seguem em rascunho na Meta. O n8n roda verde só porque as views devolvem
+vazio — falha fechado, por desenho. Submeter os templates destrava a cadeia.
+
+### Backup do Supabase automatizado e cifrado (Tier 0 / item 2) — FEITO em 2026-09-05
+Decisão do dono: pg_dump agendado em vez de plano pago. Host = **GitHub Actions**,
+não o laptop (fica desligado, ambiente frágil) nem o VPS (o SPOF sem firewall).
+
+- Repo **privado** `Saymon0123/clubcut-backups`, workflow `.github/workflows/backup.yml`:
+  diário 06:00 UTC + manual. `pg_dump 17 -Fc` → conta salons/subscriptions/
+  whatsapp_templates/services na origem → **restaura num Postgres 17 de serviço e
+  confere as contagens** (não bateu = nada commitado; o GitHub e-mail o dono) →
+  cifra AES256 (gpg) → commita `dumps/clubcut-*.dump.gpg`, mantém os últimos 30.
+- Segredos no repo: `SUPABASE_DB_URL` (Session pooler, :5432) e `BACKUP_PASSPHRASE`.
+  A passphrase (64 hex) está em `C:\Users\saymon\.clubcut\backup-passphrase.txt`
+  e no Google Password Manager. **Perdê-la = perder os backups** (sem recuperação).
+- 1º run (34005123312) verde: dump 997.747 bytes, contagens 1/1/25/4 ok, cifrado
+  318.214 bytes, commitado. Há também um dump manual verificado em
+  `C:\Users\saymon\Documents\clubcut-backups\` (fora do repo).
+- Cobre o banco Supabase inteiro (esquema, dados, funções, RLS, auth.users). **NÃO**
+  cobre n8n/Evolution (VPS, backup semanal próprio) nem config de painéis.
+- Ferramenta: a máquina não tinha pg_dump nem daemon do Docker; instalei `pg_dump 17`
+  no WSL rodando como **root** e com `Acquire::ForceIPv4=true` — o `sudo` pedia senha
+  sem TTY e o mirror do Ubuntu resolvia só IPv6, os dois travavam o apt.
+
+### Correções à auditoria, verificadas com as chaves que ela não tinha (2026-09-05)
+A auditoria dos 9 docs foi somente-leitura, sem chaves de Meta/Evolution/Asaas. Com
+elas em mãos, três achados mudam:
+
+- **B1/A1 — REFUTADO.** A auditoria supôs que o webhook do agente apontava para URL
+  errada (real com UUID vs doc sem UUID). Medido: a URL **viva registrada** no n8n é a
+  **sem UUID** (`/webhook/salao-atendimento` → "not registered for GET, did you mean
+  POST") — exatamente a da doc; a **com UUID** do triggerInfo responde "not registered",
+  igual a um path inexistente. Se o secret seguiu a doc, aponta **certo**. O "zero
+  tráfego desde 23/08" é mais provável ser instância desconectada. Falta só ler o webhook
+  carimbado na instância (após parear o QR) para fechar de vez.
+- **B2 — confirmado da fonte:** o webhook do agente não tem autenticação nenhuma.
+- **A7 — REFUTADO.** `fetchInstances` na Evolution = **0 instâncias**. Não há órfãs no
+  servidor (a auditoria supôs que provavelmente havia).
+- **D2 — SEGUE ABERTO, por limite de escopo:** a API key do Asaas só responde
+  `/v3/finance/balance` (customers/subscriptions/payments = 401). Não consigo inventariar
+  recorrências órfãs; é no painel. Saldo = 0 é indício fraco, não prova.

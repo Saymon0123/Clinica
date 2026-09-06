@@ -2406,3 +2406,19 @@ Foram **3 bugs** (2 pre-existentes, so expostos quando a midia passou a chegar):
 
 Detalhe em [[base64-midia-evolution]] na memoria. **Aberto:** caminho Cloud/Meta
 de midia nao testado (sem salao cloud); fluxos n8n sem export versionado (E4).
+
+### Firewall da VPS (E2 / Tier 1): FEITO (2026-09-06)
+A VPS `1833354` (srv1833354, Ubuntu 24.04 Docker+Traefik) estava **sem firewall**.
+Antes, so 22/80/443 expostas (Traefik concentra tudo; bancos e portas de servico
+ja fechados). Criado o firewall Hostinger **`clubcut-vps` (id 357132)**, default
+**DROP**, com ACCEPT em **TCP 22 (SSH), 80, 443 e ICMP** (source any). Ganho: se
+subir um Postgres/Redis/n8n numa porta exposta por engano, o firewall barra.
+
+Pos-ativacao (aplicado pelo Saymon no painel — a ativacao via API foi bloqueada
+pelo classificador do Claude Code por ser acao de risco): confirmado
+`firewall_group_id=357132` na VM; 22/80/443 seguem abertas; webhook do agente
+403; Evolution e n8n 200; ping ~14ms. Nada do que funcionava caiu.
+
+SSH ficou **aberto a qualquer origem** (decisao do Saymon; zero risco de lockout).
+Detalhes e como abrir/desativar porta em [[firewall-vps-hostinger]]. **Aberto:**
+restringir SSH a IP fixo no futuro, se quiser.

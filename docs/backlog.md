@@ -2422,3 +2422,18 @@ pelo classificador do Claude Code por ser acao de risco): confirmado
 SSH ficou **aberto a qualquer origem** (decisao do Saymon; zero risco de lockout).
 Detalhes e como abrir/desativar porta em [[firewall-vps-hostinger]]. **Aberto:**
 restringir SSH a IP fixo no futuro, se quiser.
+
+### E4 (Tier 5) — workflows do n8n versionados: FEITO (2026-09-06)
+Os 15 workflows do n8n so existiam no n8n (sem backup em codigo). Exportados como
+JSON (a versao **publicada** de cada) para o repo **PRIVADO `clubcut-backups`**,
+pasta `n8n-workflows/` — NAO no Clinica (publico): exports carregam hosts internos
+e risco de PII. Verificado por subagente: **sem segredo hardcoded, sem PII, sem
+pinData**; auth toda por referencia de credencial (nao valores). E um **snapshot
+manual** — reexportar via `get_workflow_details` pra atualizar. Commit
+`51f586e` em clubcut-backups.
+
+**Achado (confirma o item 6):** 3 workflows ativos com **draft divergente**
+(editor com alteracoes nao publicadas): Detalhamento de Uso, Uso Diario Aura,
+Landing 2 — os mesmos 3 que ficaram fora do error workflow. Vale resolver
+(publicar ou descartar o draft de cada) e entao liga-los ao error workflow.
+`politica-de-atraso` esta inativo (sem versao publicada).

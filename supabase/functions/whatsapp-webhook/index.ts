@@ -28,6 +28,9 @@ const VERIFY_TOKEN = Deno.env.get('WHATSAPP_VERIFY_TOKEN') ?? ''
 const APP_SECRET = Deno.env.get('WHATSAPP_APP_SECRET') ?? ''
 const N8N_WEBHOOK_URL = Deno.env.get('N8N_WHATSAPP_WEBHOOK_URL') ?? ''
 const N8N_LEMBRETE_URL = Deno.env.get('N8N_LEMBRETE_RESPOSTA_URL') ?? ''
+// Segredo compartilhado do webhook do n8n (header X-Webhook-Token). Vai em todo
+// POST ao n8n; o webhook do n8n exige que bata (item 4 — auth da entrada).
+const WEBHOOK_TOKEN = Deno.env.get('N8N_WEBHOOK_TOKEN') ?? ''
 
 /** Sempre 200 para a Meta. Ver o cabeçalho do arquivo. */
 function ok(detalhe?: string) {
@@ -228,7 +231,7 @@ Deno.serve(async (req) => {
                 if (av?.atendido && av.resposta && N8N_LEMBRETE_URL) {
                   await fetch(N8N_LEMBRETE_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'X-Webhook-Token': WEBHOOK_TOKEN },
                     body: JSON.stringify({
                       salon_id: av.salon_id ?? null,
                       phone_number_id: phoneNumberId,
@@ -253,7 +256,7 @@ Deno.serve(async (req) => {
                 // entregar_ao_agente pelo convite com o wa.me da barbearia.
                 await fetch(N8N_LEMBRETE_URL, {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
+                  headers: { 'Content-Type': 'application/json', 'X-Webhook-Token': WEBHOOK_TOKEN },
                   body: JSON.stringify({
                     salon_id: r.salon_id ?? null,
                     phone_number_id: phoneNumberId,
@@ -335,7 +338,7 @@ Deno.serve(async (req) => {
                 if (r.resposta && N8N_LEMBRETE_URL) {
                   await fetch(N8N_LEMBRETE_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'X-Webhook-Token': WEBHOOK_TOKEN },
                     body: JSON.stringify({
                       salon_id: salonId,
                       phone_number_id: phoneNumberId,
@@ -365,7 +368,7 @@ Deno.serve(async (req) => {
           // torna testável e substituível sem tocar no agente.
           const resposta = await fetch(N8N_WEBHOOK_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-Webhook-Token': WEBHOOK_TOKEN },
             body: JSON.stringify({
               salon_id: salonId,
               phone_number_id: phoneNumberId,

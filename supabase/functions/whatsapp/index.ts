@@ -7,6 +7,9 @@ const EVOLUTION_API_KEY = Deno.env.get('EVOLUTION_API_KEY')
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 // URL de produção do webhook do fluxo n8n de atendimento.
 const N8N_WEBHOOK_URL = Deno.env.get('N8N_WEBHOOK_URL')
+// Segredo compartilhado: vai como header no webhook de cada instancia, para o
+// n8n so aceitar POST autenticado (item 4 — auth da entrada).
+const WEBHOOK_TOKEN = Deno.env.get('N8N_WEBHOOK_TOKEN') ?? ''
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -142,6 +145,7 @@ Deno.serve(async (req: Request) => {
             webhook: {
               enabled: true,
               url: N8N_WEBHOOK_URL,
+              headers: { 'X-Webhook-Token': WEBHOOK_TOKEN },
               webhookByEvents: false,
               webhookBase64: true,
               events: evolutionConfig.webhookEvents,

@@ -2339,3 +2339,46 @@ monta o alerta certo (18780, chega ao no de envio). base64 NAO entra na regra
 **Follow-ups que seguem abertos:** base64/midia (audio e imagem quebrados, so
 texto), webhook do agente sem autenticacao (Tier 1 / item 4), e os workflows do
 n8n sem export versionado no repo (E4 / Tier 5).
+
+### Item 4 (Tier 1) — autenticar a entrada do agente (B2): FEITO (2026-09-06)
+O webhook do agente aceitava POST de qualquer um (so precisava da URL, que esta
+no repo publico). Fechado com um header compartilhado `X-Webhook-Token`: quem
+manda mensagem ao n8n carimba o header; o n8n so aceita se bater (403 se nao).
+Segredo em `~/.clubcut/n8n-webhook-token.txt` (local), secret `N8N_WEBHOOK_TOKEN`
+no Supabase, credencial `n8n webhook token` (`nA0Eg7E99SJb37s3`) no n8n.
+
+**Supabase (edges):** `whatsapp` (v38) e `whatsapp-webhook` (v16) redeployadas
+mandando o header em todo POST ao n8n. Deploy pela **CLI do Supabase** (`npx
+supabase functions deploy --use-api`), do disco, **sem Docker e sem transcricao**
+— o jeito seguro pra editar a joia. De brinde, o `verify_jwt` das 12 funcoes
+passou a viver no `config.toml` (conserta o **E7**: antes so existia no painel, e
+um deploy desatento calaria a Meta/Asaas/agenda). 4 estao como `false` de
+proposito (whatsapp-webhook, asaas-webhook, agenda-publica, admin-create-salon).
+
+**n8n:** `headerAuth` ligado e publicado nos webhooks do **agente**
+(`salao-atendimento`, `rJO1n7cFeNDIJyB5`) e do **lembrete**
+(`lembrete-resposta-central`, `DW0nq1Jyp9xeOJwm`), ambos apontando pra credencial
+`nA0Eg7E99SJb37s3`.
+
+**Evolution:** instancia El Guardians (`salon-4748d5b4-...`) carimbada com o
+header via `/webhook/set` (persiste no `/webhook/find`). O script de backfill
+`scripts/evolution-aplicar-config.mjs` foi alinhado: manda o header e **aborta**
+se rodar sem `N8N_WEBHOOK_TOKEN` (senao derrubaria a auth em silencio).
+
+**Sentinela reforcada** (`eyxshxgS73dd8UVk`): alem de URL+enabled, agora tambem
+alerta se a instancia perder o header de auth. Testada: silencio no estado real
+(exec 18826, vazio) e alerta certo no simulado sem header (exec 18827 — "sem
+header de auth (X-Webhook-Token)").
+
+**Provas:** agente sem header -> 403; com o header do arquivo -> 200 (exec 18812,
+success, sem erro). Lembrete sem header -> 403. Checagem verde (typecheck/lint,
+265 testes).
+
+**Caminho residual:** editar o webhook **a mao no painel da Evolution** e apagar
+o header deixaria o agente mudo — agora coberto pela sentinela (avisa em ate
+30min). Os caminhos automaticos (edge no /conexao, script de backfill) preservam
+o header.
+
+**Segue aberto:** base64/midia (Evolution 2.3.7); caminho Cloud/Meta do
+whatsapp-webhook so tera trafego real quando houver salao `cloud_api` (hoje so
+El Guardians, que e Evolution).

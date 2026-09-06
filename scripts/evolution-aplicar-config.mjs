@@ -13,6 +13,7 @@
  *   EVOLUTION_API_URL=https://... \
  *   EVOLUTION_API_KEY=... \
  *   N8N_WEBHOOK_URL=https://... \
+ *   N8N_WEBHOOK_TOKEN=... \
  *   node scripts/evolution-aplicar-config.mjs
  *
  * Sem alterar nada, só listando o que faria:
@@ -25,6 +26,9 @@ import config from '../supabase/functions/_shared/evolutionConfig.json' with { t
 const API_URL = process.env.EVOLUTION_API_URL?.replace(/\/+$/, '')
 const API_KEY = process.env.EVOLUTION_API_KEY
 const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL
+// Segredo compartilhado (header X-Webhook-Token). Os webhooks do n8n exigem que
+// ele bata (item 4 — auth da entrada); sem ele o n8n rejeita com 403.
+const WEBHOOK_TOKEN = process.env.N8N_WEBHOOK_TOKEN
 const DRY_RUN = process.argv.includes('--dry-run')
 
 if (!API_URL || !API_KEY) {
@@ -69,6 +73,15 @@ console.log('settings:', JSON.stringify(config.settings))
 console.log('eventos :', config.webhookEvents.join(', '))
 if (DRY_RUN) console.log('\n--dry-run: nada será alterado.\n')
 
+// Com a auth ligada (item 4), reaplicar o webhook sem o header derrubaria o
+// agente em silêncio (o n8n passa a responder 403). Melhor abortar do que quebrar.
+if (N8N_WEBHOOK_URL && !WEBHOOK_TOKEN && !DRY_RUN) {
+  console.error('N8N_WEBHOOK_URL definido sem N8N_WEBHOOK_TOKEN: o webhook seria')
+  console.error('reaplicado SEM o header de auth e o n8n rejeitaria tudo (403).')
+  console.error('Defina N8N_WEBHOOK_TOKEN para preservar a autenticação.')
+  process.exit(1)
+}
+
 let falhas = 0
 
 for (const nome of instancias) {
@@ -90,6 +103,8 @@ for (const nome of instancias) {
         webhook: {
           enabled: true,
           url: N8N_WEBHOOK_URL,
+          // Sem o header o n8n rejeita com 403 (item 4); preserva a auth ao reaplicar.
+          ...(WEBHOOK_TOKEN ? { headers: { 'X-Webhook-Token': WEBHOOK_TOKEN } } : {}),
           webhookByEvents: false,
           webhookBase64: true,
           events: config.webhookEvents,

@@ -22,6 +22,9 @@ dist-ssr
 # graphify (grafo gerado - artefato local, nao versionar)
 graphify-out/
 
+# Supabase CLI (link/temp locais criados por `supabase functions deploy`)
+supabase/.temp/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

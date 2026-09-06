@@ -2382,3 +2382,27 @@ o header.
 **Segue aberto:** base64/midia (Evolution 2.3.7); caminho Cloud/Meta do
 whatsapp-webhook so tera trafego real quando houver salao `cloud_api` (hoje so
 El Guardians, que e Evolution).
+
+### Midia do agente (audio + imagem) na Evolution: FEITO (2026-09-06)
+So texto funcionava; audio e imagem chegavam vazios. Consertado 100% no n8n
+(agente `rJO1n7cFeNDIJyB5`) — CRM/Supabase/Vercel/GitHub: nada. Provado com midia
+real: audio transcrito ("Boa tarde, tudo bem?") e recebido pelo dono; imagem
+descrita ("homem com cabelo curto e barba bem cuidada") e respondida. Ambos
+roteados e enviados pela Evolution.
+
+Foram **3 bugs** (2 pre-existentes, so expostos quando a midia passou a chegar):
+1. **base64 ausente** (o alvo): a Evolution 2.3.7 nao manda `base64` no webhook.
+   Os code nodes "Audio/Imagem Base64 -> Binario" passaram a buscar sob demanda
+   via `POST {server_url}/chat/getBase64FromMediaMessage/{instance}` com
+   `{message:{key:{id:message_id}}}` — server_url e apikey vem do proprio payload
+   do webhook.
+2. **roteamento perdia o provedor**: Whisper/Visao (httpRequest) apagam o json;
+   `provedor`/`instance_name` sumiam e o "Rotear Envio" caia na Cloud (erro Graph
+   "Object 'messages' does not exist"). Adicionados ao "Converge Texto Final".
+3. **Visao lia base64 do binario** (`$binary.data.data` = undefined em filesystem
+   mode): o code node poe o base64 no json e o "Descrever Imagem (Visao)" le
+   `$json.media_base64` (fallback pro binario). Audio nao sofria (Whisper consome
+   o binario direto).
+
+Detalhe em [[base64-midia-evolution]] na memoria. **Aberto:** caminho Cloud/Meta
+de midia nao testado (sem salao cloud); fluxos n8n sem export versionado (E4).

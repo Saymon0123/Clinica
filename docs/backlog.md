@@ -2304,3 +2304,38 @@ carimbado na instância Evolution apontava para o **host da própria Evolution**
   texto funciona**. Investigar (nome do campo na 2.3.7 ou env global tipo
   `WEBHOOK_BASE64`).
 - O webhook do agente segue **sem autenticação** (B2 = Tier 1 / item 4).
+
+### Item 6 (Tier 2) — observabilidade de falha silenciosa: FEITO (2026-09-06)
+Depois de 2 semanas de agente morto sem ninguem saber, duas pecas novas no n8n
+(so o n8n muda; CRM/Supabase/Vercel/GitHub: nada). Reusam o canal_de_alertas
+(castrocollin01@gmail.com) e a credencial SMTP ja existente.
+
+**1. Error workflow** — `CRM Salao - Alerta de Falha (Error Workflow)`
+(`MCA5cHn52f1k9sSf`), ativo. Error Trigger -> monta e-mail (workflow, no que
+falhou, erro, link da execucao) -> envia. Ligado via setting `errorWorkflow` a
+**9 fluxos ativos**: agente, lembretes, avaliacao, auditoria, feedback, fim de
+teste, convite, estoque, landing. Logica testada com erro simulado
+(test_workflow, execucao 18774); SMTP e a credencial que 6 fluxos ja usam.
+Descoberta util: `setWorkflowSettings` aplica no nivel do workflow **sem
+republicar os nos** (versionId inalterado) — o agente foi ligado com risco zero,
+sem tocar no aviso pre-existente do no do modelo OpenAI.
+
+**2. Sentinela do webhook** — `CRM Salao - Sentinela do Webhook (Evolution)`
+(`eyxshxgS73dd8UVk`), ativa, cron 30min. Le conexoes Evolution `open` no
+Supabase, chama `/webhook/find` em cada instancia e **alerta por e-mail se a URL
+nao for a do n8n** (ou estiver desabilitada). Pega o exato bug do secret
+`N8N_WEBHOOK_URL` errado ANTES de o agente ficar mudo — e quase nao da falso
+positivo (checa config, nao trafego). Testada nos dois ramos: webhook correto ->
+silencio (execucao real 18779, `Avaliar Webhooks` vazio); webhook errado ->
+monta o alerta certo (18780, chega ao no de envio). base64 NAO entra na regra
+(a Evolution 2.3.7 nao honra, ficaria sempre gritando).
+
+**Deixados de fora, de proposito:**
+- Error workflow NAO ligado aos 3 fluxos com rascunho divergente (Detalhamento
+  `8Qh33uoFm4VqT1eO`, Aura `UqLCK8lElBR7iSze`, Landing 2 `FwP4yby1Z4OisZd4`):
+  publicar empurraria o draft quebrado. Resolver o rascunho de cada um primeiro.
+- Politica de Atraso (`67oZqGOIoKO6pAeQ`) esta desligada, nao ligada.
+
+**Follow-ups que seguem abertos:** base64/midia (audio e imagem quebrados, so
+texto), webhook do agente sem autenticacao (Tier 1 / item 4), e os workflows do
+n8n sem export versionado no repo (E4 / Tier 5).

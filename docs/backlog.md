@@ -2458,16 +2458,26 @@ O que entrou no código (`@sentry/react` 10.73.0, `@sentry/vite-plugin` 5.4.0):
   existe no build**; sobe e apaga os `.map` do dist (não vazam no deploy).
   Sem o token, build idêntico ao de antes.
 
-**Pendências fora do repositório (nesta ordem):**
-1. (dono) criar conta em sentry.io (plano Developer, gratuito) e um projeto
-   **React**; copiar o DSN de *Settings → Projects → Client Keys*.
-2. (dono) Vercel: `VITE_SENTRY_DSN` em Production + **redeploy** (build time,
-   mesma pegadinha da `VITE_APP_URL`).
-3. (opcional, stack trace legível) Sentry: token em *Settings → Auth Tokens*
-   com escopo `project:releases`; Vercel: `SENTRY_ORG`, `SENTRY_PROJECT`,
-   `SENTRY_AUTH_TOKEN` (sem prefixo VITE_ — token é segredo) + redeploy.
-4. (dono) conferir a regra de alerta padrão (e-mail); integração com Slack se
-   um dia houver.
+**NO AR desde 06/09 (commit bb0985a).** Conta criada (org `club-cut`),
+variáveis na Vercel, deploy verde, 196 source maps subiram no build e um erro
+de teste disparado em produção saiu do navegador para o ingest do Sentry
+(5 envelopes medidos por resource timing). Na verificação das variáveis foi
+achada e removida uma `VITE_` órfã que continha o **auth token como Config**
+— teria ido para o bundle público no build. Se quiser rigor máximo, revogar
+esse token e gerar outro (nunca chegou a um deploy; risco baixo).
+
+**Pendências que restam:**
+1. (dono) confirmar no painel o issue "Teste controlado do Sentry — Club Cut"
+   em *Issues* e resolvê-lo; conferir se o alerta chegou por e-mail.
+2. (dono, cosmético) `SENTRY_ORG` na Vercel está `club-cut.sentry.io`; o certo
+   é só `club-cut`. Funciona hoje porque o token embute a org (o build avisou
+   com WARN), mas quebraria com um token futuro sem org embutida.
+3. (dono, cosmético) o projeto no Sentry ficou com slug/plataforma
+   **react-native** (escolhido na criação). Funciona — evento e source map
+   caem no mesmo projeto — mas as dicas do painel serão de RN. Se renomear
+   para React em *Settings → Projects*, **atualizar `SENTRY_PROJECT` na
+   Vercel junto** (o DSN não muda).
+4. Integração com Slack quando existir.
 
 **Ressalva do npm local:** o allow-scripts do npm bloqueou o postinstall do
 `@sentry/cli` (baixa o binário que faz upload de source map). No build da

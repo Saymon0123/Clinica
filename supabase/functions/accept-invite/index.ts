@@ -1,5 +1,6 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { jornadaDoHorario } from '../_shared/jornada.ts'
+import { capturarErro, comSentry } from '../_shared/sentry.ts'
 
 /**
  * Aceite de convite para a equipe — com DOIS caminhos, e a diferença importa.
@@ -66,7 +67,7 @@ function ipDe(req: Request) {
   )
 }
 
-Deno.serve(async (req: Request) => {
+Deno.serve(comSentry('accept-invite', async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -327,6 +328,7 @@ Deno.serve(async (req: Request) => {
     return json({ ok: true, email: convite.email, salao: salonNome, contaExistia: !criadaAgora })
   } catch (err) {
     console.error('Erro ao aceitar convite, desfazendo:', err)
+    await capturarErro(err, 'accept-invite')
     if (userId && criadaAgora) {
       // Conta nova incompleta: apagar inteira e deixar tentar de novo.
       await admin.auth.admin.deleteUser(userId)
@@ -347,4 +349,4 @@ Deno.serve(async (req: Request) => {
     }
     return json({ error: 'Não foi possível concluir o cadastro. Tente novamente.' }, 500)
   }
-})
+}))

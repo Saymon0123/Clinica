@@ -1,4 +1,5 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { capturarErro, comSentry } from '../_shared/sentry.ts'
 
 /**
  * Convite de dono — cadastrar barbearia sem estar frente a frente.
@@ -75,7 +76,7 @@ function segredoConfere(recebido: string | null, esperado: string) {
   return diff === 0
 }
 
-Deno.serve(async (req: Request) => {
+Deno.serve(comSentry('admin-invite-salon', async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
 
@@ -194,10 +195,11 @@ Deno.serve(async (req: Request) => {
     })
   } catch (err) {
     console.error('Erro ao convidar dono, desfazendo:', err)
+    await capturarErro(err, 'admin-invite-salon')
     // Sem a compensação sobraria uma barbearia fantasma no painel a cada falha,
     // com nome de um cliente que não existe. `on delete cascade` leva junto a
     // assinatura, os serviços e o convite.
     if (salonId) await admin.from('salons').delete().eq('id', salonId)
     return json({ error: 'Não foi possível gerar o convite. Tente novamente.' }, 500)
   }
-})
+}))

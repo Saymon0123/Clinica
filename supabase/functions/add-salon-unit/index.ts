@@ -1,4 +1,5 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { comSentry } from '../_shared/sentry.ts'
 
 /**
  * Cria uma unidade nova a partir de uma barbearia que o chamador já possui.
@@ -40,7 +41,7 @@ function json(body: unknown, status = 200) {
   })
 }
 
-Deno.serve(async (req) => {
+Deno.serve(comSentry('add-salon-unit', async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'Método não permitido.' }, 405)
 
@@ -212,4 +213,4 @@ Deno.serve(async (req) => {
     redeCriada,
     servicosCopiados,
   })
-})
+}))

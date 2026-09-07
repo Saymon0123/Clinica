@@ -1,5 +1,6 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { jornadaDoHorario } from '../_shared/jornada.ts'
+import { capturarErro, comSentry } from '../_shared/sentry.ts'
 
 /**
  * Segundo passo do cadastro aberto: quem já tem conta cria a própria barbearia.
@@ -75,7 +76,7 @@ const SERVICOS_PADRAO = [
   { nome: 'Corte + barba', preco: 70, duracao_minutos: 60 },
 ]
 
-Deno.serve(async (req: Request) => {
+Deno.serve(comSentry('criar-minha-barbearia', async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
 
@@ -236,10 +237,11 @@ Deno.serve(async (req: Request) => {
     return json({ salonId: salon.id, nome: nomeSalao })
   } catch (err) {
     console.error('Erro ao provisionar barbearia, desfazendo:', err)
+    await capturarErro(err, 'criar-minha-barbearia')
     // A conta continua de pé — é dela que a pessoa vai tentar de novo. O que
     // se desfaz é a barbearia pela metade; `on delete cascade` leva junto
     // vínculo, assinatura, profissional, jornada e serviços.
     if (salonId) await admin.from('salons').delete().eq('id', salonId)
     return json({ error: 'Nao foi possivel criar a barbearia. Tente novamente.' }, 500)
   }
-})
+}))

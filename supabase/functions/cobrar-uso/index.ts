@@ -1,4 +1,5 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { comSentry } from '../_shared/sentry.ts'
 
 /**
  * Transforma faturas de uso abertas em cobranças no Asaas.
@@ -76,7 +77,7 @@ function chamadorAutorizado(req: Request): boolean {
   return diff === 0
 }
 
-Deno.serve(async (req) => {
+Deno.serve(comSentry('cobrar-uso', async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
   if (!chamadorAutorizado(req)) return json({ error: 'Não autorizado.' }, 401)
   if (!ASAAS_API_KEY || !ASAAS_BASE_URL) {
@@ -248,4 +249,4 @@ Deno.serve(async (req) => {
   }
 
   return json({ cobrancas, faturasCobertas, acumuladas, semDocumento })
-})
+}))

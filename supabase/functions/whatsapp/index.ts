@@ -1,5 +1,6 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { instanceNameFor } from '../_shared/instanceName.ts'
+import { capturarErro, comSentry } from '../_shared/sentry.ts'
 import evolutionConfig from '../_shared/evolutionConfig.json' with { type: 'json' }
 
 const EVOLUTION_API_URL = Deno.env.get('EVOLUTION_API_URL')
@@ -46,7 +47,7 @@ async function evoFetch(path: string, init: RequestInit = {}) {
   return { ok: res.ok, status: res.status, data }
 }
 
-Deno.serve(async (req: Request) => {
+Deno.serve(comSentry('whatsapp', async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -292,6 +293,7 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'Ação inválida.' }, 400)
   } catch (err) {
     console.error('Erro na função whatsapp:', err)
+    await capturarErro(err, 'whatsapp')
     return json({ error: 'Erro ao comunicar com a Evolution API.' }, 500)
   }
-})
+}))

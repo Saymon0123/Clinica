@@ -1,4 +1,5 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { capturarErro, comSentry } from '../_shared/sentry.ts'
 
 /**
  * Webhook da Cloud API da Meta — a porta de entrada das mensagens.
@@ -128,7 +129,7 @@ function conteudoDaMensagem(m: MensagemRecebida): Conteudo {
   return { texto: null, media_id: null, tipo: m.type }
 }
 
-Deno.serve(async (req) => {
+Deno.serve(comSentry('whatsapp-webhook', async (req) => {
   const url = new URL(req.url)
 
   // ---------- Verificação do webhook ----------
@@ -388,15 +389,25 @@ Deno.serve(async (req) => {
             }),
           })
           if (!resposta.ok) {
-            console.error('n8n recusou a mensagem:', resposta.status, await resposta.text())
+            const corpo = await resposta.text()
+            console.error('n8n recusou a mensagem:', resposta.status, corpo)
+            // Mensagem de cliente que o agente nunca viu — a classe de falha
+            // que deixou o agente mudo por 2 semanas. Tem que gritar.
+            await capturarErro(new Error(`n8n recusou a mensagem (HTTP ${resposta.status})`), 'whatsapp-webhook', {
+              status: resposta.status,
+              corpo: corpo.slice(0, 500),
+            })
           }
         }
       }
     }
   } catch (erro) {
-    // Nunca propaga: ver o cabeçalho sobre por que 200 sempre.
+    // Nunca propaga: ver o cabeçalho sobre por que 200 sempre. Mas registra —
+    // era o engolir silencioso mais perigoso do projeto: a Meta recebia 200 e
+    // a mensagem do cliente sumia sem rastro.
     console.error('Erro tratando webhook do WhatsApp:', erro)
+    await capturarErro(erro, 'whatsapp-webhook')
   }
 
   return ok()
-})
+}))

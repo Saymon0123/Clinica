@@ -1,4 +1,5 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { capturarErro, comSentry } from '../_shared/sentry.ts'
 
 const ADMIN_TOOL_SECRET = Deno.env.get('ADMIN_TOOL_SECRET')
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
@@ -126,7 +127,7 @@ function segredoConfere(recebido: string | null, esperado: string) {
   return diff === 0
 }
 
-Deno.serve(async (req: Request) => {
+Deno.serve(comSentry('admin-create-salon', async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -448,10 +449,11 @@ Deno.serve(async (req: Request) => {
     })
   } catch (err) {
     console.error('Erro no cadastro, desfazendo tudo:', err)
+    await capturarErro(err, 'admin-create-salon')
     await rollback()
     return json(
       { error: 'Não foi possível concluir o cadastro. Nada foi salvo, pode tentar novamente.' },
       500,
     )
   }
-})
+}))

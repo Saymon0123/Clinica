@@ -1,4 +1,5 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { comSentry } from '../_shared/sentry.ts'
 
 /**
  * Agenda pública — o QR do balcão.
@@ -90,7 +91,7 @@ function ipDe(req: Request) {
 }
 
 
-Deno.serve(async (req: Request) => {
+Deno.serve(comSentry('agenda-publica', async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
 
@@ -459,4 +460,4 @@ Deno.serve(async (req: Request) => {
     // O link de gestão: é assim que quem marcou pode cancelar sozinho depois.
     tokenGestao: agendamento.token_gestao,
   })
-})
+}))

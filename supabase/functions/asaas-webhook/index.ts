@@ -1,4 +1,5 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { capturarErro, comSentry } from '../_shared/sentry.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -65,7 +66,7 @@ async function ajustarRecorrencia(subscriptionId: string, valor: number) {
 /** Eventos que abrem o acesso. O resto é ignorado de propósito. */
 const PAGOU = ['PAYMENT_CONFIRMED', 'PAYMENT_RECEIVED', 'PAYMENT_RECEIVED_IN_CASH']
 
-Deno.serve(async (req: Request) => {
+Deno.serve(comSentry('asaas-webhook', async (req: Request) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
 
   if (!WEBHOOK_TOKEN) {
@@ -260,7 +261,8 @@ Deno.serve(async (req: Request) => {
     // sair — senão a reentrega do Asaas seria descartada como repetida e o
     // pagamento nunca seria aplicado.
     console.error('Falha ao aplicar o evento, liberando a trava:', err)
+    await capturarErro(err, 'asaas-webhook')
     await admin.from('asaas_eventos').delete().eq('id', eventoId)
     return json({ error: 'erro interno' }, 500)
   }
-})
+}))

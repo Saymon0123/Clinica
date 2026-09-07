@@ -2495,3 +2495,41 @@ esse token e gerar outro (nunca chegou a um deploy; risco baixo).
 `@sentry/cli` (baixa o binário que faz upload de source map). No build da
 Vercel isso não existe; para testar upload **local** um dia, rodar
 `npm approve-scripts @sentry/cli` antes.
+
+### Sentry nas edge functions (passo 2) — FEITO (2026-09-06)
+As 11 edge functions agora reportam ao mesmo Sentry do CRM (org `club-cut`),
+`environment: edge-functions`, tag `funcao` por função. Peças: **Supabase**
+(código + secret `SENTRY_DSN` + redeploy das 11 pela CLI `--use-api`),
+**GitHub** (commit), CRM/Vercel/n8n: nada.
+
+Desenho, em `supabase/functions/_shared/sentry.ts`:
+- `capturarErro(erro, funcao, detalhes?)` — plantado nos 7 catch-alls
+  operacionais (accept-invite, admin-create-salon, admin-invite-salon,
+  asaas-webhook, criar-minha-barbearia, whatsapp, **whatsapp-webhook** — o
+  engolir mais perigoso: devolve 200 pra Meta e a mensagem sumia sem rastro),
+  no "n8n recusou a mensagem" (a classe de falha do agente mudo) e no
+  `erroFatura` do cancelamento (falha silenciosa de dinheiro). O `flush(2000)`
+  é obrigatório: o isolate congela após a resposta, evento sem flush se perde.
+  Custa até 2s, só no caminho de erro.
+- `comSentry(nome, handler)` — última rede em todas as 11, para o que estourar
+  fora dos try/catch. Captura e relança; a resposta 500 não muda.
+- Sem `SENTRY_DSN` tudo vira no-op (mesmo contrato do front).
+- `defaultIntegrations: false`: o Edge Runtime não expõe tudo que o SDK Deno
+  espera. Catches de "corpo inválido" (400) ficaram de fora de propósito —
+  erro de quem chama, viraria ruído.
+
+Verificação: função descartável `sentry-teste` provou os 2 caminhos ANTES das
+reais (flush `true` = entrega confirmada; estouro = 500 com captura) e foi
+apagada (servidor + disco). Depois do deploy das 11: smoke em 5 funções com
+respostas idênticas às de antes (400/401/403 esperados). Lint e 265 testes ok.
+
+**Achado no caminho:** `admin-metricas` está no config.toml e registrada no
+projeto, mas **não tem código no repositório** — o deploy em massa
+(`functions deploy` sem nome) QUEBRA por causa dela. Decidir: recuperar o
+código do painel e versionar, ou apagar do config.toml e do projeto. Até lá,
+deploy sempre por nome.
+
+**Segue fora do Sentry:** banco (RPCs/triggers/cron — pgTAP e advisors),
+n8n (error workflow próprio), uptime de VPS/site. E o caminho feliz Cloud API
+do whatsapp-webhook continua sem tráfego real (sem salão cloud) — a
+instrumentação lá só vai falar quando houver.

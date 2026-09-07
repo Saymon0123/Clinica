@@ -1,4 +1,5 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { capturarErro, comSentry } from '../_shared/sentry.ts'
 
 /**
  * O que sobrou da integração com o Asaas depois do modelo por uso (2026-08-24).
@@ -57,7 +58,7 @@ async function removerRecorrencia(subscriptionId: string): Promise<boolean> {
   return true
 }
 
-Deno.serve(async (req: Request) => {
+Deno.serve(comSentry('asaas', async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
 
@@ -221,7 +222,12 @@ Deno.serve(async (req: Request) => {
   const { error: erroFatura } = await admin.rpc('gerar_fatura_de_cancelamento', {
     p_salon_id: salonId,
   })
-  if (erroFatura) console.error('Erro ao gerar a fatura de cancelamento:', erroFatura)
+  if (erroFatura) {
+    // Falha silenciosa de dinheiro: o cancelamento segue, mas sem a fatura
+    // parcial ninguém cobra o período — precisa aparecer no painel.
+    console.error('Erro ao gerar a fatura de cancelamento:', erroFatura)
+    await capturarErro(erroFatura, 'asaas', { onde: 'gerar_fatura_de_cancelamento', salonId })
+  }
 
   return json({ cancelada: true })
-})
+}))

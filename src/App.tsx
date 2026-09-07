@@ -1,5 +1,6 @@
 import { Suspense, lazy } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { withSentryReactRouterV7Routing } from '@sentry/react'
 import { AuthProvider, useAuth } from './features/auth/AuthContext'
 import { hashDeEntrada, mensagemDeErroDoRetorno } from './lib/recuperacaoSenha'
 import { SalonProvider } from './features/auth/SalonContext'
@@ -71,6 +72,11 @@ const AssinaturaPage = lazy(() =>
 const RedePage = lazy(() => import('./features/rede/RedePage').then((m) => ({ default: m.RedePage })))
 const AjudaPage = lazy(() => import('./features/ajuda/AjudaPage').then((m) => ({ default: m.AjudaPage })))
 
+// Faz o Sentry nomear as transações pela rota parametrizada
+// (/agendar/:salonId) em vez de uma URL diferente por barbearia. Sem DSN o
+// wrapper é inerte e isto é um <Routes> comum.
+const SentryRoutes = withSentryReactRouterV7Routing(Routes)
+
 function Carregando() {
   return (
     <div className="p-4 md:p-6">
@@ -109,7 +115,7 @@ function App() {
       <SalonProvider>
         <DesvioDeRecuperacao />
         <Suspense fallback={<Carregando />}>
-          <Routes>
+          <SentryRoutes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/inicio" element={<VendasPage />} />
             <Route path="/sobre" element={<SobrePage />} />
@@ -181,7 +187,7 @@ function App() {
                 }
               />
             </Route>
-          </Routes>
+          </SentryRoutes>
         </Suspense>
       </SalonProvider>
     </AuthProvider>

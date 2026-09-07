@@ -1,8 +1,15 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
+import * as Sentry from '@sentry/react'
 import './index.css'
+import { iniciarSentry } from './lib/sentry.ts'
 import { initTheme } from './lib/theme.ts'
+import { ErroInesperado } from './components/ErroInesperado.tsx'
+
+// Antes de qualquer outra coisa: erro que acontece durante a própria
+// inicialização (initTheme, import do App) também precisa ser capturado.
+iniciarSentry()
 
 initTheme()
 
@@ -23,6 +30,9 @@ const raiz = document.getElementById('root')!
 function mostrarFalhaDeConfiguracao(erro: unknown) {
   const mensagem = erro instanceof Error ? erro.message : String(erro)
   console.error('Falha ao iniciar o aplicativo:', erro)
+  // Este erro acontece antes de o React montar, fora do alcance do
+  // ErrorBoundary — sem esta linha ele nunca chegaria ao Sentry.
+  Sentry.captureException(erro)
 
   const doc = document
   const caixa = doc.createElement('div')
@@ -55,9 +65,11 @@ import('./App.tsx')
   .then(({ default: App }) => {
     createRoot(raiz).render(
       <StrictMode>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
+        <Sentry.ErrorBoundary fallback={<ErroInesperado />}>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </Sentry.ErrorBoundary>
       </StrictMode>,
     )
   })

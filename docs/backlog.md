@@ -2437,3 +2437,39 @@ manual** — reexportar via `get_workflow_details` pra atualizar. Commit
 Landing 2 — os mesmos 3 que ficaram fora do error workflow. Vale resolver
 (publicar ou descartar o draft de cada) e entao liga-los ao error workflow.
 `politica-de-atraso` esta inativo (sem versao publicada).
+
+### Sentry no CRM — código pronto, falta a conta e a Vercel (2026-09-06)
+Monitoramento de erro/performance do **front** (o n8n já tem o error workflow;
+isto cobre a peça que ainda era cega: o navegador do cliente e do dono).
+Mapa das cinco peças: **CRM** muda (abaixo), **Vercel** tem pendência manual,
+**Supabase/GitHub/n8n: nada** — commit dispara deploy como sempre.
+
+O que entrou no código (`@sentry/react` 10.73.0, `@sentry/vite-plugin` 5.4.0):
+- `src/lib/sentry.ts` — init desligado sem `VITE_SENTRY_DSN` (dev local segue
+  sem Sentry, sem aviso no console). Traces em 10%; replay só em sessão com
+  erro (plano gratuito tem 50/mês) e com `maskAllText` — nome e telefone de
+  cliente não saem do navegador (LGPD).
+- `src/main.tsx` — `iniciarSentry()` antes de tudo; `Sentry.ErrorBoundary`
+  global com a tela `src/components/ErroInesperado.tsx` (antes, erro de render
+  era tela branca); `mostrarFalhaDeConfiguracao` agora também reporta.
+- `src/App.tsx` — `withSentryReactRouterV7Routing(Routes)`: transação vira
+  `/agendar/:salonId`, não uma URL por barbearia.
+- `vite.config.ts` — upload de source map **só quando `SENTRY_AUTH_TOKEN`
+  existe no build**; sobe e apaga os `.map` do dist (não vazam no deploy).
+  Sem o token, build idêntico ao de antes.
+
+**Pendências fora do repositório (nesta ordem):**
+1. (dono) criar conta em sentry.io (plano Developer, gratuito) e um projeto
+   **React**; copiar o DSN de *Settings → Projects → Client Keys*.
+2. (dono) Vercel: `VITE_SENTRY_DSN` em Production + **redeploy** (build time,
+   mesma pegadinha da `VITE_APP_URL`).
+3. (opcional, stack trace legível) Sentry: token em *Settings → Auth Tokens*
+   com escopo `project:releases`; Vercel: `SENTRY_ORG`, `SENTRY_PROJECT`,
+   `SENTRY_AUTH_TOKEN` (sem prefixo VITE_ — token é segredo) + redeploy.
+4. (dono) conferir a regra de alerta padrão (e-mail); integração com Slack se
+   um dia houver.
+
+**Ressalva do npm local:** o allow-scripts do npm bloqueou o postinstall do
+`@sentry/cli` (baixa o binário que faz upload de source map). No build da
+Vercel isso não existe; para testar upload **local** um dia, rodar
+`npm approve-scripts @sentry/cli` antes.

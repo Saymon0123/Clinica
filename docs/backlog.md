@@ -2438,6 +2438,18 @@ Landing 2 — os mesmos 3 que ficaram fora do error workflow. Vale resolver
 (publicar ou descartar o draft de cada) e entao liga-los ao error workflow.
 `politica-de-atraso` esta inativo (sem versao publicada).
 
+### 3 drafts divergentes + observabilidade completa (M5 / A2 / B8): FEITO (2026-09-06)
+Os 3 fluxos com rascunho != publicado foram resolvidos. O rascunho de cada um era
+versao ANTIGA, sem melhoria — o de `Detalhamento de Uso` ate REGREDIA (perdia
+`emailFormat:html`, o e-mail viraria texto cru, e o `batchSize:1` dos loops).
+Descartados com `restore(activeVersion) + publish`, mantendo o publicado; agora
+`versionId==activeVersionId` nos 3. Com o rascunho fora do caminho, o error
+workflow (`MCA5cHn52f1k9sSf`) foi ligado aos 3 (Detalhamento, Uso Diario Aura,
+Landing 2) via `setWorkflowSettings` — **todos os fluxos ativos agora alertam
+falha por e-mail**. Placar da auditoria levantado: dos 83 defeitos §3, os
+CRITICOS estao fechados (menos templates, em analise na Meta); ficam ~12 ALTOS e
+a maioria dos MEDIOS/BAIXOS abertos (nenhum critico).
+
 ### Sentry no CRM — código pronto, falta a conta e a Vercel (2026-09-06)
 Monitoramento de erro/performance do **front** (o n8n já tem o error workflow;
 isto cobre a peça que ainda era cega: o navegador do cliente e do dono).

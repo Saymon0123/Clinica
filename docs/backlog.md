@@ -2554,3 +2554,21 @@ workflow avisa em ≤30min (**deduzido do desenho, ramo não testado**); só o
 n8n → uptime monitor; site/CRM → Sentry do front; Supabase e Vercel →
 gerenciados. Mais monitores de uptime (Evolution direto, clubcut.space)
 custariam pay-as-you-go — decidir só se doer.
+
+### Rumo a producao — DMARC, bug Meta #2, e-mail profissional (2026-09-07)
+Tres cercas pra virar produto vendavel (pedido "o que da pra adiantar hoje"):
+- **DMARC** de clubcut.space: `p=none` -> **`p=quarantine`**
+  (`rua=mailto:contato@clubcut.space`); SPF + DKIM (Hostinger) ja estavam OK.
+  Menos spoofing e menos chance de spam.
+- **Bug Meta #2** (auditoria 05-meta #2): o lembrete lia o `phone_number_id` em
+  `conexoes_ativas` (conexao Evolution do salao, que nao tem phone da Cloud API)
+  -> nunca enviava no hibrido. Corrigido: o no "Buscar Instancia do Salao"
+  (fluxo `DW0nq1Jyp9xeOJwm`) agora le `remetentes_oficiais` (numero central).
+  Publicado. Teste ponta-a-ponta espera um template de lembrete APROVAR na Meta.
+- **E-mail profissional**: os 8 nos `emailSend` do n8n (7 fluxos) saiam de
+  castrocollin01@gmail (pessoal, ~500/dia, risco de spam). Credencial SMTP
+  (`Ozsdd8R9j8L9vUJO`) migrada pro Hostinger (contato@clubcut.space) e o
+  remetente trocado nos 8 nos; 7 fluxos republicados. Provado: envio real
+  `250 queued`, `from contato@clubcut.space`. O **Auth do Supabase** tambem foi
+  migrado pra Custom SMTP Hostinger (remove o limite baixo do SMTP padrao).
+  Config Meta em [[config-meta-whatsapp-oficial]].

@@ -2530,6 +2530,27 @@ código do painel e versionar, ou apagar do config.toml e do projeto. Até lá,
 deploy sempre por nome.
 
 **Segue fora do Sentry:** banco (RPCs/triggers/cron — pgTAP e advisors),
-n8n (error workflow próprio), uptime de VPS/site. E o caminho feliz Cloud API
-do whatsapp-webhook continua sem tráfego real (sem salão cloud) — a
-instrumentação lá só vai falar quando houver.
+n8n (error workflow próprio). E o caminho feliz Cloud API do whatsapp-webhook
+continua sem tráfego real (sem salão cloud) — a instrumentação lá só vai
+falar quando houver.
+
+### Uptime do VPS vigiado de fora — FEITO (2026-09-07)
+O buraco era estrutural: error workflow e sentinela moram NO VPS — se ele cai,
+os alarmes caem juntos e os crons param em silêncio. Fechado com o **1 monitor
+de uptime que o plano gratuito do Sentry inclui** (checagem externa), criado
+pelo dono no painel (Monitors → Uptime):
+
+- Alvo: `https://n8n-m5uf.srv1833354.hstgr.cloud/healthz` (respondia
+  `200 {"status":"ok"}` na verificação) — passa por Traefik no VPS, então uma
+  checagem prova VPS + Traefik + n8n de uma vez. GET, 1 min, timeout 5s,
+  assertions 200–299, issue após 3 falhas consecutivas (~3-4 min de latência
+  de detecção), environment `vps`.
+- O alerta de e-mail do projeto `react-native` cobre o issue de downtime — não
+  foi preciso regra nova.
+
+Mapa de quedas depois disto: VPS inteiro → uptime monitor grita; só a
+Evolution (n8n vivo) → a sentinela deve quebrar ao consultá-la e o error
+workflow avisa em ≤30min (**deduzido do desenho, ramo não testado**); só o
+n8n → uptime monitor; site/CRM → Sentry do front; Supabase e Vercel →
+gerenciados. Mais monitores de uptime (Evolution direto, clubcut.space)
+custariam pay-as-you-go — decidir só se doer.

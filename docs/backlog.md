@@ -35,6 +35,33 @@ acontecer por limite de banco e de e-mail antes de acontecer por isto.
 
 ## Correção de comportamento
 
+### Nome verificado do número central RECUSADO pela Meta (2026-09-08)
+`name_status: DECLINED`, motivo `BIZ_COMMERCE_VIOLATION_OTHER`, no número central
++55 41 8475-4172 (`phone_number_id 1288009817732005`). **Não é banimento nem queda de
+nota** (verificado na Graph API): o número está `CONNECTED`, `quality_rating: GREEN`,
+`account_mode: LIVE`, `throughput STANDARD` — envia normal. Impacto: sem nome verificado
+aprovado, o cliente vê o número em vez de "Club Cut" com selo — **branding/confiança, não
+entrega**. Também `code_verification_status: EXPIRED` (re-verificar o número quando puder).
+**Ação (Saymon, no WhatsApp Manager):** ver o motivo detalhado do BIZ_COMMERCE e re-submeter
+o nome de exibição; provavelmente exige **Verificação do Negócio** (Business Verification no
+Business Manager), que de quebra eleva os limites de envio.
+
+### Monitor da WABA (0116) alarma demais e com texto enganoso (2026-09-08)
+A view `auditoria_operacao` (ramo `qualidade-waba`, migration 0116) gera alerta **grave**
+para **qualquer** linha de `eventos_da_waba`, com o texto fixo "Nota baixa degrada o alcance
+da plataforma inteira". Mas `eventos_da_waba` recebe TODO evento administrativo da Meta —
+inclusive `message_template_status_update` **APPROVED**. Em 08/09 os 8 templates aprovados
+dispararam 8 alertas "graves" de "nota baixa" (falso positivo), e a rejeição do nome virou um
+9º — todos com o mesmo texto errado, sendo que a nota real está GREEN. **Corrigir** (migration
+nova + aplicar à mão): classificar por `e.campo`/`decision` — `phone_number_quality_update` com
+queda = grave (o caso que a 0116 queria pegar); `phone_number_name_update` DECLINED = aviso de
+branding; restrição de conta (`account_update`) = grave; `message_template_status_update` = ignorar.
+**RESOLVIDO em 2026-09-08 (migration 0139, aplicada):** o ramo `qualidade-waba` classifica por
+`campo`/`decision` — quality_update com queda = grave, conta com ban/restrição = grave, nome recusado
+= aviso de branding, eventos de template = ignorados. Verificado: os 8 templates sumiram dos alertas
+e a rejeição do nome virou 1 aviso com texto correto. Resta um follow-up menor: template PAUSED/DISABLED
+não gera alerta em lugar nenhum (fora do escopo do monitor do número; avaliar um alerta próprio depois).
+
 ### ⚠️ Editar workflow no n8n não publica
 Pegadinha operacional, ao lado de "migration não está no pipeline". As
 alterações via API vão para o **rascunho**; o agendamento ativo continua
@@ -1482,6 +1509,84 @@ O que falta (bloqueado nos templates da Meta):
 - **n8n**: lembrete de 1h antes para quem confirmou — sai pela janela de 24h
   aberta pelo clique (grátis) e cai no template de lembrete só se a janela
   fechou.
+
+### Atualização (2026-09-07): a Meta aprovou 8 templates — e há descasamento com as filas
+**Fato (verificado na Graph API + banco, não deduzido):** a Meta **aprovou os 8
+templates** submetidos em 06/09, todos `UTILITY`/`pt_BR`. `status` reconciliado no
+banco (`em_analise`→`aprovado`), `categoria_meta='utility'` (sem recategorização —
+custo ~R$0,04 preservado). Chaves aprovadas: `avaliacao_pos_atendimento`,
+`lembrete_confirmacao`, `lembrete_amanha`, `lembrete_hoje`, `reativacao`,
+`reativacao_barbeiro`, `reativacao_horario_livre` (nome_meta `agendamento_sugerido`,
+`agendamento_sugerido_barbeiro`, `horario_reservado`), `retorno_intervalo`.
+Verificar: `scratchpad/check_meta_templates.py`.
+
+**O que a aprovação destravou — e o que NÃO destravou.** A trava de disparo mora nas
+views que fazem `join whatsapp_templates ... status='aprovado' and ativo`:
+- ✅ **Avaliação** (`avaliacoes_a_pedir` → `avaliacao_pos_atendimento`): ponta a ponta
+  — template + view + fluxo n8n já existem. **Único caminho realmente destravado.**
+- ❌ **Reativação/retorno de 2 etapas** (`clientes_para_reativar` → `reativacao_convite`
+  + `reativacao_tempo`; `clientes_para_avisar_retorno` → `retorno_pedido` +
+  `retorno_pedido_segunda`): as 4 chaves seguem **rascunho** → views vazias. É o
+  modelo antigo (0083); os templates aprovados não são os que essas views consomem.
+- ❌ **Reativação por agendamento automático (0113, modelo vigente)**: a fila
+  `reativacoes_a_enviar` não trava por template, mas o **fluxo n8n de disparo não
+  existe** (já registrado acima). Descasamento extra de nome: aqui se previa
+  `agendamento_automatico_v2…v10`; o aprovado é `agendamento_sugerido*`/
+  `horario_reservado`. **Decidir a nomenclatura única antes de construir o fluxo.**
+- ❌ **Atraso** (`atraso_esta_vindo`) e **fim de teste** (`fim_de_teste`): rascunho →
+  `atrasos_para_perguntar` / `vencimentos_a_avisar` seguem vazias.
+- ❓ **Lembrete** (`lembrete_hoje/amanha/confirmacao` aprovados): não há view de fila
+  que trave por template; o disparo usa outro caminho (provável `nome_meta` fixo no
+  n8n). Aprovar na Meta faz o envio funcionar — **confirmar o fluxo n8n de lembrete
+  com um teste real** antes de dar como pronto.
+
+**CRM:** não lê `whatsapp_templates` (grep vazio em `src/`) — a aprovação não mudou tela.
+
+### Como os 3 fluxos disparam de verdade + a reativação pega carona no lembrete (2026-09-07)
+Mapeado nas funções do banco + nodes do n8n + edge `whatsapp-webhook`:
+- **Lembrete** (workflow `DW0nq1Jyp9xeOJwm`, Schedule 10min): busca appointments entre
+  `now+85min` e `now+100min` (~1h30 antes), status ≠ cancelado/concluído/bloqueio,
+  **sem filtrar `origem`**. Envia o template **`lembrete_hoje`** (chave fixa no node) pelo
+  número central (Cloud API). `lembrete_amanha`/`lembrete_confirmacao` aprovados NÃO são usados.
+  Grava só `lembrete_enviado` + `lembrete_message_id`.
+- **Avaliação** (workflow `NsHcELIXrETknywa`, Schedule 30min): view `avaliacoes_a_pedir`
+  (orders fechadas 2–26h atrás, não avaliado há 8 semanas), template `avaliacao_pos_atendimento`,
+  Cloud API central; `marcar_avaliacao_pedida` guarda o wamid.
+- **Resposta (ambos)**: o clique no botão chega na edge `whatsapp-webhook`, que chama
+  `responder_lembrete` e, se não for lembrete, `responder_avaliacao` — **o banco decide pelo
+  wamid** (`context.id`), nunca pelo texto, e devolve a resposta pronta que o n8n só entrega.
+
+**Achado — a reativação hoje "pega carona" no lembrete, e isso quebra a expiração/pausa.**
+Não existe fluxo que consuma `reativacoes_a_enviar` (janela 2–26h antes) nem que chame
+`marcar_reativacao_enviada`. O horário de reativação (criado pelo cron `cria-reativacoes` 24–25h
+antes) só é avisado quando o **lembrete** o pega ~1h30 antes. Consequências (dedução verificada
+no código):
+1. O cliente é avisado **1h30 antes** de um horário que **não pediu** — tarde para reorganizar o
+   dia, e com texto de lembrete ("seu horário é hoje… você vem?"), não de reativação.
+2. `marcar_reativacao_enviada` nunca roda → `confirmacao_enviada` fica `false` →
+   `expira_reativacoes_sem_resposta` (que exige `confirmacao_enviada`) **não cancela** a reserva
+   sem resposta, e `reativacao_sem_resposta` nunca incrementa → a **pausa após 2 silêncios** nunca
+   dispara. (Sobra só a pausa por 2 no-shows, via trigger `trg_reativacao_pos_atendimento`.)
+3. A **resposta** funciona (`responder_lembrete` trata `origem='reativacao'`: Sim confirma+cobra;
+   Cancelar cancela+pausa; Reagendar cancela a reserva+entrega ao agente). É o envio e o
+   "sem resposta" que estão furados, não a resposta.
+Construir o fluxo dedicado de reativação (varrer `reativacoes_a_enviar`, enviar 2–26h antes,
+chamar `marcar_reativacao_enviada`) resolve os três de uma vez.
+
+**RESOLVIDO em 2026-09-08.** Construído o workflow n8n **"CRM Salão - Reativação (Convite
+Automático)"** (`Fxc7WGhCoHu7KUe1`, **ativo**, Schedule 30min, errorWorkflow ligado): remetente
+central → `reativacoes_a_enviar` → Code de **rotação** (3 variantes por `reativacao_sem_resposta %
+3`; `reativacao_barbeiro` só com barbeiro; fallback "nossa equipe") → **gate** `whatsapp_templates`
+aprovado → envio pelo número central (Cloud API) → `marcar_reativacao_enviada` **só no sucesso**
+(`onError=continueErrorOutput`). É esse marcar que liga `confirmacao_enviada` e **destrava a
+expiração/pausa automática** que estava furada. Rotação + fallback testados nos 4 casos (exec
+20769). O Lembrete (`DW0nq1Jyp9xeOJwm`) passou a **ignorar `origem='reativacao'`** (1 linha no
+`Classificar Envio`) e foi **republicado** → acabou o envio duplo. Resposta segue por
+`responder_lembrete` (ramo reativação) na edge `whatsapp-webhook`. **Versionado** no
+`clubcut-backups` (commit `ce47816`: `reativacao-convite.json` novo + `lembretes-agendamento.json`,
+que de quebra trouxe o fix Meta #2 que faltava no backup). **Pendência única:** teste de envio real
+ponta a ponta — hoje a fila está vazia (1 barbearia, 0 clientes), então o envio/RPC reais não foram
+exercitados (usam o mesmo node/cred/remetente do lembrete e da avaliação, já provados em produção).
 
 ## Revisão de código do CRM (2026-08-28) — pendências fora do repositório
 

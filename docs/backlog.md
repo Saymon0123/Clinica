@@ -71,9 +71,22 @@ Depois do inventário do que a auditoria cobria, os dois erros mais silenciosos 
   `grave` (Asaas recusando / cobrar-uso falhou); B2 sem CPF/CNPJ > 3d = `aviso`; B3 boleto vencido
   > 3d e não pago = `aviso`.
 Ambas entram na `auditoria_pendente` (o n8n "Auditoria do Agente" manda ao canal; sem mudança no n8n).
-Lógica testada com cenários (12/12 PASS). **Ainda aberto do inventário** (próximas levas, sem pressa):
-overbooking/agendamento duplicado, `agent_paused` esquecido, comanda aberta esquecida, opt-out
-subindo, e o "webhook do Asaas parado" (inviável de detectar só pelo banco — fora por ora).
+Lógica testada com cenários (12/12 PASS).
+
+**`agent_paused` esquecido — FEITO (2026-09-08, migration 0141, aplicada).** Ramo `dono-sumiu` da
+`auditoria_atendimento` (`aviso`): conversa com `agent_paused=true` cuja última mensagem é do cliente
+há > 60 min (folga maior que os 15 do agente; gravidade menor porque o dono já sabe da conversa).
+Fecha a lacuna que o agente-mudo deixava aberta. Lógica testada (6/6 PASS).
+
+**Overbooking NÃO é buraco:** o banco já impede por exclusion constraint —
+`appointments_sem_sobreposicao` (mesmo profissional) e `appointments_cliente_sem_sobreposicao`
+(mesmo cliente), ambas `EXCLUDE USING gist` sobre `tstzrange` fora de cancelado/faltou. O que caberia
+ali é um code review garantindo que todos os caminhos de criação tratam o erro `23P01` sem susto pro
+cliente — não um alerta.
+
+**Ainda aberto do inventário** (próximas levas, sem pressa): comanda aberta esquecida (parte já pega
+por crons), opt-out subindo (precisa de volume real de disparos), e "webhook do Asaas parado"
+(inviável de detectar só pelo banco — fora por ora).
 
 ### ⚠️ Editar workflow no n8n não publica
 Pegadinha operacional, ao lado de "migration não está no pipeline". As

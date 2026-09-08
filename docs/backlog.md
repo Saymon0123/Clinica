@@ -62,6 +62,19 @@ branding; restrição de conta (`account_update`) = grave; `message_template_sta
 e a rejeição do nome virou 1 aviso com texto correto. Resta um follow-up menor: template PAUSED/DISABLED
 não gera alerta em lugar nenhum (fora do escopo do monitor do número; avaliar um alerta próprio depois).
 
+### Auditoria ganhou 2 alertas de ação rápida (2026-09-08, migration 0140, aplicada)
+Depois do inventário do que a auditoria cobria, os dois erros mais silenciosos e caros viraram alerta:
+- **Agente mudo** (`auditoria_atendimento`, `grave`): conversa cuja última mensagem é do cliente e
+  ficou > 15 min sem resposta (agente não pausado, barbearia atendendo). É a falha que já deixou o
+  agente mudo por semanas. Chave = id da mensagem final → some quando o agente responde.
+- **Cobrança travada** (`auditoria_cobranca`): B1 fatura com CPF ≥ R$5 aberta > 2d sem boleto =
+  `grave` (Asaas recusando / cobrar-uso falhou); B2 sem CPF/CNPJ > 3d = `aviso`; B3 boleto vencido
+  > 3d e não pago = `aviso`.
+Ambas entram na `auditoria_pendente` (o n8n "Auditoria do Agente" manda ao canal; sem mudança no n8n).
+Lógica testada com cenários (12/12 PASS). **Ainda aberto do inventário** (próximas levas, sem pressa):
+overbooking/agendamento duplicado, `agent_paused` esquecido, comanda aberta esquecida, opt-out
+subindo, e o "webhook do Asaas parado" (inviável de detectar só pelo banco — fora por ora).
+
 ### ⚠️ Editar workflow no n8n não publica
 Pegadinha operacional, ao lado de "migration não está no pipeline". As
 alterações via API vão para o **rascunho**; o agendamento ativo continua

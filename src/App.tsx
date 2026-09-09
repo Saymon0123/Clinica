@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react'
+import { Suspense, lazy as reactLazy, type ComponentType } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { withSentryReactRouterV7Routing } from '@sentry/react'
 import { AuthProvider, useAuth } from './features/auth/AuthContext'
@@ -11,6 +11,55 @@ import { LoginPage } from './features/auth/LoginPage'
 import { AppLayout } from './components/AppLayout'
 import { SkeletonPagina } from './components/Skeleton'
 import { AgendaPage } from './features/agenda/AgendaPage'
+
+/**
+ * Recarrega a página UMA vez quando o `import()` de uma página falha por chunk
+ * velho — depois de um deploy os hashes mudam e o arquivo antigo sai do ar, e
+ * quem estava com a aba aberta busca um que não existe mais. Recarregar pega o
+ * index.html novo. A trava em sessionStorage evita loop: se recarregar e ainda
+ * falhar, é erro real e sobe pro ErrorBoundary. O `sentry.ts` ignora esse erro,
+ * então o painel só guarda o que a recarga não resolve.
+ */
+function importarComRecarga<T>(factory: () => Promise<T>): Promise<T> {
+  const CHAVE = 'club-cut:recarga-por-chunk'
+  const jaRecarregou = (): boolean => {
+    try {
+      return Boolean(sessionStorage.getItem(CHAVE))
+    } catch {
+      return true // sem storage (aba privada): não arrisca loop, deixa o erro subir
+    }
+  }
+  return factory().then(
+    (mod) => {
+      try {
+        sessionStorage.removeItem(CHAVE)
+      } catch {
+        // storage indisponível: o import deu certo de qualquer forma
+      }
+      return mod
+    },
+    (erro: unknown) => {
+      const msg = String((erro as { message?: string } | null)?.message ?? erro)
+      const ehChunkVelho =
+        /dynamically imported module|Importing a module script failed|error loading dynamically imported/i.test(msg)
+      if (ehChunkVelho && !jaRecarregou()) {
+        try {
+          sessionStorage.setItem(CHAVE, String(Date.now()))
+        } catch {
+          // segue sem trava; o recarregamento único ainda ajuda
+        }
+        window.location.reload()
+        return new Promise<T>(() => {}) // trava até a página recarregar
+      }
+      throw erro
+    },
+  )
+}
+
+// Envolve o `lazy` do React para as páginas se auto-recarregarem no chunk velho.
+function lazy<T extends ComponentType<unknown>>(factory: () => Promise<{ default: T }>) {
+  return reactLazy(() => importarComRecarga(factory))
+}
 
 // Telas fora do caminho crítico entram sob demanda: o bundle inicial carrega
 // só login + agenda, que é onde o usuário cai ao abrir o app.

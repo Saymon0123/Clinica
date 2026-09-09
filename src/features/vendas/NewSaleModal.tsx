@@ -3,6 +3,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { Modal } from '../../components/Modal'
 import { Campo, Select } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
+import { gerarId } from '../../lib/id'
 import { toast } from '../../components/Toast'
 import { useAuth } from '../auth/AuthContext'
 import { useSalon } from '../auth/useSalon'
@@ -291,7 +292,7 @@ export function NewSaleModal({
           nome: `Pacote: ${pacote.nome}`,
           quantidade: 1,
           preco_unitario: pacote.preco,
-          uid: crypto.randomUUID(),
+          uid: gerarId(),
         },
       ])
       setItemRef('')

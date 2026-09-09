@@ -3,6 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { Send, X } from 'lucide-react'
 import { WhatsAppGlyph } from '../../../components/icons/WhatsAppGlyph'
 import { useCtaInlineVisivel } from './useCtaInlineVisivel'
+import { gerarId } from '../../../lib/id'
 
 /**
  * O botão flutuante de WhatsApp, com o painel que abre dele.
@@ -54,11 +55,11 @@ function lerOuCriarSessao() {
   try {
     const existente = localStorage.getItem(CHAVE_SESSAO)
     if (existente) return existente
-    const nova = crypto.randomUUID()
+    const nova = gerarId()
     localStorage.setItem(CHAVE_SESSAO, nova)
     return nova
   } catch {
-    return crypto.randomUUID()
+    return gerarId()
   }
 }
 

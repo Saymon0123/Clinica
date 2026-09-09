@@ -52,6 +52,23 @@ acontecer por limite de banco e de e-mail antes de acontecer por isto.
 
 ## Correção de comportamento
 
+### PostgREST do Supabase Free instável (504) derrubava workflows — mitigado com retry (2026-09-09)
+Vários workflows agendados falharam com `Gateway timed out` (504) ao ler o Supabase, gerando e-mails
+do error workflow (que funcionou como esperado). Diagnóstico pelos logs: **não é query lenta nem bug
+nosso** — banco vazio responde instantâneo, `pg_stat_activity` limpo (sem vazamento de conexão). É o
+**PostgREST do Free tier** (pool de 10) com "Warp server error: Thread killed by timeout manager"
+(437×/24h) e reinicializando o pool ~17×/24h → janelas intermitentes de 504. Os nós Supabase não
+tinham retry, então cada blip derrubava o workflow inteiro.
+**Mitigação (feita):** `retryOnFail` (maxTries 4, waitBetweenTries 5000ms) nos nós Supabase de TODOS
+os 10 workflows agendados que leem o banco — Avaliação, Convite, Reativação, Lembrete (16 nós),
+Aviso de Fim de Teste, Detalhamento de Uso, Auditoria do Agente, Uso Aura, Sentinela, Estoque
+(~25 nós no total). Absorve os blips; os e-mails falsos param. Republicados. (O nó `Gerar Boletos`
+do Detalhamento ficou fora do template — é edge function idempotente, não PostgREST; mantido em 2/3000.)
+**Cura raiz (decisão do dono):** o Free tier instável é teto para produção — com barbearias reais,
+esses 504 derrubariam lembretes/agente na cara do cliente. **Supabase Pro** (compute dedicado,
+PostgREST estável, pool maior) resolve na origem. Junto do Vercel Pro, é o passo de infra rumo à produção.
+**Pendente:** reversionar os 10 workflows no `clubcut-backups` (backup ficou defasado sem o retry).
+
 ### Nome verificado do número central RECUSADO pela Meta (2026-09-08)
 `name_status: DECLINED`, motivo `BIZ_COMMERCE_VIOLATION_OTHER`, no número central
 +55 41 8475-4172 (`phone_number_id 1288009817732005`). **Não é banimento nem queda de

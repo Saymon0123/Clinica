@@ -2741,3 +2741,43 @@ Tres cercas pra virar produto vendavel (pedido "o que da pra adiantar hoje"):
   `250 queued`, `from contato@clubcut.space`. O **Auth do Supabase** tambem foi
   migrado pra Custom SMTP Hostinger (remove o limite baixo do SMTP padrao).
   Config Meta em [[config-meta-whatsapp-oficial]].
+
+### Dois issues do Sentry corrigidos + integração de commit religada (2026-09-09)
+Vieram do painel do Sentry (org `club-cut`, projeto `react-native`), os dois no
+navegador do usuário final. Peças: **CRM** muda; Supabase/Vercel-env/n8n nada; o
+próprio deploy do merge cura o segundo em produção. PR #82, merge `d86c883`,
+deploy verde, 271 testes.
+
+- **REACT-NATIVE-3** (`crypto.randomUUID is not a function`): a função só existe
+  do Chrome 92 / Safari 15.4 pra cima. Visitante em navegador antigo — ou bot se
+  anunciando como Chrome 79 — estourava no `WhatsAppPopup` e a landing inteira
+  caía no ErrorBoundary. Helper `gerarId()` novo (`src/lib/id.ts`): randomUUID →
+  UUID v4 por `getRandomValues` → id não-cripto. Trocado nos 3 usos (WhatsAppPopup
+  ×2, NewSaleModal ×1), com `id.test.ts` cobrindo os caminhos.
+- **REACT-NATIVE-4** (`Failed to fetch dynamically imported module`): chunk velho
+  depois de deploy (hash muda, aba antiga busca arquivo que saiu do ar). O
+  `import()` das ~20 páginas passa por `importarComRecarga` (`App.tsx`): recarrega
+  a aba UMA vez (trava em sessionStorage contra loop) pra pegar o `index.html`
+  novo; se ainda falhar, sobe pro ErrorBoundary. `sentry.ts` ganhou `ignoreErrors`
+  do padrão. **Não conserta a aba já quebrada — protege os próximos deploys.**
+
+**Achado no caminho — o auto-close por commit estava quebrado.** Pus
+`Fixes REACT-NATIVE-3/4` no commit, mas os issues **não** fecharam sozinhos.
+Investigando pelo MCP: os releases existem (um por deploy, versionados pelo SHA),
+mas os recentes vêm com `lastCommit: null` — inclusive o `d86c883` do fix. Só o
+**primeiro** release do Sentry (`bb0985a`, 06/09) tem commit anexado. Ou seja: a
+associação release→commit **funcionou uma vez e caiu** — a integração
+GitHub↔Sentry desconectou (ou o repo saiu dela). Sem commit no release, o Sentry
+nunca lê a mensagem, e o `Fixes` não resolve. O código já está certo: o
+`@sentry/vite-plugin` tem `setCommits` default `{ auto: true }` — ele tenta a cada
+build e o `errorHandler` engole a falha quando não há repo conectado. **Nada a
+mudar no `vite.config.ts`.** Os dois issues foram resolvidos **à mão** pelo MCP
+(`resolvedInNextRelease`, reabre só se o bundle novo reproduzir).
+
+- (dono, FEITO 09/09) reconectou a integração GitHub no Sentry (Settings →
+  Integrations → GitHub, repo `Saymon0123/Clinica`). **Não dá pra fazer pelo
+  MCP** (o conector só lê integrações) nem por mim (é autorização do GitHub App,
+  OAuth do dono).
+- (verificar) o próximo release precisa vir com `lastCommit` preenchido — aí o
+  auto-close por `Fixes SHORT-ID` volta a valer pros próximos. Releases antigos
+  **não** voltam atrás; a associação é feita na hora do build.

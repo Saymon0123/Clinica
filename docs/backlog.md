@@ -14,6 +14,23 @@ Consultável pelo grafo: `graphify query "backlog"`.
 
 ## Segurança
 
+### Funções SECURITY DEFINER: auditoria de exposição (2026-09-09)
+Advisors 0028/0029 apontaram funções `SECURITY DEFINER` executáveis por `anon`/`authenticated`. Auditado a fundo:
+- **2 triggers expostos** (`marca_o_fim_do_teste`, `respeita_folga_entre_atendimentos`, ambos
+  `RETURNS trigger`) tinham EXECUTE herdado de `public` → chamáveis via `/rest/v1/rpc/`. O CRM não os
+  usa (grep vazio). **TRANCADOS** (migration 0143: revoke execute de public/anon/authenticated).
+  Revogar não afeta os triggers, que rodam pelo mecanismo de trigger.
+- **12 RPCs de gestão** executáveis por `authenticated` (`definir_papel_do_membro`, `editar_convite`,
+  `tirar_da_equipe`, `trocar_email_do_convite`, `estornar_venda`, `definir_agenda_publica`,
+  `definir_servicos_do_agendamento`, `garantir_cliente`, `quero_atender`, `salvar_jornada`,
+  `situacao_do_acesso`): **TODAS validam o tenant do chamador** (`private.salon_ids()` /
+  `private.is_manager()` / `auth.uid()`+role) — **sem IDOR**. O WARN do advisor é esperado (é o
+  padrão de RPC de gestão com verificação interna); manter como está.
+- **Ainda aberto (menor):** `function_search_path_mutable` em 3 funções `private` (`telefone_valido`,
+  `destino_whatsapp`, `documento_valido`) — adicionar `SET search_path`; mexer nelas é arriscado
+  (usadas em muitas views), fazer em leva dedicada com teste. `extension_in_public` (`btree_gist`,
+  não mover — sustenta as exclusion constraints) e `leaked_password_protection` (exige Pro) seguem.
+
 ### Proteção contra senhas vazadas desativada — exige plano Pro
 Supabase Auth pode recusar senha que já apareceu em vazamento, comparando com o
 HaveIBeenPwned por *k-anonymity* (só os 5 primeiros caracteres do hash saem do

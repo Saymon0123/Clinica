@@ -84,9 +84,13 @@ Fecha a lacuna que o agente-mudo deixava aberta. Lógica testada (6/6 PASS).
 ali é um code review garantindo que todos os caminhos de criação tratam o erro `23P01` sem susto pro
 cliente — não um alerta.
 
-**Ainda aberto do inventário** (próximas levas, sem pressa): comanda aberta esquecida (parte já pega
-por crons), opt-out subindo (precisa de volume real de disparos), e "webhook do Asaas parado"
-(inviável de detectar só pelo banco — fora por ora).
+**Comanda aberta esquecida — FEITO (2026-09-09, migration 0142, aplicada).** View
+`auditoria_comanda` (`aviso`): comanda `aberta` cujo caixa já fechou (órfã) **ou** aberta num dia
+anterior; só barbearia atendendo, janela de 30 dias. Nenhum cron fecha comanda (só caixa e
+agendamento), então a venda ficava pendurada em silêncio. Lógica testada (7/7 PASS).
+
+**Ainda aberto do inventário** (sem pressa): opt-out subindo (precisa de volume real de disparos) e
+"webhook do Asaas parado" (inviável de detectar só pelo banco — fora por ora).
 
 ### ⚠️ Editar workflow no n8n não publica
 Pegadinha operacional, ao lado de "migration não está no pipeline". As

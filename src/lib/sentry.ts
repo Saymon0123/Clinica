@@ -28,6 +28,15 @@ export function iniciarSentry() {
   Sentry.init({
     dsn,
     environment: import.meta.env.MODE,
+    // Chunk velho apos deploy: o import() de uma pagina falha porque o arquivo
+    // com o hash antigo saiu do ar. Nao e bug -- o App se recarrega sozinho e
+    // cai na versao nova (ver importarComRecarga no App.tsx). Fora do painel
+    // para nao afogar erro de verdade.
+    ignoreErrors: [
+      /Failed to fetch dynamically imported module/i,
+      /Importing a module script failed/i,
+      /error loading dynamically imported module/i,
+    ],
     integrations: [
       // Dá nome de rota parametrizado às transações (/agendar/:salonId em vez
       // de uma URL por barbearia). Só funciona junto com o

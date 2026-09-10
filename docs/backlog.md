@@ -2818,9 +2818,15 @@ verify_jwt=false, registrado no AbacatePay), `asaas` limpo (sem recorrência; ai
 nome por compat com CancelarUso/CobrancaDaRede). CRM: `UsoDoSistema.tsx` mostra QR+copia-e-cola.
 `config.toml` + secrets `ABACATE_*` no Supabase. pgTAP ajustado.
 
-**Pendente:** (a) **n8n** — nó "Gerar Boletos" ainda funciona (chama cobrar-uso), mas os
-e-mails ("boleto/Pix/cartão" + link) e a leitura de `cobrancas_a_enviar` (era `boletos_a_enviar`)
-precisam virar Pix; (b) **teste full em sandbox** com fatura controlada (webhook marcando pago
-ponta a ponta); (c) **limpeza**: apagar a edge `asaas-webhook` deployada (morta) e dar `unset`
-nos secrets `ASAAS_*`; renomear a edge `asaas`→`cobranca` é opcional. Chave do AbacatePay em uso
-é **sandbox** — trocar pela de produção no `ABACATE_API_KEY` quando for cobrar de verdade.
+**FEITO depois (2026-09-10):** (a) **n8n** atualizado e publicado — "Detalhamento de Uso" lê
+`cobrancas_a_enviar` (era `boletos_a_enviar`, que parou de existir e errava toda hora), o e-mail do
+dono manda o **copia-e-cola do Pix**, e "Marcar" usa `abacate_pix_id`/`cobranca_notificada_em`; o
+"Uso diário pra Aura" troca `boleto_vencimento`→`cobranca_vence_em`. (b) **Teste full ponta a ponta
+passou** (fatura de teste → PIX → simulate-payment → webhook marcou paga + reabriu acesso, sem "+1
+mês"). (c) **Limpeza**: edge `asaas-webhook` deployada apagada e secrets `ASAAS_*` removidos (só
+`ABACATE_*` restam). Renomear a edge `asaas`→`cobranca` segue opcional.
+
+**Único pendente — PRODUÇÃO:** a `ABACATE_API_KEY` no Supabase é **sandbox** (devMode: as cobranças
+geram PIX fake, não dinheiro). Ir pra produção exige o dono ativar produção no AbacatePay (KYC) e me
+passar a chave de produção; aí troco o secret e registro um webhook de produção. Só faz sentido no dia
+de onboardar a primeira barbearia pagante — hoje são 0 barbearias reais, então **manter sandbox até lá**.

@@ -67,6 +67,11 @@ do Detalhamento ficou fora do template — é edge function idempotente, não Po
 **Cura raiz (decisão do dono):** o Free tier instável é teto para produção — com barbearias reais,
 esses 504 derrubariam lembretes/agente na cara do cliente. **Supabase Pro** (compute dedicado,
 PostgREST estável, pool maior) resolve na origem. Junto do Vercel Pro, é o passo de infra rumo à produção.
+**Pro CONFIRMADO (2026-09-09):** `get_organization` → `plan: pro` (org `psiyojfncbwxjtibuiug`).
+Ressalva honesta: subir o *plano* não redimensiona o *compute* sozinho — a cura do "Thread killed" é a
+instância maior, às vezes add-on à parte, e o MCP não expõe o tamanho do compute. Falta **provar
+empírico**: ver nos logs do PostgREST se os `Thread killed`/504 caíram após o upgrade; se persistirem, o
+próximo passo é o compute add-on, não o plano. Os retries seguem como cinto de segurança de qualquer jeito.
 **Pendente:** reversionar os 10 workflows no `clubcut-backups` (backup ficou defasado sem o retry).
 
 ### Nome verificado do número central RECUSADO pela Meta (2026-09-08)
@@ -76,9 +81,13 @@ nota** (verificado na Graph API): o número está `CONNECTED`, `quality_rating: 
 `account_mode: LIVE`, `throughput STANDARD` — envia normal. Impacto: sem nome verificado
 aprovado, o cliente vê o número em vez de "Club Cut" com selo — **branding/confiança, não
 entrega**. Também `code_verification_status: EXPIRED` (re-verificar o número quando puder).
-**Ação (Saymon, no WhatsApp Manager):** ver o motivo detalhado do BIZ_COMMERCE e re-submeter
-o nome de exibição; provavelmente exige **Verificação do Negócio** (Business Verification no
-Business Manager), que de quebra eleva os limites de envio.
+**RESOLVIDO/EM ANÁLISE (2026-09-09):** a causa **NÃO** era verificação do negócio — ao vivo,
+`business_verification_status: verified` e `account_review_status: APPROVED` (o palpite de 08/09 estava
+errado). O motivo detalhado no WhatsApp Manager era o **nome submetido `Club_Cut` com underscore**, que
+viola as Diretrizes de nome de exibição do WhatsApp. Re-submetido como **`Club Cut`** (espaço, `✓` verde
+de formato) + site `clubcut.space` no motivo; status virou **"Em análise"**. Quando aprovar, o cliente
+passa a ver "Club Cut" no lugar do número. Resíduo menor: `code_verification_status: EXPIRED`
+(re-verificar o número um dia).
 
 ### Monitor da WABA (0116) alarma demais e com texto enganoso (2026-09-08)
 A view `auditoria_operacao` (ramo `qualidade-waba`, migration 0116) gera alerta **grave**
@@ -2778,6 +2787,8 @@ mudar no `vite.config.ts`.** Os dois issues foram resolvidos **à mão** pelo MC
   Integrations → GitHub, repo `Saymon0123/Clinica`). **Não dá pra fazer pelo
   MCP** (o conector só lê integrações) nem por mim (é autorização do GitHub App,
   OAuth do dono).
-- (verificar) o próximo release precisa vir com `lastCommit` preenchido — aí o
-  auto-close por `Fixes SHORT-ID` volta a valer pros próximos. Releases antigos
-  **não** voltam atrás; a associação é feita na hora do build.
+- (FEITO 09/09) o release novo `fbbb852` (deploy do PR #83) voltou **com commit
+  anexado** — `lastCommit` preenchido e cada commit marcado `Repository:
+  Saymon0123/Clinica`, prova de que o Sentry lê o repo conectado. Auto-close por
+  `Fixes SHORT-ID` volta a valer pros próximos. Releases antigos não voltam atrás;
+  a associação é feita na hora do build.

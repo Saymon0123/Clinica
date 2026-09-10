@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Activity, CalendarCheck, MessageSquareText, RotateCcw, Copy, Check } from 'lucide-react'
+import { Activity, CalendarCheck, MessageSquareText, RotateCcw, Copy, Check, RefreshCw } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
 import { Badge } from '../../components/Badge'
@@ -39,6 +39,13 @@ type Fatura = {
   cobranca_valor: number | null
   cobranca_vence_em: string | null
   paga_em: string | null
+  abacate_pix_id: string | null
+  pix_expira_em: string | null
+}
+
+/** O QR morreu, e a dívida continua. É o caso que exige gerar outro código. */
+function pixVencido(f: Fatura) {
+  return Boolean(f.pix_expira_em) && new Date(f.pix_expira_em!).getTime() < Date.now()
 }
 
 /**
@@ -60,6 +67,44 @@ export function UsoDoSistema() {
   const [erro, setErro] = useState(false)
   const [pixAberto, setPixAberto] = useState<Fatura | null>(null)
   const [copiado, setCopiado] = useState(false)
+  const [gerando, setGerando] = useState<string | null>(null)
+  const [erroReemissao, setErroReemissao] = useState<string | null>(null)
+  // Recarrega a lista depois de gerar um código novo, sem duplicar a consulta.
+  const [versao, setVersao] = useState(0)
+
+  /**
+   * Pede ao `cobrar-uso` uma nova cobrança para a mesma dívida.
+   *
+   * A edge é quem decide se pode: confere que quem clicou é dono, que a cobrança
+   * está em aberto e que o código realmente venceu. Aqui só mostramos a resposta
+   * — validar de novo no front seria duplicar regra que já mora num lugar só.
+   */
+  async function gerarNovoPix(fatura: Fatura) {
+    if (!fatura.abacate_pix_id) return
+    setGerando(fatura.id)
+    setErroReemissao(null)
+    const { error } = await supabase.functions.invoke('cobrar-uso', {
+      body: { acao: 'reemitir', pixId: fatura.abacate_pix_id },
+    })
+    if (error) {
+      // A edge devolve o motivo em português (já pago, ainda válido, sem
+      // permissão, limite). Mostrar "erro genérico" por cima disso esconderia
+      // justamente a frase que resolve a dúvida do dono.
+      let mensagem = 'Não foi possível gerar um novo código agora. Tente de novo.'
+      try {
+        const corpo = await (error as { context?: Response }).context?.json()
+        if (corpo?.error) mensagem = String(corpo.error)
+      } catch {
+        // Resposta sem corpo legível: fica a mensagem genérica.
+      }
+      setErroReemissao(mensagem)
+      setGerando(null)
+      return
+    }
+    setPixAberto(null)
+    setGerando(null)
+    setVersao((v) => v + 1)
+  }
 
   async function copiarPix(codigo: string) {
     try {
@@ -81,7 +126,7 @@ export function UsoDoSistema() {
         supabase
           .from('faturas_de_uso')
           .select(
-            'id, periodo_inicio, periodo_fim, motivo, agendamentos, preco_unitario, valor, valor_gerado, pix_br_code, pix_br_code_base64, cobranca_valor, cobranca_vence_em, paga_em',
+            'id, periodo_inicio, periodo_fim, motivo, agendamentos, preco_unitario, valor, valor_gerado, pix_br_code, pix_br_code_base64, cobranca_valor, cobranca_vence_em, paga_em, abacate_pix_id, pix_expira_em',
           )
           .eq('salon_id', salonId)
           .order('periodo_fim', { ascending: false })
@@ -103,7 +148,7 @@ export function UsoDoSistema() {
     return () => {
       cancelado = true
     }
-  }, [salonId])
+  }, [salonId, versao])
 
   if (!isManager) return null
 
@@ -188,24 +233,48 @@ export function UsoDoSistema() {
           </p>
 
           {cobrancaAberta && (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning/40 bg-warning-soft p-3">
-              <div className="text-sm text-foreground">
-                Cobrança em aberto:{' '}
-                <strong>{moeda(Number(cobrancaAberta.cobranca_valor ?? cobrancaAberta.valor))}</strong>
-                {cobrancaAberta.cobranca_vence_em && (
-                  <span className="text-muted-foreground">
-                    {' '}
-                    · vence {dataBr(cobrancaAberta.cobranca_vence_em)}
-                  </span>
+            <div className="space-y-2 rounded-lg border border-warning/40 bg-warning-soft p-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="text-sm text-foreground">
+                  Cobrança em aberto:{' '}
+                  <strong>{moeda(Number(cobrancaAberta.cobranca_valor ?? cobrancaAberta.valor))}</strong>
+                  {cobrancaAberta.cobranca_vence_em && (
+                    <span className="text-muted-foreground">
+                      {' '}
+                      · vence {dataBr(cobrancaAberta.cobranca_vence_em)}
+                    </span>
+                  )}
+                </div>
+                {/* O código Pix vale 7 dias; a dívida continua depois disso. Sem
+                    este botão o dono ficava bloqueado SEM MEIO DE PAGAR — o QR
+                    morto na tela e nenhuma forma de pedir outro. */}
+                {pixVencido(cobrancaAberta) ? (
+                  <button
+                    type="button"
+                    onClick={() => gerarNovoPix(cobrancaAberta)}
+                    disabled={gerando === cobrancaAberta.id}
+                    className="btn-primary inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+                  >
+                    <RefreshCw size={14} className={gerando === cobrancaAberta.id ? 'animate-spin' : ''} />
+                    {gerando === cobrancaAberta.id ? 'Gerando...' : 'Gerar novo Pix'}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setPixAberto(cobrancaAberta)}
+                    className="btn-primary rounded-lg px-3 py-1.5 text-sm font-medium shrink-0"
+                  >
+                    Pagar com Pix
+                  </button>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={() => setPixAberto(cobrancaAberta)}
-                className="btn-primary rounded-lg px-3 py-1.5 text-sm font-medium shrink-0"
-              >
-                Pagar com Pix
-              </button>
+              {pixVencido(cobrancaAberta) && (
+                <p className="text-xs text-muted-foreground">
+                  O código anterior expirou. Gere outro para pagar — o valor e o prazo continuam os
+                  mesmos.
+                </p>
+              )}
+              <ErroInline>{erroReemissao}</ErroInline>
             </div>
           )}
 
@@ -274,6 +343,17 @@ export function UsoDoSistema() {
                     <span className="inline-flex items-center gap-2">
                       {f.paga_em ? (
                         <Badge variante="ok">pago</Badge>
+                      ) : f.pix_br_code && pixVencido(f) ? (
+                        // Abrir um QR morto seria pior que não ter botão: o dono
+                        // tentaria pagar e o banco recusaria sem dizer por quê.
+                        <button
+                          type="button"
+                          onClick={() => gerarNovoPix(f)}
+                          disabled={gerando === f.id}
+                          className="btn-chip btn-chip-primario disabled:opacity-50"
+                        >
+                          {gerando === f.id ? 'Gerando...' : 'Gerar novo Pix'}
+                        </button>
                       ) : f.pix_br_code ? (
                         <button
                           type="button"

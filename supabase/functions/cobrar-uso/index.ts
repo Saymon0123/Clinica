@@ -26,6 +26,7 @@ import { capturarErro, comSentry } from '../_shared/sentry.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
 const ABACATE_API_KEY = Deno.env.get('ABACATE_API_KEY')
 // Sem fallback de propósito: sandbox silencioso em produção é pior que falhar.
 const ABACATE_BASE_URL = Deno.env.get('ABACATE_BASE_URL')
@@ -34,11 +35,37 @@ const ABACATE_BASE_URL = Deno.env.get('ABACATE_BASE_URL')
 const MINIMO_COBRANCA = 5
 const DIAS_ATE_O_VENCIMENTO = 7
 
+// O cron chama servidor-a-servidor, mas a reemissão vem do navegador do dono.
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...corsHeaders },
   })
+}
+
+/** Limite de tentativas via banco (0111). Erro do limitador deixa passar. */
+async function taxaExcedida(
+  admin: ReturnType<typeof createClient>,
+  chave: string,
+  limite: number,
+  janelaSegundos: number,
+) {
+  const { data, error } = await admin.rpc('taxa_excedida', {
+    p_chave: chave,
+    p_limite: limite,
+    p_janela_segundos: janelaSegundos,
+  })
+  if (error) {
+    console.error('Limitador de taxa indisponivel:', error)
+    return false
+  }
+  return data === true
 }
 
 async function abacate(caminho: string, init: RequestInit = {}) {
@@ -76,15 +103,116 @@ function chamadorAutorizado(req: Request): boolean {
   return diff === 0
 }
 
+/**
+ * O botão "Gerar novo Pix" da aba Assinatura.
+ *
+ * Não cria cobrança nenhuma: apenas LIBERA a dívida (zera o `abacate_pix_id`,
+ * guardando o antigo) para o fluxo normal abaixo gerar outra. A criação mora num
+ * lugar só, de propósito — duplicá-la aqui era o erro mais caro possível.
+ *
+ * Age sobre a COBRANÇA, não sobre o salão: em rede unificada um PIX cobre várias
+ * unidades, e liberar só as faturas de uma delas partiria o agrupamento no meio.
+ *
+ * Devolve `Response` quando recusa, ou `null` quando liberou e o fluxo segue.
+ */
+async function liberarParaReemissao(
+  req: Request,
+  admin: ReturnType<typeof createClient>,
+  body: Record<string, unknown>,
+): Promise<Response | null> {
+  const autorizacao = req.headers.get('Authorization') ?? ''
+  if (!autorizacao) return json({ error: 'Nao autorizado.' }, 401)
+
+  const pixId = (body.pixId as string | undefined)?.trim()
+  if (!pixId) return json({ error: 'Cobranca nao informada.' }, 400)
+
+  // O JWT de quem clicou responde pela identidade real via RLS — o service_role
+  // ignora RLS e não serve para autorizar.
+  const comoUsuario = createClient(SUPABASE_URL, ANON_KEY, {
+    global: { headers: { Authorization: autorizacao } },
+  })
+  const { data: quemChamou } = await comoUsuario.auth.getUser()
+  const usuario = quemChamou?.user
+  if (!usuario) return json({ error: 'Nao autorizado.' }, 401)
+
+  const { data: faturas, error: erroFaturas } = await admin
+    .from('faturas_de_uso')
+    .select('id, salon_id, paga_em, pix_expira_em')
+    .eq('abacate_pix_id', pixId)
+  if (erroFaturas) {
+    console.error('Erro ao ler a cobranca para reemissao:', erroFaturas)
+    return json({ error: 'erro interno' }, 500)
+  }
+  if (!faturas || faturas.length === 0) return json({ error: 'Cobranca nao encontrada.' }, 404)
+
+  if (faturas.some((f) => f.paga_em !== null)) {
+    return json({ error: 'Esta cobranca ja foi paga.' }, 409)
+  }
+
+  // Recusar QR vivo não é preciosismo: gerar outro invalidaria justamente o
+  // código que o dono pode ter em mãos e estar prestes a pagar.
+  const agora = Date.now()
+  if (faturas.some((f) => f.pix_expira_em && new Date(f.pix_expira_em).getTime() > agora)) {
+    return json({ error: 'Este Pix ainda esta valido. Use o codigo que ja esta na tela.' }, 409)
+  }
+
+  // Dono de ALGUMA unidade coberta pela cobrança. `.eq('user_id')` é obrigatório:
+  // a RLS deixa gestor enxergar os vínculos da equipe inteira, então filtrar só
+  // por salon_id devolveria o papel de um colega.
+  const salonIds = [...new Set(faturas.map((f) => f.salon_id))]
+  const { data: vinculos } = await comoUsuario
+    .from('user_salons')
+    .select('salon_id')
+    .eq('user_id', usuario.id)
+    .eq('role', 'owner')
+    .in('salon_id', salonIds)
+  if (!vinculos || vinculos.length === 0) {
+    return json({ error: 'Apenas o dono pode gerar uma nova cobranca.' }, 403)
+  }
+
+  // Sem freio, o botão vira um martelo na API do AbacatePay.
+  if (await taxaExcedida(admin, `reemitir:${vinculos[0].salon_id}`, 3, 3600)) {
+    return json({ error: 'Voce ja gerou varios codigos agora. Aguarde alguns minutos.' }, 429)
+  }
+
+  const { error: erroLibera } = await admin.rpc('liberar_cobranca_para_reemissao', {
+    p_pix_id: pixId,
+  })
+  if (erroLibera) {
+    console.error('Erro ao liberar a cobranca para reemissao:', erroLibera)
+    await capturarErro(erroLibera, 'cobrar-uso', { onde: 'liberar_cobranca_para_reemissao', pixId })
+    return json({ error: 'Nao foi possivel gerar uma nova cobranca. Tente de novo.' }, 500)
+  }
+
+  return null
+}
+
 Deno.serve(comSentry('cobrar-uso', async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
-  if (!chamadorAutorizado(req)) return json({ error: 'Não autorizado.' }, 401)
   if (!ABACATE_API_KEY || !ABACATE_BASE_URL) {
     console.error('ABACATE_API_KEY ou ABACATE_BASE_URL ausente.')
     return json({ error: 'Cobranca nao configurada.' }, 500)
   }
 
+  // Duas portas: o cron (service key, corpo vazio) e o botão "Gerar novo Pix"
+  // do dono (JWT dele, `acao: 'reemitir'`). A trava da service key vale só para
+  // a primeira — a segunda tem a sua própria, mais estrita.
+  let body: Record<string, unknown> = {}
+  try {
+    body = await req.json()
+  } catch {
+    // O cron chama sem corpo. Não é erro.
+  }
+  const ehReemissao = body.acao === 'reemitir'
+  if (!ehReemissao && !chamadorAutorizado(req)) return json({ error: 'Não autorizado.' }, 401)
+
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+
+  if (ehReemissao) {
+    const recusa = await liberarParaReemissao(req, admin, body)
+    if (recusa) return recusa
+  }
 
   const { data: faturas, error: erroFaturas } = await admin
     .from('faturas_de_uso')
@@ -178,8 +306,13 @@ Deno.serve(comSentry('cobrar-uso', async (req) => {
         ? `Club Cut - uso acumulado ate ${periodoBr} - ${nomePagante}`
         : `Club Cut - uso ate ${periodoBr} - ${nomePagante}`
 
-    // Cobrança PIX de valor variável (por uso). amount em CENTAVOS; QR válido a
-    // janela inteira de 7 dias, casando com cobranca_vence_em (gatilho de bloqueio).
+    // Cobrança PIX de valor variável (por uso). amount em CENTAVOS.
+    //
+    // O QR vale 7 dias a partir de AGORA, e isso deixou de ser o mesmo que
+    // `cobranca_vence_em`. Amarrar os dois foi o defeito original: o código
+    // morria no exato instante em que o bloqueio começava, e quem pagasse com um
+    // dia de atraso ficava bloqueado sem meio nenhum de pagar. Agora o prazo da
+    // dívida é fixo e o QR é renovável.
     const cobranca = await abacate('/transparents/create', {
       method: 'POST',
       body: JSON.stringify({
@@ -218,8 +351,10 @@ Deno.serve(comSentry('cobrar-uso', async (req) => {
         pix_br_code: pix.brCode ?? null,
         pix_br_code_base64: pix.brCodeBase64 ?? null,
         pix_expira_em: venceEm.toISOString(),
-        cobranca_vence_em: venceEmData,
         cobranca_valor: total,
+        // `cobranca_vence_em` NÃO entra aqui — vai logo abaixo, e só onde ainda
+        // é nulo. Numa reemissão a dívida é a mesma e o prazo dela não anda;
+        // escrever daqui daria +7 dias de acesso a cada clique no botão.
       })
       .in(
         'id',
@@ -243,6 +378,24 @@ Deno.serve(comSentry('cobrar-uso', async (req) => {
       // abacate_pix_id nulo).
       console.error('Erro ao registrar a cobranca PIX (o PIX orfao expira sozinho):', erroMarca, grupo.chave)
       continue
+    }
+
+    // O prazo da dívida, em statement separado e SÓ onde ainda é nulo.
+    // Fatura reemitida já tem o seu e o mantém — é o que impede o botão "Gerar
+    // novo Pix" de virar "adiar o bloqueio". Fatura nova recebe hoje + 7.
+    const { error: erroPrazo } = await admin
+      .from('faturas_de_uso')
+      .update({ cobranca_vence_em: venceEmData })
+      .in(
+        'id',
+        (marcadas ?? []).map((f) => f.id),
+      )
+      .is('cobranca_vence_em', null)
+    if (erroPrazo) {
+      // O PIX está gravado e é pagável; só o prazo do bloqueio não ficou. Sem
+      // ele o cron não bloqueia esta fatura — dinheiro parado, em silêncio.
+      console.error('Erro ao gravar o vencimento da cobranca:', erroPrazo, grupo.chave)
+      await capturarErro(erroPrazo, 'cobrar-uso', { onde: 'gravar-vencimento', chave: grupo.chave })
     }
 
     cobrancas += 1

@@ -227,6 +227,25 @@ Deno.serve(comSentry('cobrar-uso', async (req) => {
     return json({ cobrancas: 0, faturasCobertas: 0, acumuladas: 0, semDocumento: 0 })
   }
 
+  // Recicla reserva órfã: a execução que reservou morreu entre reservar e
+  // gravar (timeout da edge, deploy no meio, queda). Sem isto a fatura ficaria
+  // reservada para sempre e nunca mais seria cobrada — trocaríamos cobrança
+  // dupla por cobrança nenhuma, que é pior.
+  //
+  // 10 minutos é folgado de propósito: a chamada ao AbacatePay leva segundos, e
+  // reciclar cedo demais recria exatamente a corrida que esta reserva existe
+  // para impedir.
+  const limiteDaReserva = new Date(Date.now() - 10 * 60_000).toISOString()
+  const { error: erroReciclagem } = await admin
+    .from('faturas_de_uso')
+    .update({ cobranca_reservada_em: null })
+    .is('abacate_pix_id', null)
+    .lt('cobranca_reservada_em', limiteDaReserva)
+  if (erroReciclagem) {
+    console.error('Erro ao reciclar reservas orfas:', erroReciclagem)
+    await capturarErro(erroReciclagem, 'cobrar-uso', { onde: 'reciclar-reservas' })
+  }
+
   const salonIds = [...new Set(faturas.map((f) => f.salon_id))]
   const [{ data: salons }, { data: subs }] = await Promise.all([
     admin
@@ -306,6 +325,54 @@ Deno.serve(comSentry('cobrar-uso', async (req) => {
         ? `Club Cut - uso acumulado ate ${periodoBr} - ${nomePagante}`
         : `Club Cut - uso ate ${periodoBr} - ${nomePagante}`
 
+    // ------------------------------------------------------------------
+    // RESERVA — antes de gastar do outro lado.
+    //
+    // Esta é a linha que separa "cobrança dupla detectada" de "cobrança dupla
+    // impossível". Reivindicar é um UPDATE condicional: só pega fatura que
+    // ainda está livre E não reservada. Duas execuções sobrepostas disputam
+    // aqui, no banco, onde a disputa é resolvida — e não lá fora, onde os dois
+    // PIX já teriam nascido.
+    //
+    // Reivindicação PARCIAL não serve: se o grupo tem 3 faturas e eu só
+    // consegui 2, a outra execução está com a terceira e vai cobrar o grupo
+    // inteiro. Solto o que peguei e saio — ela cobra, eu não.
+    // ------------------------------------------------------------------
+    const ids = grupo.faturas.map((f) => f.id)
+    const { data: reservadas, error: erroReserva } = await admin
+      .from('faturas_de_uso')
+      .update({ cobranca_reservada_em: new Date().toISOString() })
+      .in('id', ids)
+      .is('abacate_pix_id', null)
+      .is('cobranca_reservada_em', null)
+      .select('id')
+    if (erroReserva) {
+      console.error('Erro ao reservar a cobranca:', erroReserva, grupo.chave)
+      await capturarErro(erroReserva, 'cobrar-uso', { onde: 'reservar', chave: grupo.chave })
+      continue
+    }
+
+    const soltar = async () => {
+      const { error } = await admin
+        .from('faturas_de_uso')
+        .update({ cobranca_reservada_em: null })
+        .in('id', (reservadas ?? []).map((f) => f.id))
+        .is('abacate_pix_id', null)
+      if (error) {
+        // A reserva presa some sozinha em 10 min pela reciclagem do topo; o que
+        // não pode é isso passar despercebido.
+        console.error('Erro ao soltar a reserva:', error, grupo.chave)
+        await capturarErro(error, 'cobrar-uso', { onde: 'soltar-reserva', chave: grupo.chave })
+      }
+    }
+
+    if ((reservadas?.length ?? 0) !== ids.length) {
+      console.log('grupo pulado: outra execucao esta com ele', grupo.chave,
+        (reservadas?.length ?? 0), 'de', ids.length)
+      await soltar()
+      continue
+    }
+
     // Cobrança PIX de valor variável (por uso). amount em CENTAVOS.
     //
     // O QR vale 7 dias a partir de AGORA, e isso deixou de ser o mesmo que
@@ -331,19 +398,19 @@ Deno.serve(comSentry('cobrar-uso', async (req) => {
     const pix = cobranca.data?.data
     if (!cobranca.ok || !pix?.id) {
       console.error('AbacatePay recusou a cobranca', grupo.chave, cobranca.status, cobranca.data)
+      // Nada nasceu do outro lado: soltar na hora, para o próximo ciclo tentar
+      // em vez de esperar os 10 minutos da reciclagem.
+      await soltar()
       continue
     }
 
-    // O `.is('abacate_pix_id', null)` repetido aqui NÃO é redundância com a
-    // linha 92. Entre listar e gravar há uma chamada de rede ao AbacatePay: duas
-    // execuções sobrepostas leem as mesmas faturas livres, ambas criam um PIX
-    // real, e sem esta condição a segunda sobrescrevia a primeira. O dono pagava
-    // o QR que recebeu (o primeiro), o webhook não achava fatura nenhuma com
-    // aquele id, e o dinheiro entrava sem abrir o acesso.
+    // Grava o PIX e SOLTA a reserva no mesmo UPDATE: enquanto `abacate_pix_id`
+    // estiver preenchido, ele é que responde pela exclusividade — reserva viva
+    // aqui só serviria para prender a linha se algo falhasse depois.
     //
-    // Isto não IMPEDE a cobrança dupla — o PIX órfão já existe do outro lado.
-    // Impede a perda SILENCIOSA: quem perde a corrida grava zero linhas, e a
-    // divergência abaixo vira alerta no Sentry com o id para reconciliar.
+    // O `.is('abacate_pix_id', null)` continua, agora como cinto e suspensório:
+    // a reserva já garante que ninguém mais está neste grupo. Se um dia alguém
+    // mexer numa das duas travas, a outra ainda segura.
     const { data: marcadas, error: erroMarca } = await admin
       .from('faturas_de_uso')
       .update({
@@ -352,31 +419,36 @@ Deno.serve(comSentry('cobrar-uso', async (req) => {
         pix_br_code_base64: pix.brCodeBase64 ?? null,
         pix_expira_em: venceEm.toISOString(),
         cobranca_valor: total,
+        cobranca_reservada_em: null,
         // `cobranca_vence_em` NÃO entra aqui — vai logo abaixo, e só onde ainda
         // é nulo. Numa reemissão a dívida é a mesma e o prazo dela não anda;
         // escrever daqui daria +7 dias de acesso a cada clique no botão.
       })
-      .in(
-        'id',
-        grupo.faturas.map((f) => f.id),
-      )
+      .in('id', ids)
       .is('abacate_pix_id', null)
       .select('id')
-    if (!erroMarca && (marcadas?.length ?? 0) !== grupo.faturas.length) {
-      const perdidas = grupo.faturas.length - (marcadas?.length ?? 0)
-      console.error('Cobranca PIX duplicada: outra execucao ja marcou', grupo.chave, pix.id, perdidas)
+    if (!erroMarca && (marcadas?.length ?? 0) !== ids.length) {
+      // Com a reserva no lugar, chegar aqui não deveria ser possível: as faturas
+      // foram reivindicadas antes de o PIX nascer. Se acontecer, alguém escreveu
+      // no banco por fora do `cobrar-uso` — e existe um PIX real solto no
+      // AbacatePay que ninguém vai rotear. Alerta com o id para reconciliar.
+      const perdidas = ids.length - (marcadas?.length ?? 0)
+      console.error('Reserva furada: fatura mudou entre reservar e gravar', grupo.chave, pix.id, perdidas)
       await capturarErro(
-        new Error(`PIX duplicado: ${pix.id} cobre ${perdidas} fatura(s) ja cobradas por outra execucao`),
+        new Error(`Reserva furada: PIX ${pix.id} nasceu para ${perdidas} fatura(s) que mudaram por fora`),
         'cobrar-uso',
-        { onde: 'corrida-ao-marcar', chave: grupo.chave, pixId: pix.id, perdidas },
+        { onde: 'reserva-furada', chave: grupo.chave, pixId: pix.id, perdidas },
       )
     }
     if (erroMarca) {
       // A cobrança existe no AbacatePay mas não ficou registrada. Um PIX que o
       // dono nunca recebe apenas expira sem pagamento — não há cobrança dupla a
-      // desfazer. Registra e segue; o próximo ciclo gera outra (idempotência por
-      // abacate_pix_id nulo).
+      // desfazer.
       console.error('Erro ao registrar a cobranca PIX (o PIX orfao expira sozinho):', erroMarca, grupo.chave)
+      await capturarErro(erroMarca, 'cobrar-uso', { onde: 'gravar-pix', chave: grupo.chave, pixId: pix.id })
+      // Solta a reserva: sem isto a fatura ficaria presa até a reciclagem de 10
+      // minutos, e o próximo ciclo passaria batido por ela.
+      await soltar()
       continue
     }
 
@@ -399,7 +471,7 @@ Deno.serve(comSentry('cobrar-uso', async (req) => {
     }
 
     cobrancas += 1
-    // O que foi REIVINDICADO, não o que foi tentado: numa corrida os dois
+    // O que foi GRAVADO, não o que foi tentado: se algum dia os dois
     // números divergem, e é o primeiro que diz a verdade sobre o banco.
     faturasCobertas += marcadas?.length ?? 0
   }

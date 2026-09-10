@@ -2792,3 +2792,35 @@ mudar no `vite.config.ts`.** Os dois issues foram resolvidos **à mão** pelo MC
   Saymon0123/Clinica`, prova de que o Sentry lê o repo conectado. Auto-close por
   `Fixes SHORT-ID` volta a valer pros próximos. Releases antigos não voltam atrás;
   a associação é feita na hora do build.
+
+### Cobrança migrada de Asaas para AbacatePay (PIX) — EM ANDAMENTO (2026-09-10)
+Decisão do dono: abandonar o Asaas (reprovado, nunca foi ao ar) e usar o **AbacatePay**
+(API v2, PIX). Como o Asaas nunca cobrou ninguém (produção zerada), foi reconstrução da
+camada, sem migrar dado vivo. Decisões: **PIX-only**, **7 dias** de prazo pra pagar antes
+de travar (`cobranca_vence_em`), pagar **quita o ciclo** (sem "+1 mês"; o cron
+`estender_acesso_sem_debito` rege o acesso), "atrasada" **derivada** (PIX não emite evento
+de vencimento).
+
+**Contrato AbacatePay confirmado no ar (sandbox):** chave é **v2**; `POST
+/v2/transparents/create {method:"PIX",data:{amount(centavos),expiresIn,description,externalId}}`
+→ `{data:{id:"pix_char_…",brCode,brCodeBase64,status:"PENDING"}}`; `GET
+/v2/transparents/check?id=`; `POST /v2/transparents/simulate-payment?id=` (devMode). Webhook
+por **HMAC-SHA256** no header `X-Webhook-Signature` (o painel remove o `?webhookSecret=` da
+URL); payload do pagamento: `event:"transparent.completed"`, id em **`data.transparent.id`**.
+Correções que só o teste real pegou: `customer` não é campo do PIX transparente; o id do PIX
+não é `data.id`. **`llms.txt` deles erra vários pontos — a doc/o sandbox mandam.**
+
+**Feito e deployado:** migration `0144` (troca colunas boleto/asaas→pix/cobranca em
+`faturas_de_uso`; `asaas_eventos`→`cobranca_eventos`; `boletos_a_enviar`→`cobrancas_a_enviar`;
+`estender_acesso_sem_debito` usa `cobranca_vence_em`; `auditoria_cobranca` por REPLACE p/ não
+derrubar `auditoria_pendente`). Edges: `cobrar-uso` (cria PIX), `abacate-webhook` novo (HMAC,
+verify_jwt=false, registrado no AbacatePay), `asaas` limpo (sem recorrência; ainda com esse
+nome por compat com CancelarUso/CobrancaDaRede). CRM: `UsoDoSistema.tsx` mostra QR+copia-e-cola.
+`config.toml` + secrets `ABACATE_*` no Supabase. pgTAP ajustado.
+
+**Pendente:** (a) **n8n** — nó "Gerar Boletos" ainda funciona (chama cobrar-uso), mas os
+e-mails ("boleto/Pix/cartão" + link) e a leitura de `cobrancas_a_enviar` (era `boletos_a_enviar`)
+precisam virar Pix; (b) **teste full em sandbox** com fatura controlada (webhook marcando pago
+ponta a ponta); (c) **limpeza**: apagar a edge `asaas-webhook` deployada (morta) e dar `unset`
+nos secrets `ASAAS_*`; renomear a edge `asaas`→`cobranca` é opcional. Chave do AbacatePay em uso
+é **sandbox** — trocar pela de produção no `ABACATE_API_KEY` quando for cobrar de verdade.

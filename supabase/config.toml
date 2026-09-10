@@ -35,7 +35,7 @@ enabled = true
 # verify_jwt (E7 da auditoria; antes so vivia no painel). As funcoes com
 # verify_jwt=false tem auth propria no corpo (assinatura do webhook, apikey) ou
 # sao publicas de proposito; se subissem como true, calariam em silencio
-# (Meta para de entregar, Asaas para de avisar pagamento, agenda publica quebra).
+# (Meta para de entregar, AbacatePay para de avisar pagamento, agenda publica quebra).
 [functions.accept-invite]
 verify_jwt = true
 
@@ -54,11 +54,11 @@ verify_jwt = true
 [functions.agenda-publica]
 verify_jwt = false
 
+[functions.abacate-webhook]
+verify_jwt = false
+
 [functions.asaas]
 verify_jwt = true
-
-[functions.asaas-webhook]
-verify_jwt = false
 
 [functions.cobrar-uso]
 verify_jwt = true

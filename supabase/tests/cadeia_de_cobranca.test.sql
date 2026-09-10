@@ -3,11 +3,11 @@
 -- Os quatro defeitos moram no mesmo lugar e todos custam dinheiro, em direções
 -- opostas: dois cobravam a mais (o mesmo período duas vezes, e os dias de teste
 -- grátis), um bloqueava quem não devia nada, e o último deixava a rede inteira
--- sem boleto em silêncio.
+-- sem cobrança em silêncio.
 --
 -- Nenhum deles aparece numa tela. É por isso que o teste existe: são regras que
 -- só se manifestam num dia 1º, no cancelamento de alguém, ou na hora de emitir
--- um boleto — quando já é tarde para descobrir.
+-- uma cobrança — quando já é tarde para descobrir.
 --
 -- Rodar com: supabase test db
 
@@ -146,17 +146,17 @@ select is(
 -- Achado 19 — quem não deve não é bloqueado
 -- ---------------------------------------------------------------------------
 
--- Terminou o teste, acesso vencido, e a fatura que tem é de R$ 0,00 sem boleto
--- emitido. Era este que ficava bloqueado para sempre, devendo nada.
+-- Terminou o teste, acesso vencido, e a fatura que tem é de R$ 0,00 sem cobrança
+-- emitida. Era este que ficava bloqueado para sempre, devendo nada.
 insert into subscriptions (salon_id, status, acesso_ate, trial_ate)
 values (:'salao_devendo', 'ativa', pg_temp.hoje() - 5, pg_temp.hoje() - 30);
 
 update subscriptions set acesso_ate = pg_temp.hoje() - 5 where salon_id = :'salao_trial';
 
--- Este deve de verdade: fatura com valor, boleto emitido e vencido sem pagar.
+-- Este deve de verdade: fatura com valor, cobranca emitida e vencida sem pagar.
 insert into faturas_de_uso (salon_id, periodo_inicio, periodo_fim, motivo,
                             barbeiros, preco_unitario, agendamentos, lembretes, reativacoes,
-                            valor, valor_gerado, detalhe, boleto_vencimento)
+                            valor, valor_gerado, detalhe, cobranca_vence_em)
 values (:'salao_devendo', date '2026-06-01', date '2026-06-30', 'mensal',
         1, 0.75, 40, 0, 0, 30, 0, '[]'::jsonb, pg_temp.hoje() - 2);
 
@@ -176,7 +176,7 @@ select ok(
 
 select ok(
   (select acesso_ate from subscriptions where salon_id = :'salao_devendo') < pg_temp.hoje(),
-  'quem tem boleto vencido em aberto continua bloqueado'
+  'quem tem cobranca vencida em aberto continua bloqueado'
 );
 
 select ok(

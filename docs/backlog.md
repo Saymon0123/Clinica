@@ -28,11 +28,12 @@ o Asaas como operador).
 
 **Ainda aberto, por ordem de dor:**
 
-1. **PIX vencido nunca é reemitido** — `abacate_pix_id` é gravado uma vez e nada
-   no repositório o volta a NULL. QR expira em 7 dias, no mesmo instante do
-   bloqueio: a barbearia fica bloqueada **sem meio de pagar**. Decisão do dono
-   (10/09): **botão "gerar novo Pix" na tela do dono**, não reemissão automática.
-   É o próximo PR.
+1. ~~**PIX vencido nunca é reemitido**~~ — **RESOLVIDO em 10/09** (migration 0146 +
+   botão "Gerar novo Pix" na aba Assinatura). A raiz era amarrar a validade do QR
+   ao prazo da dívida; agora se separam: o QR é renovável e `cobranca_vence_em`
+   não anda (senão o botão viraria "adiar o bloqueio para sempre"). Os ids
+   antigos ficam em `pix_anteriores` e o webhook procura neles, então pagar o
+   código velho depois de reemitir continua funcionando — testado.
 2. **Opt-out de LGPD é coluna morta** — `clients.recusou_contato` é lida por 12
    migrations e escrita por **zero** linhas de código. O botão "Não quero mais
    receber" já está nos templates aprovados pela Meta e não faz nada. Precisa de
@@ -56,6 +57,21 @@ o Asaas como operador).
    tenants já existe, faltam asserções.
 10. **Sem CPF/CNPJ = uso ilimitado sem bloqueio** — o bloqueio olha
     `cobranca_vence_em`, que só existe quando há cobrança.
+
+**Dívida de rótulo no n8n (10/09):** o fluxo `8Qh33uoFm4VqT1eO` (Detalhamento de
+Uso) foi migrado para PIX no funcional — lê `cobrancas_a_enviar`, grava
+`abacate_pix_id`/`cobranca_notificada_em`, e o e-mail já manda copia-e-cola. Mas
+os **nomes e as notas continuam do Asaas**: nós "Gerar Boletos", "Buscar Boletos
+a Enviar", "Enviar Boleto ao Dono", "Marcar Boleto Enviado"; o sticky note diz "o
+boleto é gerado À MÃO no Asaas"; a descrição do workflow idem; e notas citam
+`asaas_payment_id`, coluna que não existe mais. Não quebra nada — engana quem
+abrir. Sobrou da minha própria passada de n8n em 09/09.
+
+*Conferido em 10/09, para não virar boato:* o nó "Gerar Boletos" **está
+chamando `cobrar-uso` com a credencial certa** — a execução 22239 devolveu
+`{"cobrancas":0,...}`, corpo real da função, não 401. Vale saber que o
+`SUPABASE_SERVICE_ROLE_KEY` que a função enxerga é a chave **secret nova**, não a
+`service_role` legada: chamar com a legada devolve 401.
 
 **Buraco da própria auditoria:** a frente de segurança/multi-tenant morreu no
 limite de sessão antes de escrever o relatório. Não houve leitura sistemática de

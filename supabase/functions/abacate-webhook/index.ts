@@ -146,15 +146,32 @@ Deno.serve(comSentry('abacate-webhook', async (req: Request) => {
       // Ou seja: o cliente pagava, o acesso não abria, e não sobrava rastro.
       // Lançar aqui é o que devolve o caso ao catch, que solta a trava e
       // responde 500 — e é o 500 que faz o AbacatePay entregar de novo.
+      const agora = new Date().toISOString()
       const { data: pagas, error: erroPagas } = await admin
         .from('faturas_de_uso')
-        .update({ paga_em: new Date().toISOString() })
+        .update({ paga_em: agora })
         .eq('abacate_pix_id', pixId)
         .is('paga_em', null)
         .select('salon_id')
       if (erroPagas) throw erroPagas
 
-      const salonIds = [...new Set((pagas ?? []).map((f) => f.salon_id))]
+      // Nada casou pelo id atual? Pode ser um PIX que foi REEMITIDO: o dono
+      // apertou "Gerar novo Pix", o id antigo foi para `pix_anteriores` — e
+      // então pagou o código velho. A dívida é a mesma, e ignorar isso seria o
+      // mesmo buraco de sempre: dinheiro entra, acesso não abre.
+      let cobertas = pagas ?? []
+      if (cobertas.length === 0) {
+        const { data: antigas, error: erroAntigas } = await admin
+          .from('faturas_de_uso')
+          .update({ paga_em: agora })
+          .contains('pix_anteriores', [pixId])
+          .is('paga_em', null)
+          .select('salon_id')
+        if (erroAntigas) throw erroAntigas
+        cobertas = antigas ?? []
+      }
+
+      const salonIds = [...new Set(cobertas.map((f) => f.salon_id))]
       if (salonIds.length > 0) {
         const hoje = hojeSP()
         // `neq('cancelada')` não é detalhe: a fatura de cancelamento existe
@@ -173,7 +190,7 @@ Deno.serve(comSentry('abacate-webhook', async (req: Request) => {
           .neq('status', 'cancelada')
         if (erroAcesso) throw erroAcesso
       }
-      return json({ ok: true, aplicado: 'pago', faturas: pagas?.length ?? 0, salons: salonIds.length })
+      return json({ ok: true, aplicado: 'pago', faturas: cobertas.length, salons: salonIds.length })
     }
 
     // Estorno: reabre as faturas; o cron de acesso reavalia (se virar vencida em
@@ -185,7 +202,21 @@ Deno.serve(comSentry('abacate-webhook', async (req: Request) => {
       .not('paga_em', 'is', null)
       .select('id')
     if (erroReabertas) throw erroReabertas
-    return json({ ok: true, aplicado: 'estornado', faturas: reabertas?.length ?? 0 })
+
+    // Mesma queda de braço do ramo de pagamento: o estorno pode chegar depois de
+    // uma reemissão, referindo-se ao id antigo.
+    let desfeitas = reabertas ?? []
+    if (desfeitas.length === 0) {
+      const { data: antigas, error: erroAntigas } = await admin
+        .from('faturas_de_uso')
+        .update({ paga_em: null })
+        .contains('pix_anteriores', [pixId])
+        .not('paga_em', 'is', null)
+        .select('id')
+      if (erroAntigas) throw erroAntigas
+      desfeitas = antigas ?? []
+    }
+    return json({ ok: true, aplicado: 'estornado', faturas: desfeitas.length })
   } catch (err) {
     // A trava de idempotência já foi gravada. Se o efeito falhou, ela precisa
     // sair — senão a reentrega seria descartada como repetida e o pagamento

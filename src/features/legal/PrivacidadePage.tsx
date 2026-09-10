@@ -1,4 +1,5 @@
 import { LegalLayout, Secao } from './LegalLayout'
+import { EMAIL_OFICIAL } from '../../lib/contato'
 
 /**
  * Minuta da política de privacidade.
@@ -132,13 +133,13 @@ export function PrivacidadePage() {
         <p>
           Se você é cliente de uma barbearia, o pedido vai a ela, que é a controladora — e nós a
           atendemos. Se preferir falar direto conosco, escreva para{' '}
-          <strong>castrocollin01@gmail.com</strong> e encaminhamos.
+          <strong>{EMAIL_OFICIAL}</strong> e encaminhamos.
         </p>
       </Secao>
 
       <Secao titulo="Como pedir a exclusão dos seus dados">
         <p>
-          Escreva para <strong>castrocollin01@gmail.com</strong> com o assunto{' '}
+          Escreva para <strong>{EMAIL_OFICIAL}</strong> com o assunto{' '}
           <strong>Exclusão de dados</strong>, informando o <strong>nome</strong> e o{' '}
           <strong>telefone</strong> que você usa na barbearia. São eles que localizam o seu
           cadastro.

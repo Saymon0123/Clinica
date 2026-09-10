@@ -1036,7 +1036,16 @@ function ConviteModal({
 
     if (error || !data) {
       console.error('Erro ao criar convite:', error)
-      setErro('Não foi possível gerar o convite. Tente novamente.')
+      // 23505 aqui é sempre a mesma coisa: já existe convite EM ABERTO para este
+      // e-mail nesta barbearia (índice parcial `salon_invites_pendente_unico`,
+      // migration 0149). É pedido do usuário, não falha do sistema — e "tente
+      // novamente" mandaria o dono repetir para sempre o que nunca vai dar
+      // certo. O convite aceito não conta: quem saiu pode ser convidado de novo.
+      setErro(
+        error?.code === '23505'
+          ? 'Já existe um convite em aberto para este e-mail. Apague o convite antigo na lista abaixo para gerar outro.'
+          : 'Não foi possível gerar o convite. Tente novamente.',
+      )
       return
     }
 

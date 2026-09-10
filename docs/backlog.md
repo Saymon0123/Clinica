@@ -79,8 +79,32 @@ o Asaas como operador).
    templates existem (`0079:40-52`), a fila e o workflow não.
 7. **`faltou` não tem botão** — só leitura em `src/`; `reativacao_no_shows` nunca
    incrementa e a pausa após 2 faltas nunca dispara.
-8. **`main` não é protegida** (`gh api .../protection` → 404) — push publica com
-   CI vermelho. E não há scanner de dependência no CI.
+8. ~~**`main` não é protegida**~~ — **RESOLVIDO em 10/09.** Regra ativa e
+   **provada**: um `git push` direto na `main` volta com
+   `GH006: Protected branch update failed`, citando "must be made through a pull
+   request" e "2 of 2 required status checks are expected".
+
+   O que está ligado:
+   - **Checks obrigatórios:** `Typecheck, lint e testes de unidade` e
+     `Testes de RLS (pgTAP)`. O Vercel **não** entra de propósito — é um status
+     de deploy, e uma indisponibilidade dele travaria merge sem relação com
+     qualidade de código.
+   - **`enforce_admins: true`.** Sem isso a regra seria decorativa: você é o
+     único colaborador e é admin, então poderia empurrar direto e o achado
+     continuaria valendo.
+   - **PR obrigatório com 0 aprovações.** Zero porque o GitHub não deixa ninguém
+     aprovar o próprio PR — exigir 1 travaria você para sempre.
+   - **`strict: false`** (não exige branch atualizada com a `main`): com um dev
+     só, forçaria rebase a cada merge sem ganho real.
+   - Force push e apagar a branch: bloqueados.
+
+   **O que muda no seu dia:** não dá mais para `git push` na `main`. Toda mudança
+   passa por branch + PR + CI verde. Para uma emergência, desligar em
+   *Settings → Branches* (ou `gh api -X DELETE repos/:owner/:repo/branches/main/protection`)
+   e religar depois — a fricção de ter que desligar é justamente o ponto.
+
+   **Continua aberto:** não há scanner de dependência no CI (zero `npm audit`,
+   gitleaks, CodeQL ou dependabot).
 9. **Isolamento multi-tenant testado em 3 tabelas de 54** — o fixture de dois
    tenants já existe, faltam asserções.
 10. **Sem CPF/CNPJ = uso ilimitado sem bloqueio** — o bloqueio olha

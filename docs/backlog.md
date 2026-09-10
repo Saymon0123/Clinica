@@ -110,6 +110,31 @@ o Asaas como operador).
 10. **Sem CPF/CNPJ = uso ilimitado sem bloqueio** — o bloqueio olha
     `cobranca_vence_em`, que só existe quando há cobrança.
 
+    **DESENHO DECIDIDO (10/09):** o dono determinou trabalhar com **"emite nota
+    fiscal = SIM"**. Isso escolhe o desenho: o documento **não** para de
+    bloquear; ele muda **o que** bloqueia. Hoje o portão está na frente da
+    *cobrança* (a receita evapora e a barbearia usa de graça); passa a ficar na
+    frente do *acesso*. Documento exigido antes do fim do teste — o gancho
+    natural é o fluxo "Aviso de Fim de Teste", que já dispara 3 dias antes e no
+    dia — e sem ele o acesso é bloqueado como qualquer inadimplência.
+
+    **Ressalva registrada:** eu levantei que a régua do MEI é *quem recebe*, não
+    faturamento — MEI é dispensado para pessoa física e **obrigado** para pessoa
+    jurídica, e barbearia com CNPJ é PJ. Os R$ 81.000 são o teto para permanecer
+    MEI, não gatilho de NF. **Não sou contador**; a decisão de trabalhar com
+    "SIM" é do dono e é a conservadora — se o contador disser o contrário,
+    o desenho volta a ser o outro.
+
+    Também faltam **razão social e endereço** para emitir: `salons.nome` é nome
+    fantasia. A maioria das APIs de NFS-e resolve isso a partir do CNPJ na
+    Receita; para tomador **CPF** não há de onde puxar, e `salons.endereco` é
+    opcional hoje.
+
+    **E o AbacatePay não ajuda em nada aqui** — verificado em 10/09: não tem
+    NFS-e, e o `customerId` sequer se liga a cobrança `transparents` (a API
+    engole campo desconhecido e devolve sucesso; provado com campo inventado).
+    Nota fiscal exige fornecedor de outra categoria.
+
 **Dívida de rótulo no n8n (10/09):** o fluxo `8Qh33uoFm4VqT1eO` (Detalhamento de
 Uso) foi migrado para PIX no funcional — lê `cobrancas_a_enviar`, grava
 `abacate_pix_id`/`cobranca_notificada_em`, e o e-mail já manda copia-e-cola. Mas
@@ -146,6 +171,13 @@ Estavam só no chat. Pela regra da casa, o que não está aqui some do radar.
    **01/10/2026** serviço e utility dentro da janela passam a ser cobrados
    (confirmado em quatro BSPs; a página de preços da Meta ainda não refletia).
 
+**Pré-requisito de produção (decidido em 10/09)**
+- A corrida do `cobrar-uso` hoje é **sinalizada, não impedida**: PIX duplicado
+  vira alerta no Sentry com o id para reconciliar, mas os dois PIX existem do
+  lado do AbacatePay. O dono decidiu **não ligar produção** antes de impedir de
+  verdade — reservar a fatura **antes** de chamar o AbacatePay, em vez de
+  reivindicar depois. Sai da Fase 6 e vira bloqueador de produção.
+
 **Teste de dois minutos que só o dono faz**
 4. De um número que nunca falou com a barbearia, mandar "oi" para o número dela.
    **Chegaram duas respostas?** Se sim, confirma que a saudação/ausência do app
@@ -153,14 +185,16 @@ Estavam só no chat. Pela regra da casa, o que não está aqui some do radar.
    checklist de ativação. Se chegar só uma, o dispositivo vinculado já suprime o
    app e o problema é menor do que eu descrevi. *Não verifiquei; é dedução.*
 
-**Escolhas minhas na migration 0149, reversíveis**
-5. **`payments.valor >= 0`, não `> 0`.** Deixei passar pagamento de R$ 0 porque
-   venda de cortesia é plausível e eu não vi esse caminho no código. Se cortesia
-   não existe no negócio, apertar para `> 0` é uma linha.
-6. **Convite vencido e não usado bloqueia um novo.** `now()` não é `IMMUTABLE` e
-   o Postgres recusa em predicado de índice, então não dá para escrever "e não
-   vencido". O dono apaga o convite velho na lista e a mensagem diz isso. Se
-   incomodar, a alternativa é limpeza automática de convites vencidos.
+**Escolhas minhas na migration 0149 — DECIDIDAS pelo dono em 10/09, migration 0150**
+5. ~~`payments.valor >= 0`~~ → **`> 0`**. O dono confirmou que **não existe
+   brinde nem cortesia** no produto. A janela que eu tinha deixado aberta não era
+   corrupção de dado — era erro humano passando despercebido: comanda marcada
+   como paga com R$ 0, caixa fechando certo, e dinheiro nenhum entrando.
+6. ~~Convite vencido bloqueia reconvite~~ → **poda automática, 30 dias após o
+   vencimento**. Ninguém precisa se preocupar. Entrou na
+   `poda_historico_antigo`, que passou de **mensal para diária** — no ritmo
+   mensal, "30 dias após o vencimento" viraria 30 a 60 na prática. Convite
+   **aceito nunca é apagado**: é histórico de quem entrou na equipe.
 
 **Cobertura que ficou faltando no A16**
 7. Três tabelas **sem `salon_id`** ficaram de fora do

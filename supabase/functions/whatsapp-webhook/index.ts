@@ -36,6 +36,116 @@ const WEBHOOK_TOKEN = Deno.env.get('N8N_WEBHOOK_TOKEN') ?? ''
 
 
 
+/** Limite de tentativas via banco (0111). Erro do limitador deixa passar. */
+async function taxaExcedida(
+  admin: ReturnType<typeof createClient>,
+  chave: string,
+  limite: number,
+  janelaSegundos: number,
+) {
+  const { data, error } = await admin.rpc('taxa_excedida', {
+    p_chave: chave,
+    p_limite: limite,
+    p_janela_segundos: janelaSegundos,
+  })
+  if (error) {
+    console.error('Limitador de taxa indisponivel:', error)
+    return false
+  }
+  return data === true
+}
+
+/** Número no formato do wa.me: só dígitos, com o 55 na frente. */
+function linkDoWhatsapp(telefone: string | null): string | null {
+  const digitos = (telefone ?? '').replace(/\D/g, '')
+  if (digitos.length < 10 || digitos.length > 13) return null
+  return `https://wa.me/${digitos.startsWith('55') ? digitos : `55${digitos}`}`
+}
+
+/**
+ * Texto solto no número central: responde apontando o caminho, em vez de calar.
+ *
+ * O silêncio de antes tinha custo real. O template pergunta "você vem?"; o
+ * cliente DIGITA "pode cancelar" em vez de tocar no botão — e nada acontecia. O
+ * horário seguia marcado, o dono não sabia, a cadeira ficava vazia. E o pior
+ * caso era "quem é?", de alguém que recebeu de um número desconhecido: ignorar
+ * isso vira denúncia, e este número carrega os lembretes de TODAS as barbearias.
+ *
+ * Não entrega ao agente de propósito: o agente mora no número da barbearia, e
+ * escolher uma barbearia arbitrária mandaria a conversa para a loja errada. A
+ * RPC descobre a certa quando dá, e devolve nada quando não dá — aí a resposta
+ * é genérica, que é honesto, não preguiçoso.
+ */
+async function responderForaDeContexto(
+  admin: ReturnType<typeof createClient>,
+  telefone: string,
+  phoneNumberId: string,
+  messageId: string | null,
+) {
+  // Sem freio, dois auto-respondedores conversando entre si viram um loop que
+  // a Meta cobra e depois pune.
+  if (await taxaExcedida(admin, `central-fora:${telefone}`, 3, 3600)) {
+    console.log('resposta fora de contexto silenciada pelo limite:', telefone)
+    return
+  }
+
+  const { data, error } = await admin.rpc('barbearia_para_contato_central', {
+    p_telefone: telefone,
+    p_message_id: messageId,
+  })
+  if (error) {
+    console.error('barbearia_para_contato_central falhou:', error.message)
+    await capturarErro(error, 'whatsapp-webhook', { onde: 'barbearia_para_contato_central' })
+    return
+  }
+
+  const barbearia = (Array.isArray(data) ? data[0] : null) as
+    | { salon_id: string; nome: string; telefone: string | null; quantas: number }
+    | null
+  const link = barbearia ? linkDoWhatsapp(barbearia.telefone) : null
+
+  const abertura = 'Oi! Este numero so envia avisos automaticos e nao e atendido por aqui.'
+  let resposta: string
+  if (barbearia && link) {
+    resposta = `${abertura} Para marcar, mudar ou cancelar um horario, fale com a ${barbearia.nome} aqui: ${link}`
+    // Cliente de mais de uma barbearia: afirmar qual é seria chute com cara de
+    // certeza. Melhor oferecer a mais provável e admitir que pode ser outra.
+    if (barbearia.quantas > 1) {
+      resposta += ' Se for sobre outra barbearia, fale com ela direto.'
+    }
+  } else if (barbearia) {
+    // A barbearia existe e não tem telefone cadastrado — o buraco que também
+    // apaga o "fale com a barbearia" da agenda pública.
+    resposta = `${abertura} Para marcar, mudar ou cancelar um horario, fale direto com a ${barbearia.nome}.`
+  } else {
+    resposta = `${abertura} Para marcar, mudar ou cancelar um horario, fale direto com a sua barbearia.`
+  }
+
+  if (!N8N_LEMBRETE_URL) return
+  const envio = await fetch(N8N_LEMBRETE_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Webhook-Token': WEBHOOK_TOKEN },
+    body: JSON.stringify({
+      // O salon_id vai preenchido quando dá: o fluxo do n8n usa esse campo para
+      // achar a conversa e registrar a mensagem.
+      salon_id: barbearia?.salon_id ?? null,
+      phone_number_id: phoneNumberId,
+      contact_phone: telefone,
+      appointment_id: null,
+      acao: 'fora_de_contexto',
+      resposta,
+    }),
+  })
+  if (!envio.ok) {
+    console.error('n8n recusou a resposta fora de contexto:', envio.status)
+    await capturarErro(
+      new Error(`n8n ${envio.status} ao responder fora de contexto`),
+      'whatsapp-webhook',
+      { onde: 'resposta-fora-de-contexto', telefone },
+    )
+  }
+}
+
 /**
  * Registra o opt-out e AVISA a pessoa que parou.
  *
@@ -342,10 +452,12 @@ Deno.serve(comSentry('whatsapp-webhook', async (req) => {
               continue
             }
 
-            // Texto solto no número de avisos: não há barbearia nem agente
-            // aqui. Fase 2 responde educadamente apontando o número certo;
-            // por ora, registra e segue — nada de salão arbitrário.
-            console.error('mensagem sem contexto no numero central, de:', m.from, 'tipo:', tipo)
+            // Texto solto no número de avisos. Antes morria aqui num
+            // `console.error` — o cliente escrevia e ninguém do outro lado.
+            // Agora aponta o caminho: nunca um salão arbitrário, mas também
+            // nunca silêncio.
+            console.log('mensagem sem contexto no numero central, de:', m.from, 'tipo:', tipo)
+            await responderForaDeContexto(admin, m.from, phoneNumberId, m.context?.id ?? null)
           }
           continue
         }

@@ -40,21 +40,36 @@ o Asaas como operador).
    `docs/marketing.md:195` já afirmava existir. O matcher mora em
    `supabase/functions/_shared/optOut.ts` com 9 testes de catraca.
 
-   **Pendente do outro lado:** o `whatsapp-webhook` posta `acao: 'opt_out'` no
-   n8n para confirmar à pessoa que ela saiu, e **o fluxo do n8n ainda não trata
-   essa ação**. Até tratar, o opt-out é gravado e respeitado, mas a pessoa não
-   recebe confirmação — e quem pede para sair e ouve silêncio costuma denunciar.
-   Falta um ramo no fluxo de resposta que envie o texto que a edge já manda
-   pronto no campo `resposta`.
+   **CORREÇÃO (mesmo dia):** eu escrevi aqui, e no PR #90, que "o fluxo do n8n
+   ainda não trata `acao: 'opt_out'`". **Era falso, e eu não tinha conferido.**
+   Fui ler o fluxo `DW0nq1Jyp9xeOJwm`: o nó `É Reagendar Central?` só desvia
+   quando a ação é `reagendar_central`; **tudo o mais cai em "Usar Resposta
+   Pronta"**, que manda o campo `resposta` verbatim pelo número central. A
+   confirmação do opt-out **já era enviada** desde o deploy, sem mudança nenhuma.
+   Declarar pendência sem verificar é o mesmo pecado de declarar pronto sem
+   verificar.
 
    **Não testado:** o caminho HTTP completo (Meta → webhook → RPC). O
    `WHATSAPP_APP_SECRET` só existe no cofre do Supabase e não pode ser lido de
    volta, então não dá para assinar um payload válido daqui. Testados à parte: o
    matcher (9 testes) e a RPC (com DDI, formatado, repetido, curto, vazio, nulo).
    O elo não coberto são as 3 linhas que ligam um ao outro.
-3. **Texto livre no número central morre em `console.error`**
-   (`whatsapp-webhook:277`) — e esse número carrega os lembretes de todas as
-   barbearias; uma denúncia atinge a base inteira.
+3. ~~**Texto livre no número central morre em `console.error`**~~ — **RESOLVIDO
+   em 10/09** (migration 0148). A RPC `barbearia_para_contato_central` descobre a
+   qual barbearia apontar — pelo wamid da mensagem respondida (preciso) ou pelo
+   atendimento mais recente do telefone (palpite ancorado) — e o webhook responde
+   com o WhatsApp dela. Devolve zero linhas quando não dá para saber, e aí a
+   resposta é genérica: **nunca um salão arbitrário, mas também nunca silêncio.**
+   Freio de 3/h por telefone, senão dois auto-respondedores viram loop.
+
+   *Nenhuma mudança de fluxo foi precisa no n8n* — o mesmo "Usar Resposta Pronta"
+   serve. Só ajustei `Buscar Conversa (Resposta Lembrete)` para
+   `onError: continueRegularOutput`: ele filtra `salon_id eq {{...}}` e, com
+   `salon_id` nulo, o nó Supabase manda a **string `"null"`** ao PostgREST — a
+   armadilha que este projeto já documentou como "mordeu duas vezes". A mensagem
+   era enviada (o envio vem antes), mas o log falhava, tentava 4 vezes e
+   disparava e-mail de alerta a cada opt-out. Registrar não pode derrubar quem
+   já entregou.
 4. **Mensagem de cliente se perde quando o n8n falha** — nada é persistido antes
    do POST, e 3 dos 4 POSTs não checam `.ok`. O padrão de fila que resolve já
    existe para a saída (`0104:8-9`); falta na entrada.

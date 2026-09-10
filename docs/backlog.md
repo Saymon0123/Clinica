@@ -34,11 +34,24 @@ o Asaas como operador).
    não anda (senão o botão viraria "adiar o bloqueio para sempre"). Os ids
    antigos ficam em `pix_anteriores` e o webhook procura neles, então pagar o
    código velho depois de reemitir continua funcionando — testado.
-2. **Opt-out de LGPD é coluna morta** — `clients.recusou_contato` é lida por 12
-   migrations e escrita por **zero** linhas de código. O botão "Não quero mais
-   receber" já está nos templates aprovados pela Meta e não faz nada. Precisa de
-   RPC casando por wamid + toggle na ficha. `docs/marketing.md:195` descreve uma
-   tela que não existe.
+2. ~~**Opt-out de LGPD é coluna morta**~~ — **RESOLVIDO em 10/09** (migration 0147).
+   RPC `marcar_opt_out` + reconhecimento no `whatsapp-webhook` (botão "Nao quero
+   mais receber" **e** "PARAR" digitado) + chave na ficha do cliente, que é o que
+   `docs/marketing.md:195` já afirmava existir. O matcher mora em
+   `supabase/functions/_shared/optOut.ts` com 9 testes de catraca.
+
+   **Pendente do outro lado:** o `whatsapp-webhook` posta `acao: 'opt_out'` no
+   n8n para confirmar à pessoa que ela saiu, e **o fluxo do n8n ainda não trata
+   essa ação**. Até tratar, o opt-out é gravado e respeitado, mas a pessoa não
+   recebe confirmação — e quem pede para sair e ouve silêncio costuma denunciar.
+   Falta um ramo no fluxo de resposta que envie o texto que a edge já manda
+   pronto no campo `resposta`.
+
+   **Não testado:** o caminho HTTP completo (Meta → webhook → RPC). O
+   `WHATSAPP_APP_SECRET` só existe no cofre do Supabase e não pode ser lido de
+   volta, então não dá para assinar um payload válido daqui. Testados à parte: o
+   matcher (9 testes) e a RPC (com DDI, formatado, repetido, curto, vazio, nulo).
+   O elo não coberto são as 3 linhas que ligam um ao outro.
 3. **Texto livre no número central morre em `console.error`**
    (`whatsapp-webhook:277`) — e esse número carrega os lembretes de todas as
    barbearias; uma denúncia atinge a base inteira.

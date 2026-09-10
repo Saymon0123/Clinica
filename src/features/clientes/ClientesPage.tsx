@@ -308,6 +308,7 @@ export function ClientesPage() {
           client={detailClient}
           onClose={() => setDetailClient(null)}
           onEdit={() => setEditClient(detailClient)}
+          aoMudarContato={reload}
         />
       )}
 

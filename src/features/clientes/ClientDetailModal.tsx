@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CalendarCheck, Pencil, Receipt, X } from 'lucide-react'
+import { BellOff, CalendarCheck, Pencil, Receipt, X } from 'lucide-react'
 import { Modal } from '../../components/Modal'
 import { EstadoVazio } from '../../components/EstadoVazio'
 import { Badge } from '../../components/Badge'
@@ -50,10 +50,13 @@ export function ClientDetailModal({
   client,
   onClose,
   onEdit,
+  aoMudarContato,
 }: {
   client: Client
   onClose: () => void
   onEdit: () => void
+  /** Avisa a lista para recarregar quando o opt-out muda. */
+  aoMudarContato?: () => void
 }) {
   const [appointments, setAppointments] = useState<HistoryAppointment[]>([])
   const [orders, setOrders] = useState<HistoryOrder[]>([])
@@ -61,6 +64,35 @@ export function ClientDetailModal({
   const [completedCount, setCompletedCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState(false)
+  const [recusou, setRecusou] = useState(client.recusou_contato)
+  const [salvandoContato, setSalvandoContato] = useState(false)
+  const [erroContato, setErroContato] = useState<string | null>(null)
+
+  /**
+   * O opt-out também pela mão do dono.
+   *
+   * O cliente costuma pedir "para de me mandar isso" na cadeira, não pelo
+   * botão do WhatsApp. Sem esta chave, esse pedido não tinha onde ser
+   * registrado — e a reativação continuava saindo. Também é o único jeito de
+   * DESFAZER quando a pessoa muda de ideia.
+   */
+  async function alternarContato() {
+    const novo = !recusou
+    setSalvandoContato(true)
+    setErroContato(null)
+    const { error } = await supabase
+      .from('clients')
+      .update({ recusou_contato: novo })
+      .eq('id', client.id)
+    setSalvandoContato(false)
+    if (error) {
+      console.error('Erro ao mudar a preferência de contato:', error)
+      setErroContato('Não foi possível salvar. Tente de novo.')
+      return
+    }
+    setRecusou(novo)
+    aoMudarContato?.()
+  }
 
   useEffect(() => {
     async function load() {
@@ -150,6 +182,31 @@ export function ClientDetailModal({
             'Sem telefone'
           )}
         </p>
+
+        <div className="mb-4 rounded-lg border border-border bg-surface-2 p-3">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 text-sm text-foreground">
+                <BellOff size={15} className={recusou ? 'text-warning' : 'text-muted-foreground'} />
+                {recusou ? 'Não quer receber convites' : 'Aceita receber convites'}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {recusou
+                  ? 'Não entra em reativação nem em campanha. O lembrete do horário que ele marcar continua chegando.'
+                  : 'Pode entrar em reativação e campanha. Se pedir para parar, desligue aqui.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={alternarContato}
+              disabled={salvandoContato}
+              className="btn-chip shrink-0 disabled:opacity-50"
+            >
+              {salvandoContato ? 'Salvando...' : recusou ? 'Voltar a enviar' : 'Não enviar mais'}
+            </button>
+          </div>
+          <ErroInline>{erroContato}</ErroInline>
+        </div>
 
         <div className="grid grid-cols-2 gap-3 mb-5">
           <div className="bg-surface-2 rounded-lg p-3">

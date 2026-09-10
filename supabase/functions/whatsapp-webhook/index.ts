@@ -1,5 +1,6 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { capturarErro, comSentry } from '../_shared/sentry.ts'
+import { ehPedidoDeSaida } from '../_shared/optOut.ts'
 
 /**
  * Webhook da Cloud API da Meta — a porta de entrada das mensagens.
@@ -32,6 +33,59 @@ const N8N_LEMBRETE_URL = Deno.env.get('N8N_LEMBRETE_RESPOSTA_URL') ?? ''
 // Segredo compartilhado do webhook do n8n (header X-Webhook-Token). Vai em todo
 // POST ao n8n; o webhook do n8n exige que bata (item 4 — auth da entrada).
 const WEBHOOK_TOKEN = Deno.env.get('N8N_WEBHOOK_TOKEN') ?? ''
+
+
+
+/**
+ * Registra o opt-out e AVISA a pessoa que parou.
+ *
+ * O aviso não é cortesia: quem pede para sair e recebe silêncio não sabe se
+ * funcionou, e a próxima mensagem nossa — mesmo legítima — vira denúncia. Num
+ * número central que carrega os avisos de todas as barbearias, denúncia é o que
+ * derruba a base inteira.
+ *
+ * A resposta livre é permitida aqui sem template: a pessoa acabou de escrever,
+ * então a janela de atendimento de 24h está aberta.
+ */
+async function registrarSaida(
+  admin: ReturnType<typeof createClient>,
+  telefone: string,
+  phoneNumberId: string,
+) {
+  const { data: fichas, error } = await admin.rpc('marcar_opt_out', { p_telefone: telefone })
+  if (error) {
+    console.error('marcar_opt_out falhou:', error.message)
+    await capturarErro(error, 'whatsapp-webhook', { onde: 'marcar_opt_out' })
+    return
+  }
+  console.log('opt-out registrado, fichas marcadas:', fichas ?? 0)
+
+  if (!N8N_LEMBRETE_URL) return
+  const resposta = await fetch(N8N_LEMBRETE_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Webhook-Token': WEBHOOK_TOKEN },
+    body: JSON.stringify({
+      salon_id: null,
+      phone_number_id: phoneNumberId,
+      contact_phone: telefone,
+      appointment_id: null,
+      acao: 'opt_out',
+      resposta:
+        'Pronto! Voce nao vai mais receber nossas mensagens de convite. ' +
+        'Se marcar um horario, o lembrete dele continua chegando. ' +
+        'Mudou de ideia? E so falar com a sua barbearia.',
+    }),
+  })
+  // O opt-out no banco já valeu; o que pode faltar é o aviso. Sem esta checagem
+  // a pessoa fica sem confirmação e ninguém fica sabendo.
+  if (!resposta.ok) {
+    console.error('n8n recusou o aviso de opt-out:', resposta.status)
+    await capturarErro(new Error(`n8n ${resposta.status} ao avisar do opt-out`), 'whatsapp-webhook', {
+      onde: 'aviso-opt-out',
+      telefone,
+    })
+  }
+}
 
 /** Sempre 200 para a Meta. Ver o cabeçalho do arquivo. */
 function ok(detalhe?: string) {
@@ -246,8 +300,17 @@ Deno.serve(comSentry('whatsapp-webhook', async (req) => {
                     }),
                   })
                 } else if (!av?.atendido) {
-                  console.error('clique no numero central sem lembrete nem avaliacao:',
-                    m.context.id, 'de:', m.from)
+                  // Nem lembrete nem avaliação: é aqui que cai o botão "Nao
+                  // quero mais receber" dos templates de reativação. Ele chega
+                  // com `context.id` do convite, mas nenhuma das duas RPCs o
+                  // reconhece — e por isso morria neste `console.error`,
+                  // deixando o opt-out de LGPD sem nenhuma escrita no sistema.
+                  if (ehPedidoDeSaida(texto)) {
+                    await registrarSaida(admin, m.from, phoneNumberId)
+                  } else {
+                    console.error('clique no numero central sem lembrete nem avaliacao:',
+                      m.context.id, 'de:', m.from)
+                  }
                 }
                 continue
               }
@@ -268,6 +331,14 @@ Deno.serve(comSentry('whatsapp-webhook', async (req) => {
                   }),
                 })
               }
+              continue
+            }
+
+            // "PARAR" escrito à mão vale tanto quanto o botão. Quem responde ao
+            // convite digitando em vez de tocar não pediu menos para sair —
+            // e mandar de novo depois disso é o que vira denúncia.
+            if (ehPedidoDeSaida(texto)) {
+              await registrarSaida(admin, m.from, phoneNumberId)
               continue
             }
 

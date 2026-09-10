@@ -2,34 +2,28 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { capturarErro, comSentry } from '../_shared/sentry.ts'
 
 /**
- * O que sobrou da integração com o Asaas depois do modelo por uso (2026-08-24).
+ * Ações da assinatura que o CRM dispara: cancelar e a preferência de cobrança
+ * única da rede.
  *
- * A cobrança passou a ser por agendamento, fechada pelo banco (0097) e faturada
- * **à mão** a partir do e-mail de detalhamento. Não existe mais assinar, trocar
- * de plano nem recorrência criada pelo sistema — caíram as ações `assinar`,
- * `simular-troca`, `trocar-plano`, `cancelar-troca`, `assinar-rede` e o módulo
- * `proporcional`. O histórico delas está no git (até a v23 desta função).
+ * A função ainda se chama `asaas` por compatibilidade com quem a invoca
+ * (CancelarUso, CobrancaDaRede), mas **não fala mais com provedor de pagamento
+ * nenhum**: a cobrança virou PIX no AbacatePay, criada pelo `cobrar-uso` e
+ * confirmada pelo `abacate-webhook`. Sumiram a recorrência e o cliente Asaas —
+ * o histórico dessas ações (assinar, trocar de plano etc.) está no git.
  *
  * Fica:
  *
- * - **cancelar** — o único botão que o cliente tem. Encerra recorrência antiga
- *   no Asaas se ainda existir (legado do modelo anterior), marca a assinatura
- *   como cancelada e gera NA HORA a fatura parcial de uso (último fechamento →
- *   hoje), que vira e-mail de detalhamento pelo notificador.
- * - **unificar-rede / separar-rede** — a preferência de boleto único da rede.
- *   Sem chamada ao Asaas para criar nada: o boleto é manual, e a flag existe
- *   para o detalhamento e a emissão tratarem a rede como um pagante só.
- *
- * O webhook (asaas-webhook) continua intacto: é ele que estende `acesso_ate`
- * quando o boleto manual é pago, por `externalReference = salon_id`.
+ * - **cancelar** — o único botão do cliente. Marca a assinatura como cancelada e
+ *   gera NA HORA a fatura parcial de uso (último fechamento → hoje), que vira
+ *   e-mail de detalhamento pelo notificador.
+ * - **unificar-rede / separar-rede** — a preferência de cobrança única da rede:
+ *   uma cobrança PIX para todas as unidades, ou uma por unidade. É só a flag
+ *   `organizations.cobranca_unificada`, que o `cobrar-uso` lê ao gerar o PIX.
  */
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
-
-const ASAAS_API_KEY = Deno.env.get('ASAAS_API_KEY')
-const ASAAS_BASE_URL = Deno.env.get('ASAAS_BASE_URL') ?? 'https://api-sandbox.asaas.com'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -42,20 +36,6 @@ function json(body: unknown, status = 200) {
     status,
     headers: { 'Content-Type': 'application/json', ...corsHeaders },
   })
-}
-
-/** Remove uma recorrência no Asaas. 404 = já não existe, que é o efeito desejado. */
-async function removerRecorrencia(subscriptionId: string): Promise<boolean> {
-  if (!ASAAS_API_KEY) return true
-  const res = await fetch(`${ASAAS_BASE_URL}/v3/subscriptions/${subscriptionId}`, {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json', access_token: ASAAS_API_KEY },
-  })
-  if (!res.ok && res.status !== 404) {
-    console.error('Asaas recusou o cancelamento da recorrencia:', res.status, await res.text())
-    return false
-  }
-  return true
 }
 
 Deno.serve(comSentry('asaas', async (req: Request) => {
@@ -89,10 +69,9 @@ Deno.serve(comSentry('asaas', async (req: Request) => {
   if (!usuario) return json({ error: 'Nao autorizado.' }, 401)
 
   // ------------------------------------------------------------------
-  // Preferência de boleto da rede: um só, ou um por unidade.
-  // Só o dono de TODAS as unidades mexe — o formato do boleto afeta as outras
-  // lojas. Aproveita para derrubar recorrências legadas do modelo antigo, se
-  // ainda existirem: nada pode continuar cobrando sozinho.
+  // Preferência de cobrança da rede: uma só, ou uma por unidade.
+  // Só o dono de TODAS as unidades mexe — o formato da cobrança afeta as outras
+  // lojas.
   // ------------------------------------------------------------------
   if (body.acao === 'unificar-rede' || body.acao === 'separar-rede') {
     const organizationId = body.organizationId as string | undefined
@@ -129,34 +108,18 @@ Deno.serve(comSentry('asaas', async (req: Request) => {
       })
       .eq('id', organizationId)
     if (erroOrg) {
-      // 23514 aqui e sempre a mesma coisa: ligar o boleto unico sem CPF/CNPJ
+      // 23514 aqui e sempre a mesma coisa: ligar a cobranca unica sem CPF/CNPJ
       // valido (CHECK `organizations_unificada_exige_documento`, migration
       // 0130). E pedido do usuario, nao falha do sistema -- 400 com a frase
       // certa, e nao um 500 generico que manda "tentar de novo" para sempre.
       if (erroOrg.code === '23514') {
         return json(
-          { error: 'Para receber um boleto unico da rede e preciso informar um CPF ou CNPJ valido do pagante.' },
+          { error: 'Para receber uma cobranca unica da rede e preciso informar um CPF ou CNPJ valido do pagante.' },
           400,
         )
       }
       console.error('Erro ao gravar a preferencia da rede:', erroOrg)
       return json({ error: 'Nao foi possivel salvar. Tente novamente.' }, 500)
-    }
-
-    // Recorrência legada da rede (criada pelo modelo antigo): derruba sempre —
-    // ela cobraria por fora do fechamento por uso.
-    const { data: org } = await admin
-      .from('organizations')
-      .select('asaas_subscription_id')
-      .eq('id', organizationId)
-      .maybeSingle()
-    if (org?.asaas_subscription_id) {
-      if (await removerRecorrencia(org.asaas_subscription_id)) {
-        await admin
-          .from('organizations')
-          .update({ asaas_subscription_id: null })
-          .eq('id', organizationId)
-      }
     }
 
     return json({ ok: true, cobrancaUnificada: unificar })
@@ -185,31 +148,16 @@ Deno.serve(comSentry('asaas', async (req: Request) => {
 
   const { data: assinatura } = await admin
     .from('subscriptions')
-    .select('id, asaas_subscription_id')
+    .select('id')
     .eq('salon_id', salonId)
     .maybeSingle()
   if (!assinatura) {
     return json({ error: 'Esta barbearia nao tem registro de uso.' }, 404)
   }
 
-  // Recorrência legada do modelo antigo, se ainda existir. Falha aqui ABORTA:
-  // marcar como cancelada com uma recorrência viva no Asaas seguiria cobrando.
-  if (assinatura.asaas_subscription_id) {
-    if (!(await removerRecorrencia(assinatura.asaas_subscription_id))) {
-      return json({ error: 'Nao foi possivel cancelar agora. Tente novamente.' }, 502)
-    }
-  }
-
-  // `plano_agendado` e `upgrade_payment_id` saíram deste update: a migration
-  // 0110 dropou as duas colunas, e o PostgREST recusava o update INTEIRO —
-  // todo cancelamento morria aqui com 500, depois de a recorrência no Asaas
-  // já ter sido removida.
   const { error: erroUpdate } = await admin
     .from('subscriptions')
-    .update({
-      status: 'cancelada',
-      asaas_subscription_id: null,
-    })
+    .update({ status: 'cancelada' })
     .eq('id', assinatura.id)
   if (erroUpdate) {
     console.error('Erro ao marcar como cancelada:', erroUpdate)
@@ -217,8 +165,8 @@ Deno.serve(comSentry('asaas', async (req: Request) => {
   }
 
   // Fecha a conta na hora: a fatura parcial (último fechamento → hoje) entra na
-  // fila e vira e-mail de detalhamento, para o boleto final ser gerado à mão.
-  // Falha aqui NÃO derruba o cancelamento — o fechamento mensal cobre o período.
+  // fila e vira e-mail de detalhamento, para a cobrança final ser gerada. Falha
+  // aqui NÃO derruba o cancelamento — o fechamento mensal cobre o período.
   const { error: erroFatura } = await admin.rpc('gerar_fatura_de_cancelamento', {
     p_salon_id: salonId,
   })

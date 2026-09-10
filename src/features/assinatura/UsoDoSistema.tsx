@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Activity, CalendarCheck, MessageSquareText, RotateCcw } from 'lucide-react'
+import { Activity, CalendarCheck, MessageSquareText, RotateCcw, Copy, Check } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useSalon } from '../auth/useSalon'
 import { Badge } from '../../components/Badge'
@@ -34,9 +34,10 @@ type Fatura = {
   preco_unitario: number
   valor: number
   valor_gerado: number
-  boleto_url: string | null
-  boleto_valor: number | null
-  boleto_vencimento: string | null
+  pix_br_code: string | null
+  pix_br_code_base64: string | null
+  cobranca_valor: number | null
+  cobranca_vence_em: string | null
   paga_em: string | null
 }
 
@@ -57,6 +58,18 @@ export function UsoDoSistema() {
   const [faturas, setFaturas] = useState<Fatura[]>([])
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState(false)
+  const [pixAberto, setPixAberto] = useState<Fatura | null>(null)
+  const [copiado, setCopiado] = useState(false)
+
+  async function copiarPix(codigo: string) {
+    try {
+      await navigator.clipboard.writeText(codigo)
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 2000)
+    } catch {
+      // Área de transferência bloqueada: o dono ainda vê o código para copiar à mão.
+    }
+  }
 
   useEffect(() => {
     let cancelado = false
@@ -68,7 +81,7 @@ export function UsoDoSistema() {
         supabase
           .from('faturas_de_uso')
           .select(
-            'id, periodo_inicio, periodo_fim, motivo, agendamentos, preco_unitario, valor, valor_gerado, boleto_url, boleto_valor, boleto_vencimento, paga_em',
+            'id, periodo_inicio, periodo_fim, motivo, agendamentos, preco_unitario, valor, valor_gerado, pix_br_code, pix_br_code_base64, cobranca_valor, cobranca_vence_em, paga_em',
           )
           .eq('salon_id', salonId)
           .order('periodo_fim', { ascending: false })
@@ -96,8 +109,8 @@ export function UsoDoSistema() {
 
   const valorEstimado = uso ? uso.agendamentos * Number(uso.preco_unitario) : 0
   // A cobrança mais recente ainda não paga: é o que o dono veio procurar
-  // quando o assunto é boleto, então ganha um banner antes do histórico.
-  const boletoAberto = faturas.find((f) => f.boleto_url && !f.paga_em) ?? null
+  // quando o assunto é pagamento, então ganha um banner antes do histórico.
+  const cobrancaAberta = faturas.find((f) => f.pix_br_code && !f.paga_em) ?? null
 
   return (
     <section className="valores-alinhados bg-surface border border-border rounded-2xl shadow-sm p-5 space-y-4">
@@ -171,28 +184,72 @@ export function UsoDoSistema() {
           </div>
           <p className="text-xs text-muted-foreground">
             Período em aberto: {dataBr(uso.periodo_inicio)} até hoje. O fechamento é no fim do mês,
-            e o boleto chega depois disso.
+            e a cobrança Pix chega depois disso.
           </p>
 
-          {boletoAberto && (
+          {cobrancaAberta && (
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning/40 bg-warning-soft p-3">
               <div className="text-sm text-foreground">
-                Cobrança em aberto: <strong>{moeda(Number(boletoAberto.boleto_valor))}</strong>
-                {boletoAberto.boleto_vencimento && (
+                Cobrança em aberto:{' '}
+                <strong>{moeda(Number(cobrancaAberta.cobranca_valor ?? cobrancaAberta.valor))}</strong>
+                {cobrancaAberta.cobranca_vence_em && (
                   <span className="text-muted-foreground">
                     {' '}
-                    · vence {dataBr(boletoAberto.boleto_vencimento)}
+                    · vence {dataBr(cobrancaAberta.cobranca_vence_em)}
                   </span>
                 )}
               </div>
-              <a
-                href={boletoAberto.boleto_url!}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
+                onClick={() => setPixAberto(cobrancaAberta)}
                 className="btn-primary rounded-lg px-3 py-1.5 text-sm font-medium shrink-0"
               >
-                Pagar (boleto, Pix ou cartão)
-              </a>
+                Pagar com Pix
+              </button>
+            </div>
+          )}
+
+          {pixAberto && (
+            <div className="rounded-lg border border-border bg-surface-2 p-4 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="text-sm font-medium text-foreground">
+                  Pague {moeda(Number(pixAberto.cobranca_valor ?? pixAberto.valor))} com Pix
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPixAberto(null)}
+                  className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Fechar
+                </button>
+              </div>
+              {pixAberto.pix_br_code_base64 && (
+                <img
+                  src={pixAberto.pix_br_code_base64}
+                  alt="QR Code do Pix"
+                  className="mx-auto h-44 w-44 rounded bg-white p-2"
+                />
+              )}
+              {pixAberto.pix_br_code && (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    No app do banco, escolha Pix › Pix Copia e Cola e cole o código:
+                  </p>
+                  <div className="flex items-stretch gap-2">
+                    <code className="min-w-0 flex-1 truncate rounded border border-border bg-surface px-2 py-1.5 text-xs text-muted-foreground">
+                      {pixAberto.pix_br_code}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => copiarPix(pixAberto.pix_br_code!)}
+                      className="btn-chip btn-chip-primario inline-flex shrink-0 items-center gap-1"
+                    >
+                      {copiado ? <Check size={14} /> : <Copy size={14} />}
+                      {copiado ? 'Copiado' : 'Copiar'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -217,15 +274,14 @@ export function UsoDoSistema() {
                     <span className="inline-flex items-center gap-2">
                       {f.paga_em ? (
                         <Badge variante="ok">pago</Badge>
-                      ) : f.boleto_url ? (
-                        <a
-                          href={f.boleto_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                      ) : f.pix_br_code ? (
+                        <button
+                          type="button"
+                          onClick={() => setPixAberto(f)}
                           className="btn-chip btn-chip-primario"
                         >
                           Pagar
-                        </a>
+                        </button>
                       ) : Number(f.valor) > 0 ? (
                         <Badge variante="atencao">acumula</Badge>
                       ) : null}

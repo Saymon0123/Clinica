@@ -171,12 +171,21 @@ Estavam só no chat. Pela regra da casa, o que não está aqui some do radar.
    **01/10/2026** serviço e utility dentro da janela passam a ser cobrados
    (confirmado em quatro BSPs; a página de preços da Meta ainda não refletia).
 
-**Pré-requisito de produção (decidido em 10/09)**
-- A corrida do `cobrar-uso` hoje é **sinalizada, não impedida**: PIX duplicado
-  vira alerta no Sentry com o id para reconciliar, mas os dois PIX existem do
-  lado do AbacatePay. O dono decidiu **não ligar produção** antes de impedir de
-  verdade — reservar a fatura **antes** de chamar o AbacatePay, em vez de
-  reivindicar depois. Sai da Fase 6 e vira bloqueador de produção.
+**Pré-requisito de produção — RESOLVIDO em 10/09 (migration 0151)**
+- ~~A corrida do `cobrar-uso` é sinalizada, não impedida~~ → **impedida**. A
+  ordem inverteu: `cobranca_reservada_em` é reivindicada **antes** de chamar o
+  AbacatePay. Quem não consegue reservar nem chega a chamar a API, então o
+  segundo PIX **nunca nasce**. Reivindicação parcial não serve — se o grupo tem
+  3 faturas e só 2 foram pegas, a outra execução está com a terceira e vai
+  cobrar o grupo inteiro; solta o que pegou e sai.
+  Reserva órfã (processo morto entre reservar e gravar) é reciclada em 10 min,
+  senão trocaríamos cobrança dupla por cobrança nenhuma, que é pior.
+
+  **Provado sob concorrência real contra produção:** duas execuções disparadas
+  ao mesmo tempo contra a mesma fatura. Uma gravou o PIX; a outra deixou no log
+  `grupo pulado: outra execucao esta com ele ... 0 de 1` — ou seja, listou a
+  fatura, tentou reservar, pegou zero, e **saiu antes de chamar o AbacatePay**.
+  Um único `abacate_pix_id` no banco e reserva solta no fim.
 
 **Teste de dois minutos que só o dono faz**
 4. De um número que nunca falou com a barbearia, mandar "oi" para o número dela.

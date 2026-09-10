@@ -8,13 +8,15 @@ import { ErroInline } from '../../components/ErroInline'
 /**
  * Coleta o CPF/CNPJ de quem paga a plataforma.
  *
- * O Asaas **exige** o documento para criar o cliente — sem ele não existe
- * assinatura. Pedimos aqui, e não no cadastro da barbearia, porque é o momento
- * em que a pessoa decidiu pagar; antes disso é atrito puro.
+ * Sem documento o `cobrar-uso` não emite o Pix: a fatura fica aberta, contada em
+ * `semDocumento`, e o dono usa o sistema de graça sem nunca ser bloqueado (o
+ * bloqueio olha `cobranca_vence_em`, que só existe quando há cobrança). Pedimos
+ * aqui, e não no cadastro da barbearia, porque é o momento em que a pessoa
+ * decidiu pagar; antes disso é atrito puro.
  *
- * A validação é local de propósito: o Asaas recusa documento inválido com um
- * erro genérico, e o dono concluiria que o sistema está quebrado em vez de
- * perceber que trocou um dígito.
+ * A validação é local de propósito: documento inválido só seria recusado lá na
+ * frente, com erro genérico, e o dono concluiria que o sistema está quebrado em
+ * vez de perceber que trocou um dígito.
  */
 export function DadosDeCobranca({
   salonId,

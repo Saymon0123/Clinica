@@ -12,6 +12,62 @@ Consultável pelo grafo: `graphify query "backlog"`.
 
 ---
 
+## Giro geral de 2026-09-10 — o que ficou aberto
+
+Auditoria do projeto inteiro (5 frentes em paralelo + verificação direta no banco,
+n8n e endpoints). Parecer completo em `docs/auditoria/00-giro-2026-09-10.md` —
+**untracked de propósito: o repositório é público e o documento descreve falhas
+ainda abertas.** Placar: 5 críticos, 16 altos, 17 médios, 3 achados refutados.
+
+**Fechados neste mesmo dia** (PR "corrige-cobranca-critica"): o webhook que
+engolia erro de UPDATE e perdia pagamento em silêncio; pagar a fatura de
+cancelamento ressuscitando quem cancelou; a corrida do `cobrar-uso` gravando por
+cima de outra execução; as 3 views de cobrança sem `security_invoker`; e o texto
+que ainda prometia boleto e cartão (incluindo a política de privacidade nomeando
+o Asaas como operador).
+
+**Ainda aberto, por ordem de dor:**
+
+1. **PIX vencido nunca é reemitido** — `abacate_pix_id` é gravado uma vez e nada
+   no repositório o volta a NULL. QR expira em 7 dias, no mesmo instante do
+   bloqueio: a barbearia fica bloqueada **sem meio de pagar**. Decisão do dono
+   (10/09): **botão "gerar novo Pix" na tela do dono**, não reemissão automática.
+   É o próximo PR.
+2. **Opt-out de LGPD é coluna morta** — `clients.recusou_contato` é lida por 12
+   migrations e escrita por **zero** linhas de código. O botão "Não quero mais
+   receber" já está nos templates aprovados pela Meta e não faz nada. Precisa de
+   RPC casando por wamid + toggle na ficha. `docs/marketing.md:195` descreve uma
+   tela que não existe.
+3. **Texto livre no número central morre em `console.error`**
+   (`whatsapp-webhook:277`) — e esse número carrega os lembretes de todas as
+   barbearias; uma denúncia atinge a base inteira.
+4. **Mensagem de cliente se perde quando o n8n falha** — nada é persistido antes
+   do POST, e 3 dos 4 POSTs não checam `.ok`. O padrão de fila que resolve já
+   existe para a saída (`0104:8-9`); falta na entrada.
+5. **O lembrete chega depois que o cancelamento já travou** — fila do n8n dispara
+   a T-85..100min, o link exige T-2h. Garantido, para todo mundo.
+6. **Ninguém confirma agendamento ao cliente nem avisa cancelamento** — os
+   templates existem (`0079:40-52`), a fila e o workflow não.
+7. **`faltou` não tem botão** — só leitura em `src/`; `reativacao_no_shows` nunca
+   incrementa e a pausa após 2 faltas nunca dispara.
+8. **`main` não é protegida** (`gh api .../protection` → 404) — push publica com
+   CI vermelho. E não há scanner de dependência no CI.
+9. **Isolamento multi-tenant testado em 3 tabelas de 54** — o fixture de dois
+   tenants já existe, faltam asserções.
+10. **Sem CPF/CNPJ = uso ilimitado sem bloqueio** — o bloqueio olha
+    `cobranca_vence_em`, que só existe quando há cobrança.
+
+**Buraco da própria auditoria:** a frente de segurança/multi-tenant morreu no
+limite de sessão antes de escrever o relatório. Não houve leitura sistemática de
+autorização por objeto no `src/` e nas edges — só a verificação direta no banco
+(RLS 45/45, grants, views, advisors). Refazer em sessão própria, com escopo
+apertado.
+
+**Refutado, para não voltar como boato:** `x-forwarded-for` **não** é
+falsificável aqui. Testado com dois POSTs carregando IPs de documentação (RFC
+5737): ambos foram contados em `controle_de_taxa` sob o IP real. A Supabase
+sobrescreve o cabeçalho.
+
 ## Segurança
 
 ### Funções SECURITY DEFINER: auditoria de exposição (2026-09-09)

@@ -138,17 +138,31 @@ Deno.serve(comSentry('abacate-webhook', async (req: Request) => {
     if (ehPago) {
       // Marca como pagas as faturas cobertas por este PIX (uma cobrança pode
       // cobrir várias: acúmulo e rede). Roteia pelo abacate_pix_id, não pelo payload.
-      const { data: pagas } = await admin
+      // `error` PRECISA ser lido. O supabase-js RESOLVE com {data:null, error}
+      // em vez de lançar: sem este `throw`, um UPDATE que falha virava
+      // `pagas = null` -> `salonIds = []` -> assinatura intocada -> resposta 200
+      // -> o catch abaixo nunca rodava -> a trava de idempotência de cima ficava
+      // gravada -> a reentrega do AbacatePay era descartada como `23505`.
+      // Ou seja: o cliente pagava, o acesso não abria, e não sobrava rastro.
+      // Lançar aqui é o que devolve o caso ao catch, que solta a trava e
+      // responde 500 — e é o 500 que faz o AbacatePay entregar de novo.
+      const { data: pagas, error: erroPagas } = await admin
         .from('faturas_de_uso')
         .update({ paga_em: new Date().toISOString() })
         .eq('abacate_pix_id', pixId)
         .is('paga_em', null)
         .select('salon_id')
+      if (erroPagas) throw erroPagas
 
       const salonIds = [...new Set((pagas ?? []).map((f) => f.salon_id))]
       if (salonIds.length > 0) {
         const hoje = hojeSP()
-        await admin
+        // `neq('cancelada')` não é detalhe: a fatura de cancelamento existe
+        // justamente para quem já cancelou. Sem este filtro, pagar a última
+        // conta ressuscitava a assinatura — o cron voltava a estender acesso
+        // todo dia e o fechamento mensal voltava a faturar períodos posteriores
+        // à saída. Pagar o que se deve não é pedir para voltar.
+        const { error: erroAcesso } = await admin
           .from('subscriptions')
           .update({
             status: 'ativa',
@@ -156,18 +170,21 @@ Deno.serve(comSentry('abacate-webhook', async (req: Request) => {
             atendimento_ate: somarDias(hoje, ATENDIMENTO_DIAS),
           })
           .in('salon_id', salonIds)
+          .neq('status', 'cancelada')
+        if (erroAcesso) throw erroAcesso
       }
       return json({ ok: true, aplicado: 'pago', faturas: pagas?.length ?? 0, salons: salonIds.length })
     }
 
     // Estorno: reabre as faturas; o cron de acesso reavalia (se virar vencida em
     // aberto, bloqueia no próximo passe).
-    const { data: reabertas } = await admin
+    const { data: reabertas, error: erroReabertas } = await admin
       .from('faturas_de_uso')
       .update({ paga_em: null })
       .eq('abacate_pix_id', pixId)
       .not('paga_em', 'is', null)
       .select('id')
+    if (erroReabertas) throw erroReabertas
     return json({ ok: true, aplicado: 'estornado', faturas: reabertas?.length ?? 0 })
   } catch (err) {
     // A trava de idempotência já foi gravada. Se o efeito falhou, ela precisa

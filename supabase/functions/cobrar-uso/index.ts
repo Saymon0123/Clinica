@@ -1,5 +1,5 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
-import { comSentry } from '../_shared/sentry.ts'
+import { capturarErro, comSentry } from '../_shared/sentry.ts'
 
 /**
  * Transforma faturas de uso abertas em cobranças PIX no AbacatePay.
@@ -201,7 +201,17 @@ Deno.serve(comSentry('cobrar-uso', async (req) => {
       continue
     }
 
-    const { error: erroMarca } = await admin
+    // O `.is('abacate_pix_id', null)` repetido aqui NÃO é redundância com a
+    // linha 92. Entre listar e gravar há uma chamada de rede ao AbacatePay: duas
+    // execuções sobrepostas leem as mesmas faturas livres, ambas criam um PIX
+    // real, e sem esta condição a segunda sobrescrevia a primeira. O dono pagava
+    // o QR que recebeu (o primeiro), o webhook não achava fatura nenhuma com
+    // aquele id, e o dinheiro entrava sem abrir o acesso.
+    //
+    // Isto não IMPEDE a cobrança dupla — o PIX órfão já existe do outro lado.
+    // Impede a perda SILENCIOSA: quem perde a corrida grava zero linhas, e a
+    // divergência abaixo vira alerta no Sentry com o id para reconciliar.
+    const { data: marcadas, error: erroMarca } = await admin
       .from('faturas_de_uso')
       .update({
         abacate_pix_id: pix.id,
@@ -215,6 +225,17 @@ Deno.serve(comSentry('cobrar-uso', async (req) => {
         'id',
         grupo.faturas.map((f) => f.id),
       )
+      .is('abacate_pix_id', null)
+      .select('id')
+    if (!erroMarca && (marcadas?.length ?? 0) !== grupo.faturas.length) {
+      const perdidas = grupo.faturas.length - (marcadas?.length ?? 0)
+      console.error('Cobranca PIX duplicada: outra execucao ja marcou', grupo.chave, pix.id, perdidas)
+      await capturarErro(
+        new Error(`PIX duplicado: ${pix.id} cobre ${perdidas} fatura(s) ja cobradas por outra execucao`),
+        'cobrar-uso',
+        { onde: 'corrida-ao-marcar', chave: grupo.chave, pixId: pix.id, perdidas },
+      )
+    }
     if (erroMarca) {
       // A cobrança existe no AbacatePay mas não ficou registrada. Um PIX que o
       // dono nunca recebe apenas expira sem pagamento — não há cobrança dupla a
@@ -225,7 +246,9 @@ Deno.serve(comSentry('cobrar-uso', async (req) => {
     }
 
     cobrancas += 1
-    faturasCobertas += grupo.faturas.length
+    // O que foi REIVINDICADO, não o que foi tentado: numa corrida os dois
+    // números divergem, e é o primeiro que diz a verdade sobre o banco.
+    faturasCobertas += marcadas?.length ?? 0
   }
 
   return json({ cobrancas, faturasCobertas, acumuladas, semDocumento })

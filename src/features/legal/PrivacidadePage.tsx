@@ -70,8 +70,14 @@ export function PrivacidadePage() {
             <strong>OpenAI</strong> — inteligência artificial do atendimento automático,{' '}
             <strong>com servidores nos Estados Unidos</strong>
           </li>
+          {/* Este item é declaração legal de subprocessador, não texto de tela:
+              tem que nomear quem REALMENTE trata o dado. Ficou dizendo "Asaas"
+              por um dia depois da migração para o AbacatePay (09/09/2026) —
+              apontando para quem não processa mais nada e escondendo quem
+              processa. Se o provedor de cobrança mudar de novo, esta linha muda
+              no mesmo commit. */}
           <li>
-            <strong>Asaas</strong> — cobrança da assinatura
+            <strong>AbacatePay</strong> — cobrança da assinatura por Pix
           </li>
           <li>
             <strong>Hostinger e n8n</strong> — servidores que conectam o WhatsApp e executam as

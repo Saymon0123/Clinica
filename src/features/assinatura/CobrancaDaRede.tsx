@@ -27,11 +27,11 @@ type Rede = {
 
 /**
  * A cobrança da rede no modelo por uso: quanto cada unidade está consumindo no
- * mês, e o formato do boleto — um por unidade, ou um único com todas.
+ * mês, e o formato da cobrança — uma por unidade, ou uma única com todas.
  *
- * A escolha é uma PREFERÊNCIA, não uma recorrência: desde 2026-08-24 o boleto é
- * emitido à mão a partir do fechamento mensal, e a flag diz ao faturamento para
- * tratar a rede como um pagante só. Nenhuma chamada ao Asaas nasce daqui.
+ * A escolha é uma PREFERÊNCIA, não uma recorrência: o Pix nasce do fechamento
+ * mensal (`cobrar-uso`), e a flag diz ao faturamento para tratar a rede como um
+ * pagante só. Nenhuma chamada a provedor de pagamento nasce daqui.
  */
 export function CobrancaDaRede() {
   const { salonId, organizationId, unidades, isNetwork } = useSalon()
@@ -95,9 +95,9 @@ export function CobrancaDaRede() {
 
   const total = usos.reduce((acc, u) => acc + u.agendamentos * Number(u.preco_unitario), 0)
 
-  // O documento é do PAGADOR no Asaas. Sem ele, `cobrar-uso` agrupa as faturas
-  // da rede, não consegue criar o cliente, conta em `semDocumento` e segue em
-  // frente — a rede fica sem boleto nenhum, em silêncio, até alguém reparar.
+  // O documento é do PAGADOR da rede. Sem ele, `cobrar-uso` agrupa as faturas,
+  // não emite o Pix, conta em `semDocumento` e segue em frente — a rede fica
+  // sem cobrança nenhuma, em silêncio, até alguém reparar.
   // Por isso a mesma regra existe como CHECK no banco
   // (`organizations_unificada_exige_documento`, migration 0130): aqui é só para
   // o dono ler a frase certa antes de o servidor recusar.
@@ -134,7 +134,7 @@ export function CobrancaDaRede() {
         </h2>
         <p className="text-sm text-muted-foreground mt-1">
           Cada unidade paga pelo próprio uso. Aqui você acompanha o mês de todas e escolhe o
-          formato do boleto: um por unidade, ou um único com a soma.
+          formato da cobrança Pix: uma por unidade, ou uma só com a soma.
         </p>
       </div>
 
@@ -170,7 +170,7 @@ export function CobrancaDaRede() {
             <div className="space-y-3">
               <p className="flex items-center gap-2 text-sm text-success">
                 <Receipt size={16} />
-                Boleto único da rede: uma cobrança cobre as {usos.length} unidades.
+                Cobrança única da rede: um Pix cobre as {usos.length} unidades.
               </p>
               <button
                 type="button"
@@ -178,7 +178,7 @@ export function CobrancaDaRede() {
                 disabled={agindo}
                 className="text-sm text-danger hover:underline disabled:opacity-50"
               >
-                {agindo ? 'Salvando...' : 'Voltar a um boleto por unidade'}
+                {agindo ? 'Salvando...' : 'Voltar a uma cobrança por unidade'}
               </button>
             </div>
           ) : (
@@ -206,10 +206,10 @@ export function CobrancaDaRede() {
                 className="inline-flex items-center gap-2 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
               >
                 <Receipt size={16} />
-                {agindo ? 'Salvando...' : 'Receber um boleto único da rede'}
+                {agindo ? 'Salvando...' : 'Receber uma cobrança única da rede'}
               </button>
               <p className="text-xs text-muted-foreground">
-                O fechamento continua por unidade; o boleto vem um só, com a soma de todas.
+                O fechamento continua por unidade; o Pix vem um só, com a soma de todas.
               </p>
             </div>
           )}

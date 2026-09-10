@@ -5,7 +5,7 @@ import { ErroInline } from '../../components/ErroInline'
 /**
  * O único botão do modelo por uso: cancelar.
  *
- * Não existe "assinar" — usar o sistema É a assinatura, e o boleto nasce do
+ * Não existe "assinar" — usar o sistema É a assinatura, e a cobrança Pix nasce do
  * fechamento mensal. Cancelar interrompe o uso e gera NA HORA a fatura parcial
  * (último fechamento → hoje), que segue por e-mail para o faturamento manual —
  * a regra de 2026-08-24: só se paga o que foi usado até o dia do cancelamento.

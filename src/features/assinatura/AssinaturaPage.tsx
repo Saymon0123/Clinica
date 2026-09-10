@@ -18,8 +18,8 @@ function formatarData(iso: string) {
  *
  * Os estados do modelo antigo (assinatura ativa, aguardando Pix da
  * recorrência, troca agendada) morreram em 2026-08-24. O que resta descrever:
- * teste, em dia, boleto atrasado e vencido — todos derivados de `acesso_ate`,
- * que o webhook estende quando o boleto manual do fechamento é pago.
+ * teste, em dia, cobrança atrasada e vencida — todos derivados de `acesso_ate`,
+ * que o webhook estende quando o Pix do fechamento é pago.
  */
 function Situacao({ assinatura }: { assinatura: Assinatura }) {
   const { status, diasRestantes, expirada, acessoAte } = assinatura
@@ -78,7 +78,7 @@ function Situacao({ assinatura }: { assinatura: Assinatura }) {
         <p className="font-medium text-foreground">Acesso em dia</p>
         <p className="text-sm text-muted-foreground">
           {acessoAte ? `Pago até ${formatarData(acessoAte)}. ` : ''}A cobrança do mês fecha no dia
-          1º e chega como boleto, só com o que foi usado.
+          1º e chega como Pix, só com o que foi usado.
         </p>
       </div>
     </div>
@@ -138,7 +138,7 @@ export function AssinaturaPage() {
         </div>
       )}
 
-      {/* O CPF/CNPJ é o dado do pagante no boleto manual. */}
+      {/* O CPF/CNPJ é o dado do pagante na cobrança Pix do fechamento. */}
       <DadosDeCobranca
         salonId={salonId}
         documentoAtual={assinatura?.cpfCnpj ?? null}

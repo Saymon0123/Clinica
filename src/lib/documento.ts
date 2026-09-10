@@ -1,13 +1,13 @@
 /**
  * Validação de CPF e CNPJ.
  *
- * O Asaas recusa a criação do cliente quando o documento é inválido, e o erro
- * dele chega genérico. Validar antes evita que o dono clique em "Assinar", veja
- * uma mensagem incompreensível e conclua que o sistema está quebrado — quando
- * na verdade ele digitou um dígito errado.
+ * Documento inválido só seria percebido lá na emissão da cobrança, com erro
+ * genérico. Validar antes evita que o dono salve, veja uma mensagem
+ * incompreensível e conclua que o sistema está quebrado — quando na verdade ele
+ * digitou um dígito errado.
  *
- * Guardamos e enviamos **só os dígitos**: o Asaas aceita assim, e comparar
- * documento com pontuação é a mesma armadilha do telefone.
+ * Guardamos **só os dígitos**: comparar documento com pontuação é a mesma
+ * armadilha do telefone.
  */
 
 export function apenasDigitos(valor: string) {

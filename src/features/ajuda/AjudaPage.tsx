@@ -402,15 +402,16 @@ const SECOES: Secao[] = [
       {
         p: 'Como pago a minha fatura?',
         intro:
-          'O mês fecha no último dia e a cobrança chega **por e-mail** e fica visível na aba **Assinatura**, no aviso amarelo — toque em **Pagar** e escolha boleto, Pix ou cartão. Pagou? O acesso renova sozinho em minutos.',
+          'O mês fecha no último dia e a cobrança chega **por e-mail** e fica visível na aba **Assinatura**, no aviso amarelo — toque em **Pagar com Pix** e leia o QR Code, ou copie o código e cole no app do banco (Pix › Pix Copia e Cola). Pagou? O acesso renova sozinho em minutos.',
         dicas: [
-          { t: 'Antes disso, cadastre seu CPF ou CNPJ na mesma aba — sem ele o boleto não é gerado.' },
+          { t: 'Antes disso, cadastre seu CPF ou CNPJ na mesma aba — sem ele a cobrança não é gerada.' },
+          { t: 'O QR vale 7 dias. Depois disso ele para de funcionar e é preciso gerar outro.' },
         ],
       },
       {
-        p: 'Tenho mais de uma unidade. Posso pagar tudo num boleto só?',
+        p: 'Tenho mais de uma unidade. Posso pagar tudo de uma vez?',
         intro:
-          'Pode. Em **Assinatura → Cobrança da rede**, toque em **Receber um boleto único da rede** e informe o CPF/CNPJ do pagante. Para voltar a um boleto por unidade, é só um clique no mesmo lugar.',
+          'Pode. Em **Assinatura → Cobrança da rede**, toque em **Receber uma cobrança única da rede** e informe o CPF/CNPJ do pagante. Sai um Pix só, com o uso de todas as unidades somado. Para voltar a uma cobrança por unidade, é só um clique no mesmo lugar.',
       },
     ],
   },
@@ -550,7 +551,7 @@ export function AjudaPage() {
           type="search"
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
-          placeholder="Ex.: remarcar horário, boleto, comissão, estoque..."
+          placeholder="Ex.: remarcar horário, cobrança, comissão, estoque..."
           className="w-full border-2 border-border-strong bg-surface text-foreground rounded-xl pl-9 pr-4 py-2.5 text-sm focus:border-primary outline-none"
         />
       </div>

@@ -16,7 +16,7 @@ export function useClientsData(salonId: string | null) {
     // a RLS por trás dela continua decidindo o que cada papel enxerga.
     const { data, error: fetchError } = await supabase
       .from('clientes_com_ultima_visita')
-      .select('id, nome, telefone, aniversario, observacao, created_at, ultima_visita')
+      .select('id, nome, telefone, aniversario, observacao, created_at, ultima_visita, recusou_contato')
       .eq('salon_id', salonId)
       .order('nome')
 

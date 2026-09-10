@@ -125,6 +125,49 @@ chamando `cobrar-uso` com a credencial certa** — a execução 22239 devolveu
 `SUPABASE_SERVICE_ROLE_KEY` que a função enxerga é a chave **secret nova**, não a
 `service_role` legada: chamar com a legada devolve 401.
 
+### Decisões esperando o dono (registradas em 10/09)
+
+Estavam só no chat. Pela regra da casa, o que não está aqui some do radar.
+
+**Perguntas para a Meta** — nenhuma se responde lendo documentação; já procurei.
+1. **Coexistence está liberada no Brasil?** A página dela não menciona país
+   nenhum, nem para liberar nem para restringir. *Silêncio não é liberação.*
+   (A restrição "Brazil or India" que aparece na doc é sobre criar WABA pelo Meta
+   Business Suite — não toca Embedded Signup nem Coexistence. Já verificado.)
+2. **A aprovação é Tech Provider ou Solution Partner?** Decide quem paga a Meta.
+   Tech Provider = o cliente põe o cartão dele. Só Solution Partner tem *credit
+   line* para o parceiro pagar — e é programa separado, com pré-requisito de ser
+   Meta Business Partner e processo que a própria Meta chama de *"lengthy"*.
+   **Virar Tech Partner NÃO dá credit line** (só treinamento, analytics e client
+   matching); é armadilha fácil de cair.
+3. **Como a franquia de 1.000 mensagens de serviço/mês se comporta num modelo de
+   parceiro?** É **por número**: no modelo de número central atual, são 1.000
+   para a plataforma inteira; com número por barbearia, 1.000 cada. A partir de
+   **01/10/2026** serviço e utility dentro da janela passam a ser cobrados
+   (confirmado em quatro BSPs; a página de preços da Meta ainda não refletia).
+
+**Teste de dois minutos que só o dono faz**
+4. De um número que nunca falou com a barbearia, mandar "oi" para o número dela.
+   **Chegaram duas respostas?** Se sim, confirma que a saudação/ausência do app
+   WhatsApp Business está duplicando com o agente da Evolution — e vira item de
+   checklist de ativação. Se chegar só uma, o dispositivo vinculado já suprime o
+   app e o problema é menor do que eu descrevi. *Não verifiquei; é dedução.*
+
+**Escolhas minhas na migration 0149, reversíveis**
+5. **`payments.valor >= 0`, não `> 0`.** Deixei passar pagamento de R$ 0 porque
+   venda de cortesia é plausível e eu não vi esse caminho no código. Se cortesia
+   não existe no negócio, apertar para `> 0` é uma linha.
+6. **Convite vencido e não usado bloqueia um novo.** `now()` não é `IMMUTABLE` e
+   o Postgres recusa em predicado de índice, então não dá para escrever "e não
+   vencido". O dono apaga o convite velho na lista e a mensagem diz isso. Se
+   incomodar, a alternativa é limpeza automática de convites vencidos.
+
+**Cobertura que ficou faltando no A16**
+7. Três tabelas **sem `salon_id`** ficaram de fora do
+   `rls_isolamento_operacao.test.sql`: `pacote_itens`, `pacote_consumos` e
+   `pacote_do_cliente_itens`. São exatamente a categoria de risco (isolamento
+   dependente do join ao pai). `pacotes` e `pacotes_do_cliente` estão cobertas.
+
 **Buraco da própria auditoria:** a frente de segurança/multi-tenant morreu no
 limite de sessão antes de escrever o relatório. Não houve leitura sistemática de
 autorização por objeto no `src/` e nas edges — só a verificação direta no banco

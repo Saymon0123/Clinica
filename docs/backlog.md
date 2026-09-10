@@ -2781,3 +2781,35 @@ mudar no `vite.config.ts`.** Os dois issues foram resolvidos **à mão** pelo MC
 - (verificar) o próximo release precisa vir com `lastCommit` preenchido — aí o
   auto-close por `Fixes SHORT-ID` volta a valer pros próximos. Releases antigos
   **não** voltam atrás; a associação é feita na hora do build.
+
+## Prospecção: o script existe, a operação em volta não (2026-09-09)
+
+`docs/prospeccao.md` fecha a lacuna que o `mercado-e-roadmap.md:157` chama de
+"ninguém prospectando": abordagem por WhatsApp, presencial e ligação, com o
+posicionamento certo (vende o atendente, não o CRM), as objeções reais e o
+fechamento no `ConvidarBarbearia`. É documento — nada mudou no CRM, no banco
+nem na Vercel.
+
+Três coisas dependem de peça fora do repositório e travam o uso do script:
+
+- **(dono) Número de demonstração.** O roteiro presencial pede que o barbeiro
+  mande a mensagem do celular dele e veja a resposta chegar — é a única coisa
+  que os concorrentes não conseguem repetir. Exige uma barbearia de teste com
+  WhatsApp conectado, catálogo preenchido e agenda com buracos. **Demonstração
+  que trava na frente do dono custa a barbearia inteira**, então isso precisa
+  existir antes da primeira visita, não durante.
+- **(dono) Planilha de cinco colunas** — `data | barbearia | canal | parou onde |
+  motivo do não`. É o "medindo ativação e retenção" que o
+  `estado-do-projeto.md` põe como pré-requisito de gastar com anúncio. Não vale
+  construir tela: tela sem dado é trabalho antes da hora.
+- **(pendente, sem dono) Resposta honesta sobre backup.** A objeção 6 do script
+  manda **não** prometer backup, porque não existe (Supabase Free). Enquanto o
+  item de backup não sair do backlog, todo vendedor tem de responder
+  "a exportação em CSV é sua garantia" — e isso é mais fraco do que o
+  concorrente responde.
+
+**Fronteira registrada:** o script é para pessoa falando com pessoa. Disparo
+automático de abordagem fria exigiria n8n + base legal de LGPD + opt-out +
+origem e data de cada contato — e faria na prospecção exatamente o que o
+produto proíbe nas campanhas do dono (`marketing.md:186`). Não está prometido
+em lugar nenhum, e não deve ser construído sem essa conversa.

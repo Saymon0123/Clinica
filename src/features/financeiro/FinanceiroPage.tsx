@@ -36,8 +36,10 @@ import {
   guardarVendaPendente,
   lerVendaPendente,
   limparVendaPendente,
+  quitarVendaPendente,
   type VendaPendente,
 } from '../../lib/vendaPendente'
+import { rotuloDasPerdas } from './perdas'
 import { EditGoalModal } from './EditGoalModal'
 import { ExportReportModal } from './ExportReportModal'
 import { GoalReachedModal } from './GoalReachedModal'
@@ -63,7 +65,7 @@ const CARD_CONFIG: { key: MetricKey; label: string; icon: typeof DollarSign; for
   { key: 'faturamento', label: 'Faturamento', icon: DollarSign, format: 'currency' },
   { key: 'clientesAtendidos', label: 'Clientes atendidos', icon: Users, format: 'number' },
   { key: 'agendamentos', label: 'Agendamentos', icon: CalendarCheck, format: 'number' },
-  { key: 'cancelamentos', label: 'Cancelamentos', icon: CalendarX, format: 'number' },
+  { key: 'cancelamentos', label: 'Cancelamentos e faltas', icon: CalendarX, format: 'number' },
 ]
 
 function ChangeBadge({
@@ -81,7 +83,11 @@ function ChangeBadge({
   const Icon = pct >= 0 ? TrendingUp : TrendingDown
   return (
     <span
-      title={invert ? 'Aqui, queda é bom: verde significa menos cancelamentos que no período anterior.' : undefined}
+      title={
+        invert
+          ? 'Aqui, queda é bom: verde significa menos cancelamentos e faltas que no período anterior.'
+          : undefined
+      }
       className={`inline-flex items-center gap-0.5 text-xs font-medium ${
         emHero
           ? 'bg-primary-foreground/15 text-primary-foreground rounded-full px-2 py-0.5'
@@ -400,6 +406,19 @@ export function FinanceiroPage() {
             >
               {concluindoSemCobrar ? 'Concluindo...' : 'Concluir sem cobrar'}
             </button>
+            {/* Saída para quando o horário deixou de fazer sentido (cancelado,
+                lançado por engano). A faixa não pode ser beco: antes só sumia
+                cobrando, concluindo ou fechando o navegador. */}
+            <button
+              onClick={() => {
+                if (salonId) limparVendaPendente(salonId)
+                setVendaPendente(null)
+              }}
+              title="O horário continua na agenda. Sem venda, ele fica como “não veio” 15 minutos depois do fim."
+              className="btn-ghost rounded-lg px-3 py-2 text-sm font-medium"
+            >
+              Dispensar
+            </button>
           </div>
         )}
 
@@ -410,9 +429,10 @@ export function FinanceiroPage() {
           periodLabel={rotuloPeriodo}
           prefill={salePrefill}
           onPrefillConsumed={clearPrefill}
-          onVendaSalva={() => {
-            if (salonId) limparVendaPendente(salonId)
-            setVendaPendente(null)
+          // Só a venda DAQUELE horário quita a pendência (achado 2 do plano C):
+          // a venda de outro cliente, lançada no meio, não pode apagar a faixa.
+          onVendaSalva={(appointmentId) => {
+            if (salonId && quitarVendaPendente(salonId, appointmentId)) setVendaPendente(null)
           }}
         />
         </>
@@ -444,6 +464,8 @@ export function FinanceiroPage() {
               badge={<ChangeBadge pct={metric.changePct} invert={invert} emHero={key === 'faturamento'} />}
               bars={bars}
               hero={key === 'faturamento'}
+              // A divisão da soma: quanto foi cancelamento e quanto foi falta.
+              detalhe={key === 'cancelamentos' && !loading && !error ? rotuloDasPerdas(data.perdas) : undefined}
               barColor={
                 key === 'faturamento'
                   ? 'bg-primary-foreground/25'

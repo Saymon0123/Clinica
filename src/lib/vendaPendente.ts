@@ -55,3 +55,20 @@ export function limparVendaPendente(salonId: string) {
     // Idem: nada a fazer, e não é motivo para quebrar a tela.
   }
 }
+
+/**
+ * A venda salva quita a pendência só se for DAQUELE horário.
+ *
+ * Antes, qualquer venda salva apagava a pendência — inclusive a de outro
+ * cliente, lançada no meio do caminho (achado 2 do plano C, 11/09). O horário
+ * que esperava cobrança perdia a faixa e virava "não veio" 15 minutos depois
+ * do fim, sem ninguém ter decidido nada.
+ *
+ * Devolve `true` quando quitou, para a tela esconder a faixa.
+ */
+export function quitarVendaPendente(salonId: string, appointmentId: string | null): boolean {
+  if (!appointmentId) return false
+  if (lerVendaPendente(salonId)?.appointmentId !== appointmentId) return false
+  limparVendaPendente(salonId)
+  return true
+}

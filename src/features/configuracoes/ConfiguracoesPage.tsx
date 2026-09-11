@@ -48,12 +48,6 @@ export function ConfiguracoesPage() {
   // Minutos livres exigidos antes e depois de cada atendimento. Zero mantem o
   // comportamento antigo, colado.
   const [folga, setFolga] = useState('0')
-  // Minutos de atraso antes de o sistema reagir: quando o agente pergunta ao
-  // cliente se ele está vindo (view `atrasos_para_perguntar`, fluxo "Política
-  // de Atraso" do n8n — hoje DESLIGADO). O botão "Não veio" da faixa do balcão,
-  // que também usava este número, saiu em 25/08: a falta passou a ser deduzida
-  // pelo banco (0153).
-  const [atraso, setAtraso] = useState('10')
   const [horario, setHorario] = useState<DiaSemana[]>([])
   const [carregando, setCarregando] = useState(true)
   const [salvando, setSalvando] = useState(false)
@@ -70,7 +64,7 @@ export function ConfiguracoesPage() {
     const { data, error } = await supabase
       .from('salons')
       .select(
-        'nome, endereco, telefone, google_review_url, horario_funcionamento, folga_entre_atendimentos_minutos, atraso_tolerado_minutos',
+        'nome, endereco, telefone, google_review_url, horario_funcionamento, folga_entre_atendimentos_minutos',
       )
       .eq('id', salonId)
       .maybeSingle()
@@ -88,7 +82,6 @@ export function ConfiguracoesPage() {
     setTelefone(data.telefone ?? '')
     setGoogleReviewUrl(data.google_review_url ?? '')
     setFolga(String(data.folga_entre_atendimentos_minutos ?? 0))
-    setAtraso(String(data.atraso_tolerado_minutos ?? 10))
     setHorario(desserializarHorario(data.horario_funcionamento))
     setCarregando(false)
   }, [salonId])
@@ -142,9 +135,6 @@ export function ConfiguracoesPage() {
         telefone: telefone.trim() || null,
         google_review_url: googleReviewUrl.trim() || null,
         folga_entre_atendimentos_minutos: Math.min(60, Math.max(0, Number(folga) || 0)),
-        // Mínimo de 5: abaixo disso o cliente recebe a pergunta enquanto ainda
-        // está estacionando, e a barbearia parece impaciente.
-        atraso_tolerado_minutos: Math.min(60, Math.max(5, Number(atraso) || 10)),
         horario_funcionamento: serializarHorario(horario),
       })
       .eq('id', salonId)
@@ -286,34 +276,12 @@ export function ConfiguracoesPage() {
             </p>
           </div>
 
-          <div className="border-b border-border pb-4">
-            <label className="block text-sm text-muted-foreground mb-1" htmlFor="atraso">
-              Atraso tolerado
-            </label>
-            <div className="flex items-center gap-2">
-              <div className="w-24">
-                <Input
-                id="atraso"
-                type="number"
-                min={5}
-                max={60}
-                step={5}
-                value={atraso}
-                onChange={(e) => {
-                  setAtraso(e.target.value)
-                  setSalvo(false)
-                }}
-              />
-              </div>
-              <span className="text-sm text-muted-foreground">minutos</span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Passado esse tempo, o agente pergunta ao cliente pelo WhatsApp se ele está a caminho.
-              E se a comanda não for fechada até <strong>15 minutos depois do fim previsto</strong>{' '}
-              do serviço, o agendamento é cancelado sozinho e o horário volta a ficar disponível —
-              fechar a comanda depois desfaz o cancelamento.
-            </p>
-          </div>
+          {/* O "Atraso tolerado" saiu daqui em 11/09 (achado 3 do plano C): só
+              alimentava o fluxo "Política de Atraso" do n8n, que está
+              desligado, e esse fluxo foi desenhado para o barbeiro decidir na
+              faixa do balcão, que saiu em 25/08. O dono ajustava um número sem
+              efeito nenhum. A coluna `atraso_tolerado_minutos` continua no banco
+              (padrão 10) para quando a política for refeita — ver o backlog. */}
 
           {horario.map((d) => (
             <div key={d.chave} className="flex items-center gap-3 flex-wrap">

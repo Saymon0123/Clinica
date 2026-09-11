@@ -32,12 +32,19 @@ export function StatsCard({
   barColor = 'bg-primary/25',
   barHighlightColor = 'bg-primary',
   hero = false,
+  detalhe,
 }: {
   icon: ReactNode
   label: string
   value: number
   formattedValue: (n: number) => string
   badge?: ReactNode
+  /**
+   * Linha curta ao lado do número — a divisão de uma soma ("3 cancelados · 2
+   * não vieram"). Na mesma linha do número, e não embaixo, para os gráficos da
+   * fileira continuarem alinhados; só quebra quando o card é estreito demais.
+   */
+  detalhe?: ReactNode
   bars: BarPoint[]
   barColor?: string
   barHighlightColor?: string
@@ -94,10 +101,15 @@ export function StatsCard({
         {badge}
       </div>
 
-      <div
-        className={`num-destaque text-2xl mb-3 ${hero ? '' : 'text-foreground'}`}
-      >
-        {formattedValue(animatedValue)}
+      <div className="flex flex-wrap items-baseline gap-x-2 mb-3">
+        <div className={`num-destaque text-2xl ${hero ? '' : 'text-foreground'}`}>
+          {formattedValue(animatedValue)}
+        </div>
+        {detalhe && (
+          <span className={`text-xs ${hero ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+            {detalhe}
+          </span>
+        )}
       </div>
 
       <div className="flex h-9 items-end gap-1">

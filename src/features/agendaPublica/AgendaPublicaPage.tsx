@@ -5,6 +5,7 @@ import { Check, Clock, MessageCircle } from 'lucide-react'
 import { invokeFunction } from '../../lib/invokeFunction'
 import { ErroInline } from '../../components/ErroInline'
 import { AVISO_TELEFONE_FORMATO, classificarTelefone } from '../../lib/telefone'
+import { mensagemSemHorario, type MotivoSemHorario } from './semHorario'
 
 /**
  * A página que o QR do balcão abre.
@@ -36,6 +37,8 @@ type Consulta = {
   servicos: Servico[]
   servicoEscolhido?: string
   horarios: Horario[]
+  /** Por que `horarios` veio vazio (M8). Ausente numa função anterior a isto. */
+  motivoVazio?: MotivoSemHorario | null
 }
 
 /**
@@ -299,6 +302,13 @@ export function AgendaPublicaPage() {
               {enviando ? 'Marcando...' : 'Confirmar horário'}
             </button>
           </form>
+        ) : dados.servicos.length === 0 ? (
+          // Sem serviço não há passo 1: o seletor ficava vazio, sem uma opção,
+          // e a frase de baixo mandava trocar de serviço (M8).
+          <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
+            {mensagemSemHorario({ motivo: 'sem_servicos', temServicoMaisCurto: false, temWhatsapp: !!whatsapp })}
+            <FalarComABarbearia numero={whatsapp} />
+          </div>
         ) : (
           // ---------- Passos 1 e 2: serviço e horário ----------
           <div className="space-y-5">
@@ -328,8 +338,14 @@ export function AgendaPublicaPage() {
 
               {dados.horarios.length === 0 ? (
                 <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
-                  Não há horário livre hoje para esse serviço. Tente outro serviço acima — ou fale
-                  com a barbearia para marcar em outro dia.
+                  {mensagemSemHorario({
+                    // Função anterior a isto não manda o motivo: cai no caso
+                    // comum, e a frase continua verdadeira.
+                    motivo: dados.motivoVazio ?? 'lotado',
+                    temServicoMaisCurto:
+                      !!servico && dados.servicos.some((s) => s.duracao_minutos < servico.duracao_minutos),
+                    temWhatsapp: !!whatsapp,
+                  })}
                   <FalarComABarbearia numero={whatsapp} />
                 </div>
               ) : (

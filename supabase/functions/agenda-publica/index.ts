@@ -1,5 +1,6 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { comSentry } from '../_shared/sentry.ts'
+import { chaveDoDia, motivoSemHorario } from '../_shared/semHorario.ts'
 
 /**
  * Agenda pública — o QR do balcão.
@@ -65,6 +66,11 @@ function json(body: unknown, status = 200) {
  *  Número antigo sem o 9 não bate com o formato novo; os 8 finais batem. */
 function normalizar(telefone: string) {
   return telefone.replace(/\D/g, '').slice(-8)
+}
+
+/** '55' + DDD + número, só dígitos — pronto para o wa.me. Nulo sem telefone. */
+function whatsappDe(telefone: string | null | undefined) {
+  return telefone ? '55' + String(telefone).replace(/\D/g, '').replace(/^55/, '') : null
 }
 
 
@@ -133,9 +139,7 @@ Deno.serve(comSentry('agenda-publica', async (req: Request) => {
     const salaoRel = (Array.isArray(ag.salons) ? ag.salons[0] : ag.salons) as
       | { nome: string | null; telefone: string | null }
       | null
-    const whatsappBarbearia = salaoRel?.telefone
-      ? '55' + salaoRel.telefone.replace(/\D/g, '').replace(/^55/, '')
-      : null
+    const whatsappBarbearia = whatsappDe(salaoRel?.telefone)
 
     const info = {
       status: ag.status,
@@ -200,19 +204,41 @@ Deno.serve(comSentry('agenda-publica', async (req: Request) => {
   // nas telas em que a pessoa não tem mais o que fazer sozinha.
   const { data: salao } = await admin
     .from('salons_atendendo')
-    .select('id, nome, telefone')
+    .select('id, nome, telefone, horario_funcionamento')
     .eq('id', salonId)
     .maybeSingle()
 
-  // Sem barbearia não há WhatsApp para oferecer: é o único beco que continua
-  // beco, e por isso a frase diz para conferir o link em vez de mandar esperar.
   if (!salao) {
+    // `salons_atendendo` junta três situações numa só: barbearia desativada,
+    // teste estourado e pagamento atrasado. Todas caíam aqui como "não
+    // encontrada" — com o cartaz no balcão, o barbeiro cortando e o link certo
+    // (A12 do giro de 10/09). Quem escaneou não precisa saber qual das três é,
+    // e não deve: situação de cobrança é assunto da barbearia. Mas precisa de
+    // uma saída, e o WhatsApp dela continua valendo.
+    const { data: existe } = await admin
+      .from('salons')
+      .select('nome, telefone')
+      .eq('id', salonId)
+      .maybeSingle()
+    if (existe) {
+      const whatsapp = whatsappDe(existe.telefone)
+      return json(
+        {
+          error: whatsapp
+            ? 'Esta barbearia não está marcando horário por aqui agora. Chame no WhatsApp que eles resolvem.'
+            : 'Esta barbearia não está marcando horário por aqui agora. Fale com a barbearia.',
+          salao: existe.nome,
+          whatsappBarbearia: whatsapp,
+        },
+        403,
+      )
+    }
+    // Sem barbearia não há WhatsApp para oferecer: é o único beco que continua
+    // beco, e por isso a frase diz para conferir o link em vez de mandar esperar.
     return json({ error: 'Barbearia não encontrada. Confira o link ou peça outro à barbearia.' }, 404)
   }
 
-  const whatsappBarbearia = salao.telefone
-    ? '55' + String(salao.telefone).replace(/\D/g, '').replace(/^55/, '')
-    : null
+  const whatsappBarbearia = whatsappDe(salao.telefone)
 
   const { data: temRecurso } = await admin
     .from('recursos_ativos')
@@ -247,7 +273,15 @@ Deno.serve(comSentry('agenda-publica', async (req: Request) => {
     const escolhido = servicos?.find((s) => s.id === servicoId) ?? servicos?.[0]
 
     if (!escolhido) {
-      return json({ salao: salao.nome, whatsappBarbearia, servicos: [], horarios: [] })
+      // Sem serviço ativo a tela mostrava um seletor vazio e mandava "tentar
+      // outro serviço acima" (M8). Agora ela sabe o que dizer.
+      return json({
+        salao: salao.nome,
+        whatsappBarbearia,
+        servicos: [],
+        horarios: [],
+        motivoVazio: 'sem_servicos',
+      })
     }
 
     // Só HOJE. O QR está no balcão: quem escaneou está lá agora, e abrir a
@@ -266,12 +300,41 @@ Deno.serve(comSentry('agenda-publica', async (req: Request) => {
       return json({ error: 'Não foi possível carregar os horários.', whatsappBarbearia }, 500)
     }
 
+    // Lista vazia tem quatro causas, e a tela dizia a mesma frase para todas —
+    // "tente outro serviço acima", inclusive às 23h e em dia de folga (M8). O
+    // motivo vai junto para ela poder dizer a verdade. Só custa consulta a mais
+    // quando a lista veio vazia.
+    let motivoVazio: string | null = null
+    if (!horarios?.length) {
+      const { data: jornadaHoje } = await admin
+        .from('professional_schedules')
+        .select('professional_id, professionals!inner(salon_id, ativo)')
+        .eq('professionals.salon_id', salonId)
+        .eq('professionals.ativo', true)
+        .eq('ativo', true)
+        // 0 = domingo, como o `extract(dow)` de `horarios_livres`.
+        .eq('dia_semana', new Date(`${hoje}T12:00:00Z`).getUTCDay())
+        .limit(1)
+      motivoVazio = motivoSemHorario({
+        horario: salao.horario_funcionamento,
+        dia: chaveDoDia(hoje),
+        agora: new Date().toLocaleTimeString('en-GB', {
+          timeZone: 'America/Sao_Paulo',
+          hour: '2-digit',
+          minute: '2-digit',
+          hourCycle: 'h23',
+        }),
+        alguemTrabalhaHoje: (jornadaHoje?.length ?? 0) > 0,
+      })
+    }
+
     return json({
       salao: salao.nome,
       whatsappBarbearia,
       servicos: servicos ?? [],
       servicoEscolhido: escolhido.id,
       horarios: horarios ?? [],
+      motivoVazio,
     })
   }
 

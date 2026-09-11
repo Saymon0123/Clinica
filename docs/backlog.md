@@ -71,12 +71,56 @@ o Asaas como operador).
    disparava e-mail de alerta a cada opt-out. Registrar não pode derrubar quem
    já entregou.
 4. **Mensagem de cliente se perde quando o n8n falha** — nada é persistido antes
-   do POST, e 3 dos 4 POSTs não checam `.ok`. O padrão de fila que resolve já
-   existe para a saída (`0104:8-9`); falta na entrada.
-5. **O lembrete chega depois que o cancelamento já travou** — fila do n8n dispara
-   a T-85..100min, o link exige T-2h. Garantido, para todo mundo.
-6. **Ninguém confirma agendamento ao cliente nem avisa cancelamento** — os
-   templates existem (`0079:40-52`), a fila e o workflow não.
+   do POST. O padrão de fila que resolve já existe para a saída (`0104:8-9`);
+   falta na entrada.
+   *(A metade do `.ok` foi resolvida em 10/09 — ver o item 4-b abaixo. O que
+   falta aqui é a fila, que é o conserto de verdade.)*
+
+   **4-b.** ~~3 dos 4 POSTs ao n8n não checam `.ok`~~ — **RESOLVIDO em 10/09.**
+   Os cinco POSTs de resposta passaram a usar um helper único, `entregarAoN8n`,
+   que confere o status e manda ao Sentry quando falha — mais um `try/catch`
+   que faltava: queda de rede subia a exceção e derrubava o processamento das
+   **outras** mensagens do mesmo lote.
+
+   Por que doía: quando o POST falhava, **o banco já tinha gravado e não dava
+   para desfazer** — `responder_lembrete` casa por wamid e consome a
+   idempotência ali. Clicar de novo devolvia `'repetido'` com `resposta: null`,
+   e o silêncio virava definitivo. E o Sentry não via, porque 500 do n8n não é
+   `throw`. O mais caro dos três levava junto o `avisar_dono` de **nota baixa**.
+
+   Isto **não recupera** a mensagem — converte invisível em visível. A
+   recuperação é a fila do item 4.
+5. ~~**O lembrete chega depois que o cancelamento já travou**~~ — **RESOLVIDO em
+   10/09.** O piso caiu de **2h para 30 min** (decisão do dono). O lembrete
+   dispara a T-85..100min e agora cabe folgado dentro da janela em que dá para
+   cancelar. Some também a assimetria: pelo botão do WhatsApp já dava, pelo link
+   não. Provado nos três pontos — 180min cancela, **90min cancela** (era o caso
+   recusado), 10min recusa com a frase nova.
+6. ~~**Ninguém confirma agendamento ao cliente**~~ — **NÃO É PRECISO** (decisão
+   do dono, 10/09), e a auditoria errou a conclusão:
+   - `origem='agente'` → **o agente já confirma** na conversa, logo após marcar
+   - `origem='crm'` → o cliente está **no balcão**, ouviu do barbeiro
+   - `origem='publico'` (QR) → `AgendaPublicaPage.tsx:211-237` **já mostra**
+     "Horário marcado!" com hora, profissional, serviço e o link de gestão
+   - **aviso de cancelamento pela barbearia:** sem, por ora — quem perde o
+     horário se resolve no balcão
+
+   Custo de template evitado: **R$ 0,00** contra os ~R$ 4,90/mês por barbearia
+   média que a versão por WhatsApp custaria. E vale registrar o que a conta
+   revelou: `agendamentos_cobraveis` só fatura `agente` e `reativacao`
+   confirmada — QR e balcão geram **R$ 0,00** de receita, então confirmá-los por
+   template seria custo puro, e **quanto mais o QR desse certo, pior ficaria**.
+
+   **Ficou em aberto na tela do QR:** ela não diz "hoje" em lugar nenhum, e o
+   "salve nos favoritos ou tire um print" é frágil — quem fecha a aba perde o
+   link de cancelar.
+
+   **E uma pergunta de produto que o dono levantou:** o QR só marca para **hoje**,
+   e a regra mora no servidor (`agenda-publica:242` e `:337`, `p_data: hoje` em
+   São Paulo), não só na tela. Quem escaneia às 19h com a agenda cheia não
+   consegue marcar para amanhã — vai embora. Foi decisão deliberada (superfície
+   de abuso), mas vale reabrir: é o canal de captação do balcão funcionando meio
+   período.
 7. **`faltou` não tem botão** — só leitura em `src/`; `reativacao_no_shows` nunca
    incrementa e a pausa após 2 faltas nunca dispara.
 8. ~~**`main` não é protegida**~~ — **RESOLVIDO em 10/09.** Regra ativa e

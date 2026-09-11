@@ -355,7 +355,7 @@ const SECOES: Secao[] = [
           'Consegue. Quando ele termina de marcar, a tela dá um **link do horário dele** e pede para salvar ou tirar um print. Por esse link ele vê o que marcou e pode **cancelar** — liberando a vaga na hora.',
         dicas: [
           { t: 'O link é só daquele horário e é impossível de adivinhar. Ninguém vê nem mexe no horário de outra pessoa.' },
-          { t: 'Faltando menos de 2 horas, o botão de cancelar sai do ar e a tela manda ele falar com a barbearia. Cancelamento em cima da hora é conversa, não botão.' },
+          { t: 'Faltando menos de 30 minutos, o botão de cancelar sai do ar e a tela manda ele falar com a barbearia. Em cima da hora é conversa, não botão.' },
           { t: 'Remarcar pelo link não existe de propósito: o link abre o WhatsApp da barbearia para vocês combinarem.' },
         ],
       },

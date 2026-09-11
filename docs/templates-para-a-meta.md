@@ -97,7 +97,7 @@ Seguem um agendamento que o cliente fez. Categoria segura.
 - **Variáveis:** primeiro nome, barbearia, hora marcada HH:MM
 
 ### fim_do_teste_gratis
-- **Corpo:** Oi! O teste gratis do Club Cut na *{{1}}* acaba {{2}}. Pra continuar com a agenda e o atendimento automatico, e so assinar dentro do sistema.
+- **Corpo:** Oi! O teste gratis do Club Cut na *{{1}}* acaba {{2}}. Pra continuar com a agenda e o atendimento automatico, cadastre o CPF ou CNPJ de quem vai pagar em Assinatura, dentro do sistema.
 - **Botões:** (nenhum)
 - **Variáveis:** barbearia, quando acaba
 

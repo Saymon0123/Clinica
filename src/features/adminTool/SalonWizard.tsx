@@ -11,6 +11,7 @@ import {
 import { DIAS_DE_TESTE } from '../../lib/planos'
 import { Campo, Input } from '../../components/Campo'
 import { ErroInline } from '../../components/ErroInline'
+import { AVISO_TELEFONE_FORMATO, classificarTelefone } from '../../lib/telefone'
 
 /**
  * `donoAtende` separa duas coisas que o sistema confundia: ser **dono** (acesso,
@@ -113,11 +114,19 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
     if (passo === 1) {
       if (unidades.some((u) => !u.nome.trim())) return 'Toda unidade precisa de um nome.'
       if (unidades.some((u) => !u.endereco.trim())) return 'O endereço é obrigatório.'
+      // Vazio pode (usa o do dono, no passo seguinte); preenchido tem de servir.
+      if (unidades.some((u) => classificarTelefone(u.telefone) === 'invalido')) return AVISO_TELEFONE_FORMATO
     }
     if (passo === 2) {
       if (!donoNome.trim()) return 'Informe o nome do dono.'
       if (!donoEmail.trim()) return 'Informe o e-mail de acesso.'
       if (!/^\S+@\S+\.\S+$/.test(donoEmail.trim())) return 'E-mail inválido.'
+      if (classificarTelefone(donoTelefone) === 'invalido') return AVISO_TELEFONE_FORMATO
+      // Toda unidade precisa de um WhatsApp — o dela ou o do dono (A11 do giro
+      // de 10/09): é o botão "Falar com a barbearia" do QR.
+      if (unidades.some((u) => classificarTelefone(u.telefone.trim() || donoTelefone) !== 'valido')) {
+        return 'Informe o WhatsApp do dono ou o de cada unidade — é o botão “Falar com a barbearia” do QR.'
+      }
     }
     if (passo === 4 && !servicos.some((s) => s.escolhido)) {
       return 'Selecione ao menos um serviço.'
@@ -366,7 +375,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
                     prev.map((x, idx) => (idx === i ? { ...x, telefone: e.target.value } : x)),
                   )
                 }
-                placeholder="Telefone da unidade (opcional)"
+                placeholder="WhatsApp da unidade (vazio = o do dono)"
               />
 
               {perguntaSeDonoAtende && (
@@ -432,7 +441,7 @@ export function SalonWizard({ secret, onCreated }: { secret: string; onCreated: 
           <Input
             value={donoTelefone}
             onChange={(e) => setDonoTelefone(e.target.value)}
-            placeholder="Telefone (opcional)"
+            placeholder="WhatsApp do dono"
           />
 
           {donoAtendeEmAlguma && (

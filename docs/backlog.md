@@ -501,12 +501,26 @@ Estes três achados do giro não estavam neste backlog — só no parecer
   mal preenchido é fechado; dia sem ninguém de jornada também), e a tela diz
   cada uma. Trocar de serviço só é sugerido quando existe um mais curto; sem
   WhatsApp cadastrado, a frase não promete botão. 10 testes de unidade.
-- **A11 — telefone da barbearia opcional** — no PR seguinte. Mapeado: cinco
-  portas criam ou editam barbearia, e três aceitam ficar sem telefone
-  (`add-salon-unit`, `admin-create-salon`, Configurações); o convite pelo painel
-  (`admin-invite-salon` → `accept-invite`) cria a barbearia **sem telefone
-  nenhum**, sempre. E o cadastro aberto promete "Não vai para seus clientes"
-  sobre o número que é justamente o do botão "Falar com a barbearia" do QR.
+- ~~**A11 — telefone da barbearia opcional derrubava toda a saída de
+  emergência**~~ — **RESOLVIDO em 11/09 (migration 0155).** O WhatsApp da
+  barbearia é o botão "Falar com a barbearia" do QR e do link do horário; sem
+  ele, todo "não dá" da agenda pública virava beco. Cinco portas criam ou
+  editam barbearia, e agora todas exigem o número (10 a 13 dígitos, a régua do
+  telefone do cliente): o cadastro aberto (a tela pedia, o servidor aceitava
+  vazio), a nova unidade, o painel administrativo (o da unidade ou, na falta, o
+  do dono) e Configurações (não dá mais para apagar). O convite pelo painel
+  criava a barbearia **sem telefone nenhum, sempre**: agora o aceite do dono
+  pede o WhatsApp quando ela ainda não tem, e o grava também na ficha dele — é
+  por ela que o aviso de fim de teste o encontra. No banco,
+  `salons_telefone_valido` garante o formato quando existe; NOT NULL não dá,
+  porque o convite cria a barbearia antes de o dono aparecer. A barbearia de
+  antes da regra ganha um item no checklist de ativação, só enquanto falta.
+  Coberto por `telefone_da_barbearia.test.sql` (5 asserções) e 5 testes de
+  unidade (a régua das edges e a frase do erro do banco).
+
+  **E o cadastro mentia:** o campo dizia "Não vai para seus clientes" sobre o
+  número que é justamente o do botão do QR. Agora diz a verdade — os clientes
+  veem este número —, e o aviso ao dono continua indo para a ficha dele.
 
 **Buraco da própria auditoria:** a frente de segurança/multi-tenant morreu no
 limite de sessão antes de escrever o relatório. Não houve leitura sistemática de

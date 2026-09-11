@@ -8,6 +8,7 @@ import { useAuth } from '../auth/AuthContext'
 import { VERSAO_DOS_TERMOS } from '../../lib/termos'
 import { ErroInline } from '../../components/ErroInline'
 import { ehFalhaDeSessao } from './sessaoPerdida'
+import { AVISO_TELEFONE_FORMATO, classificarTelefone } from '../../lib/telefone'
 
 /**
  * Segundo passo do cadastro: a pessoa já tem conta e cria a própria barbearia.
@@ -27,10 +28,13 @@ export function CriarBarbeariaPage() {
 
   const [nome, setNome] = useState('')
   const [nomeSalao, setNomeSalao] = useState('')
-  // Terceiro campo, contra a regra de "dois e nenhum a mais" — e por um motivo
-  // concreto: sem telefone o produto não tem **nenhum** jeito de falar com o
-  // dono fora do CRM. Em 2026-08-14, quatro das cinco barbearias não tinham
-  // telefone nenhum, e o aviso de fim de teste não tinha para onde ir.
+  // Terceiro campo, contra a regra de "dois e nenhum a mais" — e por dois
+  // motivos concretos. Sem telefone o produto não tem **nenhum** jeito de falar
+  // com o dono fora do CRM (em 2026-08-14, quatro das cinco barbearias não
+  // tinham telefone nenhum, e o aviso de fim de teste não tinha para onde ir).
+  // E ele é o botão "Falar com a barbearia" da agenda pelo QR — a saída do
+  // cliente que não consegue marcar sozinho (A11 do giro de 10/09). O texto do
+  // campo dizia "Não vai para seus clientes": ia, e agora a tela diz isso.
   const [telefone, setTelefone] = useState('')
   // Desmarcado de propósito: caixa pré-marcada não é ato afirmativo.
   const [aceitou, setAceitou] = useState(false)
@@ -46,9 +50,11 @@ export function CriarBarbeariaPage() {
 
     if (!nome.trim()) return setErro('Informe seu nome.')
     if (!nomeSalao.trim()) return setErro('Informe o nome da barbearia.')
-    if (telefone.replace(/\D/g, '').length < 10) {
-      return setErro('Informe um WhatsApp com DDD.')
-    }
+    // A mesma régua do banco e das edges (10 a 13 dígitos). Só o piso deixava
+    // passar número comprido demais, que o servidor recusa.
+    const estadoDoTelefone = classificarTelefone(telefone)
+    if (estadoDoTelefone === 'vazio') return setErro('Informe o WhatsApp da barbearia, com DDD.')
+    if (estadoDoTelefone === 'invalido') return setErro(AVISO_TELEFONE_FORMATO)
     if (!aceitou) return setErro('É preciso aceitar os termos de uso para continuar.')
 
     setSalvando(true)
@@ -188,7 +194,7 @@ export function CriarBarbeariaPage() {
           </label>
 
           <label className="block">
-            <span className="text-xs font-medium text-muted-foreground">Seu WhatsApp</span>
+            <span className="text-xs font-medium text-muted-foreground">WhatsApp da barbearia</span>
             <input
               value={telefone}
               onChange={(e) => setTelefone(e.target.value)}
@@ -198,7 +204,9 @@ export function CriarBarbeariaPage() {
               className="mt-1 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3 py-2 text-sm"
             />
             <span className="block text-[11px] text-muted-foreground mt-1">
-              É por aqui que avisamos você sobre o teste e o pagamento. Não vai para seus clientes.
+              Seus clientes veem este número no botão “Falar com a barbearia” da agenda pelo QR. É por
+              ele também que avisamos você sobre o teste e o pagamento. Dá para trocar depois, em
+              Configurações.
             </span>
           </label>
 

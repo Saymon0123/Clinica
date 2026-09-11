@@ -450,6 +450,9 @@ numa linha (a grade é de 4).
    sempre escolha de quem está no balcão. Antecipado da Fase 4 por ser
    promessa ao cliente sendo quebrada. Coberto por
    `pausa_da_reativacao.test.sql` (15 asserções) e 3 testes de unidade do texto.
+   **Em produção desde 11/09, 05:40 UTC** — aplicada ANTES do merge, como a
+   ordem exigia (a tela nova lê a coluna nova), e conferida: coluna, CHECK,
+   três funções e registro no histórico. Site no ar às 05:41.
 2. ~~**Qualquer venda salva apaga a "cobrança pendente"**~~ — **RESOLVIDO em
    11/09.** Era assim: qualquer venda apagava a pendência, mesmo a de outro
    cliente (`VendasSection → onVendaSalva → limparVendaPendente`, sem olhar o
@@ -474,6 +477,36 @@ numa linha (a grade é de 4).
    `atraso_tolerado_minutos` fica no banco (padrão 10). Ligar o fluxo não é
    opção como ele está: foi desenhado para o barbeiro decidir na faixa do
    balcão, que não existe mais — ver a seção da política de atraso, adiante.
+
+### Fase 3 (11/09) — agenda pública e telefone da barbearia
+
+Estes três achados do giro não estavam neste backlog — só no parecer
+(`docs/auditoria/`, fora do repositório). Registrados aqui ao serem resolvidos.
+
+- ~~**A12 — barbearia atrasada no pagamento virava "Barbearia não
+  encontrada"**~~ — **RESOLVIDO em 11/09.** `salons_atendendo` junta três
+  situações (desativada, teste estourado, pagamento atrasado), e a
+  `agenda-publica` tratava as três como link errado: o cliente de pé no balcão,
+  com o cartaz na frente, lia "confira o link". Agora, quando a barbearia existe
+  mas não está atendendo, a resposta é neutra — "não está marcando horário por
+  aqui agora" — com o nome dela e o botão do WhatsApp. Quem escaneou não fica
+  sabendo qual das três é (situação de cobrança é assunto da barbearia).
+  "Não encontrada" ficou só para o id que não existe.
+- ~~**M8 — quatro causas de agenda vazia, uma frase só, e ela mentia**~~ —
+  **RESOLVIDO em 11/09.** "Tente outro serviço acima" era dito também a quem
+  abria o link às 23h, no dia de folga e na barbearia sem serviço nenhum — em
+  que o seletor nem tinha opção. A edge devolve `motivoVazio`
+  (`sem_servicos`, `fechado_hoje`, `expediente_acabou`, `lotado`), calculado
+  por `_shared/semHorario.ts` com as mesmas regras de `horarios_livres` (dia
+  mal preenchido é fechado; dia sem ninguém de jornada também), e a tela diz
+  cada uma. Trocar de serviço só é sugerido quando existe um mais curto; sem
+  WhatsApp cadastrado, a frase não promete botão. 10 testes de unidade.
+- **A11 — telefone da barbearia opcional** — no PR seguinte. Mapeado: cinco
+  portas criam ou editam barbearia, e três aceitam ficar sem telefone
+  (`add-salon-unit`, `admin-create-salon`, Configurações); o convite pelo painel
+  (`admin-invite-salon` → `accept-invite`) cria a barbearia **sem telefone
+  nenhum**, sempre. E o cadastro aberto promete "Não vai para seus clientes"
+  sobre o número que é justamente o do botão "Falar com a barbearia" do QR.
 
 **Buraco da própria auditoria:** a frente de segurança/multi-tenant morreu no
 limite de sessão antes de escrever o relatório. Não houve leitura sistemática de

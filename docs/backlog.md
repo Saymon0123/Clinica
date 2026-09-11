@@ -530,11 +530,48 @@ Estes três achados do giro não estavam neste backlog — só no parecer
   e a CHECK nasceu validada. Conferido no bundle servido: `pedeTelefone`,
   `salons_telefone_valido`, "Cadastrar o WhatsApp" e "WhatsApp da unidade".
 
-**Buraco da própria auditoria:** a frente de segurança/multi-tenant morreu no
-limite de sessão antes de escrever o relatório. Não houve leitura sistemática de
-autorização por objeto no `src/` e nas edges — só a verificação direta no banco
-(RLS 45/45, grants, views, advisors). Refazer em sessão própria, com escopo
-apertado.
+**~~Buraco da própria auditoria~~ — REVISÃO FEITA em 11/09.** A frente de
+segurança/multi-tenant que morreu no limite de sessão foi refeita, com escopo
+apertado: autorização por objeto nas 12 edges, nas RPCs, nas views e nas regras
+de acesso (policies), mais a configuração de login.
+
+- **Conferido e bom:** RLS em todas as tabelas; nenhum bucket de arquivos; as 12
+  RPCs privilegiadas que a equipe pode chamar conferem a barbearia de quem chama
+  (a única que não confere, `preco_por_uso`, só lê a tabela de preços), e
+  nenhuma é chamável sem login. Nas edges, cada ação confere dono ou gerente da
+  barbearia **filtrando por quem chamou**: `asaas`, `add-salon-unit`,
+  `cobrar-uso` nas duas portas, `whatsapp` ao enviar e ao devolver ao agente, e
+  `criar-minha-barbearia` com e-mail confirmado, uma barbearia por conta e
+  limite por IP. `accept-invite` exige a senha de quem já tem conta, com limite
+  de tentativas; as funções do painel comparam a senha em tempo constante; os
+  webhooks usam HMAC; e os dois webhooks do n8n (agente e resposta do lembrete)
+  exigem o cabeçalho secreto desde 06/09 — conferido nos fluxos publicados.
+  Nenhuma porta de XSS no CRM, e nenhum segredo real nos arquivos do repositório
+  (o único token com cara de JWT é falso, de teste). O domínio antigo da Vercel
+  na lista de retorno do login continua nosso.
+- **`auditoria_pendente` sem invoker — corrigido (0157).** Regressão da 0152
+  (minha): o `create or replace` descartou o `security_invoker`. **Não vazou** —
+  provado com uma falha de entrega de mentira num ensaio desfeito: sem login e
+  logado de outra barbearia, a consulta é barrada, porque as views de dentro
+  rodam com as permissões de quem consulta. Nova catraca:
+  `views_com_invoker.test.sql` reprova qualquer view sem invoker.
+- **`admin-metricas` só existia em produção — versionada.** Fora do
+  repositório, ela comparava a senha do painel com `!==` e não tinha limite de
+  tentativas nem Sentry. Entrou no repo com as travas das outras duas funções do
+  painel.
+- **Decisões do dono (configuração de login, não é código):**
+  - a proteção contra senhas vazadas está desligada — o projeto já é **Pro**,
+    então é um clique;
+  - trocar a senha não pede login recente: uma sessão roubada troca a senha e
+    fica com a conta;
+  - a lista de endereços de retorno do login tem uma entrada corrompida
+    (`...vercel.app/**ehttp://localhost:5173/**`) e aceita `localhost` em
+    produção;
+  - não há captcha no cadastro aberto (mitigado por e-mail confirmado, uma
+    barbearia por conta e limite de cadastros por IP).
+- **Informativo:** as permissões padrão do Supabase dão TRUNCATE e TRIGGER a
+  quem está sem login ou logado em várias tabelas. Nenhuma API alcança isso — a
+  RLS não cobre TRUNCATE, mas a API não o expõe. Endurecer é opcional.
 
 **Refutado, para não voltar como boato:** `x-forwarded-for` **não** é
 falsificável aqui. Testado com dois POSTs carregando IPs de documentação (RFC

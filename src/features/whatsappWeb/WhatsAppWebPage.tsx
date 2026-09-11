@@ -19,6 +19,7 @@ import { filtrarEOrdenar, naoLida } from './lista'
 import { montarThread } from './thread'
 import { lerResumoVisto, marcarResumoVisto } from './resumoVisto'
 import { ErroInline } from '../../components/ErroInline'
+import { ErroDeCarga } from '../../components/ErroDeCarga'
 
 type Tab = 'todas' | 'precisa_dono'
 
@@ -305,13 +306,17 @@ export function WhatsAppWebPage() {
             </div>
           </div>
 
-          <div className="p-4"><ErroInline>{error}</ErroInline></div>
+          {error && (
+            <div className="p-4">
+              <ErroDeCarga mensagem={error} aoTentarDeNovo={reloadConversations} tentando={loading} />
+            </div>
+          )}
 
           {/* Único estado vazio do sistema que só tinha título, sem dizer por
               que está vazio nem o que fazer (achado de 04/09) — justo na tela
               que depende de um WhatsApp que pode nem estar conectado. O
               componente já previa `descricao` e `acao`; faltava usar. */}
-          {!loading && conversations.length === 0 && (
+          {!loading && !error && conversations.length === 0 && (
             <EstadoVazio
               icone={MessageCircle}
               titulo={

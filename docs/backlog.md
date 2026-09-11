@@ -183,6 +183,49 @@ o Asaas como operador).
     **Não testado:** o caminho HTTP (Meta → webhook → RPC), pela mesma razão de
     sempre — o `WHATSAPP_APP_SECRET` só existe no cofre e não dá para assinar
     payload daqui. Testadas as duas pontas: 7 casos sobre a RPC e a view.
+
+12. ~~**A agenda do dono não recarrega**~~ — **RESOLVIDO em 11/09.** O único
+    canal Realtime que existia era o do aviso de reserva nova, no `AppLayout`:
+    só `INSERT`, e sem falar com a tela da agenda. O cliente cancelava e a grade
+    não mudava; o cliente marcava pelo QR, o aviso tocava e sumia, e a grade
+    também não mudava — o barbeiro encaixava alguém e levava "já existe um
+    agendamento nesse horário" num horário que a tela dele mostrava livre.
+    Agora `useAgendaData` tem canal próprio (`INSERT` e `UPDATE`), recarga
+    silenciosa que não pisca a tela, e duas redes para o que o Realtime não pega:
+    ao reconectar (WebSocket caiu, eventos do intervalo perdidos) e ao voltar
+    para o app.
+
+    **Provado com experimento real contra produção:** dois canais, um filtrado
+    na barbearia do teste e outro em outra; um agendamento que nasceu, foi
+    cancelado e foi apagado. O canal da barbearia recebeu `["INSERT","UPDATE"]`;
+    o da outra recebeu **`[]`**. O `UPDATE` chegando é o caso do cancelamento; o
+    canal vazio prova que **não há vazamento entre barbearias** — nem do DELETE.
+
+    **Sem `DELETE`, de propósito:** com REPLICA IDENTITY padrão o `old` só traz
+    a chave primária, e o experimento confirmou que o DELETE filtrado **não
+    chega** (em vez de vazar). Exclusão só nasce na própria tela — o "excluir de
+    vez" do bloco cancelado e o rollback do cadastro que falha no meio —, e as
+    duas já recarregam. Nenhuma função do banco apaga agendamento.
+
+    **De quebra, uma trava que a mudança tornou necessária:** cada carga ganha
+    um número e só a mais recente escreve na tela. Sem isso, uma resposta
+    atrasada mostraria os horários do dia anterior sob o título do dia novo. A
+    corrida já existia ao clicar rápido entre dias; o Realtime multiplicou as
+    cargas concorrentes.
+
+13. ~~**Erro de carga sem volta, e o vazio mente**~~ — **RESOLVIDO em 11/09.**
+    Agenda, Vendas e WhatsApp trocaram o `ErroInline` (banner sem botão) pelo
+    `ErroDeCarga` com "Tentar de novo" — o `reload` dos hooks estava
+    desestruturado nas três telas e nunca era ligado. E vazios e contadores
+    passaram a exigir `!error`: com a rede caída a Agenda dizia "Nenhum
+    profissional cadastrado" numa barbearia com cinco barbeiros, e Vendas
+    mostrava **"0 vendas · R$ 0,00"** — exatamente a mentira que o
+    `ErroDeCarga` foi escrito para eliminar. Os `ErroInline` de **ação**
+    (reagendar, enviar, retomar) ficaram: são outro tipo de erro.
+
+    **Não verificado no navegador:** as três telas exigem login, e eu não entro
+    com credencial de ninguém. A verificação foi typecheck, lint, leitura do
+    fluxo e o experimento de Realtime acima.
 10. **Sem CPF/CNPJ = uso ilimitado sem bloqueio** — o bloqueio olha
     `cobranca_vence_em`, que só existe quando há cobrança.
 

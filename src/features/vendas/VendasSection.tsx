@@ -6,7 +6,7 @@ import { VendaDetalheModal } from './VendaDetalheModal'
 import { PAYMENT_LABELS } from './types'
 import { Tabela, Th, Linha, Td } from '../../components/Tabela'
 import { EstadoVazio } from '../../components/EstadoVazio'
-import { ErroInline } from '../../components/ErroInline'
+import { ErroDeCarga } from '../../components/ErroDeCarga'
 
 function formatCurrency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -62,8 +62,18 @@ export function VendasSection({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          {periodLabel ?? (period === 'dia' ? 'Hoje' : 'Este mês')} · {sales.length} venda{sales.length === 1 ? '' : 's'} ·{' '}
-          <span className="font-medium text-foreground">{formatCurrency(totalPeriod)}</span>
+          {periodLabel ?? (period === 'dia' ? 'Hoje' : 'Este mês')} ·{' '}
+          {/* Com a consulta falhando, "0 vendas · R$ 0,00" é exatamente a
+              mentira que o `ErroDeCarga` foi escrito para eliminar: o dono lia
+              isso com a rede caída e achava que tinha perdido o faturamento. */}
+          {error && sales.length === 0 ? (
+            '—'
+          ) : (
+            <>
+              {sales.length} venda{sales.length === 1 ? '' : 's'} ·{' '}
+              <span className="font-medium text-foreground">{formatCurrency(totalPeriod)}</span>
+            </>
+          )}
         </p>
 
         <button
@@ -78,9 +88,9 @@ export function VendasSection({
         </button>
       </div>
 
-      <ErroInline>{error}</ErroInline>
+      <ErroDeCarga mensagem={error} aoTentarDeNovo={reload} tentando={loading} />
 
-      {!loading && sales.length === 0 ? (
+      {error && sales.length === 0 ? null : !loading && sales.length === 0 ? (
         <div className="bg-surface border border-border rounded-2xl shadow-sm">
           <EstadoVazio
             icone={Receipt}

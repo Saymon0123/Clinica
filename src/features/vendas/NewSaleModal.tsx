@@ -31,6 +31,7 @@ import {
   rotuloDoHorario,
   type HorarioDoDia,
 } from './vinculoDeHorario'
+import { avisoDaPausa, type PausaDaReativacao } from './pausaDaReativacao'
 
 type Option = { id: string; nome: string; preco: number }
 type ClientOption = { id: string; nome: string }
@@ -79,7 +80,8 @@ export function NewSaleModal({
   salonId: string
   prefill?: SalePrefill
   onClose: () => void
-  onSaved: () => void
+  /** Recebe o horário que a venda concluiu (ou null): quem abriu decide se isso quita uma pendência. */
+  onSaved: (appointmentId: string | null) => void
 }) {
   const [clients, setClients] = useState<ClientOption[]>([])
   const [professionals, setProfessionals] = useState<ProfessionalOption[]>([])
@@ -141,21 +143,38 @@ export function NewSaleModal({
    * confirmar por WhatsApp 1 dia antes. Vazio = fora da base.
    */
   const [reativacaoSemanas, setReativacaoSemanas] = useState('')
+  /**
+   * Reserva automática pausada (0154): o campo vem VAZIO e a tela diz por quê.
+   * Pré-preenchido, salvar a venda religava a reserva até de quem tinha pedido
+   * pelo WhatsApp para parar (achado 1 do plano C, 11/09). Preencher tem de ser
+   * escolha feita com o cliente na frente, nunca sobra do cadastro.
+   */
+  const [pausaReativacao, setPausaReativacao] = useState<PausaDaReativacao | null>(null)
 
   useEffect(() => {
     if (!clientId) {
       setReativacaoSemanas('')
+      setPausaReativacao(null)
       return
     }
     let cancelado = false
     supabase
       .from('clients')
-      .select('reativacao_semanas')
+      .select('reativacao_semanas, reativacao_pausada_em, reativacao_pausa_motivo')
       .eq('id', clientId)
       .single()
       .then(({ data }) => {
-        if (!cancelado)
-          setReativacaoSemanas(data?.reativacao_semanas ? String(data.reativacao_semanas) : '')
+        if (cancelado) return
+        const linha = data as unknown as {
+          reativacao_semanas: number | null
+          reativacao_pausada_em: string | null
+          reativacao_pausa_motivo: PausaDaReativacao['motivo']
+        } | null
+        const pausa = linha?.reativacao_pausada_em
+          ? { em: linha.reativacao_pausada_em, motivo: linha.reativacao_pausa_motivo ?? null }
+          : null
+        setPausaReativacao(pausa)
+        setReativacaoSemanas(!pausa && linha?.reativacao_semanas ? String(linha.reativacao_semanas) : '')
       })
     return () => {
       cancelado = true
@@ -786,11 +805,18 @@ export function NewSaleModal({
           .update({
             quer_aviso_de_retorno: avisarRetorno,
             aviso_de_retorno_em: new Date().toISOString(),
-            // Agendamento automático: número novo renova o opt-in e zera
-            // pausa/contadores; campo vazio tira o cliente da base.
+            // Agendamento automático: número preenchido renova o opt-in e zera
+            // pausa, motivo e contadores; campo vazio tira o cliente da base.
+            // Com pausa, o campo começa VAZIO (0154) — então um número aqui é
+            // sempre escolha de quem está no balcão, nunca sobra do cadastro.
             reativacao_semanas: semanasValidas ? semanasNum : null,
             ...(semanasValidas
-              ? { reativacao_pausada_em: null, reativacao_sem_resposta: 0, reativacao_no_shows: 0 }
+              ? {
+                  reativacao_pausada_em: null,
+                  reativacao_pausa_motivo: null,
+                  reativacao_sem_resposta: 0,
+                  reativacao_no_shows: 0,
+                }
               : {}),
           })
           .eq('id', clientId)
@@ -822,7 +848,7 @@ export function NewSaleModal({
       }
 
       toast('Venda registrada')
-      onSaved()
+      onSaved(vinculo?.id ?? null)
     } catch (err) {
       console.error('Erro ao completar venda, desfazendo:', err)
       // Desfaz TUDO: a comanda (cascade leva itens, pagamento, comissões e
@@ -924,6 +950,22 @@ export function NewSaleModal({
                 />
                 <span className="text-sm text-foreground">
                   Agendamento automático: corta a cada quantas semanas?
+                  {/* A pausa aparece no lugar do número que vinha pré-preenchido
+                      (0154). Alerta só quando preencher contraria o que o
+                      próprio cliente pediu. */}
+                  {pausaReativacao &&
+                    (() => {
+                      const aviso = avisoDaPausa(pausaReativacao)
+                      return (
+                        <span
+                          className={`block text-xs font-medium mt-0.5 ${
+                            aviso.pediuParaParar ? 'text-warning' : 'text-foreground'
+                          }`}
+                        >
+                          {aviso.texto}
+                        </span>
+                      )
+                    })()}
                   <span className="block text-xs text-muted-foreground mt-0.5">
                     Pergunte agora: <em>“de quanto em quanto tempo você corta? Quer que eu já
                     deixe o próximo horário reservado?”</em> Com o número preenchido, o sistema

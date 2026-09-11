@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { agruparPorProfissional } from './fechamentoDeComissao'
+import { perdasNoIntervalo, SEM_PERDAS, type Perdas } from './perdas'
 
 export type PeriodFilter = 'dia' | 'mes'
 
@@ -31,6 +32,8 @@ export type CommissionRow = {
 
 export type FinanceiroData = {
   metrics: Record<MetricKey, MetricData>
+  /** A divisão do card "Cancelamentos e faltas" no período selecionado. */
+  perdas: Perdas
   clientsGrowth: { month: string; total: number; novos: number }[]
   revenueCurrent: number
   revenueGoal: number
@@ -49,6 +52,7 @@ const EMPTY_DATA: FinanceiroData = {
     agendamentos: EMPTY_METRIC,
     cancelamentos: EMPTY_METRIC,
   },
+  perdas: SEM_PERDAS,
   clientsGrowth: [],
   revenueCurrent: 0,
   revenueGoal: META_FATURAMENTO_MENSAL,
@@ -276,11 +280,10 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter, 
     const sumFaturamento = (rows: OrderRow[]) =>
       rows.reduce((sum, o) => sum + (o.payments ?? []).reduce((s, pay) => s + Number(pay.valor), 0), 0)
     const countAgendamentos = (rows: ApptRow[]) => rows.filter((a) => a.status !== 'cancelado').length
-    const cancelsIn = (start: Date, end: Date) =>
-      cancels.filter((c) => {
-        const t = new Date(c.cancelado_em).getTime()
-        return t >= start.getTime() && t <= end.getTime()
-      }).length
+    // Card "Cancelamentos e faltas": desde a 0153 a falta é "não veio", não
+    // cancelamento. A soma é o número que o card mostrava antes — ver perdas.ts.
+    const canceladosEm = cancels.map((c) => c.cancelado_em)
+    const perdasIn = (start: Date, end: Date) => perdasNoIntervalo(canceladosEm, appts, start, end)
     const countClientesAtendidos = (rows: ApptRow[]) =>
       new Set(rows.filter((a) => a.status === 'concluido' && a.client_id).map((a) => a.client_id)).size
 
@@ -313,10 +316,13 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter, 
         spark: buildSpark((s, e) => countAgendamentos(apptsIn(s, e))),
       },
       cancelamentos: {
-        value: cancelsIn(p.currentStart, p.currentEnd),
-        previous: cancelsIn(p.prevStart, p.prevEnd),
-        changePct: changePct(cancelsIn(p.currentStart, p.currentEnd), cancelsIn(p.prevStart, p.prevEnd)),
-        spark: buildSpark((s, e) => cancelsIn(s, e)),
+        value: perdasIn(p.currentStart, p.currentEnd).total,
+        previous: perdasIn(p.prevStart, p.prevEnd).total,
+        changePct: changePct(
+          perdasIn(p.currentStart, p.currentEnd).total,
+          perdasIn(p.prevStart, p.prevEnd).total,
+        ),
+        spark: buildSpark((s, e) => perdasIn(s, e).total),
       },
     }
 
@@ -379,6 +385,7 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter, 
 
     setData({
       metrics,
+      perdas: perdasIn(p.currentStart, p.currentEnd),
       clientsGrowth,
       revenueCurrent,
       revenueGoal: Number(salonResult.data?.meta_faturamento_mensal ?? META_FATURAMENTO_MENSAL),

@@ -12,6 +12,8 @@ export type ResumoUnidade = {
   agendamentos: number
   clientesNovos: number
   cancelamentos: number
+  /** Horários que ficaram como "não veio" no período (desde a 0153). */
+  faltas: number
   /** Faturamento ÷ vendas: quanto o cliente gasta em média na unidade. */
   ticketMedio: number
 }
@@ -98,6 +100,7 @@ export function useRedeData(unidades: Unidade[], periodo: Periodo) {
           agendamentos: 0,
           clientesNovos: 0,
           cancelamentos: 0,
+          faltas: 0,
           ticketMedio: 0,
         },
       ]),
@@ -120,6 +123,7 @@ export function useRedeData(unidades: Unidade[], periodo: Periodo) {
       const alvo = porUnidade.get(linha.salon_id)
       if (!alvo) continue
       if (linha.status !== 'cancelado') alvo.agendamentos += 1
+      if (linha.status === 'faltou') alvo.faltas += 1
     }
     for (const linha of (cancelRes.data ?? []) as { salon_id: string }[]) {
       const alvo = porUnidade.get(linha.salon_id)

@@ -82,10 +82,14 @@ export function RedePage() {
   const totalClientes = resumos.reduce((s, r) => s + r.clientesNovos, 0)
   const totalVendas = resumos.reduce((s, r) => s + r.vendas, 0)
   const totalCancelamentos = resumos.reduce((s, r) => s + r.cancelamentos, 0)
+  const totalFaltas = resumos.reduce((s, r) => s + r.faltas, 0)
   const ticketRede = totalVendas > 0 ? totalFaturamento / totalVendas : 0
+  // Cancelamentos e faltas sobre tudo o que foi marcado. Desde a 0153 a falta é
+  // "não veio", não cancelamento: somar as duas mantém a taxa comparável com o
+  // que ela era antes. `agendamentos` já inclui as faltas no denominador.
   const taxaCancelamento =
     totalAgendamentos + totalCancelamentos > 0
-      ? (totalCancelamentos / (totalAgendamentos + totalCancelamentos)) * 100
+      ? ((totalCancelamentos + totalFaltas) / (totalAgendamentos + totalCancelamentos)) * 100
       : 0
   const melhor = resumos[0]
 
@@ -161,7 +165,7 @@ export function RedePage() {
         <div className="bg-surface border border-border rounded-2xl shadow-sm p-4">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <CalendarX size={14} />
-            Cancelamento
+            Cancelamentos e faltas
           </div>
           <div className="text-xl font-semibold text-foreground mt-1">
             {erro ? '—' : `${taxaCancelamento.toFixed(1)}%`}
@@ -280,6 +284,7 @@ export function RedePage() {
                       {r.vendas} venda{r.vendas === 1 ? '' : 's'} · ticket {moeda(r.ticketMedio)} ·{' '}
                       {r.agendamentos} agendamento{r.agendamentos === 1 ? '' : 's'} ·{' '}
                       {r.cancelamentos} cancelado{r.cancelamentos === 1 ? '' : 's'} ·{' '}
+                      {r.faltas} não {r.faltas === 1 ? 'veio' : 'vieram'} ·{' '}
                       {r.clientesNovos} cliente{r.clientesNovos === 1 ? '' : 's'} novo
                       {r.clientesNovos === 1 ? '' : 's'}
                     </span>

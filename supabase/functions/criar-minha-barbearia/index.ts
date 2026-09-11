@@ -1,6 +1,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { jornadaDoHorario } from '../_shared/jornada.ts'
 import { capturarErro, comSentry } from '../_shared/sentry.ts'
+import { AVISO_WHATSAPP_DA_BARBEARIA, somenteDigitos, telefoneValido } from '../_shared/telefone.ts'
 
 /**
  * Segundo passo do cadastro aberto: quem já tem conta cria a própria barbearia.
@@ -94,10 +95,15 @@ Deno.serve(comSentry('criar-minha-barbearia', async (req: Request) => {
   const nomeSalao = body.nomeSalao?.trim()
   const versaoTermos = body.versaoTermos?.trim()
   // So digitos: o que chega da tela vem com parenteses e traco.
-  const telefone = body.telefone?.replace(/\D/g, '') || null
+  const telefone = somenteDigitos(body.telefone)
 
   if (!nomePessoa) return json({ error: 'Informe seu nome.' }, 400)
   if (!nomeSalao) return json({ error: 'Informe o nome da barbearia.' }, 400)
+  // Obrigatorio (A11 do giro de 10/09). A tela ja pedia, mas o servidor
+  // aceitava vazio -- e o numero e o botao "Falar com a barbearia" da agenda
+  // pelo QR e do link do horario: sem ele, o cliente que nao consegue marcar
+  // fica sem saida nenhuma, e nada avisava o dono.
+  if (!telefoneValido(telefone)) return json({ error: AVISO_WHATSAPP_DA_BARBEARIA }, 400)
   if (!versaoTermos) {
     return json({ error: 'E preciso aceitar os termos de uso para continuar.' }, 400)
   }

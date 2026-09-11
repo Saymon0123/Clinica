@@ -32,6 +32,8 @@ const POR_CONSTRAINT: Record<string, string> = {
   // CHECKs da 0132: nada sai a R$ 0,00 por acidente.
   products_preco_de_venda_positivo: 'O preço de venda precisa ser maior que zero.',
   services_preco_positivo: 'O preço do serviço precisa ser maior que zero.',
+  // CHECK da 0155: o WhatsApp da barbearia, quando existe, é um telefone.
+  salons_telefone_valido: 'WhatsApp da barbearia: informe DDD e número (10 a 13 dígitos).',
   // Índice único de telefone normalizado por salão: o 23505 real do CRM.
   uq_clients_salon_telefone_norm: 'Já existe um cliente cadastrado com esse telefone.',
 }

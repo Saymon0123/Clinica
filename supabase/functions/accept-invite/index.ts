@@ -1,6 +1,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { jornadaDoHorario } from '../_shared/jornada.ts'
 import { capturarErro, comSentry } from '../_shared/sentry.ts'
+import { AVISO_WHATSAPP_DA_BARBEARIA, telefoneValido } from '../_shared/telefone.ts'
 
 /**
  * Aceite de convite para a equipe — com DOIS caminhos, e a diferença importa.
@@ -81,6 +82,8 @@ Deno.serve(comSentry('accept-invite', async (req: Request) => {
     senha?: string
     nome?: string
     versaoTermos?: string
+    /** WhatsApp da barbearia, só quando o convite de dono o pede (`pedeTelefone`). */
+    telefone?: string
   } = {}
   try {
     body = await req.json()
@@ -96,7 +99,7 @@ Deno.serve(comSentry('accept-invite', async (req: Request) => {
   const { data: convite, error: conviteError } = await admin
     .from('salon_invites')
     .select(
-      'id, salon_id, nome, email, role, comissao_percentual, dias_de_teste, dono_atende, expira_em, usado_em, salons(nome)',
+      'id, salon_id, nome, email, role, comissao_percentual, dias_de_teste, dono_atende, expira_em, usado_em, salons(nome, telefone)',
     )
     .eq('token', token)
     .maybeSingle()
@@ -112,6 +115,14 @@ Deno.serve(comSentry('accept-invite', async (req: Request) => {
   }
 
   const salonNome = (convite.salons as { nome?: string } | null)?.nome ?? 'a barbearia'
+
+  // A barbearia convidada pelo painel (`admin-invite-salon`) nasce SEM
+  // telefone — ninguém o pede antes daqui. O dono que aceita é quem sabe o
+  // WhatsApp dela, e ele é o botão "Falar com a barbearia" da agenda pelo QR
+  // (A11 do giro de 10/09). Sem isto, toda barbearia convidada ficava sem saída
+  // para o cliente, e nada avisava.
+  const salonTelefone = (convite.salons as { telefone?: string | null } | null)?.telefone ?? null
+  const pedeTelefone = convite.role === 'owner' && !telefoneValido(salonTelefone)
 
   // Quem é (se já é alguém). Decide qual dos dois caminhos a tela mostra.
   const { data: usuarioExistente, error: erroBusca } = await admin.rpc('user_id_por_email', {
@@ -161,6 +172,7 @@ Deno.serve(comSentry('accept-invite', async (req: Request) => {
       // de criar uma. Revela que o e-mail tem cadastro — a mesma informação
       // que o erro antigo já entregava, só que agora com um caminho adiante.
       contaExiste: Boolean(idExistente),
+      pedeTelefone,
     })
   }
 
@@ -183,6 +195,11 @@ Deno.serve(comSentry('accept-invite', async (req: Request) => {
   const versaoTermos = body.versaoTermos?.trim()
   if (!versaoTermos) {
     return json({ error: 'É preciso aceitar os termos de uso para continuar.' }, 400)
+  }
+
+  const telefoneInformado = (body.telefone ?? '').trim()
+  if (pedeTelefone && !telefoneValido(telefoneInformado)) {
+    return json({ error: AVISO_WHATSAPP_DA_BARBEARIA }, 400)
   }
 
   let userId: string | null = null
@@ -233,6 +250,16 @@ Deno.serve(comSentry('accept-invite', async (req: Request) => {
       .insert({ user_id: userId, salon_id: convite.salon_id, role: convite.role })
     if (vinculoError) throw vinculoError
 
+    // Não é desfeito no catch de propósito: o número é verdadeiro mesmo que o
+    // resto do aceite falhe, e a próxima tentativa já não precisa pedi-lo.
+    if (pedeTelefone) {
+      const { error: erroTelefone } = await admin
+        .from('salons')
+        .update({ telefone: telefoneInformado })
+        .eq('id', convite.salon_id)
+      if (erroTelefone) throw erroTelefone
+    }
+
     // Ter acesso e atender clientes são coisas diferentes. Barbeiro e gerente
     // sempre viram profissional; o dono só quando ele de fato atende — senão
     // ele apareceria na agenda e o agente passaria a oferecê-lo ao cliente no
@@ -248,6 +275,9 @@ Deno.serve(comSentry('accept-invite', async (req: Request) => {
           nome: nomeFinal,
           ativo: true,
           comissao_percentual: convite.comissao_percentual,
+          // O do dono vai também na ficha dele: é por ela que o aviso de fim
+          // de teste o encontra (`vencimentos_proximos`).
+          ...(convite.role === 'owner' && telefoneInformado ? { telefone: telefoneInformado } : {}),
         })
         .select('id')
         .single()

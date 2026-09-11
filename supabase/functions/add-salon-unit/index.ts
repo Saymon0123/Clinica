@@ -1,5 +1,6 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { comSentry } from '../_shared/sentry.ts'
+import { AVISO_WHATSAPP_DA_BARBEARIA, telefoneValido } from '../_shared/telefone.ts'
 
 /**
  * Cria uma unidade nova a partir de uma barbearia que o chamador já possui.
@@ -77,6 +78,9 @@ Deno.serve(comSentry('add-salon-unit', async (req) => {
   const nome = body.nome?.trim()
   if (!nome) return json({ error: 'Informe o nome da unidade.' }, 400)
   if (!body.salonId) return json({ error: 'Barbearia de origem não informada.' }, 400)
+  // O WhatsApp da unidade é o botão "Falar com a barbearia" do QR dela (A11 do
+  // giro de 10/09). A unidade nascia sem ele sempre que o campo ficava vazio.
+  if (!telefoneValido(body.telefone)) return json({ error: AVISO_WHATSAPP_DA_BARBEARIA }, 400)
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
@@ -145,7 +149,7 @@ Deno.serve(comSentry('add-salon-unit', async (req) => {
     .insert({
       nome,
       endereco: body.endereco?.trim() || null,
-      telefone: body.telefone?.trim() || null,
+      telefone: (body.telefone ?? '').trim(),
       horario_funcionamento: body.horario_funcionamento ?? origem.horario_funcionamento ?? null,
       organization_id: organizationId,
     })

@@ -1,5 +1,6 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { capturarErro, comSentry } from '../_shared/sentry.ts'
+import { AVISO_WHATSAPP_DA_BARBEARIA, telefoneValido } from '../_shared/telefone.ts'
 
 const ADMIN_TOOL_SECRET = Deno.env.get('ADMIN_TOOL_SECRET')
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
@@ -206,13 +207,18 @@ Deno.serve(comSentry('admin-create-salon', async (req: Request) => {
   if (action === 'update_salon') {
     const { salonId, nome, endereco, telefone } = body as Record<string, string>
     if (!salonId) return json({ error: 'Unidade não informada.' }, 400)
+    // Editar pode trocar o WhatsApp, não apagar (A11 do giro de 10/09): ele é
+    // a saída do cliente no QR da unidade.
+    if (telefone !== undefined && !telefoneValido(telefone)) {
+      return json({ error: AVISO_WHATSAPP_DA_BARBEARIA }, 400)
+    }
 
     const { error } = await admin
       .from('salons')
       .update({
         ...(nome ? { nome: nome.trim() } : {}),
         ...(endereco !== undefined ? { endereco: endereco?.trim() || null } : {}),
-        ...(telefone !== undefined ? { telefone: telefone?.trim() || null } : {}),
+        ...(telefone !== undefined ? { telefone: telefone.trim() } : {}),
       })
       .eq('id', salonId)
 
@@ -289,6 +295,18 @@ Deno.serve(comSentry('admin-create-salon', async (req: Request) => {
   }
   if (tipo === 'rede' && !organizacao?.nome?.trim()) {
     return json({ error: 'Informe o nome da rede.' }, 400)
+  }
+  // Toda unidade nasce com WhatsApp (A11 do giro de 10/09): o dela ou, na
+  // falta, o do dono — o mesmo fallback do insert lá embaixo. Número
+  // preenchido que não é número volta aqui, e não como erro de banco.
+  if (ownerTelefone && !telefoneValido(ownerTelefone)) {
+    return json({ error: 'Telefone do dono: informe DDD e número (10 a 13 dígitos).' }, 400)
+  }
+  if (unidades.some((u) => u.telefone?.trim() && !telefoneValido(u.telefone))) {
+    return json({ error: 'Telefone da unidade: informe DDD e número (10 a 13 dígitos).' }, 400)
+  }
+  if (unidades.some((u) => !telefoneValido(u.telefone?.trim() || ownerTelefone))) {
+    return json({ error: `${AVISO_WHATSAPP_DA_BARBEARIA} Preencha o da unidade ou o do dono.` }, 400)
   }
 
   // E-mail já usado?

@@ -146,8 +146,16 @@ o Asaas como operador).
      as travas recusam a correção com 23P01, e a tela explica e oferece
      "Desvincular", em vez do "tente novamente" que falharia para sempre.
 
-   Coberto por `supabase/tests/presenca_deduzida.test.sql` (14 asserções) e por
-   8 testes de unidade da regra e do texto (`vinculoDeHorario.test.ts`).
+   **Provado duas vezes:** no CI, por `supabase/tests/presenca_deduzida.test.sql`
+   (14 asserções, banco criado do zero) e 8 testes de unidade da regra e do texto
+   (`vinculoDeHorario.test.ts`); e **contra o banco de produção**, antes do
+   merge, num ensaio que criou barbearia, clientes e horários de mentira, rodou
+   a migration e o cron, e terminou em `raise exception` — tudo desfeito, e
+   conferido depois (0 linhas do ensaio, funções antigas intactas). Resultado
+   do ensaio: 6 horários varridos; balcão e agente viraram `faltou`; a
+   reativação nunca aceita, `cancelado`; futuro, recente e concluído intocados;
+   duas faltas pausaram o cliente e a correção despausou; a pausa pedida pelo
+   cliente sobreviveu às duas; e a correção com cadeira ocupada devolveu 23P01.
 
    **O n8n não precisou mudar** — conferido nos 83 nós do agente: as consultas
    que filtram `status neq cancelado` só olham horário futuro, e falta é sempre

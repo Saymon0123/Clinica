@@ -71,7 +71,7 @@ const SECOES: Secao[] = [
           'Toque em **Finalizar venda**. O agendamento fica verde (concluído) e a venda entra no financeiro.',
         ],
         dicas: [
-          { t: 'Se ninguém fechar a comanda, 15 minutos depois do fim previsto do serviço o agendamento é cancelado sozinho e a cadeira volta a ficar livre. Sem problema: se você fechar a comanda depois, ele volta a ficar como concluído automaticamente.', atencao: true },
+          { t: 'Se ninguém fechar a comanda, 15 minutos depois do fim previsto do serviço o agendamento fica como **não veio** e a cadeira volta a ficar livre. Se o cliente veio e você só lançou depois, dá para corrigir: em **Nova venda**, ao escolher o cliente, o sistema pergunta se a venda é do horário de hoje — confirme, e o horário passa para concluído. No cartão do agendamento, **Concluir e cobrar** também continua disponível.', atencao: true },
         ],
       },
     ],

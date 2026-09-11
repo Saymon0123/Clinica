@@ -382,7 +382,10 @@ export function AgendaPage() {
         {/* A faixa do balcão (chegou/não veio) saiu em 2026-08-25: a decisão
             de presença deixou de ser do barbeiro. Quem fecha o ciclo é o
             banco — 15 min após o fim previsto do serviço, sem comanda fechada,
-            o agendamento cancela sozinho (cancela_agendamentos_sem_comanda). */}
+            o agendamento vira "não veio" (cancela_agendamentos_sem_comanda;
+            até a 0153, virava cancelado). Quem lançou tarde corrige pela
+            venda: "Nova venda" pergunta pelo horário do cliente, e "Concluir
+            e cobrar" vale também para a falta. */}
         {/* O erro de carga ganhou o caminho de volta (achado A13 do giro de
             10/09). Era um `ErroInline` sem botão, com o `reload` do hook
             desestruturado ali em cima e nunca ligado: com o sinal caindo entre

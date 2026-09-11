@@ -96,7 +96,9 @@ select is((select status from appointments where id = :'a_recente'), 'agendado',
 select is((select status from appointments where id = :'a_feito'), 'concluido',
   'concluido: intocado');
 
-select is((select reativacao_no_shows from clients where id = :'c_reat'), 2,
+-- `::smallint`: a coluna é smallint, e o `is()` do pgTAP exige os dois lados
+-- do mesmo tipo — um `2` cru é integer e a função nem é encontrada.
+select is((select reativacao_no_shows from clients where id = :'c_reat'), 2::smallint,
   'duas faltas em reativacao confirmada contam duas -- antes nao contavam nenhuma');
 select is((select reativacao_pausada_em from clients where id = :'c_reat'), now(),
   'a segunda falta pausa o cliente');
@@ -107,7 +109,7 @@ select is((select reativacao_pausada_em from clients where id = :'c_pediu'), now
 update appointments set status = 'concluido' where id = :'a_reat2';
 select is((select reativacao_pausada_em from clients where id = :'c_reat'), null::timestamptz,
   'faltou -> concluido desfaz a pausa que a falta causou');
-select is((select reativacao_no_shows from clients where id = :'c_reat'), 0,
+select is((select reativacao_no_shows from clients where id = :'c_reat'), 0::smallint,
   'e zera as faltas, como todo atendimento concluido');
 
 update appointments set status = 'concluido' where id = :'a_pediu';

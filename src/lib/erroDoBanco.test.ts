@@ -132,6 +132,19 @@ describe('traduzirErroDoBanco: preco de venda (0132)', () => {
   })
 })
 
+// A CHECK da 0155 (A11): o dono que salva o WhatsApp da barbearia fora da
+// régua lê que o problema é o WhatsApp — e não "deixaria um dado inválido".
+describe('traduzirErroDoBanco: WhatsApp da barbearia (0155)', () => {
+  it('telefone da barbearia fora da regua diz que o problema e o WhatsApp', () => {
+    expect(
+      traduzirErroDoBanco({
+        code: '23514',
+        message: 'new row for relation "salons" violates check constraint "salons_telefone_valido"',
+      }),
+    ).toBe('WhatsApp da barbearia: informe DDD e número (10 a 13 dígitos).')
+  })
+})
+
 // O trigger da folga (0134) levanta 23P01 -- o mesmo codigo do choque de
 // horario -- com a explicacao em portugues. As telas de remarcar passam uma
 // frase fixa para 23P01 ("ja existe um agendamento nesse horario"); ela so

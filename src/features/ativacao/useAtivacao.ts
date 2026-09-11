@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { classificarTelefone } from '../../lib/telefone'
 
 export type ItemDeAtivacao = {
-  id: 'assinatura' | 'whatsapp' | 'servicos' | 'jornada' | 'comissao'
+  id: 'assinatura' | 'telefone' | 'whatsapp' | 'servicos' | 'jornada' | 'comissao'
   titulo: string
   /** O que a barbearia perde enquanto isso não estiver feito. */
   porque: string
@@ -33,7 +34,7 @@ export function useAtivacao(salonId: string | null) {
     }
     setLoading(true)
 
-    const [assinatura, conexao, servicos, profissionais] = await Promise.all([
+    const [assinatura, conexao, servicos, profissionais, salao] = await Promise.all([
       supabase.from('subscriptions').select('salon_id').eq('salon_id', salonId).maybeSingle(),
       supabase.from('whatsapp_connections').select('status').eq('salon_id', salonId).maybeSingle(),
       supabase
@@ -46,7 +47,12 @@ export function useAtivacao(salonId: string | null) {
         .select('id, comissao_percentual, professional_schedules(id)')
         .eq('salon_id', salonId)
         .eq('ativo', true),
+      supabase.from('salons').select('telefone').eq('id', salonId).maybeSingle(),
     ])
+
+    // Erro na consulta não acusa falta: checklist que grita à toa ensina a
+    // ignorar o checklist.
+    const telefoneOk = Boolean(salao.error) || classificarTelefone(salao.data?.telefone) === 'valido'
 
     const profs = (profissionais.data ?? []) as {
       id: string
@@ -75,6 +81,21 @@ export function useAtivacao(salonId: string | null) {
               titulo: 'Assinatura não registrada',
               porque: 'Sem isso os lembretes automáticos não são enviados. Fale com o suporte.',
               rota: '/assinatura',
+              feito: false,
+            },
+          ]),
+      // Também só quando falta (A11 do giro de 10/09). Toda porta de cadastro
+      // pede o WhatsApp da barbearia agora; sobra a barbearia de antes da regra
+      // — e é justamente a que ninguém avisava.
+      ...(telefoneOk
+        ? []
+        : [
+            {
+              id: 'telefone' as const,
+              titulo: 'Cadastrar o WhatsApp da barbearia',
+              porque:
+                'É o botão “Falar com a barbearia” da agenda pelo QR: sem ele, o cliente que não consegue marcar fica sem saída.',
+              rota: '/configuracoes',
               feito: false,
             },
           ]),

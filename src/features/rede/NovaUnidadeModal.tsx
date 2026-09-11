@@ -4,6 +4,7 @@ import { Modal } from '../../components/Modal'
 import { Campo, Input } from '../../components/Campo'
 import { invokeFunction } from '../../lib/invokeFunction'
 import { ErroInline } from '../../components/ErroInline'
+import { AVISO_TELEFONE_FORMATO, classificarTelefone } from '../../lib/telefone'
 
 type Resultado = {
   salonId: string
@@ -52,6 +53,13 @@ export function NovaUnidadeModal({
     e.preventDefault()
     if (!nome.trim()) {
       setErro('Informe o nome da unidade.')
+      return
+    }
+    // Obrigatório (A11 do giro de 10/09): é o botão "Falar com a barbearia" do
+    // QR desta unidade. A unidade nascia sem ele sempre que o campo ficava vazio.
+    const estadoDoTelefone = classificarTelefone(telefone)
+    if (estadoDoTelefone !== 'valido') {
+      setErro(estadoDoTelefone === 'vazio' ? 'Informe o WhatsApp da unidade, com DDD.' : AVISO_TELEFONE_FORMATO)
       return
     }
 
@@ -123,8 +131,18 @@ export function NovaUnidadeModal({
           <Campo rotulo="Endereço" htmlFor="unidade-endereco">
             <Input id="unidade-endereco" value={endereco} onChange={(e) => setEndereco(e.target.value)} />
           </Campo>
-          <Campo rotulo="Telefone" htmlFor="unidade-telefone">
-            <Input id="unidade-telefone" value={telefone} onChange={(e) => setTelefone(e.target.value)} />
+          <Campo
+            rotulo="WhatsApp da unidade"
+            htmlFor="unidade-telefone"
+            apoio="É o botão “Falar com a barbearia” da agenda pelo QR desta unidade."
+          >
+            <Input
+              id="unidade-telefone"
+              value={telefone}
+              onChange={(e) => setTelefone(e.target.value)}
+              placeholder="(41) 99999-9999"
+              inputMode="tel"
+            />
           </Campo>
 
           <label className="flex items-center gap-2 cursor-pointer">

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Building2, Check, Plus, Save } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { formatarTelefone } from '../../lib/telefone'
+import { AVISO_TELEFONE_FORMATO, classificarTelefone, formatarTelefone } from '../../lib/telefone'
 import { useSalon } from '../auth/useSalon'
 import { QrDoBalcao } from '../agendaPublica/QrDoBalcao'
 import { AvisoDeJornada } from './AvisoDeJornada'
@@ -125,6 +125,19 @@ export function ConfiguracoesPage() {
       return
     }
 
+    // Obrigatório (A11 do giro de 10/09): é o botão "Falar com a barbearia" da
+    // agenda pelo QR e do link do horário. Apagar daqui tirava a única saída do
+    // cliente que não consegue marcar sozinho — e nada avisava ninguém.
+    const estadoDoTelefone = classificarTelefone(telefone)
+    if (estadoDoTelefone !== 'valido') {
+      setErro(
+        estadoDoTelefone === 'vazio'
+          ? 'Informe o WhatsApp da barbearia — é o botão “Falar com a barbearia” que o cliente vê no QR.'
+          : AVISO_TELEFONE_FORMATO,
+      )
+      return
+    }
+
     setSalvando(true)
     setErro(null)
     const { error } = await supabase
@@ -132,7 +145,7 @@ export function ConfiguracoesPage() {
       .update({
         nome: nome.trim(),
         endereco: endereco.trim() || null,
-        telefone: telefone.trim() || null,
+        telefone: telefone.trim(),
         google_review_url: googleReviewUrl.trim() || null,
         folga_entre_atendimentos_minutos: Math.min(60, Math.max(0, Number(folga) || 0)),
         horario_funcionamento: serializarHorario(horario),
@@ -207,7 +220,11 @@ export function ConfiguracoesPage() {
             />
           </Campo>
 
-          <Campo rotulo="Telefone" htmlFor="telefone">
+          <Campo
+            rotulo="WhatsApp da barbearia"
+            htmlFor="telefone"
+            apoio="Aparece para os clientes no botão “Falar com a barbearia” da agenda pelo QR e do link do horário marcado."
+          >
             <Input
               id="telefone"
               value={telefone}

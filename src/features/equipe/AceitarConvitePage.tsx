@@ -6,6 +6,7 @@ import { invokeFunction } from '../../lib/invokeFunction'
 import { Input } from '../../components/Campo'
 import { VERSAO_DOS_TERMOS } from '../../lib/termos'
 import { ErroInline } from '../../components/ErroInline'
+import { AVISO_TELEFONE_FORMATO, classificarTelefone } from '../../lib/telefone'
 
 type ConviteInfo = {
   nome: string | null
@@ -21,6 +22,11 @@ type ConviteInfo = {
    * de vincular um terceiro a uma equipe sem consentimento.
    */
   contaExiste?: boolean
+  /**
+   * Convite de dono para barbearia ainda sem WhatsApp (A11 do giro de 10/09):
+   * o convite pelo painel cria a barbearia sem ele, e quem aceita é quem sabe.
+   */
+  pedeTelefone?: boolean
 }
 
 export function AceitarConvitePage() {
@@ -30,6 +36,7 @@ export function AceitarConvitePage() {
   const [erro, setErro] = useState<string | null>(null)
 
   const [nome, setNome] = useState('')
+  const [telefone, setTelefone] = useState('')
   // Começa DESMARCADO de propósito. Caixa pré-marcada não é ato afirmativo, e
   // é a diferença entre um aceite que segura numa disputa e um que não.
   const [aceitouTermos, setAceitouTermos] = useState(false)
@@ -67,6 +74,15 @@ export function AceitarConvitePage() {
       setErro('Informe seu nome.')
       return
     }
+    if (info?.pedeTelefone) {
+      const estadoDoTelefone = classificarTelefone(telefone)
+      if (estadoDoTelefone !== 'valido') {
+        setErro(
+          estadoDoTelefone === 'vazio' ? 'Informe o WhatsApp da barbearia, com DDD.' : AVISO_TELEFONE_FORMATO,
+        )
+        return
+      }
+    }
     if (!aceitouTermos) {
       setErro('É preciso aceitar os termos de uso para continuar.')
       return
@@ -88,7 +104,15 @@ export function AceitarConvitePage() {
       'accept-invite',
       // A versão vai junto: é ela que liga o registro do aceite ao texto exato
       // que estava no ar quando a pessoa marcou a caixa.
-      { body: { token, senha, nome: nome.trim() || undefined, versaoTermos: VERSAO_DOS_TERMOS } },
+      {
+        body: {
+          token,
+          senha,
+          nome: nome.trim() || undefined,
+          telefone: info?.pedeTelefone ? telefone.trim() : undefined,
+          versaoTermos: VERSAO_DOS_TERMOS,
+        },
+      },
       'Não foi possível concluir o cadastro. Tente novamente.',
     )
     setSalvando(false)
@@ -187,6 +211,24 @@ export function AceitarConvitePage() {
                 />
                 <span className="block text-[11px] text-muted-foreground mt-1">
                   É o nome que aparece na agenda e que o atendimento no WhatsApp usa.
+                </span>
+              </label>
+            )}
+
+            {info.pedeTelefone && (
+              <label className="block">
+                <span className="text-xs font-medium text-muted-foreground">WhatsApp da barbearia</span>
+                <Input
+                  value={telefone}
+                  onChange={(e) => setTelefone(e.target.value)}
+                  placeholder="(41) 99999-9999"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  className="mt-1"
+                />
+                <span className="block text-[11px] text-muted-foreground mt-1">
+                  Seus clientes veem este número no botão “Falar com a barbearia” da agenda pelo QR.
+                  É por ele também que avisamos você sobre o teste.
                 </span>
               </label>
             )}

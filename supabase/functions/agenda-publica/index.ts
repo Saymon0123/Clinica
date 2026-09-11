@@ -148,15 +148,29 @@ Deno.serve(comSentry('agenda-publica', async (req: Request) => {
 
     if (body.acao === 'meu_horario') return json(info)
 
-    // Cancelar: só horário ainda de pé, e com antecedência mínima — cancelar
-    // em cima da hora é conversa com a barbearia, não botão.
+    // Cancelar: só horário ainda de pé, e com um piso de 30 minutos.
+    //
+    // Eram 2 HORAS, e isso criava um caminho garantido de frustração: o lembrete
+    // dispara entre T-85 e T-100min (fluxo `DW0nq1Jyp9xeOJwm`), ou seja, a ÚNICA
+    // mensagem que o cliente recebe sobre o horário chegava 20 a 35 minutos
+    // DEPOIS de o botão já ter travado. Ele avisava, e o sistema recusava o
+    // aviso. Sempre, para todo mundo — não era caso raro.
+    //
+    // Pior: pelo botão do WhatsApp ele CONSEGUIA cancelar (`responder_lembrete`,
+    // 0113:206, só exige `data_hora_inicio > now()`). Mesma ação, duas portas,
+    // duas regras.
+    //
+    // 30 minutos (decisão do dono, 10/09) é o meio-termo: dá algum respiro para
+    // a barbearia tentar revender a cadeira, e ainda assim cabe folgado depois
+    // do lembrete. Quem cancela dentro dos 30 min ia faltar de qualquer jeito —
+    // a diferença é o barbeiro ficar sabendo.
     if (!['agendado', 'confirmado'].includes(ag.status)) {
       return json({ ...info, error: 'Esse horário já não está mais de pé.' }, 409)
     }
-    const doisHoras = 2 * 3600000
-    if (new Date(ag.data_hora_inicio).getTime() - Date.now() < doisHoras) {
+    const pisoParaCancelar = 30 * 60000
+    if (new Date(ag.data_hora_inicio).getTime() - Date.now() < pisoParaCancelar) {
       return json(
-        { ...info, error: 'Faltam menos de 2 horas — para mudar agora, chame a barbearia no WhatsApp.' },
+        { ...info, error: 'Falta menos de 30 minutos — para mudar agora, chame a barbearia no WhatsApp.' },
         409,
       )
     }

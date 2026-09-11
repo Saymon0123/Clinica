@@ -36,6 +36,48 @@ const WEBHOOK_TOKEN = Deno.env.get('N8N_WEBHOOK_TOKEN') ?? ''
 
 
 
+/**
+ * Entrega ao n8n e CONFERE que chegou.
+ *
+ * Os POSTs deste arquivo carregam a resposta que o cliente vai ler, e três deles
+ * não checavam nada. O efeito era cruel: quando o n8n devolvia 500, **o banco já
+ * tinha gravado e não dava para desfazer** — `responder_lembrete` casa por wamid
+ * e consome a idempotência ali. Se o cliente clicasse de novo, a RPC devolvia
+ * `'repetido'` com `resposta: null` e a edge nem postava. O silêncio virava
+ * definitivo: ele confirmou a presença e nunca ouviu nada.
+ *
+ * E ninguém ficava sabendo — 500 do n8n não é `throw`, então o Sentry não via.
+ *
+ * Isto **não recupera** a mensagem: converte invisível em visível, para o dono
+ * poder ligar para o cliente. A recuperação de verdade é a fila de saída (mesmo
+ * padrão da `0104`), que vem junto com a fila de entrada (achado A3).
+ */
+async function entregarAoN8n(corpo: Record<string, unknown>, onde: string): Promise<boolean> {
+  if (!N8N_LEMBRETE_URL) return false
+  try {
+    const resposta = await fetch(N8N_LEMBRETE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Webhook-Token': WEBHOOK_TOKEN },
+      body: JSON.stringify(corpo),
+    })
+    if (resposta.ok) return true
+    console.error('n8n recusou a entrega:', onde, resposta.status)
+    await capturarErro(new Error(`n8n ${resposta.status} em ${onde}`), 'whatsapp-webhook', {
+      onde,
+      contato: String(corpo.contact_phone ?? ''),
+      acao: String(corpo.acao ?? ''),
+    })
+    return false
+  } catch (err) {
+    // Rede caindo no meio precisa parar AQUI. Sem este catch, a exceção sobe e
+    // derruba o processamento das outras mensagens do mesmo lote — uma falha
+    // vira várias.
+    console.error('Falha de rede ao entregar ao n8n:', onde, err)
+    await capturarErro(err, 'whatsapp-webhook', { onde, contato: String(corpo.contact_phone ?? '') })
+    return false
+  }
+}
+
 /** Limite de tentativas via banco (0111). Erro do limitador deixa passar. */
 async function taxaExcedida(
   admin: ReturnType<typeof createClient>,
@@ -121,11 +163,8 @@ async function responderForaDeContexto(
     resposta = `${abertura} Para marcar, mudar ou cancelar um horario, fale direto com a sua barbearia.`
   }
 
-  if (!N8N_LEMBRETE_URL) return
-  const envio = await fetch(N8N_LEMBRETE_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Webhook-Token': WEBHOOK_TOKEN },
-    body: JSON.stringify({
+  await entregarAoN8n(
+    {
       // O salon_id vai preenchido quando dá: o fluxo do n8n usa esse campo para
       // achar a conversa e registrar a mensagem.
       salon_id: barbearia?.salon_id ?? null,
@@ -134,16 +173,9 @@ async function responderForaDeContexto(
       appointment_id: null,
       acao: 'fora_de_contexto',
       resposta,
-    }),
-  })
-  if (!envio.ok) {
-    console.error('n8n recusou a resposta fora de contexto:', envio.status)
-    await capturarErro(
-      new Error(`n8n ${envio.status} ao responder fora de contexto`),
-      'whatsapp-webhook',
-      { onde: 'resposta-fora-de-contexto', telefone },
-    )
-  }
+    },
+    'resposta-fora-de-contexto',
+  )
 }
 
 /**
@@ -170,11 +202,9 @@ async function registrarSaida(
   }
   console.log('opt-out registrado, fichas marcadas:', fichas ?? 0)
 
-  if (!N8N_LEMBRETE_URL) return
-  const resposta = await fetch(N8N_LEMBRETE_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Webhook-Token': WEBHOOK_TOKEN },
-    body: JSON.stringify({
+  // O opt-out no banco já valeu; o que pode faltar é o aviso.
+  await entregarAoN8n(
+    {
       salon_id: null,
       phone_number_id: phoneNumberId,
       contact_phone: telefone,
@@ -184,17 +214,9 @@ async function registrarSaida(
         'Pronto! Voce nao vai mais receber nossas mensagens de convite. ' +
         'Se marcar um horario, o lembrete dele continua chegando. ' +
         'Mudou de ideia? E so falar com a sua barbearia.',
-    }),
-  })
-  // O opt-out no banco já valeu; o que pode faltar é o aviso. Sem esta checagem
-  // a pessoa fica sem confirmação e ninguém fica sabendo.
-  if (!resposta.ok) {
-    console.error('n8n recusou o aviso de opt-out:', resposta.status)
-    await capturarErro(new Error(`n8n ${resposta.status} ao avisar do opt-out`), 'whatsapp-webhook', {
-      onde: 'aviso-opt-out',
-      telefone,
-    })
-  }
+    },
+    'aviso-opt-out',
+  )
 }
 
 /** Sempre 200 para a Meta. Ver o cabeçalho do arquivo. */
@@ -393,11 +415,12 @@ Deno.serve(comSentry('whatsapp-webhook', async (req) => {
                   console.error('responder_avaliacao falhou:', erroAv.message)
                   continue
                 }
-                if (av?.atendido && av.resposta && N8N_LEMBRETE_URL) {
-                  await fetch(N8N_LEMBRETE_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Webhook-Token': WEBHOOK_TOKEN },
-                    body: JSON.stringify({
+                if (av?.atendido && av.resposta) {
+                  // O mais caro dos três: aqui vai junto o `avisar_dono` de nota
+                  // baixa. Falhar em silêncio some com o agradecimento E com o
+                  // alerta — o cliente dá nota 1 e o dono nunca fica sabendo.
+                  await entregarAoN8n(
+                    {
                       salon_id: av.salon_id ?? null,
                       phone_number_id: phoneNumberId,
                       contact_phone: m.from,
@@ -407,8 +430,9 @@ Deno.serve(comSentry('whatsapp-webhook', async (req) => {
                       // Nota baixa: o fluxo avisa o dono no canal de alertas.
                       avisar_dono: av.avisar_dono === true,
                       resposta: av.resposta,
-                    }),
-                  })
+                    },
+                    'resposta-avaliacao',
+                  )
                 } else if (!av?.atendido) {
                   // Nem lembrete nem avaliação: é aqui que cai o botão "Nao
                   // quero mais receber" dos templates de reativação. Ele chega
@@ -424,22 +448,22 @@ Deno.serve(comSentry('whatsapp-webhook', async (req) => {
                 }
                 continue
               }
-              if (r.atendido && (r.resposta || r.entregar_ao_agente) && N8N_LEMBRETE_URL) {
+              if (r.atendido && (r.resposta || r.entregar_ao_agente)) {
                 // Reagendar no número central NÃO vai ao agente: o agente mora
                 // no número da barbearia (Evolution). O fluxo de resposta troca
-                // entregar_ao_agente pelo convite com o wa.me da barbearia.
-                await fetch(N8N_LEMBRETE_URL, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json', 'X-Webhook-Token': WEBHOOK_TOKEN },
-                  body: JSON.stringify({
+                // entregar_ao_agente pelo convite com o wa.me da barbearia —
+                // falhar aqui deixa quem clicou em "Reagendar" sem saber COMO.
+                await entregarAoN8n(
+                  {
                     salon_id: r.salon_id ?? null,
                     phone_number_id: phoneNumberId,
                     contact_phone: m.from,
                     appointment_id: r.appointment_id ?? null,
                     acao: r.entregar_ao_agente ? 'reagendar_central' : r.acao,
                     resposta: r.resposta ?? null,
-                  }),
-                })
+                  },
+                  'resposta-lembrete-central',
+                )
               }
               continue
             }
@@ -520,10 +544,8 @@ Deno.serve(comSentry('whatsapp-webhook', async (req) => {
                   + ' ao confirmar, REMARQUE o existente em vez de criar outro.'
               } else {
                 if (r.resposta && N8N_LEMBRETE_URL) {
-                  await fetch(N8N_LEMBRETE_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Webhook-Token': WEBHOOK_TOKEN },
-                    body: JSON.stringify({
+                  await entregarAoN8n(
+                    {
                       salon_id: salonId,
                       phone_number_id: phoneNumberId,
                       contact_phone: m.from,
@@ -532,8 +554,9 @@ Deno.serve(comSentry('whatsapp-webhook', async (req) => {
                       // O texto ja vem decidido pelo banco. O n8n so entrega
                       // e registra -- nao ha o que interpretar do outro lado.
                       resposta: r.resposta,
-                    }),
-                  })
+                    },
+                    'resposta-lembrete-barbearia',
+                  )
                 } else if (r.resposta && !N8N_LEMBRETE_URL) {
                   console.error('N8N_LEMBRETE_RESPOSTA_URL nao configurada')
                 }

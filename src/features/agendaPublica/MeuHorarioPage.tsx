@@ -10,7 +10,7 @@ import { ErroInline } from '../../components/ErroInline'
  *
  * Aberta sem login por quem marcou pelo QR. O token do link é a autorização
  * inteira: ele só abre ESTE agendamento, então não há nada de ninguém para
- * vazar. Cancelar pede confirmação e respeita a antecedência mínima (2h) —
+ * vazar. Cancelar pede confirmação e respeita a antecedência mínima (30min) —
  * a regra mora na edge function, esta tela só a explica.
  *
  * Remarcar não remarca aqui de propósito: reagendar é conversa (outro dia,

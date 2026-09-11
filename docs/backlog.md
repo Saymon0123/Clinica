@@ -121,8 +121,49 @@ o Asaas como operador).
    consegue marcar para amanhã — vai embora. Foi decisão deliberada (superfície
    de abuso), mas vale reabrir: é o canal de captação do balcão funcionando meio
    período.
-7. **`faltou` não tem botão** — só leitura em `src/`; `reativacao_no_shows` nunca
-   incrementa e a pausa após 2 faltas nunca dispara.
+7. ~~**`faltou` não tem botão**~~ — **RESOLVIDO em 11/09 (migration 0153, "plano
+   C" escolhido pelo dono).** A presença **continua deduzida** — a decisão de
+   25/08 fica: o barbeiro não marca nada. O que mudou é o que o cron
+   `cancela_agendamentos_sem_comanda` escreve: **`faltou`**, e não mais
+   `cancelado`. A exceção é a reativação que o cliente **nunca aceitou**, que
+   segue `cancelado` — foi o sistema que reservou, e sem o "sim" dele não é
+   falta. Com isso a pausa após 2 faltas finalmente dispara.
+
+   Como a falta agora é **dedução**, ela precisa de correção barata — e a
+   correção é a própria venda:
+   - **"Nova venda" pergunta**, ao escolher o cliente: *"João tem horário hoje às
+     14:00 com Rafael. Esta venda é desse atendimento?"* "Sim" vincula, traz os
+     serviços do horário e passa a venda para o barbeiro dele; "Não, é outra
+     venda" segue solta. **A venda não sai sem resposta**, porque as duas
+     omissões custam caro: concluir o horário das 16h com a venda de um produto
+     às 10h, ou deixar como falta quem veio.
+   - **"Concluir e cobrar" vale para `faltou`** — antes sumia junto com remarcar
+     e cancelar. "Concluir sem cobrar" também corrige.
+   - **O trigger da reativação desconta:** `faltou → concluido` desfaz a pausa
+     que *aquela* falta causou (mesmo `now()` no carimbo), e nunca a pausa pedida
+     pelo cliente; e a falta não sobrescreve pausa que já existia.
+   - **Cadeira já ocupada** (a falta liberou o horário e alguém foi lançado nele):
+     as travas recusam a correção com 23P01, e a tela explica e oferece
+     "Desvincular", em vez do "tente novamente" que falharia para sempre.
+
+   Coberto por `supabase/tests/presenca_deduzida.test.sql` (14 asserções) e por
+   8 testes de unidade da regra e do texto (`vinculoDeHorario.test.ts`).
+
+   **O n8n não precisou mudar** — conferido nos 83 nós do agente: as consultas
+   que filtram `status neq cancelado` só olham horário futuro, e falta é sempre
+   passado. Nenhum fluxo lê `faltou` (o template `retorno_faltou` existe só em
+   `docs/templates-para-a-meta.md`).
+
+   **A Ajuda mentia, e deixou de mentir.** Prometia que "se você fechar a comanda
+   depois, ele volta a ficar como concluído automaticamente". Não voltava: venda
+   lançada por "Nova venda" não tinha vínculo nenhum com o horário. Agora é
+   verdade, e o texto diz como fazer.
+
+   **Efeito nos números no primeiro mês:** o card **Cancelamentos** (Financeiro,
+   Rede e Conexão) vai **cair**, porque deixa de somar falta — é correção, não
+   melhora. E **Agendamentos** passa a contar quem faltou (antes a falta virava
+   cancelado e saía da conta). A comparação com o período anterior mistura as
+   duas regras até o mês virar.
 8. ~~**`main` não é protegida**~~ — **RESOLVIDO em 10/09.** Regra ativa e
    **provada**: um `git push` direto na `main` volta com
    `GH006: Protected branch update failed`, citando "must be made through a pull
@@ -330,6 +371,14 @@ Estavam só no chat. Pela regra da casa, o que não está aqui some do radar.
    `pacote_do_cliente_itens`. São exatamente a categoria de risco (isolamento
    dependente do join ao pai). `pacotes` e `pacotes_do_cliente` estão cobertas.
 
+**Faltas viraram dado com a 0153 — onde o dono quer ver o número?** (11/09)
+8. A falta aparece na **agenda** ("não veio", riscado) e no **histórico do
+   cliente**, mas não existe como número em lugar nenhum: Financeiro, Rede e o
+   resumo da reativação só contam cancelamentos. A 0063 chamou a falta de
+   "justamente o número que interessa ao dono". Opções: um card "Não vieram" no
+   Financeiro (o dado já vem na consulta que existe), uma coluna no resumo da
+   reativação, ou nada por enquanto.
+
 ### Médios fechados em 11/09 (Fase 2)
 
 - ~~**M6 — preço fantasma na comanda**~~ — a linha da comanda usava o índice
@@ -348,6 +397,40 @@ Estavam só no chat. Pela regra da casa, o que não está aqui some do radar.
 - ~~**M15 — `settingsOk` descartado pela tela**~~ — a edge sempre devolveu; a
   `ConexaoPage` não declarava o campo e jogava fora. Agora avisa, no mesmo
   padrão do aviso de webhook, que o agente pode responder em grupos.
+- ~~**M9 — `/meu-horario` no fuso do navegador, e check verde para quem
+  faltou**~~ — adiantado da Fase 3 e fechado junto com o A7: o mesmo PR passou a
+  escrever `faltou`, e deixar a página como estava seria mostrar "Horário
+  marcado ✓" a quem ficou como falta. Cada estado ganhou título próprio
+  ("Atendimento concluído", "Horário cancelado", "Este horário já passou"), e
+  todos terminam no botão de marcar de novo pelo WhatsApp. `faltou` diz "já
+  passou", e não "você não veio", de propósito: a falta é deduzida e pode estar
+  errada. Data e hora no fuso de São Paulo.
+
+### Achados novos do plano C (11/09)
+
+1. **ALTO — uma venda qualquer desfaz o "não quero mais" da reativação.** O
+   passo 7 da `NewSaleModal` zera `reativacao_pausada_em` sempre que o campo
+   "corta a cada quantas semanas?" está preenchido — e ele vem **preenchido
+   sozinho** com o valor salvo do cliente. Quem tocou "Cancelar" no convite
+   ouviu *"não vou mais reservar horário automático para você"*
+   (`responder_lembrete`), mas `reativacao_semanas` não é apagado: na próxima
+   visita, se o barbeiro não esvaziar o campo, a venda religa a reserva
+   automática. Consentimento desfeito sem ninguém decidir — e mensagem para
+   quem pediu para parar é o caminho do bloqueio. O opt-out de LGPD
+   (`recusou_contato`) não é afetado. Vai com o A8 (Fase 4): a tela precisa
+   mostrar que o cliente pediu para parar, e religar tem de ser escolha
+   explícita.
+2. **Qualquer venda salva apaga a "cobrança pendente"**, mesmo a de outro
+   cliente (`VendasSection → onVendaSalva → limparVendaPendente`, sem olhar o
+   vínculo). O horário que esperava cobrança perde a faixa e vira "não veio" 15
+   minutos depois do fim. É anterior ao plano C; ele só tornou mais comum ter
+   duas vendas no expediente com uma pendência aberta.
+3. **Configuração que não faz nada:** o "atraso tolerado" de Configurações só
+   alimenta a view `atrasos_para_perguntar`, lida pelo fluxo "Política de
+   Atraso" do n8n (`67oZqGOIoKO6pAeQ`), que está **desligado**. O dono ajusta um
+   número sem efeito. O comentário do código dizia que o campo também
+   controlava o botão "Não veio" da faixa do balcão, que saiu em 25/08 —
+   corrigido no plano C. Ligar o fluxo ou esconder o campo é decisão do dono.
 
 **Buraco da própria auditoria:** a frente de segurança/multi-tenant morreu no
 limite de sessão antes de escrever o relatório. Não houve leitura sistemática de

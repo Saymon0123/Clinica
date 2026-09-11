@@ -167,11 +167,16 @@ o Asaas como operador).
    lançada por "Nova venda" não tinha vínculo nenhum com o horário. Agora é
    verdade, e o texto diz como fazer.
 
-   **Efeito nos números no primeiro mês:** o card **Cancelamentos** (Financeiro,
-   Rede e Conexão) vai **cair**, porque deixa de somar falta — é correção, não
-   melhora. E **Agendamentos** passa a contar quem faltou (antes a falta virava
-   cancelado e saía da conta). A comparação com o período anterior mistura as
-   duas regras até o mês virar.
+   **Efeito nos números:** resolvido no mesmo dia. No Financeiro e na Rede o
+   card virou "Cancelamentos e faltas" (ver os achados do plano C, abaixo), e a
+   soma é o número de antes — a comparação entre meses continua valendo. Só o
+   card de cancelamentos do **agente**, na Conexão, cai: lá a falta de um
+   horário que o agente marcou não é mérito nem culpa dele. **Agendamentos**
+   passa a contar quem faltou (antes a falta virava cancelado e saía da conta).
+
+   **Em produção desde 11/09, 05:00 UTC**, registrada no histórico de
+   migrations; a execução do cron das 05:05 já rodou com a função nova, sem
+   erro.
 8. ~~**`main` não é protegida**~~ — **RESOLVIDO em 10/09.** Regra ativa e
    **provada**: um `git push` direto na `main` volta com
    `GH006: Protected branch update failed`, citando "must be made through a pull
@@ -379,7 +384,12 @@ Estavam só no chat. Pela regra da casa, o que não está aqui some do radar.
    `pacote_do_cliente_itens`. São exatamente a categoria de risco (isolamento
    dependente do join ao pai). `pacotes` e `pacotes_do_cliente` estão cobertas.
 
-**Faltas viraram dado com a 0153 — onde o dono quer ver o número?** (11/09)
+**Faltas viraram dado com a 0153 — onde o dono quer ver o número?** (11/09) —
+**DECIDIDO no mesmo dia:** o 4º card do Financeiro virou "Cancelamentos e
+faltas", com a divisão ao lado do número ("3 cancelados · 2 não vieram"), e a
+Rede ganhou o mesmo tratamento. A soma é o número que o card mostrava antes,
+então a comparação entre meses continua valendo. Um 5º card ficaria sozinho
+numa linha (a grade é de 4).
 8. A falta aparece na **agenda** ("não veio", riscado) e no **histórico do
    cliente**, mas não existe como número em lugar nenhum: Financeiro, Rede e o
    resumo da reativação só contam cancelamentos. A 0063 chamou a falta de
@@ -416,7 +426,8 @@ Estavam só no chat. Pela regra da casa, o que não está aqui some do radar.
 
 ### Achados novos do plano C (11/09)
 
-1. **ALTO — uma venda qualquer desfaz o "não quero mais" da reativação.** O
+1. ~~**ALTO — uma venda qualquer desfaz o "não quero mais" da reativação.**~~
+   **RESOLVIDO em 11/09 (migration 0154).** O
    passo 7 da `NewSaleModal` zera `reativacao_pausada_em` sempre que o campo
    "corta a cada quantas semanas?" está preenchido — e ele vem **preenchido
    sozinho** com o valor salvo do cliente. Quem tocou "Cancelar" no convite
@@ -428,17 +439,41 @@ Estavam só no chat. Pela regra da casa, o que não está aqui some do radar.
    (`recusou_contato`) não é afetado. Vai com o A8 (Fase 4): a tela precisa
    mostrar que o cliente pediu para parar, e religar tem de ser escolha
    explícita.
-2. **Qualquer venda salva apaga a "cobrança pendente"**, mesmo a de outro
+
+   **Como ficou:** "Cancelar" no convite agora apaga também as semanas — a
+   frase que o cliente ouviu vira verdade literal. Toda pausa grava o motivo
+   (`reativacao_pausa_motivo`: `pediu_para_parar`, `faltas`, `sem_resposta`),
+   e na "Nova venda" o campo de cliente pausado começa **vazio**, com a frase
+   do motivo no lugar do número — em alerta quando foi o cliente que pediu
+   ("Em 12/08, ele pediu pelo WhatsApp para não reservarmos mais. Só preencha
+   se ele pedir de novo."). Preencher continua sendo o opt-in, e agora é
+   sempre escolha de quem está no balcão. Antecipado da Fase 4 por ser
+   promessa ao cliente sendo quebrada. Coberto por
+   `pausa_da_reativacao.test.sql` (15 asserções) e 3 testes de unidade do texto.
+2. ~~**Qualquer venda salva apaga a "cobrança pendente"**~~ — **RESOLVIDO em
+   11/09.** Era assim: qualquer venda apagava a pendência, mesmo a de outro
    cliente (`VendasSection → onVendaSalva → limparVendaPendente`, sem olhar o
    vínculo). O horário que esperava cobrança perde a faixa e vira "não veio" 15
    minutos depois do fim. É anterior ao plano C; ele só tornou mais comum ter
    duas vendas no expediente com uma pendência aberta.
-3. **Configuração que não faz nada:** o "atraso tolerado" de Configurações só
+
+   **Como ficou:** a venda devolve o horário que concluiu, e
+   `quitarVendaPendente` só apaga a pendência se for DAQUELE horário (4 testes
+   de unidade). A faixa ganhou "Dispensar", para quando o horário deixou de
+   fazer sentido — antes ela só sumia cobrando, concluindo ou fechando o
+   navegador.
+3. ~~**Configuração que não faz nada**~~ — **RESOLVIDO em 11/09: o campo saiu
+   da tela.** Era assim: o "atraso tolerado" de Configurações só
    alimenta a view `atrasos_para_perguntar`, lida pelo fluxo "Política de
    Atraso" do n8n (`67oZqGOIoKO6pAeQ`), que está **desligado**. O dono ajusta um
    número sem efeito. O comentário do código dizia que o campo também
    controlava o botão "Não veio" da faixa do balcão, que saiu em 25/08 —
    corrigido no plano C. Ligar o fluxo ou esconder o campo é decisão do dono.
+
+   **Como ficou:** o dono escolheu esconder. A coluna
+   `atraso_tolerado_minutos` fica no banco (padrão 10). Ligar o fluxo não é
+   opção como ele está: foi desenhado para o barbeiro decidir na faixa do
+   balcão, que não existe mais — ver a seção da política de atraso, adiante.
 
 **Buraco da própria auditoria:** a frente de segurança/multi-tenant morreu no
 limite de sessão antes de escrever o relatório. Não houve leitura sistemática de
@@ -675,6 +710,14 @@ passado, fluxo rodado à mão.
 
 Passo a passo em [`n8n-politica-de-atraso.md`](n8n-politica-de-atraso.md).
 
+**11/09: o campo "Atraso tolerado" saiu de Configurações** (achado 3 do plano
+C). Ele só alimentava este fluxo desligado, e o desenho do fluxo previa o
+barbeiro decidindo na faixa do balcão, que saiu em 25/08. Antes de ligar, o
+fluxo precisa ser refeito para a presença deduzida (0153) — por exemplo: o
+cliente responde "não vou" e o horário cancela na hora, liberando a cadeira;
+sem resposta, segue o cron. A coluna `atraso_tolerado_minutos` ficou no banco
+(padrão 10).
+
 ### ~~Pacotes de crédito e planos não têm interface~~ — OBSOLETO
 As cinco tabelas de pacote (`packages`, `package_items`, `client_packages`,
 `client_package_credits`, `package_usages`) **não existem mais** no banco —
@@ -771,6 +814,15 @@ rodou.
 `0021_instance_name_unico` foi registrada com timestamp `20260730005330`,
 depois de `0022_sincroniza_schema_producao` (`20260729000100`). Sem impacto
 funcional — ambas aplicadas — mas inconsistente para quem ler o histórico.
+
+**0145 a 0152 ficaram fora do histórico (achado de 11/09, corrigido no mesmo
+dia).** Foram aplicadas à mão como SQL solto em 10/09 — por mim —, e o
+histórico parava na `cobranca_pix_abacatepay` (0144). Conferido objeto por
+objeto que todas estão no banco; as oito foram registradas depois em
+`supabase_migrations.schema_migrations`, com versão = hora do commit que criou
+o arquivo (aproximação: a hora exata da aplicação não ficou em lugar nenhum) e
+`created_by = 'registro_retroativo'`. Desde a 0153, migration vai pelo
+`apply_migration`, que registra sozinho.
 
 ### `oxlint` analisa `.claude/`
 Um warning vem de `.claude/skills/design-system/scripts/generate-tokens.cjs`,

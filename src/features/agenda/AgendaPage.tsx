@@ -14,6 +14,7 @@ import { PageHeader } from '../../components/PageHeader'
 import { SkeletonPagina } from '../../components/Skeleton'
 import { EstadoVazio } from '../../components/EstadoVazio'
 import { ErroInline } from '../../components/ErroInline'
+import { ErroDeCarga } from '../../components/ErroDeCarga'
 
 const HOUR_START = 6
 const HOUR_END = 22
@@ -382,9 +383,22 @@ export function AgendaPage() {
             de presença deixou de ser do barbeiro. Quem fecha o ciclo é o
             banco — 15 min após o fim previsto do serviço, sem comanda fechada,
             o agendamento cancela sozinho (cancela_agendamentos_sem_comanda). */}
-        <div className="mb-3"><ErroInline>{error}</ErroInline></div>
+        {/* O erro de carga ganhou o caminho de volta (achado A13 do giro de
+            10/09). Era um `ErroInline` sem botão, com o `reload` do hook
+            desestruturado ali em cima e nunca ligado: com o sinal caindo entre
+            um corte e outro, a única saída era recarregar o navegador inteiro. */}
+        {error && (
+          <div className="mb-3">
+            <ErroDeCarga mensagem={error} aoTentarDeNovo={reload} tentando={loading} />
+          </div>
+        )}
 
-        {!loading && professionals.length === 0 ? (
+        {/* E o vazio deixou de mentir. Condicionado só a `!loading`, ele
+            aparecia JUNTO com o erro: com a rede caída o dono lia "Nenhum
+            profissional cadastrado ainda" numa barbearia com cinco barbeiros,
+            na rota `/` — a primeira tela que ele vê. Com erro e sem dado, só o
+            banner fala. */}
+        {error && professionals.length === 0 ? null : !loading && professionals.length === 0 ? (
           <EstadoVazio
             icone={Users}
             titulo="Nenhum profissional cadastrado ainda"
@@ -432,7 +446,7 @@ export function AgendaPage() {
             {/* Dia sem nenhuma reserva: aviso flutuante discreto, colado sob o
                 cabeçalho (sticky acompanha o scroll). O CTA é o mesmo botão
                 Nova reserva de sempre. */}
-            {!loading && appointments.length === 0 && (
+            {!loading && !error && appointments.length === 0 && (
               // `items-start` é o que conserta o vazamento (achado de 04/09).
               // O contêiner é `h-0` de propósito, para o aviso flutuar sobre a
               // grade sem empurrá-la. Só que `flex` sem alinhamento declarado é
@@ -571,7 +585,10 @@ export function AgendaPage() {
                 entravam na soma, e o número do card não batia com a grade —
                 "8 reservas" num dia com 5 cortes e 3 desistências. */}
             <span className="num-destaque text-3xl leading-none">
-              {appointments.filter((a) => a.status !== 'cancelado' && a.status !== 'faltou' && a.status !== 'bloqueio').length}
+              {/* Com a carga falhando, "0 reservas" seria a mesma mentira do vazio. */}
+              {error && appointments.length === 0
+                ? '—'
+                : appointments.filter((a) => a.status !== 'cancelado' && a.status !== 'faltou' && a.status !== 'bloqueio').length}
             </span>
             <span className="text-xs text-primary-foreground/70">
               {selectedDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}

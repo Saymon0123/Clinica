@@ -247,12 +247,20 @@ export function AppointmentDetailModal({
     navigate(`/financeiro?${params.toString()}`)
   }
 
-  // `faltou` entra aqui junto com os outros dois: oferecer "Concluir" em quem
-  // não apareceu produz atendimento fantasma no financeiro.
+  // Remarcar e cancelar somem nos três: não se remarca um horário que já
+  // passou, nem se cancela uma falta.
   const isFinal =
     appointment.status === 'concluido' ||
     appointment.status === 'cancelado' ||
     appointment.status === 'faltou'
+
+  // "Concluir e cobrar" vale também para `faltou` (plano C, 11/09). Esta regra
+  // dizia o contrário — "oferecer Concluir em quem não apareceu produz
+  // atendimento fantasma" —, e fazia sentido quando `faltou` era o barbeiro
+  // AFIRMANDO a falta. Desde a 0153 é o cron DEDUZINDO: nenhuma venda até 15
+  // minutos depois do fim. Quem lança tarde precisa desta porta para corrigir,
+  // e fantasma não há — cobrar exige lançar a venda, com pagamento.
+  const podeCobrar = !isFinal || appointment.status === 'faltou'
 
   return (
     <Modal onClose={onClose} titulo="Agendamento" tamanho="sm">
@@ -362,8 +370,14 @@ export function AppointmentDetailModal({
 
         <div className="mb-3"><ErroInline>{error}</ErroInline></div>
 
-        {!isFinal && (
+        {podeCobrar && (
           <div className="space-y-2">
+            {appointment.status === 'faltou' && (
+              <p className="text-xs text-muted-foreground">
+                Ficou como “não veio” porque nenhuma venda foi lançada até 15 minutos depois do
+                fim. Se o cliente veio, cobre por aqui e o horário passa para concluído.
+              </p>
+            )}
             <button
               onClick={handleConcludeAndCharge}
               disabled={busy}
@@ -375,7 +389,7 @@ export function AppointmentDetailModal({
             {/* Confirmação inline, como no excluir: cancelar por engano era o
                 toque errado mais provável do modal — e ele libera o horário
                 para o agente vender na hora. */}
-            {confirmCancel ? (
+            {!isFinal && (confirmCancel ? (
               <div className="flex items-center justify-between gap-2 border border-border-strong rounded-lg px-3 py-2">
                 <span className="text-xs text-danger">
                   Cancelar? O horário volta a ficar disponível.
@@ -404,7 +418,7 @@ export function AppointmentDetailModal({
                 <XCircle size={16} />
                 Cancelar agendamento
               </button>
-            )}
+            ))}
           </div>
         )}
 

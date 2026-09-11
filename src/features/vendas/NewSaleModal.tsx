@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { CalendarCheck, Plus, Trash2 } from 'lucide-react'
 import { Modal } from '../../components/Modal'
 import { Campo, Select } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
 import { gerarId } from '../../lib/id'
+import { inicioDoDia } from '../../lib/periodo'
 import { toast } from '../../components/Toast'
 import { useAuth } from '../auth/AuthContext'
 import { useSalon } from '../auth/useSalon'
+import type { AppointmentStatus } from '../agenda/types'
 import type { SaleItemDraft } from './types'
 import { PAYMENT_LABELS } from './types'
 import { ErroInline } from '../../components/ErroInline'
@@ -18,6 +20,17 @@ import {
   restante,
   type LinhaDePagamento,
 } from './pagamentos'
+import {
+  FalhaAoConcluirHorario,
+  SEM_LINHA,
+  STATUS_QUE_A_VENDA_CONCLUI,
+  faltaResponder,
+  horaLocal,
+  mensagemDeFalhaNoVinculo,
+  perguntaDoVinculo,
+  rotuloDoHorario,
+  type HorarioDoDia,
+} from './vinculoDeHorario'
 
 type Option = { id: string; nome: string; preco: number }
 type ClientOption = { id: string; nome: string }
@@ -49,6 +62,8 @@ export type SalePrefill = {
   serviceId?: string
   /** Serviços combinados no mesmo agendamento (item 6). Quando tem 2+, cada um vira um item da comanda; `serviceId` continua sendo o principal, mantido por compatibilidade. */
   serviceIds?: string[]
+  /** Hora do horário na agenda ('14:00'), para a comanda mostrar de qual horário ela é. */
+  horaLocal?: string
 }
 
 function formatCurrency(value: number) {
@@ -164,6 +179,75 @@ export function NewSaleModal({
       cancelado = true
     }
   }, [clientId])
+
+  /**
+   * De qual horário da agenda esta venda é (A7 do giro de 10/09, plano C).
+   *
+   * A presença é deduzida: 15 minutos depois do fim previsto, horário sem
+   * venda vira "não veio" (0153). Então toda venda que pertence a um horário
+   * precisa dizer qual. Duas portas levam ao vínculo: o "Concluir e cobrar" da
+   * agenda (já chega vinculado — `origem: 'agenda'`) e a pergunta que esta tela
+   * faz quando o cliente escolhido tem horário hoje (`origem: 'sugestao'`).
+   */
+  type Vinculo = { id: string; hora: string | null; origem: 'agenda' | 'sugestao' }
+  const [vinculo, setVinculo] = useState<Vinculo | null>(
+    prefill?.appointmentId
+      ? { id: prefill.appointmentId, hora: prefill.horaLocal ?? null, origem: 'agenda' }
+      : null,
+  )
+  /** "Não, é outra venda" — resposta explícita; sem nenhuma das duas, a venda não sai. */
+  const [semVinculo, setSemVinculo] = useState(false)
+  const [horariosDoDia, setHorariosDoDia] = useState<HorarioDoDia[]>([])
+  const [conferindoHorarios, setConferindoHorarios] = useState(false)
+
+  // Horários de HOJE do cliente escolhido que esta venda pode estar pagando.
+  // A RLS já recorta: o barbeiro só enxerga os horários dele, que são os
+  // únicos que ele conseguiria concluir. Falha aqui não trava a venda — sem a
+  // lista, a pergunta só não aparece.
+  useEffect(() => {
+    if (!clientId) {
+      setHorariosDoDia([])
+      setConferindoHorarios(false)
+      return
+    }
+    let cancelado = false
+    setConferindoHorarios(true)
+    const hoje = inicioDoDia()
+    const amanha = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + 1)
+    supabase
+      .from('appointments')
+      .select('id, data_hora_inicio, status, professional_id, professionals(nome)')
+      .eq('salon_id', salonId)
+      .eq('client_id', clientId)
+      .in('status', [...STATUS_QUE_A_VENDA_CONCLUI])
+      .gte('data_hora_inicio', hoje.toISOString())
+      .lt('data_hora_inicio', amanha.toISOString())
+      .order('data_hora_inicio')
+      .then(({ data, error: erroHorarios }) => {
+        if (cancelado) return
+        if (erroHorarios) console.error('Erro ao buscar os horários de hoje do cliente:', erroHorarios)
+        type Linha = {
+          id: string
+          data_hora_inicio: string
+          status: AppointmentStatus
+          professional_id: string
+          professionals: { nome: string } | { nome: string }[] | null
+        }
+        setHorariosDoDia(
+          ((data ?? []) as unknown as Linha[]).map((l) => ({
+            id: l.id,
+            inicio: l.data_hora_inicio,
+            status: l.status,
+            professionalId: l.professional_id,
+            barbeiro: (Array.isArray(l.professionals) ? l.professionals[0]?.nome : l.professionals?.nome) ?? null,
+          })),
+        )
+        setConferindoHorarios(false)
+      })
+    return () => {
+      cancelado = true
+    }
+  }, [clientId, salonId])
 
   useEffect(() => {
     async function load() {
@@ -450,6 +534,56 @@ export function NewSaleModal({
     ])
   }
 
+  /**
+   * "Sim, é esse": vincula a venda ao horário escolhido na pergunta.
+   *
+   * A comissão é de quem atendeu, então a venda passa para o barbeiro do
+   * horário (quando ele está na lista — o barbeiro logado só vê a si mesmo, e
+   * a RLS só mostrou os horários dele). E a comanda vazia ganha os serviços
+   * do horário, como no "Concluir e cobrar": as duas portas precisam dar no
+   * mesmo lugar.
+   */
+  function vincular(h: HorarioDoDia) {
+    setVinculo({ id: h.id, hora: horaLocal(h.inicio), origem: 'sugestao' })
+    setSemVinculo(false)
+    setError(null)
+    if (professionals.some((p) => p.id === h.professionalId)) setProfessionalId(h.professionalId)
+    if (items.length === 0) preencherServicosDoHorario(h.id)
+  }
+
+  async function preencherServicosDoHorario(appointmentId: string) {
+    const { data } = await supabase
+      .from('servicos_do_agendamento')
+      .select('service_id')
+      .eq('appointment_id', appointmentId)
+      .order('ordem')
+    const novos: SaleItemDraft[] = ((data ?? []) as { service_id: string }[])
+      .map((l) => services.find((s) => s.id === l.service_id))
+      .filter((s): s is Option => Boolean(s))
+      .map((s) => ({
+        chave: gerarId(),
+        tipo: 'servico',
+        refId: s.id,
+        nome: s.nome,
+        quantidade: 1,
+        preco_unitario: s.preco,
+      }))
+    // Só entra se a comanda continuar vazia: se o barbeiro lançou algo
+    // enquanto a consulta voltava, o que ele lançou vale.
+    if (novos.length > 0) setItems((prev) => (prev.length === 0 ? novos : prev))
+  }
+
+  /**
+   * Desfaz o vínculo e já registra a resposta "sem horário" — é a saída quando
+   * o horário não pode virar concluído (cadeira ocupada, horário excluído).
+   * "Mudar" traz a pergunta de volta.
+   */
+  function desvincular() {
+    setVinculo(null)
+    setSemVinculo(true)
+    setError(null)
+  }
+
   async function handleSave() {
     if (items.length === 0) {
       setError('Adicione ao menos um item à venda.')
@@ -481,6 +615,10 @@ export function NewSaleModal({
       setError(resultadoPagamentos.erro)
       return
     }
+    if (faltaResponder({ vinculado: Boolean(vinculo), semVinculo, horarios: horariosDoDia.length })) {
+      setError('Responda acima se esta venda é do horário de hoje do cliente.')
+      return
+    }
 
     setSaving(true)
     setError(null)
@@ -492,7 +630,7 @@ export function NewSaleModal({
         salon_id: salonId,
         client_id: clientId || null,
         professional_id: professionalId,
-        appointment_id: prefill?.appointmentId ?? null,
+        appointment_id: vinculo?.id ?? null,
         status: 'fechada',
         closed_at: new Date().toISOString(),
       })
@@ -501,7 +639,14 @@ export function NewSaleModal({
 
     if (orderError || !order) {
       console.error('Erro ao criar venda:', orderError)
-      setError('Não foi possível registrar a venda. Tente novamente.')
+      // Horário vinculado que sumiu no meio do caminho (excluído em outro
+      // aparelho) derruba a comanda pela chave estrangeira — e aí "tente
+      // novamente" falharia para sempre.
+      setError(
+        vinculo && orderError?.code === '23503'
+          ? mensagemDeFalhaNoVinculo(orderError, vinculo.hora)
+          : 'Não foi possível registrar a venda. Tente novamente.',
+      )
       setSaving(false)
       return
     }
@@ -654,15 +799,26 @@ export function NewSaleModal({
         if (avisoError) console.error('Preferência de aviso não salvou:', avisoError)
       }
 
-      // 8. Se veio de um agendamento, marca como concluído. Fatal de
-      // propósito: venda sem agendamento concluído deixaria o cron cancelar
-      // um horário que foi atendido e pago.
-      if (prefill?.appointmentId) {
-        const { error: apptError } = await supabase
+      // 8. Venda de um horário: o horário vira concluído. Fatal de propósito —
+      // venda sem horário concluído deixaria o cron registrar como "não veio"
+      // quem veio e pagou (e, na reativação, contar falta contra o cliente).
+      //
+      // `faltou` também passa por aqui: é a correção de quem lançou tarde. Se
+      // a cadeira já foi ocupada por outro atendimento, as travas de
+      // sobreposição recusam (23P01), porque o horário voltaria a ocupá-la.
+      //
+      // O `.select` enxerga o update que não pegou linha nenhuma (horário
+      // excluído, ou fora do alcance da RLS): sem ele, "0 linhas" passaria
+      // como sucesso, e o horário ficaria como "não veio" em silêncio.
+      if (vinculo) {
+        const { data: concluidos, error: apptError } = await supabase
           .from('appointments')
           .update({ status: 'concluido' })
-          .eq('id', prefill.appointmentId)
-        if (apptError) throw apptError
+          .eq('id', vinculo.id)
+          .select('id')
+        if (apptError || !concluidos?.length) {
+          throw new FalhaAoConcluirHorario(apptError ?? { code: SEM_LINHA })
+        }
       }
 
       toast('Venda registrada')
@@ -675,7 +831,13 @@ export function NewSaleModal({
         await supabase.from('stock_movements').delete().in('id', movimentosInseridos)
       }
       await supabase.from('orders').delete().eq('id', order.id)
-      setError('Não foi possível completar a venda. Nada foi salvo, tente novamente.')
+      // Falha do vínculo não se resolve tentando de novo: a mensagem diz o
+      // que fazer (desvincular) em vez do "tente novamente" de sempre.
+      setError(
+        err instanceof FalhaAoConcluirHorario
+          ? mensagemDeFalhaNoVinculo(err.falha, vinculo?.hora ?? null)
+          : 'Não foi possível completar a venda. Nada foi salvo, tente novamente.',
+      )
       setSaving(false)
     }
   }
@@ -711,6 +873,13 @@ export function NewSaleModal({
                   // cliente debita o crédito do antigo em silêncio.
                   setClientId(e.target.value)
                   setItems((prev) => prev.filter((i) => !i.viaPacote))
+                  // Pelo mesmo motivo, o vínculo SUGERIDO cai: era com um
+                  // horário do cliente anterior. O que veio da agenda fica —
+                  // foi escolhido no cartão do próprio horário, e trocar o
+                  // cliente ali costuma ser corrigir o nome. A resposta "sem
+                  // horário" também zera: a pergunta agora é sobre outra pessoa.
+                  if (vinculo?.origem === 'sugestao') setVinculo(null)
+                  setSemVinculo(false)
                 }}
               >
                 <option value="">Sem cliente</option>
@@ -854,6 +1023,58 @@ export function NewSaleModal({
               </Select>
             </Campo>
           </div>
+
+          {/* De qual horário é esta venda (plano C). Fica entre o cabeçalho e
+              os itens porque "Sim" preenche a comanda com os serviços do
+              horário — é a próxima coisa que o barbeiro vai olhar. */}
+          {vinculo ? (
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-success/40 bg-success-soft p-2.5 text-sm">
+              <span className="flex items-center gap-2 min-w-0 text-foreground">
+                <CalendarCheck size={16} className="shrink-0 text-success" />
+                <span className="min-w-0">
+                  Venda do horário {vinculo.hora ? `das ${vinculo.hora}` : 'da agenda'} — ao finalizar,
+                  ele passa para concluído.
+                </span>
+              </span>
+              <button type="button" onClick={desvincular} className="shrink-0 btn-chip">
+                Desvincular
+              </button>
+            </div>
+          ) : semVinculo ? (
+            <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+              <span>Venda sem horário vinculado.</span>
+              {horariosDoDia.length > 0 && (
+                <button type="button" onClick={() => setSemVinculo(false)} className="shrink-0 btn-chip">
+                  Mudar
+                </button>
+              )}
+            </div>
+          ) : horariosDoDia.length > 0 ? (
+            <div className="rounded-lg border border-primary/40 bg-primary-soft/30 p-3 space-y-2 text-sm">
+              <p className="text-foreground">
+                {perguntaDoVinculo(clients.find((c) => c.id === clientId)?.nome ?? 'O cliente', horariosDoDia)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Se for, o horário passa para concluído. Horário sem venda fica como “não veio” 15
+                minutos depois do fim.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {horariosDoDia.map((h) => (
+                  <button
+                    key={h.id}
+                    type="button"
+                    onClick={() => vincular(h)}
+                    className="btn-chip btn-chip-primario"
+                  >
+                    {horariosDoDia.length === 1 ? 'Sim, é esse' : rotuloDoHorario(h)}
+                  </button>
+                ))}
+                <button type="button" onClick={() => setSemVinculo(true)} className="btn-chip">
+                  Não, é outra venda
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           {/* Adição de itens */}
           <div className="border border-border rounded-lg p-3 space-y-2">
@@ -1042,13 +1263,15 @@ export function NewSaleModal({
             >
               Cancelar
             </button>
+            {/* Espera a lista de horários do cliente: finalizar antes de ela
+                chegar pularia a pergunta e deixaria o horário como "não veio". */}
             <button
               onClick={handleSave}
-              disabled={saving || items.length === 0}
+              disabled={saving || conferindoHorarios || items.length === 0}
               type="button"
               className="flex-1 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
-              {saving ? 'Salvando...' : `Finalizar venda`}
+              {saving ? 'Salvando...' : conferindoHorarios ? 'Conferindo horários...' : 'Finalizar venda'}
             </button>
           </div>
         </div>

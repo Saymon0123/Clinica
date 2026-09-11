@@ -8,7 +8,8 @@ import type { SalePrefill } from '../features/vendas/NewSaleModal'
  * partir daí o vínculo vivia só na memória do componente: trocar de aba,
  * fechar o modal sem querer ou clicar em "Nova venda" zerava tudo. Sem
  * vínculo, o passo que marca o agendamento como `concluido` não roda, e o
- * cron cancela o horário que foi atendido e pago (achado 7 da revisão).
+ * cron registra como "não veio" (0153; até ali, cancelava) o horário que foi
+ * atendido e pago (achado 7 da revisão).
  *
  * Guardar aqui faz o vínculo sobreviver ao caminho inteiro até a venda ser
  * salva — que é o único momento em que ele deixa de ser necessário.

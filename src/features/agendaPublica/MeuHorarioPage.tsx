@@ -27,12 +27,44 @@ type Horario = {
   whatsappBarbearia: string | null
 }
 
+/**
+ * No fuso da barbearia, não no do navegador (M9 do giro de 10/09). A página é
+ * pública: quem abre o link com o celular em outro fuso — viajando, ou com o
+ * aparelho mal configurado — via o horário deslocado, sem aviso nenhum.
+ */
 function formatar(inicio: string) {
   const d = new Date(inicio)
   return {
-    dia: d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' }),
-    hora: d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    dia: d.toLocaleDateString('pt-BR', {
+      weekday: 'long',
+      day: '2-digit',
+      month: '2-digit',
+      timeZone: 'America/Sao_Paulo',
+    }),
+    hora: d.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'America/Sao_Paulo',
+    }),
   }
+}
+
+/**
+ * O título de cada estado (M9). Antes, tudo o que não era `cancelado` caía no
+ * check verde de "Horário marcado" — inclusive quem já tinha sido atendido e
+ * quem ficou como falta.
+ *
+ * `faltou` recebe "já passou", e não "você não veio", de propósito: desde a
+ * 0153 a falta é DEDUZIDA (nenhuma venda até 15 minutos depois do fim) e pode
+ * estar errada — o barbeiro lançou tarde. "Já passou" é verdade nos dois casos;
+ * "você não veio" seria acusar quem veio.
+ */
+function tituloDo(status: string) {
+  if (status === 'confirmado') return 'Horário confirmado'
+  if (status === 'agendado') return 'Horário marcado'
+  if (status === 'cancelado') return 'Horário cancelado'
+  if (status === 'concluido') return 'Atendimento concluído'
+  return 'Este horário já passou'
 }
 
 export function MeuHorarioPage() {
@@ -79,7 +111,9 @@ export function MeuHorarioPage() {
 
   const f = dados ? formatar(dados.inicio) : null
   const dePe = dados?.status === 'agendado' || dados?.status === 'confirmado'
-  const cancelado = dados?.status === 'cancelado'
+  // Check verde só para o que está de pé ou foi atendido; cancelado e horário
+  // que passou ficam neutros.
+  const positivo = dePe || dados?.status === 'concluido'
   const linkWhats = dados?.whatsappBarbearia ? `https://wa.me/${dados.whatsappBarbearia}` : null
 
   return (
@@ -100,19 +134,10 @@ export function MeuHorarioPage() {
           <ErroInline>{erro}</ErroInline>
         ) : (
           <div className="surge rounded-xl border border-border bg-surface p-5 space-y-4 shadow-sm">
-            {cancelado ? (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <CalendarX2 size={20} />
-                <h1 className="text-base font-semibold text-foreground">Horário cancelado</h1>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 text-success">
-                <Check size={20} />
-                <h1 className="text-base font-semibold text-foreground">
-                  {dados.status === 'confirmado' ? 'Horário confirmado' : 'Horário marcado'}
-                </h1>
-              </div>
-            )}
+            <div className={`flex items-center gap-2 ${positivo ? 'text-success' : 'text-muted-foreground'}`}>
+              {positivo ? <Check size={20} /> : <CalendarX2 size={20} />}
+              <h1 className="text-base font-semibold text-foreground">{tituloDo(dados.status)}</h1>
+            </div>
 
             <div className="rounded-lg bg-surface-2 p-3.5 space-y-1">
               <div className="flex items-center gap-1.5 text-base font-semibold text-foreground">
@@ -171,13 +196,18 @@ export function MeuHorarioPage() {
               </div>
             )}
 
-            {cancelado && linkWhats && (
+            {/* Todo estado que não está de pé termina numa porta para marcar de
+                novo (M9): atendido, cancelado ou horário que passou — antes,
+                só o cancelado tinha botão, e os outros ficavam num beco. */}
+            {!dePe && linkWhats && (
               <a
                 href={linkWhats}
                 className="w-full flex items-center justify-center gap-2 btn-primary rounded-lg px-3 py-3 text-sm font-semibold"
               >
                 <MessageCircle size={16} />
-                Marcar outro horário pelo WhatsApp
+                {dados.status === 'concluido'
+                  ? 'Marcar o próximo pelo WhatsApp'
+                  : 'Marcar outro horário pelo WhatsApp'}
               </a>
             )}
           </div>

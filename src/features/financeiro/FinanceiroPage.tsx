@@ -153,25 +153,38 @@ export function FinanceiroPage() {
    * Fecha o horário sem gerar venda.
    *
    * Cortesia, retoque de graça, atendimento que o dono decidiu não cobrar: o
-   * atendimento ACONTECEU, e sem isto o cron o cancela como se o cliente não
-   * tivesse vindo — sujando a agenda e a taxa de cancelamento.
+   * atendimento ACONTECEU, e sem isto o cron o registra como "não veio"
+   * (0153) — sujando a agenda, o histórico do cliente e, na reativação, a
+   * contagem de faltas.
+   *
+   * Duas falhas não se resolvem tentando de novo, e por isso descartam a
+   * pendência em vez de deixá-la presa na tela: o horário que sumiu da agenda
+   * (o update volta sem linha) e a falta cuja cadeira já foi ocupada por outro
+   * atendimento (23P01 — concluí-la poria dois no mesmo horário).
    */
   async function concluirSemCobrar() {
     if (!vendaPendente?.appointmentId || !salonId) return
     setConcluindoSemCobrar(true)
-    const { error } = await supabase
+    const { data: concluidos, error } = await supabase
       .from('appointments')
       .update({ status: 'concluido' })
       .eq('id', vendaPendente.appointmentId)
+      .select('id')
     setConcluindoSemCobrar(false)
-    if (error) {
+    if (error && error.code !== '23P01') {
       console.error('Erro ao concluir sem cobrar:', error)
       toast('Não foi possível concluir o atendimento')
       return
     }
     limparVendaPendente(salonId)
     setVendaPendente(null)
-    toast('Atendimento concluído, sem cobrança')
+    toast(
+      error
+        ? 'A cadeira desse horário já foi ocupada por outro atendimento — ele fica como está'
+        : concluidos?.length
+          ? 'Atendimento concluído, sem cobrança'
+          : 'Esse horário não está mais na agenda',
+    )
   }
 
   // Sem meta definida não há "meta atingida": o padrão de R$ 3.000 é só um
@@ -359,7 +372,8 @@ export function FinanceiroPage() {
         {/* Cobrança pela metade: em vez de sumir, ela fica visível com as duas
             saídas possíveis. "Concluir sem cobrar" existe porque atendimento
             de cortesia, troca ou erro também precisa fechar o horário — senão
-            o cron cancela um atendimento que aconteceu de verdade. */}
+            o cron registra como "não veio" um atendimento que aconteceu de
+            verdade. */}
         {vendaPendente && !salePrefill && (
           <div className="mb-4 rounded-xl border border-primary/40 bg-primary-soft/30 p-4 flex flex-wrap items-center gap-3">
             <div className="flex-1 min-w-[200px]">

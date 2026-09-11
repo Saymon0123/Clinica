@@ -48,9 +48,11 @@ export function ConfiguracoesPage() {
   // Minutos livres exigidos antes e depois de cada atendimento. Zero mantem o
   // comportamento antigo, colado.
   const [folga, setFolga] = useState('0')
-  // Minutos de atraso antes de o sistema reagir. Vale para os dois lados da
-  // mesma pergunta: quando o botão "Não veio" aparece na faixa do balcão, e
-  // quando o agente pergunta ao cliente se ele está vindo.
+  // Minutos de atraso antes de o sistema reagir: quando o agente pergunta ao
+  // cliente se ele está vindo (view `atrasos_para_perguntar`, fluxo "Política
+  // de Atraso" do n8n — hoje DESLIGADO). O botão "Não veio" da faixa do balcão,
+  // que também usava este número, saiu em 25/08: a falta passou a ser deduzida
+  // pelo banco (0153).
   const [atraso, setAtraso] = useState('10')
   const [horario, setHorario] = useState<DiaSemana[]>([])
   const [carregando, setCarregando] = useState(true)

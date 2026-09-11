@@ -1,4 +1,17 @@
 export type SaleItemDraft = {
+  /**
+   * Identidade da LINHA na comanda — é a `key` do React. Única por item, gerada
+   * com `gerarId()` na hora em que o item entra.
+   *
+   * Não confundir com `uid`, que é o VÍNCULO de negócio de um pacote com os
+   * consumos da mesma venda e só existe em pacote. Esta existe em todo item.
+   *
+   * Obrigatória de propósito: a chave por índice fazia a caixa de preço mostrar
+   * o valor do item REMOVIDO (achado M6 do giro de 10/09). Opcional, um próximo
+   * ponto de criação poderia esquecê-la em silêncio; obrigatória, o TypeScript
+   * recusa.
+   */
+  chave: string
   tipo: 'servico' | 'produto' | 'pacote'
   refId: string
   nome: string

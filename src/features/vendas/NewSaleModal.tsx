@@ -252,6 +252,7 @@ export function NewSaleModal({
           .map((id) => s.data!.find((x) => x.id === id))
           .filter((svc): svc is NonNullable<typeof svc> => Boolean(svc))
           .map((svc) => ({
+            chave: gerarId(),
             tipo: 'servico' as const,
             refId: svc.id,
             nome: svc.nome,
@@ -293,6 +294,7 @@ export function NewSaleModal({
           quantidade: 1,
           preco_unitario: pacote.preco,
           uid: gerarId(),
+          chave: gerarId(),
         },
       ])
       setItemRef('')
@@ -332,7 +334,7 @@ export function NewSaleModal({
     setError(null)
     setItems((prev) => [
       ...prev,
-      { tipo: itemType, refId: opt.id, nome: opt.nome, quantidade: itemQty, preco_unitario: opt.preco },
+      { chave: gerarId(), tipo: itemType, refId: opt.id, nome: opt.nome, quantidade: itemQty, preco_unitario: opt.preco },
     ])
     setItemRef('')
     setItemQty(1)
@@ -408,6 +410,7 @@ export function NewSaleModal({
     setItems((prev) => [
       ...prev,
       {
+        chave: gerarId(),
         tipo: 'servico',
         refId: saldo.service_id,
         nome: `${saldo.servico} (pacote)`,
@@ -436,6 +439,7 @@ export function NewSaleModal({
     setItems((prev) => [
       ...prev,
       {
+        chave: gerarId(),
         tipo: 'servico',
         refId: servico.service_id,
         nome: `${servico.servico} (pacote)`,
@@ -907,7 +911,7 @@ export function NewSaleModal({
             <div className="space-y-1.5">
               {items.map((i, idx) => (
                 <div
-                  key={idx}
+                  key={i.chave}
                   className="flex items-center justify-between gap-2 bg-surface-2 rounded-lg px-3 py-2 text-sm"
                 >
                   <span className="text-foreground truncate">
@@ -921,8 +925,20 @@ export function NewSaleModal({
                       <>
                         {/* Não controlado de propósito: controlado por número,
                             "12," virava 12 antes de dar tempo de digitar o
-                            resto. A chave é o índice, então remover um item
-                            remonta os de baixo com o preço certo. */}
+                            resto.
+
+                            E é por isso que a `key` da linha PRECISA ser o id
+                            estável do item (`chave`), nunca o índice. O
+                            comentário que morava aqui dizia o contrário — "a
+                            chave é o índice, então remover um item remonta os
+                            de baixo com o preço certo" — e é justamente a chave
+                            por índice que IMPEDE a remontagem: tirando o item 0
+                            de [A 10, B 20], o React reaproveita o input da
+                            posição 0 para o B, e input não controlado ignora
+                            `defaultValue` depois de montado. A caixa seguia
+                            mostrando 10 enquanto o nome e o total ao lado já
+                            diziam B e R$ 20,00 — na tela que fecha dinheiro
+                            (achado M6 do giro de 10/09). */}
                         <input
                           type="number"
                           inputMode="decimal"

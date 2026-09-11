@@ -36,9 +36,17 @@ function mostrarFalhaDeConfiguracao(erro: unknown) {
 
   const doc = document
   const caixa = doc.createElement('div')
+  // Fundo e cor PRÓPRIOS, não herdados (achado M7 do giro de 10/09).
+  // `initTheme()` já rodou lá em cima e, no tema escuro, deixou o body em
+  // #0d1512: a mensagem em #b91c1c ficava em 2,86:1 e a orientação em #666 em
+  // 3,23:1 — as duas abaixo de 4,5:1, justo na tela que aparece quando falta
+  // variável na Vercel e a pessoa PRECISA ler o diagnóstico. Sobre branco: 6,47:1
+  // e 5,74:1. Cor fixa, e não token: a tela de falha não pode depender de mais
+  // nada estar de pé.
   caixa.setAttribute(
     'style',
     'max-width:34rem;margin:12vh auto;padding:1.5rem;font-family:system-ui,sans-serif;' +
+      'background:#fff;color:#111;' +
       'border:1px solid #e5e5e5;border-radius:12px;line-height:1.5',
   )
 

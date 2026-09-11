@@ -78,6 +78,61 @@ async function entregarAoN8n(corpo: Record<string, unknown>, onde: string): Prom
   }
 }
 
+type StatusDeEntrega = {
+  id?: string
+  status?: string
+  recipient_id?: string
+  errors?: { code?: number; title?: string; message?: string; error_data?: { details?: string } }[]
+}
+
+/**
+ * O bloco `statuses` — que antes era descartado inteiro nos dois ramos.
+ *
+ * É o ÚNICO lugar por onde um erro da Meta chega. Sem ler isto, o sistema acha
+ * que entregou: o lembrete não chegou, o convite não chegou, e nada muda de cor
+ * em lugar nenhum. Você descobre pelo cliente que não apareceu.
+ *
+ * Só `failed` é gravado. `sent`, `delivered` e `read` chegam para toda mensagem
+ * e são volume puro — registrar os quatro encheria a tabela para esconder os
+ * que importam.
+ */
+async function registrarFalhasDeEntrega(
+  admin: ReturnType<typeof createClient>,
+  statuses: StatusDeEntrega[],
+  phoneNumberId: string,
+) {
+  for (const s of statuses) {
+    if (s.status !== 'failed' || !s.id) continue
+    const erro = s.errors?.[0]
+    const { error } = await admin.rpc('registrar_entrega_falhada', {
+      p_message_id: s.id,
+      p_destino: s.recipient_id ?? 'desconhecido',
+      p_codigo: erro?.code ?? null,
+      p_titulo: erro?.title ?? null,
+      p_detalhe: erro?.error_data?.details ?? erro?.message ?? null,
+      p_phone_number_id: phoneNumberId,
+    })
+    if (error) {
+      console.error('Erro ao registrar entrega falhada:', error.message, s.id)
+      await capturarErro(error, 'whatsapp-webhook', { onde: 'registrar-entrega-falhada' })
+      continue
+    }
+    console.log('entrega falhada:', s.id, 'para', s.recipient_id, 'codigo', erro?.code ?? '?')
+
+    // Códigos de CONTA, não de destinatário: não adianta o dono conferir o
+    // telefone do cliente porque o problema é do outro lado. Esses sobem ao
+    // Sentry, que é onde eu olho.
+    const daConta = [131031, 133000, 133004, 133005, 133006, 368, 131056]
+    if (erro?.code && daConta.includes(erro.code)) {
+      await capturarErro(
+        new Error(`Meta bloqueou o envio: ${erro.code} ${erro.title ?? ''}`),
+        'whatsapp-webhook',
+        { onde: 'conta-bloqueada', codigo: erro.code, phoneNumberId },
+      )
+    }
+  }
+}
+
 /** Limite de tentativas via banco (0111). Erro do limitador deixa passar. */
 async function taxaExcedida(
   admin: ReturnType<typeof createClient>,
@@ -386,7 +441,13 @@ Deno.serve(comSentry('whatsapp-webhook', async (req) => {
             console.error('phone_number_id desconhecido:', phoneNumberId)
             continue
           }
-          if (valor.statuses?.length) continue
+          // Status de entrega: não é conversa, mas também não é lixo. Lembrete,
+          // avaliação e reativação saem TODOS por este número — é aqui que se
+          // descobre que não chegaram.
+          if (valor.statuses?.length) {
+            await registrarFalhasDeEntrega(admin, valor.statuses as StatusDeEntrega[], phoneNumberId)
+            continue
+          }
 
           for (const m of (valor.messages ?? []) as MensagemRecebida[]) {
             const { texto, tipo } = conteudoDaMensagem(m)
@@ -487,8 +548,12 @@ Deno.serve(comSentry('whatsapp-webhook', async (req) => {
         }
 
         // Status de entrega (enviado, lido, falhou) chega no mesmo webhook das
-        // mensagens. Não é conversa, e o agente não deve ser acordado por isso.
-        if (valor.statuses?.length) continue
+        // mensagens. Não é conversa — o agente não deve ser acordado por isso —
+        // mas o `failed` é registrado antes de sair.
+        if (valor.statuses?.length) {
+          await registrarFalhasDeEntrega(admin, valor.statuses as StatusDeEntrega[], phoneNumberId)
+          continue
+        }
 
         for (const m of (valor.messages ?? []) as MensagemRecebida[]) {
           const { texto, media_id, tipo } = conteudoDaMensagem(m)

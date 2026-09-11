@@ -149,8 +149,40 @@ o Asaas como operador).
 
    **Continua aberto:** não há scanner de dependência no CI (zero `npm audit`,
    gitleaks, CodeQL ou dependabot).
-9. **Isolamento multi-tenant testado em 3 tabelas de 54** — o fixture de dois
-   tenants já existe, faltam asserções.
+9. ~~**Isolamento multi-tenant testado em 3 tabelas de 54**~~ — **RESOLVIDO em
+   10/09** (`rls_isolamento_operacao.test.sql`, 22 asserções sobre 13 tabelas,
+   incluindo as cinco **sem `salon_id`**, cujo isolamento depende do join ao
+   pai). Rodou contra um banco criado do zero no CI e **nenhum vazamento
+   apareceu**. Faltam as três filhas de pacote — está registrado adiante.
+
+11. ~~**Erros da Meta são invisíveis por construção**~~ — **RESOLVIDO em 10/09**
+    (migration 0152). O `if (valor.statuses?.length) continue` dos dois ramos
+    virou registro: `failed` grava em `entregas_falhadas` (PK no wamid, então
+    reentrega da Meta não conta duas vezes), o salão sai do wamid do lembrete ou
+    do pedido de avaliação, e a view `auditoria_entrega` entra na fila
+    `auditoria_pendente` **agrupada por número, não por mensagem** — cinco
+    clientes com telefone errado virariam cinquenta avisos, e aviso demais é o
+    mesmo que aviso nenhum.
+
+    O dono lê, por exemplo: *"Joao da Silva (5541987654321) não recebeu 2
+    mensagem(ns): o número não tem WhatsApp ou não pode receber. Confira o
+    telefone na ficha do cliente."*
+
+    Códigos de **conta** (131031, 133000/4/5/6, 368, 131056) não viram aviso ao
+    dono — o problema não é o telefone do cliente dele. Esses sobem ao Sentry.
+
+    **Escopo, como combinado:** o dono levantou que a janela de 24h deixa de ser
+    grátis em 01/10 e que o 131047 perde relevância. Concordo — na prática todo
+    texto livre do sistema responde a algo que o cliente acabou de fazer, com a
+    janela aberta. O valor está no resto: **número inválido, bloqueio pelo
+    cliente e template pausado por qualidade** não dependem de janela nenhuma.
+    *(Correção de fato registrada: a janela não deixa de existir em outubro — ela
+    é regra de PERMISSÃO, não de preço. Fora dela só passa template. Outubro
+    muda o preço de quem está dentro.)*
+
+    **Não testado:** o caminho HTTP (Meta → webhook → RPC), pela mesma razão de
+    sempre — o `WHATSAPP_APP_SECRET` só existe no cofre e não dá para assinar
+    payload daqui. Testadas as duas pontas: 7 casos sobre a RPC e a view.
 10. **Sem CPF/CNPJ = uso ilimitado sem bloqueio** — o bloqueio olha
     `cobranca_vence_em`, que só existe quando há cobrança.
 

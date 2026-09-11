@@ -40,6 +40,13 @@ async function callWhatsapp(action: 'connect' | 'status' | 'disconnect', salonId
     error?: string
     /** false quando a Evolution não ficou apontada para o fluxo do agente. */
     webhookOk?: boolean
+    /**
+     * false quando as configurações da instância não foram aplicadas — entre
+     * elas `groupsIgnore`, sem o qual o agente responde em grupo. A edge sempre
+     * devolveu isto; a tela é que não declarava o campo e jogava fora (achado
+     * M15 do giro de 10/09).
+     */
+    settingsOk?: boolean
   }
 }
 
@@ -174,6 +181,7 @@ function ConexaoEvolutionLegada({ salonId }: { salonId: string }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [webhookAviso, setWebhookAviso] = useState(false)
+  const [settingsAviso, setSettingsAviso] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const failuresRef = useRef(0)
   const [qrVencido, setQrVencido] = useState(false)
@@ -236,6 +244,7 @@ function ConexaoEvolutionLegada({ salonId }: { salonId: string }) {
       setStatus(result.status)
       setQrCode(result.qrCode ?? null)
       setWebhookAviso(result.webhookOk === false)
+      setSettingsAviso(result.settingsOk === false)
       setQrVencido(false)
       if (qrTimerRef.current) clearTimeout(qrTimerRef.current)
       if (result.qrCode) {
@@ -307,6 +316,21 @@ function ConexaoEvolutionLegada({ salonId }: { salonId: string }) {
             Não foi possível apontar a Evolution API para o fluxo do agente. Verifique o secret
             N8N_WEBHOOK_URL nas configurações das Edge Functions do Supabase e clique em conectar
             de novo.
+          </p>
+        </div>
+      )}
+
+      {/* O dono via "conectado" e o agente passava a responder em GRUPO de
+          WhatsApp — exatamente o que a configuração existe para impedir. A
+          edge sempre soube (`settingsOk`); a tela não escutava. */}
+      {settingsAviso && (
+        <div className="mb-3 rounded-lg border border-warning bg-warning/10 p-3">
+          <p className="text-sm font-medium text-foreground">
+            WhatsApp conecta, mas as configurações de segurança não foram aplicadas.
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Sem elas, o atendimento automático pode responder em grupos de WhatsApp. Clique em
+            conectar de novo — a configuração é reaplicada a cada conexão.
           </p>
         </div>
       )}

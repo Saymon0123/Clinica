@@ -330,6 +330,25 @@ Estavam só no chat. Pela regra da casa, o que não está aqui some do radar.
    `pacote_do_cliente_itens`. São exatamente a categoria de risco (isolamento
    dependente do join ao pai). `pacotes` e `pacotes_do_cliente` estão cobertas.
 
+### Médios fechados em 11/09 (Fase 2)
+
+- ~~**M6 — preço fantasma na comanda**~~ — a linha da comanda usava o índice
+  como `key`. **Reproduzido** com React 19.2.7 e jsdom: itens A=10, B=20, C=30,
+  remove o A → **B mostra 10 e C mostra 20**; com id estável, B mostra 20 e C
+  mostra 30. Pior do que a auditoria descreveu: não era só a primeira linha —
+  **toda linha abaixo da removida** passava a mostrar o preço da de cima. O
+  valor gravado sempre esteve certo (vem do estado, não da caixa); o que mentia
+  era o que o barbeiro lia, na tela que fecha dinheiro. Conserto: `chave`
+  **obrigatória** no `SaleItemDraft`, gerada nos cinco pontos que criam item —
+  obrigatória para o TypeScript recusar o próximo ponto que esquecer.
+- ~~**M7 — tela de falha do boot ilegível no escuro**~~ — a caixa herdava o
+  fundo do tema. Contraste recalculado à mão: **2,86:1** e **3,23:1** no escuro;
+  com fundo branco próprio, **6,47:1** e **5,74:1**. Cor fixa e não token: a
+  tela de falha não pode depender de mais nada estar de pé.
+- ~~**M15 — `settingsOk` descartado pela tela**~~ — a edge sempre devolveu; a
+  `ConexaoPage` não declarava o campo e jogava fora. Agora avisa, no mesmo
+  padrão do aviso de webhook, que o agente pode responder em grupos.
+
 **Buraco da própria auditoria:** a frente de segurança/multi-tenant morreu no
 limite de sessão antes de escrever o relatório. Não houve leitura sistemática de
 autorização por objeto no `src/` e nas edges — só a verificação direta no banco

@@ -151,6 +151,11 @@ select is(
 insert into subscriptions (salon_id, status, acesso_ate, trial_ate)
 values (:'salao_devendo', 'ativa', pg_temp.hoje() - 5, pg_temp.hoje() - 30);
 
+-- Desde a 0156 (M2), renovar depois do teste exige documento válido de quem paga.
+-- Gravado ANTES de vencer o acesso: assim o gatilho de documento não tem o que
+-- destravar, e quem renova, lá embaixo, é o job — que é o que se testa aqui.
+update subscriptions set cpf_cnpj = '52998224725' where salon_id = :'salao_trial';
+
 update subscriptions set acesso_ate = pg_temp.hoje() - 5 where salon_id = :'salao_trial';
 
 -- Este deve de verdade: fatura com valor, cobranca emitida e vencida sem pagar.

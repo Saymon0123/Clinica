@@ -7,6 +7,7 @@ import { DadosDeCobranca } from './DadosDeCobranca'
 import { CancelarUso } from './CancelarUso'
 import { CobrancaDaRede } from './CobrancaDaRede'
 import { UsoDoSistema } from './UsoDoSistema'
+import { pedidoDeDocumento } from './documentoParaContinuar'
 
 function formatarData(iso: string) {
   const [ano, mes, dia] = iso.split('-')
@@ -23,16 +24,26 @@ function formatarData(iso: string) {
  */
 function Situacao({ assinatura }: { assinatura: Assinatura }) {
   const { status, diasRestantes, expirada, acessoAte } = assinatura
+  // M2 (0156): sem documento de quem paga, o teste acaba e o acesso não renova.
+  const pedido = pedidoDeDocumento(assinatura)
 
   if (expirada) {
+    // Bloqueio por falta de documento não tem cobrança para pagar: mandar o dono
+    // "pagar a última cobrança" seria procurar um Pix que não existe.
+    const semDocumento = assinatura.motivoDoBloqueio === 'sem_documento'
     return (
       <div className="flex items-start gap-2 text-danger">
         <AlertTriangle size={18} className="shrink-0 mt-0.5" />
         <div>
-          <p className="font-medium">Acesso vencido em {formatarData(acessoAte!)}</p>
+          <p className="font-medium">
+            {semDocumento
+              ? `O teste terminou em ${formatarData(acessoAte!)}`
+              : `Acesso vencido em ${formatarData(acessoAte!)}`}
+          </p>
           <p className="text-sm text-muted-foreground">
-            O agente continua atendendo seus clientes no WhatsApp por alguns dias. Pague a última
-            cobrança para voltar ao normal.
+            {semDocumento
+              ? 'Cadastre o CPF ou CNPJ de quem vai pagar, logo abaixo, e o acesso volta na hora. O agente continua atendendo seus clientes no WhatsApp por alguns dias.'
+              : 'O agente continua atendendo seus clientes no WhatsApp por alguns dias. Pague a última cobrança para voltar ao normal.'}
           </p>
         </div>
       </div>
@@ -49,6 +60,7 @@ function Situacao({ assinatura }: { assinatura: Assinatura }) {
           </p>
           <p className="text-sm text-muted-foreground">
             Tudo liberado até {formatarData(acessoAte!)}. Depois, você paga só pelo que usar.
+            {pedido ? ` ${pedido}` : ''}
           </p>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { lerMotivoDoBloqueio, type MotivoDoBloqueio } from './documentoParaContinuar'
 
 export type StatusAssinatura = 'trial' | 'pendente' | 'ativa' | 'atrasada' | 'cancelada'
 
@@ -25,6 +26,13 @@ export type Assinatura = {
   atendimentoAte: string | null
   /** O agente ainda está atendendo hoje. `false` = também parou. */
   atendendo: boolean
+  /**
+   * O documento de quem paga está em dia (M2, 0156): sem ele o acesso não
+   * renova depois do teste. A RPC devolve um booleano, nunca o documento.
+   */
+  documentoOk: boolean
+  /** Por que está bloqueado, quando está: muda o que o dono precisa fazer. */
+  motivoDoBloqueio: MotivoDoBloqueio | null
 }
 
 /**
@@ -52,6 +60,9 @@ type Situacao = {
   atendimento_ate: string | null
   bloqueado: boolean
   atendendo: boolean
+  // Opcionais: um banco ainda sem a 0156 não os devolve.
+  documento_ok?: boolean | null
+  motivo_do_bloqueio?: string | null
 }
 
 export function useAssinatura(salonId: string | null) {
@@ -118,6 +129,10 @@ export function useAssinatura(salonId: string | null) {
       cpfCnpj: pagadorRes.data?.cpf_cnpj ?? null,
       atendimentoAte: situacao.atendimento_ate,
       atendendo: situacao.atendendo,
+      // Sem a resposta do banco, não pede documento: cobrar de quem está em dia
+      // é pior do que deixar de pedir por um carregamento.
+      documentoOk: situacao.documento_ok ?? true,
+      motivoDoBloqueio: lerMotivoDoBloqueio(situacao.motivo_do_bloqueio),
     })
     setLoading(false)
   }, [salonId])

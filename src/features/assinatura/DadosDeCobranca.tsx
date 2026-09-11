@@ -8,9 +8,10 @@ import { ErroInline } from '../../components/ErroInline'
 /**
  * Coleta o CPF/CNPJ de quem paga a plataforma.
  *
- * Sem documento o `cobrar-uso` não emite o Pix: a fatura fica aberta, contada em
- * `semDocumento`, e o dono usa o sistema de graça sem nunca ser bloqueado (o
- * bloqueio olha `cobranca_vence_em`, que só existe quando há cobrança). Pedimos
+ * Sem documento o `cobrar-uso` não emite o Pix — e, desde a 0156 (M2), o acesso
+ * também não renova depois do teste. Antes, a fatura ficava aberta, sem
+ * vencimento, e o dono usava o sistema de graça para sempre. Salvar aqui destrava
+ * na hora: um gatilho do banco aplica à unidade a mesma régua do cron. Pedimos
  * aqui, e não no cadastro da barbearia, porque é o momento em que a pessoa
  * decidiu pagar; antes disso é atrito puro.
  *
@@ -98,7 +99,8 @@ export function DadosDeCobranca({
         <h2 className="text-sm font-semibold text-foreground">Dados de cobrança</h2>
       </div>
       <p className="text-xs text-muted-foreground mb-3">
-        Precisamos do CPF ou CNPJ de quem vai pagar para emitir a cobrança.
+        Precisamos do CPF ou CNPJ de quem vai pagar: é com ele que a cobrança do mês é emitida, e
+        sem ele o acesso não continua depois do teste.
       </p>
 
       <Campo rotulo="CPF ou CNPJ" htmlFor="cobranca-documento">

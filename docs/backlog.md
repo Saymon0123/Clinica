@@ -522,6 +522,14 @@ Estes três achados do giro não estavam neste backlog — só no parecer
   número que é justamente o do botão do QR. Agora diz a verdade — os clientes
   veem este número —, e o aviso ao dono continua indo para a ficha dele.
 
+  **Em produção em 11/09:** o site entrou pelo merge do #105; as quatro edges
+  (`criar-minha-barbearia`, `add-salon-unit`, `admin-create-salon`,
+  `accept-invite`) foram publicadas pela CLI **depois** do site, porque o
+  `accept-invite` novo exige o campo que só a tela nova manda; a 0155 entrou
+  por último (`20260911064812`), com a única barbearia já de telefone válido,
+  e a CHECK nasceu validada. Conferido no bundle servido: `pedeTelefone`,
+  `salons_telefone_valido`, "Cadastrar o WhatsApp" e "WhatsApp da unidade".
+
 **Buraco da própria auditoria:** a frente de segurança/multi-tenant morreu no
 limite de sessão antes de escrever o relatório. Não houve leitura sistemática de
 autorização por objeto no `src/` e nas edges — só a verificação direta no banco
@@ -532,6 +540,48 @@ apertado.
 falsificável aqui. Testado com dois POSTs carregando IPs de documentação (RFC
 5737): ambos foram contados em `controle_de_taxa` sob o IP real. A Supabase
 sobrescreve o cabeçalho.
+
+### Agenda pelo QR, versão 2 — decidida em 11/09, para fazer em etapas
+
+O dono achou a página "muito vazia, pouco profissional" e quer que o cliente
+ache, remarque e cancele o próprio horário sem falar com a barbearia. Decidido
+por ele em 11/09:
+
+1. **Achar o horário, em duas camadas.** "Seus horários neste celular": quem
+   marca pelo QR guarda o link de gestão no aparelho (`localStorage`) e o vê no
+   topo ao voltar. "Já tenho horário": a pessoa digita o WhatsApp e o link vai
+   **para aquele WhatsApp**; a tela responde igual com ou sem horário, com
+   limite por número e por IP (o freio `taxaExcedida` já existe na edge).
+   **Nunca** mostrar horários só porque alguém digitou um telefone: seria ler
+   a agenda de qualquer pessoa sabendo o número dela.
+2. **14 dias** para marcar e remarcar. Hoje é só o mesmo dia, e a regra mora
+   na edge (`agenda-publica` confere que o horário é um dos livres de hoje).
+3. **Etapas bem separadas**, um PR por vez, cada uma testada em produção pelo
+   dono antes da próxima.
+4. **Protótipo navegável antes do código**, para aprovar o desenho.
+
+Etapas propostas, aguardando a aprovação do protótipo:
+
+1. **Cara de barbearia** com o que já existe (nome, endereço, horário de
+   funcionamento, WhatsApp): serviços em cartões com preço e duração, próximo
+   horário em destaque e o resto por período, esqueleto no carregamento, duas
+   colunas no computador. Sem endereço cadastrado, a linha some.
+2. **14 dias**: a edge aceita a data e valida no servidor; faixa de dias na tela.
+3. **Seu horário neste celular**, com o botão de pôr na agenda do celular.
+4. **Remarcar pelo link**, no mesmo agendamento: mesmo token, lembrete refeito,
+   piso de 30 minutos como o do cancelamento. **Reverte uma decisão escrita:**
+   o comentário de `MeuHorarioPage.tsx` diz que remarcar ia para o WhatsApp de
+   propósito ("reagendar é conversa"); o dono decidiu o contrário.
+5. **Já tenho horário**: depende de um **modelo novo aprovado pela Meta**
+   (quem inicia é a plataforma, então é o número central pela Cloud API).
+   Pedir a aprovação cedo. Mapear o n8n antes de começar.
+6. **Aviso para a barbearia** quando o cliente cancela ou remarca sozinho.
+   **Hoje ninguém é avisado:** o cancelamento pelo link só faz `update` do
+   status, e nenhum trigger de `appointments` chama fora (conferido em 11/09).
+   Canal a decidir.
+
+Depois: logo e Instagram. `salons` não tem nenhum dos dois; pedem colunas novas
+e envio de imagem. Até lá, entram as iniciais.
 
 ## Segurança
 

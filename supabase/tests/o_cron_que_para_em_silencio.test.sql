@@ -43,9 +43,13 @@ select is(
   'rotina ativa que nunca rodou com sucesso vira alarme'
 );
 
-select like(
-  (select detalhe from auditoria_crons where chave = 'cron-parado:' || :'rotina'),
-  '%NUNCA rodou com sucesso%',
+-- `ok(... like ...)` e nao o `like()` do pgTAP: `like` e palavra reservada no
+-- Postgres, entao `select like(a, b, c)` nao parseia como chamada de funcao --
+-- o arquivo morre no meio e leva o plano junto. Mesma familia do
+-- `is(smallint, integer)` que derrubou o teste da 0163.
+select ok(
+  (select detalhe from auditoria_crons where chave = 'cron-parado:' || :'rotina')
+    like '%NUNCA rodou com sucesso%',
   'e o texto diz que ela nunca rodou, em vez de inventar um atraso'
 );
 

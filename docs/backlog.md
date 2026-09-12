@@ -827,6 +827,39 @@ Coberto por `o_mes_que_some.test.sql` (9 asserções), com a falha injetada em
 uma barbearia quebrada não derruba a que vem depois dela na fila.
 
 
+### Fase 5 no n8n (12/09) — o que foi feito na peça de fora
+
+**Fluxo novo: `CRM Salao - Reentrega de Mensagens`** (`Ly82IIUjQXSEfco6`, ativo).
+A cada 5 min lê `mensagens_a_entregar`, faz POST no **mesmo** webhook do agente
+(`/webhook/salao-atendimento`) com o **mesmo corpo** — a coluna `payload` guarda
+o JSON exato que a edge mandou — e marca o desfecho: `marcar_mensagem_entregue`
+no sucesso, `marcar_tentativa_de_entrega` na falha. Sem laço: o nó HTTP já roda
+por item, e fila vazia simplesmente não executa o resto. Credenciais reusadas
+(`Supabase account` e `n8n webhook token`), nenhum segredo novo. Error workflow e
+fuso de São Paulo ligados como nos outros.
+
+**Fluxo mudado: `Reativação (Convite Automático)`** (`Fxc7WGhCoHu7KUe1`). O nó
+que fazia `SELECT` na view virou `Reservar Fila de Reativacao`, um POST em
+`rpc/reservar_reativacoes`. É a metade do M12 que vive fora do banco.
+
+**Uma dúvida que o teste resolveu, e que quase virou defeito:** o nó do Supabase
+devolve N itens; um nó HTTP devolveria **1 item contendo um array**, e aí o Code
+node de rotação receberia um array em vez de uma linha. Rodei o fluxo à mão com
+a fila vazia e o retorno foi `body: []` → **zero itens**, não um item vazio:
+o nó HTTP quebra array de topo em itens, igual ao do Supabase. Sem esse teste eu
+teria publicado uma quebra silenciosa no fluxo que fala com cliente.
+
+**Avaliação Pós-Atendimento ficou de fora**, a pedido do dono em 12/09: antes de
+mexer nela, revisar o caminho das mensagens — o que sai pela API oficial (Meta,
+com custo por conversa) e o que sai pela Evolution. Mexer agora pode ser trabalho
+jogado fora se a revisão mudar o canal dela ou tirá-la do ar.
+
+**O que ainda não foi provado ponta a ponta:** o POST da reentrega com a
+credencial de header. A fila está vazia, então não houve o que reentregar. O modo
+de falha é seguro — se a credencial estiver errada, nada é enviado, a tentativa é
+contada e `auditoria_mensagens` alarma em 15 minutos —, mas a prova de verdade é
+a primeira mensagem que o agente recusar.
+
 ### Agenda pelo QR, versão 2 — decidida em 11/09, para fazer em etapas
 
 O dono achou a página "muito vazia, pouco profissional" e quer que o cliente

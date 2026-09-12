@@ -22,6 +22,12 @@ import { ehPedidoDeSaida } from '../_shared/optOut.ts'
  * reenvia o que não recebeu 200 e, depois de falhas repetidas, **desativa o
  * webhook da aplicação inteira**. Um erro nosso numa barbearia não pode calar
  * todas as outras. O que dá errado é registrado, não devolvido como 500.
+ *
+ * **E é por isso que a mensagem é gravada antes de ser entregue** (0162): como
+ * respondemos 200 sempre, a Meta nunca reenvia por conta própria, e a única
+ * retentativa possível é a nossa. `mensagens_recebidas` guarda o que o cliente
+ * escreveu antes do POST ao agente; `mensagens_a_entregar` é a fila de quem não
+ * chegou lá.
  */
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
@@ -48,9 +54,10 @@ const WEBHOOK_TOKEN = Deno.env.get('N8N_WEBHOOK_TOKEN') ?? ''
  *
  * E ninguém ficava sabendo — 500 do n8n não é `throw`, então o Sentry não via.
  *
- * Isto **não recupera** a mensagem: converte invisível em visível, para o dono
- * poder ligar para o cliente. A recuperação de verdade é a fila de saída (mesmo
- * padrão da `0104`), que vem junto com a fila de entrada (achado A3).
+ * Isto **não recupera** a resposta: converte invisível em visível, para o dono
+ * poder ligar para o cliente. A fila de ENTRADA — a mensagem que o cliente
+ * escreve — passou a existir na 0162; esta, a de SAÍDA, ainda não tem, e
+ * continua sendo o outro lado do achado A3.
  */
 async function entregarAoN8n(corpo: Record<string, unknown>, onde: string): Promise<boolean> {
   if (!N8N_LEMBRETE_URL) return false
@@ -638,32 +645,72 @@ Deno.serve(comSentry('whatsapp-webhook', async (req) => {
           // O agente continua no n8n. Esta função é a porta, não o cérebro:
           // ela autentica, descobre de quem é a mensagem e entrega — o que a
           // torna testável e substituível sem tocar no agente.
+          const nomeDoContato = valor.contacts?.[0]?.profile?.name ?? null
+          const paraOAgente = {
+            salon_id: salonId,
+            phone_number_id: phoneNumberId,
+            waba_id: entrada.id ?? null,
+            contact_phone: m.from,
+            contact_name: nomeDoContato,
+            message_id: m.id,
+            texto,
+            // Quando vem preenchido, o n8n baixa a mídia pela API e transcreve
+            // ou descreve antes de entregar ao agente.
+            media_id,
+            // texto | botao | audio | imagem | video | documento. O agente
+            // trata diferente uma confirmação vinda de botão e uma frase solta.
+            tipo,
+            // Nulo na esmagadora maioria das mensagens. Ver contextoLembrete.
+            contexto: contextoLembrete,
+          }
+
+          // GRAVAR ANTES DE ENTREGAR (0162, achado A3). Até aqui a mensagem do
+          // cliente só existia neste `fetch`: n8n fora do ar e ela sumia, sem
+          // ninguém nunca saber o que ele escreveu. Agora ela vira linha antes
+          // de sair, e a fila `mensagens_a_entregar` reentrega o que não chegou.
+          //
+          // O retorno também resolve a reentrega DA META: quando ela repete o
+          // mesmo evento — e ela repete —, `false` diz que já tratamos, e o
+          // agente não responde duas vezes à mesma frase.
+          const { data: ehNova, error: erroRegistro } = await admin.rpc(
+            'registrar_mensagem_recebida',
+            {
+              p_message_id: m.id,
+              p_salon_id: salonId,
+              p_phone_number_id: phoneNumberId,
+              p_contact_phone: m.from,
+              p_contact_name: nomeDoContato,
+              p_tipo: tipo,
+              p_payload: paraOAgente,
+            },
+          )
+          if (erroRegistro) {
+            // Não dá para desistir da mensagem por causa disto: entregar sem
+            // registro é melhor do que não entregar. Mas grita, porque daqui em
+            // diante a rede de segurança não existe para esta mensagem.
+            console.error('Nao foi possivel registrar a mensagem recebida:', erroRegistro.message)
+            await capturarErro(erroRegistro, 'whatsapp-webhook', { onde: 'registrar-mensagem' })
+          } else if (ehNova === false) {
+            console.log('mensagem repetida da Meta, ja tratada:', m.id)
+            continue
+          }
+
           const resposta = await fetch(N8N_WEBHOOK_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Webhook-Token': WEBHOOK_TOKEN },
-            body: JSON.stringify({
-              salon_id: salonId,
-              phone_number_id: phoneNumberId,
-              waba_id: entrada.id ?? null,
-              contact_phone: m.from,
-              contact_name: valor.contacts?.[0]?.profile?.name ?? null,
-              message_id: m.id,
-              texto,
-              // Quando vem preenchido, o n8n baixa a mídia pela API e transcreve
-              // ou descreve antes de entregar ao agente.
-              media_id,
-              // texto | botao | audio | imagem | video | documento. O agente
-              // trata diferente uma confirmação vinda de botão e uma frase solta.
-              tipo,
-              // Nulo na esmagadora maioria das mensagens. Ver contextoLembrete.
-              contexto: contextoLembrete,
-            }),
+            body: JSON.stringify(paraOAgente),
           })
-          if (!resposta.ok) {
+          if (resposta.ok) {
+            await admin.rpc('marcar_mensagem_entregue', { p_message_id: m.id })
+          } else {
             const corpo = await resposta.text()
             console.error('n8n recusou a mensagem:', resposta.status, corpo)
-            // Mensagem de cliente que o agente nunca viu — a classe de falha
-            // que deixou o agente mudo por 2 semanas. Tem que gritar.
+            await admin.rpc('marcar_tentativa_de_entrega', {
+              p_message_id: m.id,
+              p_erro: `HTTP ${resposta.status}: ${corpo.slice(0, 200)}`,
+            })
+            // Continua gritando: a fila recupera a mensagem, mas o agente estar
+            // recusando entrega é um problema que alguém precisa olhar.
             await capturarErro(new Error(`n8n recusou a mensagem (HTTP ${resposta.status})`), 'whatsapp-webhook', {
               status: resposta.status,
               corpo: corpo.slice(0, 500),

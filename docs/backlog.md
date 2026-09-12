@@ -703,6 +703,50 @@ cobrança" — senão prometeria uma cobrança que nunca chega. Coberto por
 padrão é **cobrar**: é ela que impede a próxima barbearia de entrar de graça por
 esquecimento.
 
+### Fase 5 (12/09) — A3: a mensagem do cliente que some (migration 0162)
+
+**O buraco.** O `whatsapp-webhook` não gravava a mensagem recebida em lugar
+nenhum — zero escritas de `whatsapp_messages` no arquivo. Ele autentica,
+descobre de quem é e faz `POST` ao n8n; quem grava o histórico é o n8n, depois.
+Desde a Fase 1 ele **confere** o `.ok` e avisa o Sentry (isso era o A10), mas
+conferir não é guardar: com o n8n fora do ar, o cliente escreveu e ninguém nunca
+vai saber o que ele escreveu.
+
+E a Meta não salva: respondemos 200 **sempre**, de propósito, porque falha
+repetida faz ela desativar o webhook do aplicativo inteiro — uma barbearia com
+problema calaria todas. A única retentativa possível é a nossa, e não existia.
+
+**A fila, no padrão da 0104.** `mensagens_recebidas` guarda a mensagem **antes**
+do envio; `entregue_em` é marcado **depois**. O `message_id` da Meta é a chave
+primária, o que dá idempotência de graça — e resolve de lambuja a reentrega da
+Meta virando segunda resposta do agente. A linha guarda o **payload inteiro**,
+então quem reentrega devolve o mesmo corpo, e mensagem antiga sai no formato que
+o agente daquele dia esperava.
+
+**Limites de propósito:** 24 horas (fora da janela da Meta não dá para responder
+texto livre) e 5 tentativas (passou disso não é intermitência, é a mensagem).
+Retenção de 90 dias na `poda_historico_antigo`, como a `entregas_falhadas`:
+isto é livro de entrega, não histórico de conversa.
+
+**O alarme:** `auditoria_mensagens` — mensagem parada há mais de 15 minutos quer
+dizer agente mudo agora, com gente esperando. View nova e pequena, unida em
+`auditoria_pendente`, em vez de mais um bloco dentro da `auditoria_operacao`, que
+tem seis uniões e ~120 linhas: reescrever aquela inteira para acrescentar um caso
+é o tipo de transcrição que já custou o `security_invoker` na 0152.
+
+**O que ficou de fora, dito com todas as letras:** esta é a fila de **entrada**.
+A fila de **saída** — a resposta que o `entregarAoN8n` manda e que também pode se
+perder — continua sem retentativa. É a outra metade do A3.
+
+**Pendente no n8n:** o fluxo de reentrega ainda não existe. Ele lê
+`mensagens_a_entregar`, faz POST no webhook do agente com a credencial
+`n8n webhook token` (já existe, `httpHeaderAuth`) e chama
+`marcar_mensagem_entregue` ou `marcar_tentativa_de_entrega`. **Só faz sentido
+depois da 0162 aplicada em produção** — antes disso a view não existe e o fluxo
+erraria a cada rodada.
+
+Coberto por `a_mensagem_nao_se_perde.test.sql` (11 asserções).
+
 ### Fase 5 (12/09) — A14: o mês que some (migration 0161)
 
 **O buraco.** `fechar_mes_de_uso` sempre faturou "o mês anterior e só ele", e
@@ -739,6 +783,7 @@ um fechamento perdido.
 Coberto por `o_mes_que_some.test.sql` (9 asserções), com a falha injetada em
 `preco_por_uso` dentro da própria transação do teste — é assim que se prova que
 uma barbearia quebrada não derruba a que vem depois dela na fila.
+
 
 ### Agenda pelo QR, versão 2 — decidida em 11/09, para fazer em etapas
 

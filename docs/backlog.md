@@ -3978,3 +3978,67 @@ caminho certo **não** é voltar a gravar a senha — é o `verify` devolver um 
 curto e assinado e os três edges do painel (`admin-create-salon`,
 `admin-invite-salon`, `admin-metricas`) passarem a aceitá-lo. Mexe em edge
 function e exige publicação; só vale a pena se o incômodo aparecer.
+
+---
+
+## M3 — o log passa a dizer de qual barbearia foi a requisição (2026-09-12)
+
+PR #128, **aplicado**: as 12 edge functions publicadas em produção.
+
+**Metade do achado estava errada, e só deu para saber medindo.** O M3 dizia
+*"zero log estruturado: 0 ocorrências de `request_id` nas edges"*. O grep estava
+certo; a conclusão, não. Consultando os logs de produção:
+
+- toda linha que sai de um `console.*` **já** vem carimbada com `request_id` e
+  `execution_id` pela plataforma — a correlação existia, só não no código;
+- `function_edge_logs` **já** grava `execution_time_ms` e o status de cada
+  chamada. O p95 que o parecer deu por inexistente foi calculado em dois
+  minutos: `cobrar-uso` p50 519 ms / p95 619 ms; `agenda-publica` p95 2255 ms.
+
+Eu ia construir um sistema de `request_id` com `AsyncLocalStorage`. Teria criado
+um **segundo id competindo com o da plataforma** — pior do que não ter nenhum.
+Fica a lição, que é a mesma de sempre: o parecer aponta onde olhar, não o que
+concluir.
+
+**O buraco de verdade era o outro item do mesmo achado:** *"de ~56 linhas de
+log, uma carrega salonId"*. Esse era real — dava para juntar as linhas de uma
+chamada, e não dava para perguntar "o que aconteceu com a barbearia X hoje?".
+
+**A saída foi uma linha por requisição, não oitenta edições.** O pedido original
+era `salon_id` em toda linha; medindo, eram 80 sítios em 12 arquivos, cada um
+exigindo julgar escopo. Como a plataforma já carimba `request_id` em todas, uma
+linha de fim com o salão responde a mesma pergunta por um join — e as 80 linhas
+que já existiam ganharam inquilino **sem nenhuma ser reescrita**.
+
+**Provado em produção, não deduzido.** Uma chamada real à `agenda-publica`:
+
+    fim agenda-publica status=404 ms=110 salao=ffffffff-…-0000000000aa req=01a094ce-7f87-73e3-bdef-71dfca8ba93d
+
+O `req=` bate **exatamente** com o `sb-request-id` do header da resposta e com a
+coluna `request_id` do log. Isso era a única dedução que restava no desenho — a
+função de fato recebe o `sb-request-id` no header da requisição — e agora é
+medição. E a consulta de duas etapas devolveu todas as linhas daquela
+requisição, inclusive o `booted` da plataforma, que não sabe o que é barbearia.
+
+**Três decisões que valem estar escritas:**
+
+1. **O `ctx` é por invocação, nunca de módulo.** O mesmo isolate atende
+   requisições concorrentes; estado compartilhado atribuiria o salão de uma
+   chamada à linha de outra — errado em silêncio.
+2. **Dois salões diferentes viram `varios`, não "o último".** O `cobrar-uso`
+   fecha a conta de todas de uma vez, um webhook do AbacatePay pode quitar
+   faturas de mais de uma, e um POST da Meta traz mensagens de barbearias
+   diferentes porque o número central atende todas. Ficar com o último seria uma
+   mentira plausível.
+3. **A linha sai no `finally`** — a requisição que levanta é justamente a que se
+   quer achar depois. `salao=-` quando a função caiu antes de saber de quem era,
+   e aí o hífen é a verdade, não uma omissão.
+
+O `capturarErro` ganhou o `request_id` como **tag** do Sentry, ligando a issue às
+linhas do log. `admin-metricas` é a única que não marca salão, e está certo: mede
+o produto inteiro. Ela foi publicada junto porque importa o `sentry.ts`, que
+mudou.
+
+**Fica aberto do M3 original:** os alertas continuam indo para **um e-mail só,
+sem escalonamento** — falha às 3h espera até de manhã. É decisão de operação, não
+de código, e não foi tocada.

@@ -119,8 +119,11 @@ select is(
 
 -- Reservar não é enviar. Se a reserva mexesse neste contador, ela sozinha
 -- pausaria o cliente na segunda rodada — trocando um defeito por outro.
+-- `::int` porque a coluna e smallint e o `is()` do pgTAP exige os dois lados do
+-- mesmo tipo: sem o cast, `is(smallint, integer)` nao existe e o arquivo morre
+-- no meio, levando o plano junto.
 select is(
-  (select reativacao_sem_resposta from clients where id = :'cli_re'),
+  (select reativacao_sem_resposta::int from clients where id = :'cli_re'),
   0,
   'reservar nao mexe no contador de sem-resposta: quem soma e o envio, nao a reserva'
 );

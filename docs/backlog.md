@@ -744,6 +744,44 @@ funcionando; o que não existe ainda é a proteção.
 
 Coberto por `o_envio_em_dobro.test.sql` (9 asserções).
 
+### Fase 5 (12/09) — A14: o mês que some (migration 0161)
+
+**O buraco.** `fechar_mes_de_uso` sempre faturou "o mês anterior e só ele", e
+`gerar_fatura_de_uso` só empurra o início para frente. Falhou o `pg_cron` num dia
+1º, aquele mês **nunca mais era faturado** — a receita evaporava em silêncio, e
+a auditoria não via, porque ela olha faturas que existem e uma fatura que nunca
+nasceu é invisível.
+
+**O agravante, achado ao corrigir.** O laço não tinha `exception`: uma barbearia
+que levantasse erro abortava a rodada inteira, e **todas as depois dela na fila
+perdiam o mês junto**. Mesma falha que a 0134 corrigiu no cron da reativação.
+
+**O terceiro defeito, achado no ensaio.** `if gerar_fatura_de_uso(...) is not
+null` — num registro composto, `IS NOT NULL` só é verdadeiro quando **todas** as
+colunas são não-nulas, e fatura nova tem `paga_em` e `abacate_pix_id` nulas por
+definição. **O contador sempre devolveu zero**, mesmo criando faturas. Ninguém
+percebeu porque o número só aparece no retorno do cron, que ninguém lê.
+
+**Os três consertos:** janela por barbearia (do dia seguinte ao último dia
+faturado, ou ao fim do teste para quem nunca teve fatura), cada barbearia no seu
+`begin/exception` com ordem determinística, e o contador olhando `v_fatura.id`.
+Buraco antigo é recuperado sozinho na rodada seguinte, **numa fatura só** —
+decidido pelo dono em 12/09; o `detalhe` lista agendamento por agendamento,
+então o extrato segue auditável dia a dia.
+
+**E o alarme para o que não existe:** um quarto caso em `auditoria_cobranca` —
+"o último dia faturado está a mais de 35 dias" —, que já é unida em
+`auditoria_pendente` e já é lida pelo fluxo "Auditoria do Agente" do n8n, que
+manda e-mail. **Nada muda no n8n:** o alerta novo pega carona no canal que já
+funciona. 35 e não 31 porque, no caminho normal, no fim de um mês o último dia
+faturado já está a 30 dias — abaixo disso o alarme não distingue um mês comum de
+um fechamento perdido.
+
+Coberto por `o_mes_que_some.test.sql` (9 asserções), com a falha injetada em
+`preco_por_uso` dentro da própria transação do teste — é assim que se prova que
+uma barbearia quebrada não derruba a que vem depois dela na fila.
+
+
 ### Agenda pelo QR, versão 2 — decidida em 11/09, para fazer em etapas
 
 O dono achou a página "muito vazia, pouco profissional" e quer que o cliente

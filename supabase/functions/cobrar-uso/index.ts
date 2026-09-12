@@ -7,8 +7,12 @@ import { taxaExcedida } from '../_shared/limite.ts'
 /**
  * Transforma faturas de uso abertas em cobranças PIX no AbacatePay.
  *
- * Roda pelo n8n a cada hora, ANTES do notificador — assim o e-mail já sai com
- * o copia-e-cola/QR. É idempotente por desenho: só olha fatura com
+ * DEVERIA rodar a cada hora, ANTES do notificador — assim o e-mail já sairia
+ * com o copia-e-cola/QR. **Em 12/09/2026 descobriu-se que nada o chamava**:
+ * nem cron, nem fluxo do n8n. Dar-lhe um agendador está no backlog; enquanto
+ * não tiver, a fatura nasce e fica parada até alguém disparar à mão.
+ *
+ * É idempotente por desenho: só olha fatura com
  * `abacate_pix_id` nulo e valor > 0, então disparar de novo não cobra ninguém
  * duas vezes. Mesmo assim o gatilho exige a service key: idempotência protege
  * contra cobrança dupla, não contra antecipação forçada nem contra martelar a
@@ -30,12 +34,40 @@ import { taxaExcedida } from '../_shared/limite.ts'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
+/**
+ * O segredo do gatilho interno. **Nosso**, e não da plataforma — ver
+ * `chamadorAutorizado`. Vive em `~/.clubcut/cobrar-uso.env` e nos secrets do
+ * projeto; sem ele, o caminho do cron fica fechado (e não aberto).
+ */
+const COBRAR_USO_TOKEN = Deno.env.get('COBRAR_USO_TOKEN')
 const ABACATE_API_KEY = Deno.env.get('ABACATE_API_KEY')
 // Sem fallback de propósito: sandbox silencioso em produção é pior que falhar.
 const ABACATE_BASE_URL = Deno.env.get('ABACATE_BASE_URL')
 
-/** Abaixo disso não geramos cobrança; o valor acumula para o próximo ciclo. */
-const MINIMO_COBRANCA = 5
+/**
+ * Abaixo disso não geramos cobrança; o valor acumula para o próximo ciclo.
+ *
+ * Configurável por `COBRANCA_MINIMA` porque é **regra de negócio**, não
+ * constante técnica: mudar de R$5 para R$3 não deveria exigir publicar uma edge
+ * function que mexe com dinheiro. E porque o primeiro teste ponta a ponta da
+ * cobrança precisava de um valor menor que o mínimo — sem isto, a alternativa
+ * era publicar um número temporário e lembrar de voltar atrás, ou inventar
+ * agendamentos no banco para chegar a R$5.
+ */
+const MINIMO_COBRANCA = (() => {
+  const bruto = Deno.env.get('COBRANCA_MINIMA')
+  if (!bruto) return 5
+  const n = Number(bruto)
+  // `Number.isFinite` e não apenas `!isNaN`: um valor inválido aqui seria o
+  // pior defeito possível desta função. `total < NaN` é sempre FALSE, então
+  // `COBRANCA_MINIMA=abc` faria TODA fatura virar cobrança, por menor que
+  // fosse -- centavos cobrados de todo mundo, em silêncio.
+  if (!Number.isFinite(n) || n <= 0) {
+    console.error(`COBRANCA_MINIMA invalida (${bruto}); usando o padrao de 5.`)
+    return 5
+  }
+  return n
+})()
 const DIAS_ATE_O_VENCIMENTO = 7
 
 // O cron chama servidor-a-servidor, mas a reemissão vem do navegador do dono.
@@ -74,13 +106,40 @@ type FaturaAberta = {
 }
 
 /**
- * Só o gatilho interno (n8n com a service key) pode disparar. A idempotência
- * continua valendo, mas ela protege contra cobrança dupla — não contra
- * antecipação forçada nem contra martelar a API do AbacatePay com JWT qualquer.
+ * Só o gatilho interno pode disparar. A idempotência continua valendo, mas ela
+ * protege contra cobrança dupla — não contra antecipação forçada nem contra
+ * martelar a API do AbacatePay.
+ *
+ * ATÉ 12/09/2026 ISTO COMPARAVA COM O `SUPABASE_SERVICE_ROLE_KEY`, E PAROU DE
+ * FUNCIONAR SOZINHO. O Supabase migrou este projeto para o formato novo de
+ * chaves e passou a injetar outro valor em `SUPABASE_SERVICE_ROLE_KEY` — um que
+ * não é nenhuma das quatro chaves que o painel exibe. Conferido por resumo
+ * SHA-256, uma a uma: service_role legada, secret nova, anon legada e
+ * publishable. Nenhuma bate. Chave rotacionada não é exibida em lugar nenhum,
+ * então o valor esperado virou irrecuperável, e **qualquer** chamada passou a
+ * receber 401.
+ *
+ * Ninguém percebeu porque nada chamava esta função: não havia cron nem fluxo no
+ * n8n apontando para cá, apesar do comentário do topo dizer que rodava a cada
+ * hora. As faturas nasciam e ficavam paradas.
+ *
+ * A lição não é "achar a chave certa": é que autenticar contra um valor que a
+ * PLATAFORMA controla, troca e não devolve é uma dependência que ninguém
+ * declarou. O segredo agora é nosso — nós geramos, guardamos e rotacionamos — e
+ * viaja num header próprio, para o `Authorization` continuar levando um JWT e o
+ * `verify_jwt` do portão seguir ligado.
+ *
+ * Sem `COBRAR_USO_TOKEN` configurado, ninguém entra. Numa porta que cria
+ * cobrança, falhar fechado é a única opção defensável: um segredo ausente por
+ * engano abriria o disparo para qualquer um com a anon, que está no bundle.
  */
 function chamadorAutorizado(req: Request): boolean {
-  const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '')
-  const esperado = SERVICE_ROLE_KEY
+  if (!COBRAR_USO_TOKEN) {
+    console.error('COBRAR_USO_TOKEN ausente: o gatilho interno fica fechado.')
+    return false
+  }
+  const token = req.headers.get('x-cobrar-token') ?? ''
+  const esperado = COBRAR_USO_TOKEN
   if (token.length !== esperado.length) return false
   let diff = 0
   for (let i = 0; i < esperado.length; i++) diff |= token.charCodeAt(i) ^ esperado.charCodeAt(i)

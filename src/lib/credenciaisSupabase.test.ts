@@ -1,8 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import { problemaNaChave, problemaNaUrl } from './credenciaisSupabase'
 
+// Um JWT de mentira: forma certa, nada dentro. O header é o
+// `{"alg":"HS256","typ":"JWT"}` de sempre, o payload decodifica para
+// `{"iss":"supabase","ref":"abc"}` e a assinatura é, literalmente, a string
+// `assinatura_qualquer-123`. Precisa parecer um JWT de verdade porque o que
+// está sob teste aqui é o FORMATO da chave, não o conteúdo.
+//
+// O `gitleaks:allow` é para a varredura de segredos do CI: a regra `jwt` acusa
+// esta linha pela entropia, e ela é o único achado do repositório inteiro. O
+// comentário só continua verdadeiro enquanto esta constante for inventada — se
+// um dia alguém colar aqui uma chave real, ele passa a esconder o vazamento em
+// vez de explicar um falso positivo. Ela nunca deve virar chave de verdade.
 const CHAVE_VALIDA =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFiYyJ9.assinatura_qualquer-123'
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFiYyJ9.assinatura_qualquer-123' // gitleaks:allow
 
 describe('problemaNaChave', () => {
   it('aceita o JWT legado e a publishable key', () => {

@@ -1,5 +1,6 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { capturarErro, comSentry } from '../_shared/sentry.ts'
+import type { ClienteAdmin } from '../_shared/supabase.ts'
 
 /**
  * Transforma faturas de uso abertas em cobranças PIX no AbacatePay.
@@ -51,7 +52,7 @@ function json(body: unknown, status = 200) {
 
 /** Limite de tentativas via banco (0111). Erro do limitador deixa passar. */
 async function taxaExcedida(
-  admin: ReturnType<typeof createClient>,
+  admin: ClienteAdmin,
   chave: string,
   limite: number,
   janelaSegundos: number,
@@ -117,7 +118,7 @@ function chamadorAutorizado(req: Request): boolean {
  */
 async function liberarParaReemissao(
   req: Request,
-  admin: ReturnType<typeof createClient>,
+  admin: ClienteAdmin,
   body: Record<string, unknown>,
 ): Promise<Response | null> {
   const autorizacao = req.headers.get('Authorization') ?? ''

@@ -1,0 +1,38 @@
+# Análise estática de segurança do código — o único da série que olha o que o
+# código FAZ, e não a versão das bibliotecas. Acha injeção, XSS, caminho de
+# dado que vai de entrada do usuário até algo perigoso.
+#
+# NÃO roda em pull request de propósito. É lenta e produz achado que precisa de
+# triagem; num PR isso vira vermelho que atrasa e que se aprende a ignorar. Aqui
+# ela roda no que já entrou na `main` e uma vez por semana, e o resultado espera
+# na aba Security até alguém sentar para ler.
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Segunda de manhã, para chegar junto com os PRs do dependabot.
+    - cron: '23 11 * * 1'
+
+jobs:
+  analise:
+    name: Analise estatica de seguranca
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          # `.agents` e `.claude` são skills de terceiros que vieram junto no
+          # repositório: 500 e poucos arquivos que ninguém aqui mantém e cujo
+          # achado ninguém vai corrigir. Deixar dentro só afoga o que importa.
+          config: |
+            paths-ignore:
+              - '.agents/**'
+              - '.claude/**'
+      - uses: github/codeql-action/analyze@v3

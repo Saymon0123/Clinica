@@ -177,6 +177,8 @@ o Asaas como operador).
    **Em produção desde 11/09, 05:00 UTC**, registrada no histórico de
    migrations; a execução do cron das 05:05 já rodou com a função nova, sem
    erro.
+
+   **Testado pelo dono no navegador em 11/09** (a pergunta da "Nova venda").
 8. ~~**`main` não é protegida**~~ — **RESOLVIDO em 10/09.** Regra ativa e
    **provada**: um `git push` direto na `main` volta com
    `GH006: Protected branch update failed`, citando "must be made through a pull
@@ -238,6 +240,9 @@ o Asaas como operador).
     sempre — o `WHATSAPP_APP_SECRET` só existe no cofre e não dá para assinar
     payload daqui. Testadas as duas pontas: 7 casos sobre a RPC e a view.
 
+    **Destrava quando** o dono salvar o secret em `~/.clubcut/meta.env`
+    (combinado em 11/09; ele avisa quando salvar).
+
 12. ~~**A agenda do dono não recarrega**~~ — **RESOLVIDO em 11/09.** O único
     canal Realtime que existia era o do aviso de reserva nova, no `AppLayout`:
     só `INSERT`, e sem falar com a tela da agenda. O cliente cancelava e a grade
@@ -280,6 +285,8 @@ o Asaas como operador).
     **Não verificado no navegador:** as três telas exigem login, e eu não entro
     com credencial de ninguém. A verificação foi typecheck, lint, leitura do
     fluxo e o experimento de Realtime acima.
+
+    **Testado pelo dono no navegador em 11/09.**
 10. **Sem CPF/CNPJ = uso ilimitado sem bloqueio** — o bloqueio olha
     `cobranca_vence_em`, que só existe quando há cobrança.
 
@@ -360,12 +367,14 @@ Estavam só no chat. Pela regra da casa, o que não está aqui some do radar.
   fatura, tentou reservar, pegou zero, e **saiu antes de chamar o AbacatePay**.
   Um único `abacate_pix_id` no banco e reserva solta no fim.
 
-**Teste de dois minutos que só o dono faz**
-4. De um número que nunca falou com a barbearia, mandar "oi" para o número dela.
+**Teste de dois minutos que só o dono faz — FEITO em 11/09**
+4. ~~De um número que nunca falou com a barbearia, mandar "oi" para o número dela.~~
    **Chegaram duas respostas?** Se sim, confirma que a saudação/ausência do app
    WhatsApp Business está duplicando com o agente da Evolution — e vira item de
    checklist de ativação. Se chegar só uma, o dispositivo vinculado já suprime o
    app e o problema é menor do que eu descrevi. *Não verifiquei; é dedução.*
+
+   **O dono fez o teste em 11/09, e deu certo.**
 
 **Escolhas minhas na migration 0149 — DECIDIDAS pelo dono em 10/09, migration 0150**
 5. ~~`payments.valor >= 0`~~ → **`> 0`**. O dono confirmou que **não existe
@@ -378,11 +387,12 @@ Estavam só no chat. Pela regra da casa, o que não está aqui some do radar.
    mensal, "30 dias após o vencimento" viraria 30 a 60 na prática. Convite
    **aceito nunca é apagado**: é histórico de quem entrou na equipe.
 
-**Cobertura que ficou faltando no A16**
-7. Três tabelas **sem `salon_id`** ficaram de fora do
-   `rls_isolamento_operacao.test.sql`: `pacote_itens`, `pacote_consumos` e
-   `pacote_do_cliente_itens`. São exatamente a categoria de risco (isolamento
-   dependente do join ao pai). `pacotes` e `pacotes_do_cliente` estão cobertas.
+**Cobertura que ficou faltando no A16 — RESOLVIDO em 11/09**
+7. ~~Três tabelas **sem `salon_id`** ficaram de fora do
+   `rls_isolamento_operacao.test.sql`~~: `pacote_itens`, `pacote_consumos` e
+   `pacote_do_cliente_itens` entraram no mesmo arquivo, com o mesmo roteiro das
+   outras: o dono do A enxerga só o que é dele, a escrita cruzada é barrada, e o
+   espelho confere o lado do B. 7 asserções novas, 29 no arquivo.
 
 **Faltas viraram dado com a 0153 — onde o dono quer ver o número?** (11/09) —
 **DECIDIDO no mesmo dia:** o 4º card do Financeiro virou "Cancelamentos e
@@ -529,6 +539,8 @@ Estes três achados do giro não estavam neste backlog — só no parecer
   por último (`20260911064812`), com a única barbearia já de telefone válido,
   e a CHECK nasceu validada. Conferido no bundle servido: `pedeTelefone`,
   `salons_telefone_valido`, "Cadastrar o WhatsApp" e "WhatsApp da unidade".
+
+  **Testado pelo dono no navegador em 11/09.**
 
 **Buraco da própria auditoria:** a frente de segurança/multi-tenant morreu no
 limite de sessão antes de escrever o relatório. Não houve leitura sistemática de
@@ -838,7 +850,7 @@ cima de um item antigo.**
 
 ## Infraestrutura e manutenção
 
-### Template de e-mail do Supabase ainda diz "14 dias" (2026-08-31)
+### ~~Template de e-mail do Supabase ainda diz "14 dias"~~ — RESOLVIDO em 11/09
 O prazo do teste voltou de 14 para 7 dias. Foi trocado no CRM
 (`src/lib/planos.ts`, fonte única de todas as telas), na meta description do
 `index.html`, na edge function `criar-minha-barbearia` (redeployada, v9) e no
@@ -853,6 +865,11 @@ quem se cadastra recebe um e-mail prometendo 14 dias e o sistema concede 7.
 
 Enquanto não for colado, é a única superfície do produto que mente sobre o
 prazo.
+
+**Resolvido em 11/09, com o ok do dono:** aplicado pela API de gerenciamento do
+Supabase, só no corpo do e-mail de confirmação, trocando "14 dias" por "7 dias" e
+nada mais. Conferido depois da troca: o texto no ar é idêntico ao esperado, com
+os acentos intactos. Nenhum dos outros modelos e assuntos cita prazo.
 
 
 ### Migrations estão fora do pipeline de deploy
@@ -3418,3 +3435,5 @@ mês"). (c) **Limpeza**: edge `asaas-webhook` deployada apagada e secrets `ASAAS
 geram PIX fake, não dinheiro). Ir pra produção exige o dono ativar produção no AbacatePay (KYC) e me
 passar a chave de produção; aí troco o secret e registro um webhook de produção. Só faz sentido no dia
 de onboardar a primeira barbearia pagante — hoje são 0 barbearias reais, então **manter sandbox até lá**.
+
+**11/09:** o dono está aguardando o AbacatePay liberar a API de produção.

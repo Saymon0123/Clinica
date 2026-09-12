@@ -12,13 +12,17 @@
 -- inteiramente de a policy fazer o join até o pai. Uma policy reescrita sem
 -- esse join vaza sem erro, sem log e sem sintoma na tela.
 --
+-- As três filhas de pacote (`pacote_itens`, `pacote_consumos` e
+-- `pacote_do_cliente_itens`) entraram em 11/09: mesma categoria — sem
+-- `salon_id`, isoladas só pelo join até `pacotes` e `pacotes_do_cliente`.
+--
 -- Rodar com: supabase test db
 
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
 begin;
-select plan(22);
+select plan(29);
 
 -- ---------------------------------------------------------------------------
 -- Fixture: dois salões completos e espelhados, cada um com uma venda fechada,
@@ -47,6 +51,8 @@ select plan(22);
 \set conv_b  'bbbbbbb1-0000-0000-0000-00000000000b'
 \set pac_a   'aaaaaaa2-0000-0000-0000-00000000000a'
 \set pac_b   'bbbbbbb2-0000-0000-0000-00000000000b'
+\set pdc_a   'aaaaaaa3-0000-0000-0000-00000000000a'
+\set pdc_b   'bbbbbbb3-0000-0000-0000-00000000000b'
 
 insert into auth.users
   (id, instance_id, aud, role, email, encrypted_password,
@@ -105,9 +111,17 @@ insert into stock_movements (product_id, tipo, quantidade) values
 
 insert into pacotes (id, salon_id, nome, preco) values
   (:'pac_a', :'salao_a', 'Pacote A', 200), (:'pac_b', :'salao_b', 'Pacote B', 200);
-insert into pacotes_do_cliente (salon_id, client_id, pacote_id, order_id, preco_pago) values
-  (:'salao_a', :'cli_a', :'pac_a', :'venda_a', 200),
-  (:'salao_b', :'cli_b', :'pac_b', :'venda_b', 200);
+-- O item do pacote vem ANTES da venda: o trigger `trg_congela_itens_do_pacote`
+-- copia `pacote_itens` para `pacote_do_cliente_itens` no momento da venda.
+insert into pacote_itens (pacote_id, service_id, quantidade) values
+  (:'pac_a', :'serv_a', 2), (:'pac_b', :'serv_b', 2);
+insert into pacotes_do_cliente (id, salon_id, client_id, pacote_id, order_id, preco_pago) values
+  (:'pdc_a', :'salao_a', :'cli_a', :'pac_a', :'venda_a', 200),
+  (:'pdc_b', :'salao_b', :'cli_b', :'pac_b', :'venda_b', 200);
+-- Um crédito usado de cada lado, e sobra outro: a escrita cruzada lá embaixo
+-- passa pelo trigger de saldo e para na policy, que é o que se testa aqui.
+insert into pacote_consumos (pacote_do_cliente_id, service_id, order_item_id) values
+  (:'pdc_a', :'serv_a', :'item_a'), (:'pdc_b', :'serv_b', :'item_b');
 
 create or replace function pg_temp.entrar_como(p_user uuid) returns void
 language plpgsql as $$
@@ -150,6 +164,11 @@ select is((select count(*) from commissions)::int, 1, 'SEM salon_id: dono A enxe
 select is((select count(*) from stock_movements)::int, 1, 'SEM salon_id: dono A enxerga 1 movimento de estoque');
 select is((select count(*) from whatsapp_messages)::int, 1, 'SEM salon_id: dono A enxerga 1 mensagem');
 
+-- As três filhas de pacote: mesma categoria, isoladas pelo join até o pacote.
+select is((select count(*) from pacote_itens)::int, 1, 'SEM salon_id: dono A enxerga 1 item de pacote');
+select is((select count(*) from pacote_do_cliente_itens)::int, 1, 'SEM salon_id: dono A enxerga 1 saldo de pacote vendido');
+select is((select count(*) from pacote_consumos)::int, 1, 'SEM salon_id: dono A enxerga 1 consumo de pacote');
+
 -- ---------------------------------------------------------------------------
 -- ESCRITA CRUZADA — tem que ser BARRADA, não aceita em silêncio.
 -- ---------------------------------------------------------------------------
@@ -179,6 +198,22 @@ select throws_ok(
     values ('bbbbbbb1-0000-0000-0000-00000000000b', 'out', 'mensagem plantada')$$,
   '42501', null, 'dono A nao escreve na conversa do B');
 
+select throws_ok(
+  $$insert into pacote_itens (pacote_id, service_id, quantidade)
+    values ('bbbbbbb2-0000-0000-0000-00000000000b', 'bbbb5555-0000-0000-0000-00000000000b', 5)$$,
+  '42501', null, 'dono A nao muda o que o pacote do B inclui');
+
+select throws_ok(
+  $$insert into pacote_consumos (pacote_do_cliente_id, service_id, order_item_id)
+    values ('bbbbbbb3-0000-0000-0000-00000000000b', 'bbbb5555-0000-0000-0000-00000000000b',
+            'bbbb9999-0000-0000-0000-00000000000b')$$,
+  '42501', null, 'dono A nao gasta credito do pacote do cliente do B');
+
+select throws_ok(
+  $$insert into pacote_do_cliente_itens (pacote_do_cliente_id, service_id, quantidade)
+    values ('bbbbbbb3-0000-0000-0000-00000000000b', 'aaaa5555-0000-0000-0000-00000000000a', 10)$$,
+  '42501', null, 'dono A nao da credito extra no pacote do cliente do B');
+
 -- UPDATE cruzado não erra: simplesmente não encontra linha. O que importa é
 -- que o dado do B siga intacto depois.
 select lives_ok(
@@ -198,6 +233,7 @@ select is(
 select pg_temp.entrar_como(:'dono_b');
 
 select is((select count(*) from payments)::int, 1, 'dono B enxerga 1 pagamento — o dele');
+select is((select count(*) from pacote_consumos)::int, 1, 'dono B enxerga 1 consumo de pacote — o dele');
 select is((select salon_id from orders limit 1), :'salao_b'::uuid, 'a unica venda visivel ao dono B e do salao B');
 
 select pg_temp.sair();

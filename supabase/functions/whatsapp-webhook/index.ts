@@ -1,6 +1,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { capturarErro, comSentry } from '../_shared/sentry.ts'
 import { ehPedidoDeSaida } from '../_shared/optOut.ts'
+import type { ClienteAdmin } from '../_shared/supabase.ts'
 
 /**
  * Webhook da Cloud API da Meta — a porta de entrada das mensagens.
@@ -104,7 +105,7 @@ type StatusDeEntrega = {
  * que importam.
  */
 async function registrarFalhasDeEntrega(
-  admin: ReturnType<typeof createClient>,
+  admin: ClienteAdmin,
   statuses: StatusDeEntrega[],
   phoneNumberId: string,
 ) {
@@ -142,7 +143,7 @@ async function registrarFalhasDeEntrega(
 
 /** Limite de tentativas via banco (0111). Erro do limitador deixa passar. */
 async function taxaExcedida(
-  admin: ReturnType<typeof createClient>,
+  admin: ClienteAdmin,
   chave: string,
   limite: number,
   janelaSegundos: number,
@@ -181,7 +182,7 @@ function linkDoWhatsapp(telefone: string | null): string | null {
  * é genérica, que é honesto, não preguiçoso.
  */
 async function responderForaDeContexto(
-  admin: ReturnType<typeof createClient>,
+  admin: ClienteAdmin,
   telefone: string,
   phoneNumberId: string,
   messageId: string | null,
@@ -252,7 +253,7 @@ async function responderForaDeContexto(
  * então a janela de atendimento de 24h está aberta.
  */
 async function registrarSaida(
-  admin: ReturnType<typeof createClient>,
+  admin: ClienteAdmin,
   telefone: string,
   phoneNumberId: string,
 ) {

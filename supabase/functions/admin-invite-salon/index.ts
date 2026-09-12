@@ -1,5 +1,6 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { capturarErro, comSentry } from '../_shared/sentry.ts'
+import type { ClienteAdmin } from '../_shared/supabase.ts'
 
 /**
  * Convite de dono — cadastrar barbearia sem estar frente a frente.
@@ -47,7 +48,7 @@ type Servico = { nome?: string; preco?: number; duracao_minutos?: number }
 
 
 /** Limite de tentativas via banco (0111). Erro do limitador deixa passar. */
-async function taxaExcedida(admin: ReturnType<typeof createClient>, chave: string, limite: number, janelaSegundos: number) {
+async function taxaExcedida(admin: ClienteAdmin, chave: string, limite: number, janelaSegundos: number) {
   const { data, error } = await admin.rpc('taxa_excedida', {
     p_chave: chave,
     p_limite: limite,

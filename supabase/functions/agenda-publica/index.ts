@@ -1,6 +1,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { comSentry } from '../_shared/sentry.ts'
 import { chaveDoDia, motivoSemHorario } from '../_shared/semHorario.ts'
+import type { ClienteAdmin } from '../_shared/supabase.ts'
 
 /**
  * Agenda pública — o QR do balcão.
@@ -75,7 +76,7 @@ function whatsappDe(telefone: string | null | undefined) {
 
 
 /** Limite de tentativas via banco (0111). Erro do limitador deixa passar. */
-async function taxaExcedida(admin: ReturnType<typeof createClient>, chave: string, limite: number, janelaSegundos: number) {
+async function taxaExcedida(admin: ClienteAdmin, chave: string, limite: number, janelaSegundos: number) {
   const { data, error } = await admin.rpc('taxa_excedida', {
     p_chave: chave,
     p_limite: limite,

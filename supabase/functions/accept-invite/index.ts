@@ -2,6 +2,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { jornadaDoHorario } from '../_shared/jornada.ts'
 import { capturarErro, comSentry } from '../_shared/sentry.ts'
 import { AVISO_WHATSAPP_DA_BARBEARIA, telefoneValido } from '../_shared/telefone.ts'
+import type { ClienteAdmin } from '../_shared/supabase.ts'
 
 /**
  * Aceite de convite para a equipe — com DOIS caminhos, e a diferença importa.
@@ -47,7 +48,7 @@ function json(body: unknown, status = 200) {
  * Em erro do proprio limitador, deixa passar: derrubar o fluxo legitimo por
  * falha do freio seria pior que uma janela sem freio.
  */
-async function taxaExcedida(admin: ReturnType<typeof createClient>, chave: string, limite: number, janelaSegundos: number) {
+async function taxaExcedida(admin: ClienteAdmin, chave: string, limite: number, janelaSegundos: number) {
   const { data, error } = await admin.rpc('taxa_excedida', {
     p_chave: chave,
     p_limite: limite,

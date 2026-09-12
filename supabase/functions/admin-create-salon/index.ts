@@ -1,6 +1,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { capturarErro, comSentry } from '../_shared/sentry.ts'
 import { AVISO_WHATSAPP_DA_BARBEARIA, telefoneValido } from '../_shared/telefone.ts'
+import type { ClienteAdmin } from '../_shared/supabase.ts'
 
 const ADMIN_TOOL_SECRET = Deno.env.get('ADMIN_TOOL_SECRET')
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
@@ -99,7 +100,7 @@ function jornadaDoHorario(horario: unknown, professionalId: string) {
 
 
 /** Limite de tentativas via banco (0111). Erro do limitador deixa passar. */
-async function taxaExcedida(admin: ReturnType<typeof createClient>, chave: string, limite: number, janelaSegundos: number) {
+async function taxaExcedida(admin: ClienteAdmin, chave: string, limite: number, janelaSegundos: number) {
   const { data, error } = await admin.rpc('taxa_excedida', {
     p_chave: chave,
     p_limite: limite,

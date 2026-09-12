@@ -4042,3 +4042,90 @@ mudou.
 **Fica aberto do M3 original:** os alertas continuam indo para **um e-mail só,
 sem escalonamento** — falha às 3h espera até de manhã. É decisão de operação, não
 de código, e não foi tocada.
+
+---
+
+## M10 — o limitador vira um só, com política declarada por porta (2026-09-12)
+
+PR #131, **aplicado**: 8 edge functions publicadas. Era o **último achado de
+código** da auditoria de 10/09.
+
+**A lista do parecer já estava desatualizada.** Ele dizia que faltava limitador
+em `whatsapp-webhook`, `abacate-webhook`, `whatsapp`, `cobrar-uso` e
+`add-salon-unit`; conferindo, `whatsapp-webhook` e `cobrar-uso` já tinham
+ganhado, e o `criar-minha-barbearia` — que não estava na lista — tinha o buraco
+mais interessante.
+
+**Sete cópias.** `taxaExcedida` estava copiado literalmente em sete edges e
+`ipDe` em cinco. Conferido por hash: ainda idênticos, só a formatação da
+assinatura divergia em duas. Sete cópias é **uma edição** de distância de
+deixarem de ser idênticas — e aí o limite de um caminho muda e o do outro não,
+sem ninguém perceber. Agora é `_shared/limite.ts`.
+
+**Falhava aberto em todas, por omissão.** O conserto não foi escolher um lado: foi
+**tirar o padrão**. `seFalhar` não tem valor default, então nenhuma porta nova
+pode herdar a decisão errada em silêncio. As nove chamadas declaram:
+
+| Política | Chave | Por quê |
+|---|---|---|
+| bloqueia | `admin:<ip>` ×3 | guarda a senha do painel; limitador fora = força bruta livre |
+| bloqueia | `invite-senha:<token>` | idem, a senha do convite |
+| bloqueia | `reemitir:<salão>` | mexe com dinheiro |
+| bloqueia | `central-fora:<telefone>` | laço de auto-respondedor que a **Meta cobra** e depois pune |
+| deixa-passar | `agenda:<ip>`, `gestao:<ip>` | travar = cliente final não consegue marcar |
+| deixa-passar | `invite:<ip>` | travaria um barbeiro legítimo de entrar na equipe |
+
+**A regra:** porta de cliente final deixa passar; porta de senha, dinheiro ou
+laço caro bloqueia. O `central-fora` é o que prova que política global estaria
+errada — não guarda credencial nenhuma e mesmo assim tem que bloquear.
+
+**Um vizinho do mesmo defeito.** O `criar-minha-barbearia` tinha o limite dentro
+de um `if (ip)`: **sem cabeçalho de IP, o limite inteiro era pulado** — cadastro
+ilimitado. Na prática a Cloudflare sempre põe o header, e "na prática sempre vem"
+é a aposta que o achado existe para desfazer. O conserto separou o IP do LIMITE
+(sempre existe) do IP do REGISTRO gravado em `termos_aceites`, que é
+consentimento com peso legal — ali nulo continua nulo, porque escrever `'sem-ip'`
+seria inventar dado num documento que existe para ser confiável.
+
+**Dois detalhes que quase passaram:**
+
+1. Escrevi `'desconhecido'` como fallback do `ipDe`. As cinco cópias usavam
+   `'sem-ip'`, e **essa string entra na chave do limite** — trocar zeraria os
+   contadores em voo e juntaria numa chave nova quem hoje está separado.
+   Mudança de comportamento disfarçada de limpeza.
+2. O `oxlint` pegou 5 importações órfãs de `ClienteAdmin`, deixadas ao remover as
+   cópias locais.
+
+**Descoberto ao verificar em produção, e vale saber:** funções com
+`verify_jwt: true` (as do painel administrativo) **não produzem linha de fim para
+chamada não autorizada** — o gateway recusa no JWT antes do nosso código rodar.
+Essas rejeições só aparecem em `function_edge_logs`. Provado: a mesma chamada sem
+a chave anon dá 401 sem linha; com a chave, dá
+`fim admin-metricas status=401 ms=74 salao=- req=…`.
+
+**Fica aberto do M10:** nada. As portas que não têm limitador
+(`abacate-webhook`, `asaas`, `add-salon-unit`, `whatsapp`) foram avaliadas e
+deixadas de fora com motivo: as três últimas exigem login, e no webhook de
+pagamento um limite por IP arriscaria derrubar notificação de pagamento real —
+o que se quer limitar ali é a tentativa RECUSADA, e isso é outro desenho.
+
+---
+
+## Estado da auditoria de 10/09 depois deste dia
+
+**Fechados hoje (12/09):** A3, A14, M12 (Fase 5), M11 + o typecheck das edges,
+M3, M13, M10, mais a senha do painel administrativo em texto claro — que não
+estava no parecer e veio do CodeQL, que também só existe por causa do M11.
+
+**Segue aberto, e é escolha e não esquecimento:**
+
+- **M14** — o parecer só existe no laptop (decisão do dono).
+- **As metades adiadas:** a fila de SAÍDA do A3 (`entregarAoN8n` sem
+  retentativa) e o lembrete do M12 (quarta fila, sem view nem RPC).
+- **Os dois achados do webhook do AbacatePay** (11/09): o caminho do HMAC que
+  provavelmente nunca valida, e o segredo em texto claro no log por vir na URL.
+- **O POST da reentrega no n8n** com a credencial de header, nunca exercitado.
+- **Do M3:** alerta ainda vai para um e-mail só, sem escalonamento.
+- **`@tanstack/react-query`** é dependência de produção e não é importado por
+  nenhum arquivo de `src/` — entra no bundle sem servir a nada.
+- **A limpeza do commit `6ce8584`** no GitHub (o parecer vazado em 11/09).

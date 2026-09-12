@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Lock, Plus, Send, Store } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { SalonWizard } from './SalonWizard'
@@ -8,7 +8,13 @@ import { MetricasDoProduto } from './MetricasDoProduto'
 import { PageHeader } from '../../components/PageHeader'
 import { ErroInline } from '../../components/ErroInline'
 
-const SECRET_STORAGE_KEY = 'admin_tool_secret'
+/**
+ * A chave onde a senha administrativa ERA guardada, em texto claro, até
+ * 12/09/2026. Continua aqui só para ser apagada de quem já usou o painel: o
+ * `sessionStorage` sobrevive ao recarregamento da aba, então sem esta limpeza
+ * o valor antigo ficaria lá até a aba ser fechada.
+ */
+const CHAVE_ANTIGA = 'admin_tool_secret'
 
 function AccessGate({ onUnlock }: { onUnlock: (secret: string) => void }) {
   const [value, setValue] = useState('')
@@ -34,7 +40,8 @@ function AccessGate({ onUnlock }: { onUnlock: (secret: string) => void }) {
         return
       }
 
-      sessionStorage.setItem(SECRET_STORAGE_KEY, secret)
+      // A senha NÃO é guardada. Ela vive só na memória do componente,
+      // enquanto o painel estiver aberto. Ver o comentário do componente.
       onUnlock(secret)
     } catch (err) {
       console.error('Erro ao validar senha administrativa:', err)
@@ -77,8 +84,41 @@ function AccessGate({ onUnlock }: { onUnlock: (secret: string) => void }) {
   )
 }
 
+/**
+ * Painel administrativo — cadastrar barbearia, convidar dono, ver o funil.
+ *
+ * **A senha não é guardada em lugar nenhum.** Até 12/09/2026 ela ia para o
+ * `sessionStorage` em texto claro, para o painel continuar destravado depois de
+ * recarregar a página. O CodeQL acusou na primeira vez que rodou
+ * (`js/clear-text-storage-of-sensitive-data`), e ele tinha razão: esta rota é
+ * **pública** (fica ao lado de `/login` e `/agendar/:salonId` no App), e o
+ * `sessionStorage` é da ORIGEM inteira, não desta tela. Um XSS em qualquer
+ * página do CRM, na mesma aba, lia a senha que libera criar barbearia.
+ *
+ * Agora ela vive só na memória do componente. O preço é recarregar a página
+ * pedir a senha de novo — e é um preço pequeno: o formulário da SalonWizard já
+ * não sobrevivia ao recarregamento de qualquer jeito.
+ *
+ * O que NÃO mudou, e é o que sustenta a segurança de verdade: cada chamada
+ * manda a senha no header `x-admin-secret` e o edge a confere no servidor, em
+ * comparação de tempo constante. Este portão é conveniência; a tranca é lá.
+ *
+ * Se um dia a conveniência fizer falta, o caminho certo não é voltar a gravar
+ * a senha: é o `verify` devolver um token curto e assinado, e os edges
+ * aceitarem o token. Isso mexe em três edge functions e está no backlog.
+ */
 export function NovaBarbeariaPage() {
-  const [secret, setSecret] = useState<string | null>(() => sessionStorage.getItem(SECRET_STORAGE_KEY))
+  const [secret, setSecret] = useState<string | null>(null)
+
+  // Apaga a senha que as versões anteriores deixavam gravada. Idempotente e
+  // barato; roda uma vez por montagem do painel.
+  useEffect(() => {
+    try {
+      sessionStorage.removeItem(CHAVE_ANTIGA)
+    } catch {
+      // Navegador com storage bloqueado: não há o que apagar.
+    }
+  }, [])
   const [aba, setAba] = useState<'lista' | 'nova' | 'convite'>('lista')
   const [refreshKey, setRefreshKey] = useState(0)
 

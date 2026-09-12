@@ -3929,3 +3929,52 @@ chave real.
    que o cliente é hoje, mas é `any`. Quando vierem, muda **uma linha**.
 3. **Primeira triagem do CodeQL.** Ele só roda depois que isto entrar na `main`;
    o que achar espera na aba Security e ninguém olhou ainda.
+
+---
+
+## A senha do painel administrativo saiu do navegador (2026-09-12)
+
+**Achado pelo CodeQL, na primeira vez que ele rodou** — duas horas depois de
+entrar no CI. É o primeiro achado que a varredura nova produziu, e ele é real.
+
+`js/clear-text-storage-of-sensitive-data`, ALTO, em
+`NovaBarbeariaPage.tsx:37`: a senha que libera o painel administrativo era
+gravada **em texto claro** no `sessionStorage`, sob a chave `admin_tool_secret`,
+e lida de volta para o painel continuar destravado depois de recarregar a
+página.
+
+**Por que era grave de verdade, e não pedantismo de ferramenta:**
+`/admin/nova-barbearia` é uma rota **pública** — fica ao lado de `/login`,
+`/criar-conta` e `/agendar/:salonId` no `App.tsx`. E `sessionStorage` pertence à
+**origem inteira**, não à tela que escreveu. Ou seja: um XSS em qualquer página
+do CRM, na mesma aba, lia a senha que cria barbearia. A revisão de segurança de
+11/09 passou por essa tela e não pegou.
+
+**A correção:** a senha vive só na memória do componente. O preço é recarregar a
+página pedir a senha de novo — pequeno, porque o formulário da `SalonWizard` já
+não sobrevivia ao recarregamento de qualquer jeito. E o painel agora **apaga** a
+chave antiga ao montar: sem isso, quem já tinha usado continuaria com a senha em
+claro na aba até fechá-la, e a correção não alcançaria justamente quem já foi
+exposto.
+
+**O que não mudou, e é o que segura de verdade:** cada chamada manda a senha no
+header `x-admin-secret` e o edge confere no servidor, em comparação de tempo
+constante. O portão da tela é conveniência; a tranca é lá. Provado na hora: com
+senha errada, o edge responde 401 e a tela diz "Senha incorreta".
+
+**Catraca:** `segredoNaoPersiste.test.ts`, quatro asserções. Uma é larga de
+propósito — *nenhum* arquivo da pasta grava em storage — porque a regressão
+provável não é maldade, é alguém achando ruim digitar a senha depois de um F5 e
+"consertando" do jeito óbvio. O teste foi verificado ao contrário: reintroduzido
+o `setItem`, duas asserções ficam vermelhas.
+
+**Segundo alerta do CodeQL, conferido e descartado:** `vendaPendente.ts:34`.
+`SalePrefill` é só UUID (`appointmentId`, `clientId`, `professionalId`,
+`serviceId`) mais `horaLocal` e `clienteNome`. Nenhuma credencial; a heurística
+tropeçou no nome do cliente.
+
+**Fica aberto:** se a conveniência de continuar destravado fizer falta, o
+caminho certo **não** é voltar a gravar a senha — é o `verify` devolver um token
+curto e assinado e os três edges do painel (`admin-create-salon`,
+`admin-invite-salon`, `admin-metricas`) passarem a aceitá-lo. Mexe em edge
+function e exige publicação; só vale a pena se o incômodo aparecer.

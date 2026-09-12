@@ -1,0 +1,13 @@
+-- 0159: some a última fila do desenho antigo de reativação (aprovado em 11/09).
+--
+-- `clientes_para_avisar_retorno` é a gêmea de `clientes_para_reativar`, apagada
+-- na 0158: as duas nasceram do modelo de duas etapas (0081/0083/0089/0115),
+-- montam template e parâmetros por conta própria e **não têm consumidor** —
+-- nenhum dos workflows do n8n as lê, conferido JSON a JSON na auditoria de
+-- 10/09. O modelo vigente é o da 0113: o banco reserva a cadeira e
+-- `reativacoes_a_enviar` manda o convite.
+--
+-- Ficou de pé na 0158 só porque o dono tinha aprovado apagar uma; agora
+-- aprovou a outra. Duas filas para a mesma coisa, uma delas morta, é a próxima
+-- pessoa lendo a errada.
+drop view if exists public.clientes_para_avisar_retorno;

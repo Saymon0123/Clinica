@@ -1,4 +1,5 @@
 import * as Sentry from 'npm:@sentry/deno@10.73.0'
+import { idDaRequisicao, registrarFim, type ContextoDaRequisicao } from './log.ts'
 
 /**
  * Sentry das edge functions — mesma conta do CRM (org club-cut), diferenciado
@@ -36,6 +37,14 @@ export async function capturarErro(
   if (!dsn) return false
   Sentry.withScope((scope) => {
     scope.setTag('funcao', funcao)
+    // O id da plataforma vira TAG, e não contexto, porque tag é o que se
+    // pesquisa no painel do Sentry. É ele que liga a issue às linhas do log --
+    // sem isso, achar o erro no Sentry e achar o que aconteceu em volta são
+    // duas caçadas separadas. `withScope` aqui é síncrono: o escopo não
+    // atravessa `await` nenhum, então duas requisições simultâneas não
+    // trocam de tag.
+    const requisicao = detalhes?.requisicao
+    if (typeof requisicao === 'string' && requisicao) scope.setTag('requisicao', requisicao)
     if (detalhes) scope.setContext('detalhes', detalhes)
     Sentry.captureException(erro)
   })
@@ -50,14 +59,29 @@ export async function capturarErro(
  */
 export function comSentry(
   funcao: string,
-  handler: (req: Request) => Response | Promise<Response>,
+  handler: (req: Request, ctx: ContextoDaRequisicao) => Response | Promise<Response>,
 ) {
   return async (req: Request): Promise<Response> => {
+    // Um objeto por invocação, nunca de módulo: o mesmo isolate atende
+    // requisições concorrentes, e estado compartilhado aqui atribuiria o salão
+    // de uma chamada à linha de outra -- errado em silêncio, que é o pior jeito.
+    const ctx: ContextoDaRequisicao = {}
+    const requisicao = idDaRequisicao(req)
+    const comecou = Date.now()
+    let status: number | 'erro' = 'erro'
     try {
-      return await handler(req)
+      const resposta = await handler(req, ctx)
+      status = resposta.status
+      return resposta
     } catch (erro) {
-      await capturarErro(erro, funcao)
+      await capturarErro(erro, funcao, { requisicao })
       throw erro
+    } finally {
+      // No `finally` de propósito: a requisição que levanta é exatamente a que
+      // se quer achar depois, e ela nunca chegaria a um log escrito no caminho
+      // feliz. `ctx.salao` sai como '-' quando a função caiu antes de saber de
+      // quem era a chamada -- e aí é a verdade, não uma omissão.
+      registrarFim(funcao, ctx, status, Date.now() - comecou, requisicao)
     }
   }
 }

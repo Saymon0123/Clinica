@@ -1,5 +1,6 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { capturarErro, comSentry } from '../_shared/sentry.ts'
+import { marcarSalao } from '../_shared/log.ts'
 
 /**
  * Recebe os eventos do AbacatePay e libera/reabre o acesso conforme o pagamento.
@@ -73,7 +74,7 @@ async function hmacConfere(corpoRaw: string, assinatura: string, secret: string)
   }
 }
 
-Deno.serve(comSentry('abacate-webhook', async (req: Request) => {
+Deno.serve(comSentry('abacate-webhook', async (req: Request, ctx) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
   if (!WEBHOOK_SECRET) {
     console.error('ABACATE_WEBHOOK_SECRET ausente: recusando tudo ate ser configurado.')
@@ -172,6 +173,7 @@ Deno.serve(comSentry('abacate-webhook', async (req: Request) => {
       }
 
       const salonIds = [...new Set(cobertas.map((f) => f.salon_id))]
+      for (const id of salonIds) marcarSalao(ctx, id)
       if (salonIds.length > 0) {
         const hoje = hojeSP()
         // `neq('cancelada')` não é detalhe: a fatura de cancelamento existe

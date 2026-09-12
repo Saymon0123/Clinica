@@ -2,6 +2,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { jornadaDoHorario } from '../_shared/jornada.ts'
 import { capturarErro, comSentry } from '../_shared/sentry.ts'
 import { AVISO_WHATSAPP_DA_BARBEARIA, somenteDigitos, telefoneValido } from '../_shared/telefone.ts'
+import { marcarSalao } from '../_shared/log.ts'
 
 /**
  * Segundo passo do cadastro aberto: quem já tem conta cria a própria barbearia.
@@ -77,7 +78,7 @@ const SERVICOS_PADRAO = [
   { nome: 'Corte + barba', preco: 70, duracao_minutos: 60 },
 ]
 
-Deno.serve(comSentry('criar-minha-barbearia', async (req: Request) => {
+Deno.serve(comSentry('criar-minha-barbearia', async (req: Request, ctx) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
 
@@ -149,6 +150,8 @@ Deno.serve(comSentry('criar-minha-barbearia', async (req: Request) => {
     return json({ error: 'Nao foi possivel verificar sua conta agora. Tente de novo.' }, 503)
   }
   if (vinculos && vinculos.length > 0) {
+    // O atalho de quem ja tinha barbearia tambem e uma requisicao dela.
+    marcarSalao(ctx, vinculos[0].salon_id as string)
     return json({ salonId: vinculos[0].salon_id, jaExistia: true })
   }
 
@@ -182,6 +185,7 @@ Deno.serve(comSentry('criar-minha-barbearia', async (req: Request) => {
       .single()
     if (erroSalao || !salon) throw erroSalao ?? new Error('Falha ao criar a barbearia.')
     salonId = salon.id
+    marcarSalao(ctx, salonId)
 
     const { error: erroVinculo } = await admin
       .from('user_salons')

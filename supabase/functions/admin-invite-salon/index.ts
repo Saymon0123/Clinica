@@ -1,6 +1,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { capturarErro, comSentry } from '../_shared/sentry.ts'
 import type { ClienteAdmin } from '../_shared/supabase.ts'
+import { marcarSalao } from '../_shared/log.ts'
 
 /**
  * Convite de dono — cadastrar barbearia sem estar frente a frente.
@@ -77,7 +78,7 @@ function segredoConfere(recebido: string | null, esperado: string) {
   return diff === 0
 }
 
-Deno.serve(comSentry('admin-invite-salon', async (req: Request) => {
+Deno.serve(comSentry('admin-invite-salon', async (req: Request, ctx) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
 
@@ -137,6 +138,7 @@ Deno.serve(comSentry('admin-invite-salon', async (req: Request) => {
       .single()
     if (erroSalao || !salon) throw erroSalao ?? new Error('Falha ao criar a barbearia.')
     salonId = salon.id
+    marcarSalao(ctx, salonId)
 
     // `acesso_ate` NULO de propósito: o teste começa no ACEITE, não agora.
     //

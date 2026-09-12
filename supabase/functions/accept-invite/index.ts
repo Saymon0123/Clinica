@@ -3,6 +3,7 @@ import { jornadaDoHorario } from '../_shared/jornada.ts'
 import { capturarErro, comSentry } from '../_shared/sentry.ts'
 import { AVISO_WHATSAPP_DA_BARBEARIA, telefoneValido } from '../_shared/telefone.ts'
 import type { ClienteAdmin } from '../_shared/supabase.ts'
+import { marcarSalao } from '../_shared/log.ts'
 
 /**
  * Aceite de convite para a equipe — com DOIS caminhos, e a diferença importa.
@@ -69,7 +70,7 @@ function ipDe(req: Request) {
   )
 }
 
-Deno.serve(comSentry('accept-invite', async (req: Request) => {
+Deno.serve(comSentry('accept-invite', async (req: Request, ctx) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -108,6 +109,7 @@ Deno.serve(comSentry('accept-invite', async (req: Request) => {
   if (conviteError || !convite) {
     return json({ error: 'Convite não encontrado. Peça um link novo ao dono.' }, 404)
   }
+  marcarSalao(ctx, convite.salon_id as string)
   if (convite.usado_em) {
     return json({ error: 'Este convite já foi usado.' }, 409)
   }

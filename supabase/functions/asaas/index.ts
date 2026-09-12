@@ -1,5 +1,6 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { capturarErro, comSentry } from '../_shared/sentry.ts'
+import { marcarSalao } from '../_shared/log.ts'
 
 /**
  * Ações da assinatura que o CRM dispara: cancelar e a preferência de cobrança
@@ -38,7 +39,7 @@ function json(body: unknown, status = 200) {
   })
 }
 
-Deno.serve(comSentry('asaas', async (req: Request) => {
+Deno.serve(comSentry('asaas', async (req: Request, ctx) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
 
@@ -130,6 +131,7 @@ Deno.serve(comSentry('asaas', async (req: Request) => {
   // ------------------------------------------------------------------
   const salonId = body.salonId as string | undefined
   if (!salonId) return json({ error: 'Unidade nao informada.' }, 400)
+  marcarSalao(ctx, salonId)
   if (body.acao !== 'cancelar') return json({ error: 'Acao desconhecida.' }, 400)
 
   const { data: vinculo, error: erroVinculo } = await comoUsuario

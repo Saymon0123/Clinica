@@ -3,7 +3,11 @@
 **Gerado de `public.whatsapp_templates` em 2026-08-20.** A tabela é a fonte;
 este arquivo é a cópia de trabalho para o cadastro no painel.
 
-**24 templates:** 11 da família lembrete e 13 da família recuperação.
+**23 templates:** 10 da família lembrete e 13 da família recuperação.
+
+**`cliente_atrasado` saiu em 11/09**, junto com a aposentadoria da Política de
+Atraso (M16): o fluxo que o usaria foi arquivado e a fila dele deixou de
+existir. Não submeta — ver `backlog.md`.
 
 A recuperação acontece em **dois toques — 1 mês e 3 meses** — com textos
 diferentes em cada um. Repetir a mesma frase nos dois é o que faz o cliente
@@ -90,11 +94,6 @@ Seguem um agendamento que o cliente fez. Categoria segura.
 - **Corpo:** Oi, {{1}}! Tivemos um imprevisto e precisamos cancelar seu horario de {{2}} as {{3}} na *{{4}}*. Desculpa pelo transtorno.
 - **Botões:** Quero remarcar
 - **Variáveis:** primeiro nome, dia, hora HH:MM, barbearia
-
-### cliente_atrasado
-- **Corpo:** Oi, {{1}}! Aqui e da *{{2}}*. Seu horario era {{3}} e a cadeira esta te esperando. Consegue chegar nos proximos minutos?
-- **Botões:** Estou chegando · Nao vou poder ir
-- **Variáveis:** primeiro nome, barbearia, hora marcada HH:MM
 
 ### fim_do_teste_gratis
 - **Corpo:** Oi! O teste gratis do Club Cut na *{{1}}* acaba {{2}}. Pra continuar com a agenda e o atendimento automatico, cadastre o CPF ou CNPJ de quem vai pagar em Assinatura, dentro do sistema.

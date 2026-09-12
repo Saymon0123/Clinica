@@ -177,6 +177,8 @@ o Asaas como operador).
    **Em produção desde 11/09, 05:00 UTC**, registrada no histórico de
    migrations; a execução do cron das 05:05 já rodou com a função nova, sem
    erro.
+
+   **Testado pelo dono no navegador em 11/09** (a pergunta da "Nova venda").
 8. ~~**`main` não é protegida**~~ — **RESOLVIDO em 10/09.** Regra ativa e
    **provada**: um `git push` direto na `main` volta com
    `GH006: Protected branch update failed`, citando "must be made through a pull
@@ -238,6 +240,9 @@ o Asaas como operador).
     sempre — o `WHATSAPP_APP_SECRET` só existe no cofre e não dá para assinar
     payload daqui. Testadas as duas pontas: 7 casos sobre a RPC e a view.
 
+    **Destrava quando** o dono salvar o secret em `~/.clubcut/meta.env`
+    (combinado em 11/09; ele avisa quando salvar).
+
 12. ~~**A agenda do dono não recarrega**~~ — **RESOLVIDO em 11/09.** O único
     canal Realtime que existia era o do aviso de reserva nova, no `AppLayout`:
     só `INSERT`, e sem falar com a tela da agenda. O cliente cancelava e a grade
@@ -280,6 +285,8 @@ o Asaas como operador).
     **Não verificado no navegador:** as três telas exigem login, e eu não entro
     com credencial de ninguém. A verificação foi typecheck, lint, leitura do
     fluxo e o experimento de Realtime acima.
+
+    **Testado pelo dono no navegador em 11/09.**
 10. ~~**Sem CPF/CNPJ = uso ilimitado sem bloqueio**~~ — **RESOLVIDO em 11/09
     (migration 0156), com o desenho decidido.** Era assim: o bloqueio olhava
     `cobranca_vence_em`, que só existe quando há cobrança.
@@ -390,12 +397,14 @@ Estavam só no chat. Pela regra da casa, o que não está aqui some do radar.
   fatura, tentou reservar, pegou zero, e **saiu antes de chamar o AbacatePay**.
   Um único `abacate_pix_id` no banco e reserva solta no fim.
 
-**Teste de dois minutos que só o dono faz**
-4. De um número que nunca falou com a barbearia, mandar "oi" para o número dela.
+**Teste de dois minutos que só o dono faz — FEITO em 11/09**
+4. ~~De um número que nunca falou com a barbearia, mandar "oi" para o número dela.~~
    **Chegaram duas respostas?** Se sim, confirma que a saudação/ausência do app
    WhatsApp Business está duplicando com o agente da Evolution — e vira item de
    checklist de ativação. Se chegar só uma, o dispositivo vinculado já suprime o
    app e o problema é menor do que eu descrevi. *Não verifiquei; é dedução.*
+
+   **O dono fez o teste em 11/09, e deu certo.**
 
 **Escolhas minhas na migration 0149 — DECIDIDAS pelo dono em 10/09, migration 0150**
 5. ~~`payments.valor >= 0`~~ → **`> 0`**. O dono confirmou que **não existe
@@ -408,11 +417,12 @@ Estavam só no chat. Pela regra da casa, o que não está aqui some do radar.
    mensal, "30 dias após o vencimento" viraria 30 a 60 na prática. Convite
    **aceito nunca é apagado**: é histórico de quem entrou na equipe.
 
-**Cobertura que ficou faltando no A16**
-7. Três tabelas **sem `salon_id`** ficaram de fora do
-   `rls_isolamento_operacao.test.sql`: `pacote_itens`, `pacote_consumos` e
-   `pacote_do_cliente_itens`. São exatamente a categoria de risco (isolamento
-   dependente do join ao pai). `pacotes` e `pacotes_do_cliente` estão cobertas.
+**Cobertura que ficou faltando no A16 — RESOLVIDO em 11/09**
+7. ~~Três tabelas **sem `salon_id`** ficaram de fora do
+   `rls_isolamento_operacao.test.sql`~~: `pacote_itens`, `pacote_consumos` e
+   `pacote_do_cliente_itens` entraram no mesmo arquivo, com o mesmo roteiro das
+   outras: o dono do A enxerga só o que é dele, a escrita cruzada é barrada, e o
+   espelho confere o lado do B. 7 asserções novas, 29 no arquivo.
 
 **Faltas viraram dado com a 0153 — onde o dono quer ver o número?** (11/09) —
 **DECIDIDO no mesmo dia:** o 4º card do Financeiro virou "Cancelamentos e
@@ -560,6 +570,8 @@ Estes três achados do giro não estavam neste backlog — só no parecer
   e a CHECK nasceu validada. Conferido no bundle servido: `pedeTelefone`,
   `salons_telefone_valido`, "Cadastrar o WhatsApp" e "WhatsApp da unidade".
 
+  **Testado pelo dono no navegador em 11/09.**
+
 **Buraco da própria auditoria:** a frente de segurança/multi-tenant morreu no
 limite de sessão antes de escrever o relatório. Não houve leitura sistemática de
 autorização por objeto no `src/` e nas edges — só a verificação direta no banco
@@ -570,6 +582,64 @@ apertado.
 falsificável aqui. Testado com dois POSTs carregando IPs de documentação (RFC
 5737): ambos foram contados em `controle_de_taxa` sob o IP real. A Supabase
 sobrescreve o cabeçalho.
+
+### Fase 4 (11/09) — a cadeira certa e a hora certa
+
+Quatro achados do giro que só aparecem no celular do cliente: uma reserva com um
+barbeiro que saiu, num dia em que a barbearia não abre; "como foi seu
+atendimento?" às 23h40; a mesma pergunta para quem só comprou pomada. O dono não
+vê nenhum deles — nenhum seria pego por um teste de tela. Migration **0158**,
+coberta por `cadeira_certa_e_hora_certa.test.sql` (29 asserções).
+
+- ~~**A8 — a reativação reservava cadeira sem olhar a régua da casa**~~ —
+  **RESOLVIDO em 11/09.** `criar_agendamentos_de_reativacao` só travava por
+  janela de 24-25h, "cliente sem horário futuro" e sobreposição + folga: zero
+  consulta a horário de funcionamento, jornada, `professionals.ativo` ou
+  `services.ativo`. Agora quem escolhe o horário é `horarios_livres` — a **mesma
+  régua do QR do balcão e do agente** —, e dela se pega o livre mais perto do
+  horário de sempre, **no mesmo dia, até 1 hora de diferença** (decidido pelo
+  dono em 11/09). Trocar de barbeiro só quando o de sempre **saiu da equipe**:
+  barbeiro cheio ou de folga naquele dia não vira "marquei com outro", o cliente
+  fica para o próximo ciclo. A fila `reativacoes_a_enviar` ganhou as três travas
+  que faltavam: `salons_com_automacao` (era a única fila sem ela — barbearia
+  bloqueada seguia disparando template **cobrado** em nome dela, na conta da
+  plataforma), barbeiro ainda ativo (mandava o nome de quem saiu) e a exclusão
+  de quem já tem horário futuro (quem marcava sozinho de manhã recebia o convite
+  à tarde e ocupava **duas** cadeiras).
+- ~~**A cadeira que ninguém soube que existia**~~ — **achado novo, encontrado ao
+  corrigir o A8.** `expira_reativacoes_sem_resposta` só soltava a cadeira de
+  quem **recebeu** o convite (`confirmacao_enviada`). A reserva que nunca chegou
+  a ser enviada — barbeiro saiu, barbearia perdeu o acesso, cliente marcou
+  sozinho no meio do caminho — ficava `agendado` para sempre numa agenda que não
+  sabia dela. Passou a ser solta quando cruza as 2 horas, que é onde a fila para
+  de oferecê-la. Ninguém é pausado por isso: não houve pergunta. Em produção não
+  havia nenhuma (0 reativações); sem a trava, a primeira apareceria e não sairia
+  mais.
+- ~~**M4 — nenhuma janela de silêncio**~~ — **RESOLVIDO em 11/09.** Comanda
+  fechada às 21h40 virava "como foi seu atendimento?" às 23h40. A regra mora em
+  `private.hora_de_falar()`: **9h às 20h de Brasília, todos os dias** (decidido
+  pelo dono em 11/09), e as duas filas que falam por conta própria passam por
+  ela. **Nada se perde:** as duas janelas de elegibilidade têm 24 horas e uma
+  janela de 24 horas sempre cruza a faixa das 9h às 20h — a mensagem é adiada,
+  nunca cancelada. **O lembrete do horário marcado fica de fora de propósito:**
+  ele depende da hora do atendimento, e um corte às 8h precisa do aviso às 7h.
+- ~~**M5 — avaliação pedida a quem só comprou pomada**~~ — **RESOLVIDO em
+  11/09.** `avaliacoes_a_pedir` filtrava só `orders.status = 'fechada'`, que quer
+  dizer "alguém pagou alguma coisa": um "podia melhorar" virava alerta **grave**
+  de nota baixa sobre um corte que não houve. Agora exige item de serviço na
+  comanda (o crédito de pacote consumido entra, porque é gravado como `servico`
+  com preço zero) e, quando há agendamento ligado, que ele não esteja cancelado
+  nem marcado como falta.
+- ~~**`clientes_para_reativar`**~~ — **apagada em 11/09** (aprovado pelo dono).
+  Fila do desenho antigo (0077/0083/0089/0115), sem consumidor em nenhum dos
+  workflows do n8n — a auditoria conferiu os JSONs de todos. O modelo vigente é
+  o da 0113. **A gêmea `clientes_para_avisar_retorno` está no mesmo estado e
+  ficou de pé**, porque não foi aprovada para apagar junto.
+
+**Pendente fora do repositório:** aplicar a 0158 em produção à mão (migration
+não está no pipeline). O n8n **não muda**: "Avaliação Pós-Atendimento" e
+"Reativação (Convite Automático)" leem as mesmas views, que passam a devolver
+menos linhas. O fluxo da política de atraso já foi arquivado.
 
 ### Agenda pelo QR, versão 2 — decidida em 11/09, para fazer em etapas
 
@@ -823,27 +893,26 @@ O clube ("corte ilimitado por R$ X/mês") é receita recorrente **para o
 barbeiro**, o que muda o argumento de venda: o produto deixa de ser custo e vira
 faturamento. Aparece na descrição do Trinks e do AppBarber.
 
-### Fluxo n8n da política de atraso está construído mas **desligado**
-`CRM Salao - Politica de Atraso` (id `67oZqGOIoKO6pAeQ`) existe e teve o wiring
-verificado com dados simulados, mas está inativo — e enquanto estiver, a
-política de atraso **não existe para o cliente**.
+### ~~Política de atraso~~ — APOSENTADA em 11/09 (M16)
 
-Ligar manda WhatsApp para clientes **reais** da Curitiba, a única barbearia com
-WhatsApp conectado. Antes disso faltam duas coisas: conferir na tela que as
-credenciais dos três nós ficaram preenchidas (o criador avisou que o nó HTTP foi
-pulado na atribuição automática), e fazer um teste sem terceiros — WhatsApp da
-El Guardians conectado, cliente com o número do dono, agendamento 15 minutos no
-passado, fluxo rodado à mão.
+`CRM Salao - Politica de Atraso` (id `67oZqGOIoKO6pAeQ`) nunca foi publicado,
+estava parado desde 23/08, e o template `atraso_esta_vindo` nunca saiu de
+rascunho na Meta — a view era lida por ninguém e a mensagem não podia ser
+enviada nem se alguém a lesse. O desenho também não sobreviveu: ele previa o
+barbeiro decidindo na faixa do balcão, que saiu em 25/08, e o campo "Atraso
+tolerado" já tinha saído de Configurações em 11/09 (achado 3 do plano C).
 
-Passo a passo em [`n8n-politica-de-atraso.md`](n8n-politica-de-atraso.md).
+**Aposentado inteiro:** fluxo arquivado no n8n; `atrasos_para_perguntar`,
+`appointments.atraso_perguntado_em`, `salons.atraso_tolerado_minutos` e a linha
+do template saíram na migration 0158; o `atraso_perguntado_em` saiu do SELECT da
+agenda no CRM, onde era lido e nunca desenhado. `n8n-politica-de-atraso.md`
+ficou como registro do que foi.
 
-**11/09: o campo "Atraso tolerado" saiu de Configurações** (achado 3 do plano
-C). Ele só alimentava este fluxo desligado, e o desenho do fluxo previa o
-barbeiro decidindo na faixa do balcão, que saiu em 25/08. Antes de ligar, o
-fluxo precisa ser refeito para a presença deduzida (0153) — por exemplo: o
-cliente responde "não vou" e o horário cancela na hora, liberando a cadeira;
-sem resposta, segue o cron. A coluna `atraso_tolerado_minutos` ficou no banco
-(padrão 10).
+**A ideia refeita, para quando valer a pena:** o cliente atrasado recebe a
+pergunta e, se responder "não vou", o horário cancela na hora e a cadeira é
+liberada; sem resposta, segue a presença deduzida (0153). Precisa de **modelo
+novo aprovado pela Meta** e de mexer no recebimento de respostas
+(`whatsapp-webhook`) — é projeto próprio, não sobra de outra entrega.
 
 ### ~~Pacotes de crédito e planos não têm interface~~ — OBSOLETO
 As cinco tabelas de pacote (`packages`, `package_items`, `client_packages`,
@@ -868,7 +937,7 @@ cima de um item antigo.**
 
 ## Infraestrutura e manutenção
 
-### Template de e-mail do Supabase ainda diz "14 dias" (2026-08-31)
+### ~~Template de e-mail do Supabase ainda diz "14 dias"~~ — RESOLVIDO em 11/09
 O prazo do teste voltou de 14 para 7 dias. Foi trocado no CRM
 (`src/lib/planos.ts`, fonte única de todas as telas), na meta description do
 `index.html`, na edge function `criar-minha-barbearia` (redeployada, v9) e no
@@ -883,6 +952,11 @@ quem se cadastra recebe um e-mail prometendo 14 dias e o sistema concede 7.
 
 Enquanto não for colado, é a única superfície do produto que mente sobre o
 prazo.
+
+**Resolvido em 11/09, com o ok do dono:** aplicado pela API de gerenciamento do
+Supabase, só no corpo do e-mail de confirmação, trocando "14 dias" por "7 dias" e
+nada mais. Conferido depois da troca: o texto no ar é idêntico ao esperado, com
+os acentos intactos. Nenhum dos outros modelos e assuntos cita prazo.
 
 
 ### Migrations estão fora do pipeline de deploy
@@ -3448,3 +3522,5 @@ mês"). (c) **Limpeza**: edge `asaas-webhook` deployada apagada e secrets `ASAAS
 geram PIX fake, não dinheiro). Ir pra produção exige o dono ativar produção no AbacatePay (KYC) e me
 passar a chave de produção; aí troco o secret e registro um webhook de produção. Só faz sentido no dia
 de onboardar a primeira barbearia pagante — hoje são 0 barbearias reais, então **manter sandbox até lá**.
+
+**11/09:** o dono está aguardando o AbacatePay liberar a API de produção.

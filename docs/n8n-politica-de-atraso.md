@@ -1,5 +1,14 @@
 # Fluxo n8n — política de atraso
 
+> **APOSENTADO em 11/09/2026 (achado M16).** O fluxo `67oZqGOIoKO6pAeQ` foi
+> arquivado no n8n, a view `atrasos_para_perguntar` e as colunas
+> `appointments.atraso_perguntado_em` e `salons.atraso_tolerado_minutos` saíram
+> na migration 0158, e o template `atraso_esta_vindo` foi removido da tabela e da
+> lista de submissão à Meta. Nada aqui está no ar. O documento fica como registro
+> do que foi tentado; a ideia refeita — o cliente responde "não vou" e a cadeira
+> é liberada na hora — está em `backlog.md` e precisa de modelo novo aprovado
+> pela Meta.
+
 **Construído em 2026-08-17. Existe, mas está DESLIGADO.**
 
 - Fluxo: `CRM Salao - Politica de Atraso`, id `67oZqGOIoKO6pAeQ`

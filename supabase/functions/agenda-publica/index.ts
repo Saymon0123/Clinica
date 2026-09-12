@@ -1,8 +1,8 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { comSentry } from '../_shared/sentry.ts'
 import { chaveDoDia, motivoSemHorario } from '../_shared/semHorario.ts'
-import type { ClienteAdmin } from '../_shared/supabase.ts'
 import { marcarSalao } from '../_shared/log.ts'
+import { ipDe, taxaExcedida } from '../_shared/limite.ts'
 
 /**
  * Agenda pública — o QR do balcão.
@@ -76,28 +76,6 @@ function whatsappDe(telefone: string | null | undefined) {
 }
 
 
-/** Limite de tentativas via banco (0111). Erro do limitador deixa passar. */
-async function taxaExcedida(admin: ClienteAdmin, chave: string, limite: number, janelaSegundos: number) {
-  const { data, error } = await admin.rpc('taxa_excedida', {
-    p_chave: chave,
-    p_limite: limite,
-    p_janela_segundos: janelaSegundos,
-  })
-  if (error) {
-    console.error('Limitador de taxa indisponivel:', error)
-    return false
-  }
-  return data === true
-}
-
-function ipDe(req: Request) {
-  return (
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    req.headers.get('cf-connecting-ip') ??
-    'sem-ip'
-  )
-}
-
 
 Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -123,7 +101,7 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
     }
     // Freio contra varredura de tokens: uuid aleatório já torna o chute
     // inviável, mas martelar também não fica de graça.
-    if (await taxaExcedida(admin, `gestao:${ipDe(req)}`, 12, 600)) {
+    if (await taxaExcedida(admin, `gestao:${ipDe(req)}`, 12, 600, 'deixa-passar')) {
       return json({ error: 'Muitas tentativas. Aguarde alguns minutos.' }, 429)
     }
 
@@ -351,7 +329,7 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
   // cobre a familia inteira marcando do mesmo wi-fi.
   {
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
-    if (await taxaExcedida(admin, `agenda:${ipDe(req)}`, 8, 600)) {
+    if (await taxaExcedida(admin, `agenda:${ipDe(req)}`, 8, 600, 'deixa-passar')) {
       return json({ error: 'Muitos agendamentos seguidos. Aguarde alguns minutos e tente de novo.' }, 429)
     }
   }

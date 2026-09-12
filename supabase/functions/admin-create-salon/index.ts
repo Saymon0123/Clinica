@@ -1,8 +1,8 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { capturarErro, comSentry } from '../_shared/sentry.ts'
 import { AVISO_WHATSAPP_DA_BARBEARIA, telefoneValido } from '../_shared/telefone.ts'
-import type { ClienteAdmin } from '../_shared/supabase.ts'
 import { marcarSalao } from '../_shared/log.ts'
+import { ipDe, taxaExcedida } from '../_shared/limite.ts'
 
 const ADMIN_TOOL_SECRET = Deno.env.get('ADMIN_TOOL_SECRET')
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
@@ -100,28 +100,6 @@ function jornadaDoHorario(horario: unknown, professionalId: string) {
 }
 
 
-/** Limite de tentativas via banco (0111). Erro do limitador deixa passar. */
-async function taxaExcedida(admin: ClienteAdmin, chave: string, limite: number, janelaSegundos: number) {
-  const { data, error } = await admin.rpc('taxa_excedida', {
-    p_chave: chave,
-    p_limite: limite,
-    p_janela_segundos: janelaSegundos,
-  })
-  if (error) {
-    console.error('Limitador de taxa indisponivel:', error)
-    return false
-  }
-  return data === true
-}
-
-function ipDe(req: Request) {
-  return (
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    req.headers.get('cf-connecting-ip') ??
-    'sem-ip'
-  )
-}
-
 /** Comparacao em tempo constante: '===' vaza pelo relogio quantos bytes bateram. */
 function segredoConfere(recebido: string | null, esperado: string) {
   if (!recebido || recebido.length !== esperado.length) return false
@@ -144,7 +122,7 @@ Deno.serve(comSentry('admin-create-salon', async (req: Request, ctx) => {
     // Freio do giro de 2026-08-25: sem ele, o 'verify' aceitava adivinhar a
     // senha da operacao sem limite. 20 chamadas por IP a cada 10 min.
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
-    if (await taxaExcedida(admin, `admin:${ipDe(req)}`, 20, 600)) {
+    if (await taxaExcedida(admin, `admin:${ipDe(req)}`, 20, 600, 'bloqueia')) {
       return json({ error: 'Muitas tentativas. Aguarde alguns minutos.' }, 429)
     }
   }

@@ -2,6 +2,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { capturarErro, comSentry } from '../_shared/sentry.ts'
 import type { ClienteAdmin } from '../_shared/supabase.ts'
 import { marcarSalao } from '../_shared/log.ts'
+import { taxaExcedida } from '../_shared/limite.ts'
 
 /**
  * Transforma faturas de uso abertas em cobranças PIX no AbacatePay.
@@ -49,25 +50,6 @@ function json(body: unknown, status = 200) {
     status,
     headers: { 'Content-Type': 'application/json', ...corsHeaders },
   })
-}
-
-/** Limite de tentativas via banco (0111). Erro do limitador deixa passar. */
-async function taxaExcedida(
-  admin: ClienteAdmin,
-  chave: string,
-  limite: number,
-  janelaSegundos: number,
-) {
-  const { data, error } = await admin.rpc('taxa_excedida', {
-    p_chave: chave,
-    p_limite: limite,
-    p_janela_segundos: janelaSegundos,
-  })
-  if (error) {
-    console.error('Limitador de taxa indisponivel:', error)
-    return false
-  }
-  return data === true
 }
 
 async function abacate(caminho: string, init: RequestInit = {}) {
@@ -173,7 +155,7 @@ async function liberarParaReemissao(
   }
 
   // Sem freio, o botão vira um martelo na API do AbacatePay.
-  if (await taxaExcedida(admin, `reemitir:${vinculos[0].salon_id}`, 3, 3600)) {
+  if (await taxaExcedida(admin, `reemitir:${vinculos[0].salon_id}`, 3, 3600, 'bloqueia')) {
     return json({ error: 'Voce ja gerou varios codigos agora. Aguarde alguns minutos.' }, 429)
   }
 

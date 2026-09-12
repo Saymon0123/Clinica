@@ -3,6 +3,7 @@ import { capturarErro, comSentry } from '../_shared/sentry.ts'
 import { ehPedidoDeSaida } from '../_shared/optOut.ts'
 import type { ClienteAdmin } from '../_shared/supabase.ts'
 import { marcarSalao } from '../_shared/log.ts'
+import { taxaExcedida } from '../_shared/limite.ts'
 
 /**
  * Webhook da Cloud API da Meta — a porta de entrada das mensagens.
@@ -142,25 +143,6 @@ async function registrarFalhasDeEntrega(
   }
 }
 
-/** Limite de tentativas via banco (0111). Erro do limitador deixa passar. */
-async function taxaExcedida(
-  admin: ClienteAdmin,
-  chave: string,
-  limite: number,
-  janelaSegundos: number,
-) {
-  const { data, error } = await admin.rpc('taxa_excedida', {
-    p_chave: chave,
-    p_limite: limite,
-    p_janela_segundos: janelaSegundos,
-  })
-  if (error) {
-    console.error('Limitador de taxa indisponivel:', error)
-    return false
-  }
-  return data === true
-}
-
 /** Número no formato do wa.me: só dígitos, com o 55 na frente. */
 function linkDoWhatsapp(telefone: string | null): string | null {
   const digitos = (telefone ?? '').replace(/\D/g, '')
@@ -190,7 +172,7 @@ async function responderForaDeContexto(
 ) {
   // Sem freio, dois auto-respondedores conversando entre si viram um loop que
   // a Meta cobra e depois pune.
-  if (await taxaExcedida(admin, `central-fora:${telefone}`, 3, 3600)) {
+  if (await taxaExcedida(admin, `central-fora:${telefone}`, 3, 3600, 'bloqueia')) {
     console.log('resposta fora de contexto silenciada pelo limite:', telefone)
     return
   }

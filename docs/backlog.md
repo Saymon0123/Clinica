@@ -703,6 +703,47 @@ cobrança" — senão prometeria uma cobrança que nunca chega. Coberto por
 padrão é **cobrar**: é ela que impede a próxima barbearia de entrar de graça por
 esquecimento.
 
+### Fase 5 (12/09) — M12: o envio em dobro (migration 0163)
+
+**O buraco.** As filas são lidas pelo n8n, enviadas, e só então marcadas. Entre
+ler e marcar não havia reserva: `for update skip locked` aparecia **zero vezes**
+nas 162 migrations. Duas execuções sobrepostas do mesmo fluxo — uma que passou
+dos 30 min do Schedule, ou uma rodada à mão — mandavam duas vezes para a mesma
+pessoa.
+
+**Na reativação não era só incômodo:** `marcar_reativacao_enviada` soma 1 em
+`reativacao_sem_resposta`, e a pausa automática dispara em 2. O envio duplicado
+**pausava a reativação de um cliente que respondeu normalmente** — o sistema
+decidia sozinho parar de convidar alguém por causa de um defeito nosso, e
+ninguém ficava sabendo. O `on conflict (message_id)` da avaliação não protegia
+disso: o wamid é diferente a cada envio.
+
+**A reserva com prazo.** `orders.envio_reservado_ate` e
+`appointments.envio_reservado_ate`; as filas escondem o que está reservado; quem
+vai enviar chama `reservar_avaliacoes` / `reservar_reativacoes`, que reservam e
+devolvem só o que conseguiram. **5 minutos**, decidido pelo dono — é o prazo que
+faz execução morta devolver a linha sozinha, e precisa ser maior que o envio mais
+lento, senão a linha volta para a fila e sai em dobro do mesmo jeito.
+
+**A trava é o `UPDATE ... RETURNING`, não o `skip locked`:** duas transações não
+atualizam a mesma linha ao mesmo tempo — a segunda espera, re-avalia o `where`
+(que agora tem reserva no futuro) e volta com zero linhas. O `skip locked` seria
+otimização, não correção, e ficou de fora para ter menos mágica no código que
+decide se um cliente recebe mensagem.
+
+**Fora de propósito: o LEMBRETE.** Ele não tem view nem RPC — o fluxo consulta
+`appointments` direto — e é a funcionalidade mais usada do produto. Mexer nele no
+mesmo PR que mexe em dois fluxos vivos multiplica o risco: o pior caso dele é o
+cliente receber o mesmo lembrete duas vezes, enquanto o da reativação é ser
+silenciado para sempre. Fica para PR próprio.
+
+**Pendente no n8n:** dois fluxos precisam trocar o `SELECT` na view pela chamada
+da RPC de reserva — "Avaliação Pós-Atendimento" e "Reativação (Convite
+Automático)". Enquanto não trocarem, nada quebra: as views continuam existindo e
+funcionando; o que não existe ainda é a proteção.
+
+Coberto por `o_envio_em_dobro.test.sql` (9 asserções).
+
 ### Fase 5 (12/09) — A3: a mensagem do cliente que some (migration 0162)
 
 **O buraco.** O `whatsapp-webhook` não gravava a mensagem recebida em lugar
@@ -746,6 +787,7 @@ depois da 0162 aplicada em produção** — antes disso a view não existe e o f
 erraria a cada rodada.
 
 Coberto por `a_mensagem_nao_se_perde.test.sql` (11 asserções).
+
 
 ### Fase 5 (12/09) — A14: o mês que some (migration 0161)
 

@@ -21,8 +21,24 @@ jobs:
       - run: npm run lint
       - run: npm test
 
-  # Sobe o Postgres do Supabase, aplica as 20 migrations e roda os testes de
-  # RLS em pgTAP. É o único ponto onde o isolamento entre salões é verificado.
+      # O `tsc -b` cobre `src` (tsconfig.app.json) e o vite.config.ts
+      # (tsconfig.node.json) -- e mais nada. As edge functions rodam em Deno e
+      # até aqui estavam **fora de qualquer verificação de tipo**: erro de tipo
+      # em edge só aparecia em produção, na primeira requisição que passasse
+      # pela linha errada. Numa peça que roda sem ninguém olhando, isso é caro.
+      #
+      # `deno check` parte dos 12 `index.ts` e segue os imports, então cobre
+      # `_shared` de carona. Os `.test.ts` de `_shared` ficam de fora de
+      # propósito: são de vitest (Node), importam sem extensão -- que o Deno não
+      # resolve -- e quem os roda é o `npm test` logo acima.
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Typecheck das edge functions (Deno)
+        run: deno check supabase/functions/*/index.ts
+
+  # Sobe o Postgres do Supabase, aplica as migrations do repo e roda os testes
+  # de RLS em pgTAP. É o único ponto onde o isolamento entre salões é verificado.
   banco:
     name: Testes de RLS (pgTAP)
     runs-on: ubuntu-latest
@@ -33,3 +49,42 @@ jobs:
           version: latest
       - run: supabase db start
       - run: supabase test db
+
+  # A trava que faltava em 11/09/2026, quando o parecer da auditoria foi para um
+  # repositório público sem querer. Varre a **árvore de arquivos como ela está**,
+  # não o histórico: assim o resultado depende só do que este commit traz, e
+  # nunca de um segredo antigo que já foi removido do topo. Check que fica
+  # vermelho por motivo histórico é check que se aprende a ignorar.
+  #
+  # `--redact` porque o log de CI de repositório público é público: sem ele, um
+  # segredo achado seria impresso de novo, na frente de todo mundo.
+  segredos:
+    name: Segredos no codigo (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Baixar o gitleaks
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz \
+            | tar -xz gitleaks
+      - name: Varrer a arvore
+        run: ./gitleaks detect --no-git --redact --exit-code 1 --source .
+
+  # A árvore está limpa hoje -- `npm audit` acusa 0, com as dependências de
+  # desenvolvimento incluídas. Então qualquer vermelho aqui é notícia de
+  # verdade, não dívida herdada.
+  #
+  # Este job de propósito NÃO está entre as checagens obrigatórias da `main`:
+  # um aviso novo nasce do mundo lá fora, não do que o PR mudou, e travar o
+  # merge por isso ensina a ignorar o vermelho. Ele existe para ser visto.
+  dependencias:
+    name: Vulnerabilidade nas dependencias (npm audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm audit --audit-level=high

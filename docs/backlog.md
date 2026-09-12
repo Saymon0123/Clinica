@@ -4236,3 +4236,53 @@ erro).
 
 **O que ainda não foi exercido:** o fluxo nunca rodou com fatura de verdade na
 fila. A primeira prova disso é o fechamento do dia 1º de outubro.
+
+---
+
+## O cron que para em silêncio — alarme aplicado (2026-09-12)
+
+Migration 0165, **aplicada**. PR #138. Nenhum deploy de edge, nenhuma mudança no n8n.
+
+**Sete rotinas automáticas sustentam o produto, e nenhuma avisava quando parava.**
+A auditoria olha DADO errado; um cron que deixa de rodar não produz dado nenhum
+para olhar. É o mesmo ponto cego da 0161 ("uma fatura que nunca nasceu é
+invisível"), uma camada acima.
+
+**O caso que motivou**, achado ao acompanhar a primeira cobrança real:
+`estende-acesso-sem-debito` roda às 4h20 e escreve `acesso_ate = hoje + 1` — a
+folga é de **um dia**. Duas falhas seguidas tiram o CRM de toda barbearia
+pagante, de uma vez e em silêncio, e o dono descobre pelo cliente reclamando.
+
+A tolerância sai do próprio `schedule`: 4 ciclos para as de minuto, 3h para as de
+hora, 26h para as diárias, 32 dias para a mensal. Folgadas de propósito — alarme
+que dispara por atraso normal do agendador vira ruído, e ruído se aprende a
+ignorar. Cadência não prevista cai em 26h: melhor errar avisando demais.
+
+**Função `private` e não a view direto:** o schema `cron` é do postgres e o
+`service_role` não tem USAGE nele. Uma view `security_invoker` — e todas são,
+desde a 0157, com catraca — quebraria ao ser lida pelo n8n. Décimo membro de
+`auditoria_pendente`, com as colunas listadas uma a uma em vez de `select *`.
+
+**Verificado em produção depois de aplicar:** `service_role` lê a view, 0 alarmes
+falsos com os 7 crons saudáveis, os 2 alertas anteriores intactos, 0 views sem
+invoker, e a função inalcançável para `authenticated` e `anon`.
+
+**Duas idas ao CI por defeitos que só existem no pgTAP**, e vale registrar porque
+vão se repetir:
+
+1. **`select like(a, b, c)` não parseia** — `like` é palavra reservada no
+   Postgres. Usar `ok(... like ...)`. Mesma família do `is(smallint, integer)`
+   que derrubou o teste da 0163.
+2. **`permission denied for sequence runid_seq`** — o usuário do
+   `supabase test db` não é superusuário e não pode usar o default de
+   `cron.job_run_details.runid`. Passar o `runid` na mão.
+
+O ensaio contra produção usa SQL puro e **não exercita o pgTAP** — é por isso que
+esses dois só aparecem no CI. O ensaio continua valendo (ele prova a lógica
+contra o schema real); só não substitui o CI.
+
+**Fica aberto, e é decisão de negócio:** a folga de um dia continua sendo de um
+dia. O alarme avisa; não amplia a margem. Subir `acesso_ate` para `hoje + 3`
+daria três dias de resiliência ao custo de três dias a mais de acesso para quem
+deve, somados aos 7 do vencimento. Com o alarme no lugar, um dia passa a ser
+defensável — sem ele era temerário.

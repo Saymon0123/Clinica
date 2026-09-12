@@ -56,8 +56,13 @@ select ok(
 -- ---------------------------------------------------------------------------
 -- Fica calado
 -- ---------------------------------------------------------------------------
-insert into cron.job_run_details (jobid, status, start_time, end_time, database, username, command)
-select jobid, 'succeeded', now() - interval '2 hours', now() - interval '2 hours', 'postgres', 'postgres', 'x'
+-- `runid` explicito e nao o default: o usuario do `supabase test db` nao e
+-- superusuario e nao tem permissao na sequencia `cron.runid_seq` -- sem isto o
+-- insert morre com "permission denied for sequence" e leva o plano junto. O
+-- numero alto evita colidir com execucao real; o rollback apaga de qualquer
+-- forma.
+insert into cron.job_run_details (jobid, runid, status, start_time, end_time, database, username, command)
+select jobid, 999000001, 'succeeded', now() - interval '2 hours', now() - interval '2 hours', 'postgres', 'postgres', 'x'
   from cron.job where jobname = :'rotina';
 
 select is(
@@ -72,7 +77,7 @@ select is(
 -- 30 horas para uma tolerância de 26: passou do limite, e por pouco -- é onde
 -- um erro de sinal ou de unidade apareceria.
 update cron.job_run_details set start_time = now() - interval '30 hours'
- where jobid = (select jobid from cron.job where jobname = :'rotina');
+ where runid = 999000001;
 
 select is(
   (select count(*)::int from auditoria_crons where chave = 'cron-parado:' || :'rotina'),

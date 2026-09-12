@@ -4,10 +4,22 @@
 # tinha varredura nenhuma, e o `react-router` ficou em produção com duas falhas
 # ALTAS e correção disponível -- não por decisão, por ninguém ter olhado.
 #
-# Agrupado e com teto de 3 PRs abertos de propósito: o projeto tem um
-# desenvolvedor só, e uma enxurrada de PR por semana vira uma aba que não se
-# abre mais. As atualizações de **segurança** não obedecem a este teto nem ao
-# agrupamento -- elas vêm na hora, por fora, e é assim que deve ser.
+# Agrupado de propósito: o projeto tem um desenvolvedor só, e uma enxurrada de
+# PR por semana vira uma aba que não se abre mais. As atualizações de
+# **segurança** não obedecem ao teto nem ao agrupamento -- elas vêm na hora, por
+# fora, e é assim que deve ser.
+#
+# **Major fica fora do grupo** (`update-types` só com minor e patch). A primeira
+# rodada, no mesmo dia em que isto entrou, mostrou por quê: o grupo de
+# desenvolvimento veio com TypeScript 6->7, Vitest 4->5 e @types/node 24->26
+# num PR só. Tudo verde no CI -- mas se daqui a duas semanas algo sutil quebrar,
+# esse commit é indivisível e não há o que bissecar. Minor e patch andam juntos
+# porque quase nunca é neles que mora a surpresa; major anda sozinho porque é
+# exatamente onde ela mora.
+#
+# O teto subiu de 3 para 5 por causa disso: com os majors saindo do grupo, os
+# dois grupos mais alguns majors soltos não cabiam em 3, e PR que não cabe no
+# teto simplesmente não aparece -- o silêncio pareceria "nada a atualizar".
 version: 2
 updates:
   - package-ecosystem: npm
@@ -17,12 +29,14 @@ updates:
       day: monday
       time: "09:00"
       timezone: America/Sao_Paulo
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 5
     groups:
       producao:
         dependency-type: production
+        update-types: [minor, patch]
       desenvolvimento:
         dependency-type: development
+        update-types: [minor, patch]
     commit-message:
       prefix: Dependencias
 

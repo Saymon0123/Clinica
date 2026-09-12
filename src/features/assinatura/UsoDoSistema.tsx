@@ -23,6 +23,8 @@ type Uso = {
   valor_gerado: number
   lembretes: number
   reativacoes: number
+  /** Falso = barbearia interna (0160): mede o uso, mas nada disso vira fatura. */
+  cobravel: boolean
 }
 
 type Fatura = {
@@ -173,12 +175,22 @@ export function UsoDoSistema() {
             cliente trazido de volta pela reativação sai de graça — e receberia
             R$ 0,75 por ele na fatura. Decisão de 04/09/2026: a regra fica, o
             texto muda. A catraca está em `promessaDeCobranca.test.ts`. */}
-        <p className="text-sm text-muted-foreground mt-1">
-          Você paga por agendamento que o atendimento automático marcou —{' '}
-          {uso ? `${moeda(Number(uso.preco_unitario))} cada` : 'carregando...'}. Entra também o
-          horário de reativação que o cliente confirmou. As mensagens de lembrete e de reativação
-          não custam nada.
-        </p>
+        {/* Barbearia interna (0160) vê o mesmo medidor, com a frase certa: sem
+            isto a tela prometeria uma cobrança que nunca chega, que é o tipo de
+            mentira que o `promessaDeCobranca.test.ts` existe para impedir. */}
+        {uso && !uso.cobravel ? (
+          <p className="text-sm text-muted-foreground mt-1">
+            Esta barbearia está <strong>fora da cobrança</strong>: o uso é medido e aparece aqui,
+            mas não vira fatura e nada é cobrado.
+          </p>
+        ) : (
+          <p className="text-sm text-muted-foreground mt-1">
+            Você paga por agendamento que o atendimento automático marcou —{' '}
+            {uso ? `${moeda(Number(uso.preco_unitario))} cada` : 'carregando...'}. Entra também o
+            horário de reativação que o cliente confirmou. As mensagens de lembrete e de reativação
+            não custam nada.
+          </p>
+        )}
       </div>
 
       {carregando ? (
@@ -196,7 +208,7 @@ export function UsoDoSistema() {
               </div>
               <div className="text-xl font-semibold text-foreground mt-1">{uso.agendamentos}</div>
               <div className="text-[11px] text-muted-foreground">
-                {moeda(valorEstimado)} no mês até agora
+                {uso.cobravel ? `${moeda(valorEstimado)} no mês até agora` : 'sem cobrança'}
               </div>
             </div>
             <div className="bg-surface-2 rounded-lg p-3">

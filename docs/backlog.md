@@ -679,6 +679,30 @@ não está no pipeline). O n8n **não muda**: "Avaliação Pós-Atendimento" e
 "Reativação (Convite Automático)" leem as mesmas views, que passam a devolver
 menos linhas. O fluxo da política de atraso já foi arquivado.
 
+### Barbearia fora da cobrança — decidido em 12/09 (migration 0160)
+
+A El Guardians é a barbearia de teste do próprio dono, dentro do banco de
+produção. Ela sai do teste grátis em **19/09**, e a partir daí o fechamento do
+dia 1º geraria fatura — com o AbacatePay já em produção, **PIX de verdade
+cobrando o dono dele mesmo**. Decisão: fica fora da cobrança.
+
+`salons.cobravel` (padrão **true**) e a trava dentro de `gerar_fatura_de_uso`,
+que é a porta única de criação de fatura desde a 0130 — o fechamento mensal e a
+fatura de cancelamento passam os dois por ali, então a regra não precisa ser
+escrita duas vezes. As duas saídas fáceis foram recusadas de propósito: desligar
+o cron tira a cobrança de todo mundo, e empurrar `trial_ate` para 2030 deixa no
+banco um "teste grátis de quatro anos" que a próxima pessoa lê como bug.
+
+**O acesso não muda:** barbearia fora da cobrança continua sujeita ao documento
+(0156) e ao cron de acesso. O que ela não tem é fatura.
+
+**A tela conta a verdade:** `uso_do_sistema_no_mes` devolve `cobravel`, e a aba
+Assinatura troca "você paga X por agendamento" por "esta barbearia está fora da
+cobrança" — senão prometeria uma cobrança que nunca chega. Coberto por
+`barbearia_fora_da_cobranca.test.sql` (6 asserções), sendo a primeira que o
+padrão é **cobrar**: é ela que impede a próxima barbearia de entrar de graça por
+esquecimento.
+
 ### Agenda pelo QR, versão 2 — decidida em 11/09, para fazer em etapas
 
 O dono achou a página "muito vazia, pouco profissional" e quer que o cliente

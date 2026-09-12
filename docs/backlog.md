@@ -203,8 +203,10 @@ o Asaas como operador).
    *Settings → Branches* (ou `gh api -X DELETE repos/:owner/:repo/branches/main/protection`)
    e religar depois — a fricção de ter que desligar é justamente o ponto.
 
-   **Continua aberto:** não há scanner de dependência no CI (zero `npm audit`,
-   gitleaks, CodeQL ou dependabot).
+   ~~**Continua aberto:** não há scanner de dependência no CI.~~ — **RESOLVIDO em
+   12/09**: entraram `npm audit`, gitleaks, CodeQL e dependabot, mais um
+   `deno check` para as edge functions, que não passavam por typecheck nenhum.
+   Detalhe adiante, em *"M11 — a varredura que não existia"*.
 9. ~~**Isolamento multi-tenant testado em 3 tabelas de 54**~~ — **RESOLVIDO em
    10/09** (`rls_isolamento_operacao.test.sql`, 22 asserções sobre 13 tabelas,
    incluindo as cinco **sem `salon_id`**, cujo isolamento depende do join ao
@@ -3845,3 +3847,85 @@ de teste e um teste de verdade criaria cobrança com dinheiro. A primeira cobran
 **Cobrança real a partir de 20/09:** a El Guardians (barbearia de teste do dono) sai do teste em
 19/09, e o fechamento do dia 1º passa a gerar **PIX de verdade** para ele mesmo. Decidir antes se o
 `fechamento-mensal-de-uso` fica de pé para ela.
+
+---
+
+## M11 — a varredura que não existia, e o typecheck que faltava nas edges (2026-09-12)
+
+PR "CI: a varredura que nao existia". **Nenhuma migration, nenhum deploy** — a
+mudança é toda de CI e de tipo.
+
+**O achado era menor do que parecia; o buraco, maior.** O parecer registrou
+`react-router@7.18.1` com duas falhas ALTAS em produção. O CVE é do modo RSC,
+que este SPA em Vite não usa — risco prático baixo. O que importava era o
+motivo de a versão estar lá: **não havia varredura nenhuma**. Nem `npm audit`,
+nem gitleaks, nem CodeQL, nem dependabot. Não passou por decisão; passou por
+ninguém ter olhado. `react-router` foi a 7.18.3 (dentro do `^7.18.1` que já
+estava no `package.json`, então só o lock mudou) e o `npm audit fix` levou
+`browserslist`, `nanoid` e `postcss` junto. `npm audit` acusa **0**, com as
+dependências de desenvolvimento incluídas.
+
+**As quatro travas, e o rigor de cada uma é diferente de propósito:**
+
+| Trava | Quando | Trava o merge? | Por quê |
+|---|---|---|---|
+| gitleaks | todo PR | job próprio | Determinística, sobre os arquivos **deste** PR |
+| `npm audit` | todo PR | **não** | Aviso novo nasce do mundo lá fora, não do PR |
+| CodeQL | `main` + semanal | nunca em PR | Precisa de triagem; em PR viraria atraso |
+| dependabot | segunda de manhã | — | Agrupado, teto de 3 PRs |
+
+O gitleaks varre a **árvore como ela está** (`--no-git`), não o histórico: assim
+o resultado depende só do que o commit traz, nunca de um segredo antigo já
+removido do topo. Check que fica vermelho por motivo histórico é check que se
+aprende a ignorar. E `--redact`, porque o log de CI de repositório público é
+público — sem ele, o segredo achado seria impresso de novo.
+
+**O buraco que não estava no parecer: as edge functions não eram verificadas por
+nada.** O `tsc -b` cobre `src` e o `vite.config.ts`, e mais nada. As doze
+funções que rodam em Deno ficavam fora de qualquer typecheck, e erro de tipo
+nelas só apareceria em produção, na primeira requisição que passasse pela linha
+errada. Agora `deno check --node-modules-dir=none supabase/functions/*/index.ts`
+entra no job que **já é obrigatório** na `main`. O `--node-modules-dir=none` não
+é detalhe: sem ele o Deno vê o `package.json` do CRM na raiz e procura as
+dependências npm das edges no `node_modules` do front, onde nunca estiveram —
+com `none`, resolve pelo cache próprio, que é o que o runtime da Supabase faz.
+
+**E ele achou coisa na primeira vez que rodou: 28 erros, com uma causa só.**
+`ReturnType<typeof createClient>` era a anotação de `admin` em **onze lugares,
+sete arquivos**. A armadilha: `createClient` é um `const` de tipo genérico, e
+`ReturnType` sobre assinatura genérica instancia os parâmetros pelas
+**restrições**, não pelos **padrões**. `Database` vira `unknown` em vez de
+`any`, e daí `SchemaName` vira `never`. Com o schema `never` o mapa de funções
+do banco fica vazio — por isso `admin.rpc('taxa_excedida', {...})` reclamava que
+o segundo argumento deveria ser `undefined`: para o compilador não existia RPC
+nenhuma para chamar.
+
+A anotação não protegia nada. Ela **desligava** a checagem justamente onde mais
+importava (toda chamada de RPC, toda leitura de linha) e ainda brigava com o
+cliente de verdade. Agora existe um tipo só, `ClienteAdmin`, em
+`_shared/supabase.ts`, com o porquê escrito ao lado.
+
+**Por que não precisou publicar edge nenhuma:** a mudança é só de tipo, e
+TypeScript some na compilação — o `import type` é apagado pelo empacotador, o
+JavaScript que roda é idêntico. O repositório fica à frente do que está
+publicado só no código-fonte, nunca no comportamento; o arquivo novo viaja junto
+na próxima publicação que houver por outro motivo.
+
+**Único achado do gitleaks no repositório inteiro:** o JWT de mentira em
+`credenciaisSupabase.test.ts:5`, que existe para testar o FORMATO da chave (o
+payload decodifica para `{"iss":"supabase","ref":"abc"}` e a assinatura é a
+string `assinatura_qualquer-123`). Ganhou `// gitleaks:allow` e um comentário
+dizendo por que é seguro — e avisando que deixa de ser se alguém colar ali uma
+chave real.
+
+**Fica aberto:**
+
+1. **Tornar "Segredos no codigo (gitleaks)" checagem obrigatória da `main`.** É
+   mudança na proteção do branch e é decisão do dono; hoje o job aparece
+   vermelho no PR mas não impede o merge. Um comando:
+   `gh api -X PATCH repos/:owner/:repo/branches/main/protection/required_status_checks -f 'contexts[]=Segredos no codigo (gitleaks)'`
+2. **Tipos gerados do banco** (`supabase gen types typescript`). Enquanto não
+   vierem, `ClienteAdmin` tem `any` no lugar de `Database` — honesto quanto ao
+   que o cliente é hoje, mas é `any`. Quando vierem, muda **uma linha**.
+3. **Primeira triagem do CodeQL.** Ele só roda depois que isto entrar na `main`;
+   o que achar espera na aba Security e ninguém olhou ainda.

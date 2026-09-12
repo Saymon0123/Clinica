@@ -749,10 +749,10 @@ conta) e a **limpeza da lista de endereços de retorno do login** — saiu a ent
 tirar quebra o login no `npm run dev` e o risco prático é baixo. O captcha continua desligado: precisa
 de conta no provedor e mexe no front.
 
-**Falta o dono testar** "esqueci minha senha" de ponta a ponta. Os dois caminhos do código trocam a
-senha logo depois de criar sessão nova (código por e-mail em `ForgotPasswordPage`, link em
-`ResetPasswordPage`), que é o que a regra considera login recente — deve passar, mas não foi
-exercitado. Se quebrar, é um comando para desligar.
+**Testado pelo dono em 12/09: "esqueci minha senha" continua funcionando** com a re-autenticação
+ligada, como o código previa — os dois caminhos trocam a senha logo depois de criar sessão nova
+(código por e-mail em `ForgotPasswordPage`, link em `ResetPasswordPage`), e sessão de segundos atrás
+é o que a regra considera login recente.
 
 O texto abaixo é o registro de quando estava desligado.
 

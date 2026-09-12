@@ -4286,3 +4286,54 @@ dia. O alarme avisa; não amplia a margem. Subir `acesso_ate` para `hoje + 3`
 daria três dias de resiliência ao custo de três dias a mais de acesso para quem
 deve, somados aos 7 do vencimento. Com o alarme no lugar, um dia passa a ser
 defensável — sem ele era temerário.
+
+---
+
+## Correção de um erro meu: o `cobrar-uso` sempre teve chamador (2026-09-12)
+
+Eu afirmei, e registrei acima, que **nada** chamava o `cobrar-uso`. Estava errado,
+e a correção importa mais que o erro.
+
+**O fluxo "Detalhamento de Uso" sempre teve um nó `Gerar Boletos`** que chama a
+edge de hora em hora, logo antes de montar o e-mail — posição certa, para o
+detalhamento já sair com o copia-e-cola do Pix. Eu procurei por nome e descrição
+dos 16 fluxos e não olhei dentro dos nós.
+
+**Por que ninguém percebeu, e é o achado de verdade.** Esse nó autenticava com a
+credencial do Supabase, que manda a chave **anon** no `Authorization` — e a nota
+do próprio nó dizia *"a funcao e idempotente, e por isso o token anon basta como
+gatilho"*. Não bastava: o `chamadorAutorizado` compara com um segredo. O nó vinha
+levando **401 duas vezes por hora** (`maxTries: 2`), e o
+`onError: continueRegularOutput` apagava o erro antes que virasse alerta.
+
+Confirmado no log de borda: `user_agent: n8n`, origem Hostinger, 401 a cada hora
+cheia, por todo o período consultável.
+
+Ou seja: não era ausência de chamador. Era **um chamador mudo** — que é pior,
+porque a ausência se descobre procurando e o silêncio não se descobre de jeito
+nenhum.
+
+**O que foi feito:**
+
+1. O nó `Gerar Boletos` passou a usar `x-cobrar-token` pela credencial, com a
+   anon no `Authorization` só para satisfazer o `verify_jwt` do portão. Testado:
+   devolve `{cobrancas: 0}` em vez de 401.
+2. A nota do nó foi reescrita — ela dizia exatamente a frase que causou o bug, e
+   induziria o próximo a refazê-lo.
+3. **O fluxo que eu tinha criado hoje (`Cobrar Uso (a cada hora)`) foi despublicado
+   e arquivado.** Ele duplicava uma chamada que já existia, em posição pior.
+
+**O `continueRegularOutput` continua**, e de propósito: se o AbacatePay estiver
+fora, o detalhamento ainda sai (sem o Pix) e a cobrança nasce no ciclo seguinte.
+A falha não fica invisível — `auditoria_cobranca` acusa `cobranca-travada` quando
+uma fatura passa 2 dias sem Pix. Dois dias de atraso é aceitável num ciclo mensal;
+silêncio permanente não era.
+
+**Terceira vez no dia que o n8n ignorou credencial em nó HTTP Request** criado ou
+recriado por API — inclusive quando passada dentro do próprio `addNode`. Sempre
+exige um `setNodeCredential` em seguida.
+
+**A lição, que vale mais que o conserto:** procurei o chamador por nome e
+descrição, não pelo conteúdo dos nós, e concluí ausência a partir de uma busca
+rasa. A evidência que me corrigiu não veio de ler o n8n de novo — veio de **olhar
+o log de borda** e ver 401 de hora em hora que eu não sabia explicar.

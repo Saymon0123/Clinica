@@ -740,7 +740,23 @@ Advisors 0028/0029 apontaram funções `SECURITY DEFINER` executáveis por `anon
   (usadas em muitas views), fazer em leva dedicada com teste. `extension_in_public` (`btree_gist`,
   não mover — sustenta as exclusion constraints) e `leaked_password_protection` (exige Pro) seguem.
 
-### Proteção contra senhas vazadas desativada — exige plano Pro
+### ~~Proteção contra senhas vazadas desativada~~ — LIGADA em 12/09
+
+Ligada pela API de gerenciamento junto com outras duas travas da revisão de segurança, aprovadas
+pelo dono: **re-autenticação para trocar senha** (uma sessão roubada trocava a senha e ficava com a
+conta) e a **limpeza da lista de endereços de retorno do login** — saiu a entrada corrompida
+`...vercel.app/**ehttp://localhost:5173/**`, sobraram quatro. O `localhost:5173` ficou de propósito:
+tirar quebra o login no `npm run dev` e o risco prático é baixo. O captcha continua desligado: precisa
+de conta no provedor e mexe no front.
+
+**Testado pelo dono em 12/09: "esqueci minha senha" continua funcionando** com a re-autenticação
+ligada, como o código previa — os dois caminhos trocam a senha logo depois de criar sessão nova
+(código por e-mail em `ForgotPasswordPage`, link em `ResetPasswordPage`), e sessão de segundos atrás
+é o que a regra considera login recente.
+
+O texto abaixo é o registro de quando estava desligado.
+
+### Como era antes: exigia plano Pro
 Supabase Auth pode recusar senha que já apareceu em vazamento, comparando com o
 HaveIBeenPwned por *k-anonymity* (só os 5 primeiros caracteres do hash saem do
 servidor; a senha nunca é enviada). Está desligado, e é um WARN do advisor.
@@ -3556,9 +3572,42 @@ passou** (fatura de teste → PIX → simulate-payment → webhook marcou paga +
 mês"). (c) **Limpeza**: edge `asaas-webhook` deployada apagada e secrets `ASAAS_*` removidos (só
 `ABACATE_*` restam). Renomear a edge `asaas`→`cobranca` segue opcional.
 
-**Único pendente — PRODUÇÃO:** a `ABACATE_API_KEY` no Supabase é **sandbox** (devMode: as cobranças
-geram PIX fake, não dinheiro). Ir pra produção exige o dono ativar produção no AbacatePay (KYC) e me
-passar a chave de produção; aí troco o secret e registro um webhook de produção. Só faz sentido no dia
-de onboardar a primeira barbearia pagante — hoje são 0 barbearias reais, então **manter sandbox até lá**.
+**PRODUÇÃO LIGADA em 12/09.** O dono salvou a chave de produção; o resto foi feito e conferido:
 
-**11/09:** o dono está aguardando o AbacatePay liberar a API de produção.
+- **`ABACATE_API_KEY`** trocada pela de produção (`abc_prod…`). A chave foi validada **antes** da
+  troca, por contraste: uma chave inventada recebe 401 da API, a dele recebe 400 num id inexistente
+  — ou seja, autentica. Depois da troca, o hash do secret no Supabase bate com o do arquivo.
+- **`ABACATE_BASE_URL`** já estava certa (`https://api.abacatepay.com/v2`), conferida por hash.
+- **Webhook de produção registrado pela API**, não pelo painel. O dono cadastrou primeiro à mão, e
+  ficou certo (URL, os dois eventos, `devMode:false`) — mas **a API do AbacatePay não devolve o
+  segredo** nem na listagem nem no `get`, então não havia como provar que o valor digitado era igual
+  ao nosso. E o erro seria silencioso do pior jeito: cliente paga, o webhook leva 401, o acesso não
+  abre, ninguém percebe. Então foi refeito por `POST /webhooks/create` com o nosso segredo exato
+  (criado antes, apagado o antigo depois, para não haver janela sem webhook). Sobrou **um** webhook:
+  `webh_prod_Z1PZWHT6LbSGnKBfnrfR2gmc`, `devMode:false`, eventos `transparent.completed` e
+  `transparent.refunded`.
+- **`ABACATE_WEBHOOK_SECRET` rotacionado** (48 caracteres). O valor antigo não estava em nenhum
+  arquivo do dono e o Supabase só devolve o resumo criptográfico — não dava para reusar. O novo vive
+  em `~/.clubcut/abacatepay.env` e no secret do Supabase, conferido por hash. O webhook de sandbox
+  parou de valer por causa disso; não havia cobrança pendente.
+- **Provado na porta:** com o segredo certo a edge responde 200 e não grava nada
+  (`{"ok":true,"ignorado":"sem id ou evento"}`); com segredo errado, 401.
+
+**Ainda sem prova ponta a ponta:** nenhum evento real do AbacatePay chegou — o painel não tem botão
+de teste e um teste de verdade criaria cobrança com dinheiro. A primeira cobrança real é a prova.
+
+**Dois achados abertos deste dia:**
+
+1. **O caminho do HMAC provavelmente nunca valida.** `abacate-webhook` confere
+   `X-Webhook-Signature` como HMAC-SHA256 do corpo com o **segredo compartilhado**; a documentação
+   do AbacatePay diz que a assinatura se verifica com a **chave pública deles**. Como a edge aceita
+   `?webhookSecret=` OU o HMAC, e o sandbox passou ponta a ponta, quem está sustentando a
+   autenticação é a query. A "defesa em profundidade" que o comentário do código promete é, na
+   prática, uma camada só. Conferir contra um evento real e corrigir o verificador.
+2. **O segredo do webhook aparece em texto claro nos logs da edge**, porque vem na URL. É o desenho
+   do AbacatePay, não nosso, e os logs são só de quem administra o projeto — mas é um segredo
+   guardado em log. Resolver junto com o item 1: HMAC no header não tem esse problema.
+
+**Cobrança real a partir de 20/09:** a El Guardians (barbearia de teste do dono) sai do teste em
+19/09, e o fechamento do dia 1º passa a gerar **PIX de verdade** para ele mesmo. Decidir antes se o
+`fechamento-mensal-de-uso` fica de pé para ela.

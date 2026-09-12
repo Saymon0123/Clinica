@@ -4206,9 +4206,33 @@ volta para 5, confirmado por resumo.
 
 A fatura paga **fica** como registro histórico. É real e foi paga.
 
-### Fica aberto, e é o maior de todos
+### ~~Fica aberto, e é o maior de todos~~ — RESOLVIDO no mesmo dia
 
-**`cobrar-uso` continua sem quem o chame.** O PR #135 o tornou *chamável*; não o
-tornou *chamado*. Enquanto não houver agendador (cron ou n8n, a cada hora),
-fatura nascida pelo fechamento mensal fica parada até alguém disparar à mão.
-Para uma barbearia real, é a diferença entre cobrar e não cobrar.
+**`cobrar-uso` estava sem quem o chamasse.** O PR #135 o tornou *chamável*; o
+fluxo **`CRM Salao - Cobrar Uso (a cada hora)`** (n8n, `0pZb1pFH57a0v0jn`) o
+tornou *chamado*. Publicado e ativo em 12/09.
+
+- Dispara aos **:10 de cada hora**. A fatura nasce no dia 1º às 9h; num disparo
+  diário, uma falha naquele dia atrasaria a cobrança em 24h com o prazo de
+  vencimento já correndo. De hora em hora, uma falha custa 60 minutos e as
+  tentativas seguintes consertam sozinhas.
+- Autentica com `x-cobrar-token` **por credencial** (Header Auth, criada pelo
+  dono na interface) e `Authorization` com a chave anon, que é pública — está no
+  bundle do site. O segredo não fica no corpo do fluxo.
+- **Sem `onError: continueRegularOutput` de propósito:** o erro precisa subir
+  para o `errorWorkflow` (Alerta de Falha) mandar e-mail. Engolir o erro
+  apagaria justamente o aviso.
+- Retentativa 2× com 30s, porque a função é idempotente por desenho.
+
+**A criação caiu na armadilha conhecida:** o n8n **não anexa credencial em nó
+HTTP Request** criado por API (`"HTTP Request nodes were skipped during
+credential auto-assignment"`). Foi preciso um `setNodeCredential` depois. Quem
+criar outro fluxo com HTTP Request vai bater nisso de novo.
+
+**Testado antes de publicar**, que é o que faltou no fluxo de reentrega: execução
+manual devolveu `success` com `{cobrancas: 0, faturasCobertas: 0}` — o esperado
+sem fatura aberta, e prova de que a credencial autentica (um 401 apareceria como
+erro).
+
+**O que ainda não foi exercido:** o fluxo nunca rodou com fatura de verdade na
+fila. A primeira prova disso é o fechamento do dia 1º de outubro.

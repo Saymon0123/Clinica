@@ -670,8 +670,9 @@ coberta por `cadeira_certa_e_hora_certa.test.sql` (29 asserções).
 - ~~**`clientes_para_reativar`**~~ — **apagada em 11/09** (aprovado pelo dono).
   Fila do desenho antigo (0077/0083/0089/0115), sem consumidor em nenhum dos
   workflows do n8n — a auditoria conferiu os JSONs de todos. O modelo vigente é
-  o da 0113. **A gêmea `clientes_para_avisar_retorno` está no mesmo estado e
-  ficou de pé**, porque não foi aprovada para apagar junto.
+  o da 0113. A gêmea
+  `clientes_para_avisar_retorno` saiu logo em seguida, na **0159**, quando o
+  dono aprovou — mesmo estado, mesma ausência de consumidor.
 
 **Pendente fora do repositório:** aplicar a 0158 em produção à mão (migration
 não está no pipeline). O n8n **não muda**: "Avaliação Pós-Atendimento" e

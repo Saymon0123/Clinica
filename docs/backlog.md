@@ -849,16 +849,69 @@ a fila vazia e o retorno foi `body: []` → **zero itens**, não um item vazio:
 o nó HTTP quebra array de topo em itens, igual ao do Supabase. Sem esse teste eu
 teria publicado uma quebra silenciosa no fluxo que fala com cliente.
 
-**Avaliação Pós-Atendimento ficou de fora**, a pedido do dono em 12/09: antes de
-mexer nela, revisar o caminho das mensagens — o que sai pela API oficial (Meta,
-com custo por conversa) e o que sai pela Evolution. Mexer agora pode ser trabalho
-jogado fora se a revisão mudar o canal dela ou tirá-la do ar.
+**Avaliação Pós-Atendimento:** ficou de fora num primeiro momento, a pedido do
+dono, até a revisão dos caminhos de mensagem. A revisão saiu no mesmo dia e
+decidiu manter a avaliação — então o nó dela também virou
+`rpc/reservar_avaliacoes`, com o **nome mantido** de propósito: `Marcar Avaliacao
+Pedida` referencia `$("Buscar Avaliacoes a Pedir").item.json`, e renomear
+quebraria a marcação. **O M12 está completo nas duas filas.**
 
 **O que ainda não foi provado ponta a ponta:** o POST da reentrega com a
 credencial de header. A fila está vazia, então não houve o que reentregar. O modo
 de falha é seguro — se a credencial estiver errada, nada é enviado, a tentativa é
 contada e `auditoria_mensagens` alarma em 15 minutos —, mas a prova de verdade é
 a primeira mensagem que o agente recusar.
+
+### Caminho das mensagens: revisão de custo — decidido em 12/09
+
+O dono levantou a dúvida de custo do envio pela API oficial. Levantamento feito,
+e a decisão foi **manter tudo como está**. O que o levantamento apurou:
+
+**Só cinco fluxos falam por WhatsApp**; os outros nove mandam e-mail. Dos cinco,
+quatro mandam **template pela oficial** (lembrete, avaliação, reativação, aviso
+de fim de teste ao dono) e um responde dentro da conversa (o agente, por Evolution
+ou oficial conforme o provedor da barbearia).
+
+**Os 8 templates aprovados são TODOS `utility`** — e não é suposição: a Meta
+devolveu `categoria_meta = 'utility'` nos oito. Os três de categoria `marketing`
+(`reativacao_convite`, `reativacao_tempo`, `reativacao_aniversario`) seguem em
+rascunho e inativos, nunca submetidos. **Nada está sendo cobrado na tarifa cara.**
+
+**A conversa do agente não é o custo.** Resposta dentro da janela de 24h é
+mensagem de serviço; a cobrança da Meta é por template entregue. Quanto mais o
+agente conversa, mais se fatura e menos proporcionalmente se gasta.
+
+**A assimetria que o levantamento achou, e que fica registrada como aceita:** o
+lembrete vai para **todo** agendamento (`crm`, `publico`, `agente`), mas só o
+`agente` é cobrável (`agendamentos_cobraveis`, 0136) — mais a reativação
+confirmada, que nem recebe lembrete. Ou seja, **paga-se o lembrete de agendamento
+que não gera receita**. Numa barbearia que usa muito o CRM e pouco o agente, o
+lembrete é custo puro, e ele é de longe o maior volume. O dono conhece o número e
+decidiu manter assim.
+
+**As quatro decisões, em 12/09:**
+
+1. **Envio pela oficial, resposta pela não oficial** — a regra híbrida de 01/09
+   continua valendo. Mandar lembrete pela Evolution zeraria o maior custo, mas o
+   disparo proativo em massa pelo número **do cliente**, numa ponte não oficial,
+   é o caminho clássico para o número dele ser banido. O risco não é da
+   plataforma, é do dono da barbearia.
+2. **O lembrete continua indo para todo agendamento**, cobrável ou não.
+3. **A avaliação continua sendo enviada.**
+4. **Regra permanente: buscar sempre deixar os templates como `utility`.**
+   `marketing` custa perto de 9x mais e a Meta classifica por intenção, não pelo
+   que se pede. A `templates_recategorizados` é a catraca que avisa quando ela
+   discorda.
+
+**O que não deu para medir:** volume real. `whatsapp_messages` tem 22 linhas no
+total, todas de teste — com 0 barbearias reais, qualquer custo apresentado seria
+invenção com cara de planilha. O dono dispensou o modelo por já ter a ordem de
+grandeza.
+
+**Não verificado:** a tabela de preços no painel da Meta. A categoria dos
+templates foi lida do banco (veio da Meta); as tarifas e a regra de janela aberta
+são conhecimento geral e mudam — conferir no WhatsApp Manager antes de qualquer
+decisão de dinheiro.
 
 ### Agenda pelo QR, versão 2 — decidida em 11/09, para fazer em etapas
 

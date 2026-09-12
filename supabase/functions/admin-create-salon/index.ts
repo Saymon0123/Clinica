@@ -2,6 +2,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { capturarErro, comSentry } from '../_shared/sentry.ts'
 import { AVISO_WHATSAPP_DA_BARBEARIA, telefoneValido } from '../_shared/telefone.ts'
 import type { ClienteAdmin } from '../_shared/supabase.ts'
+import { marcarSalao } from '../_shared/log.ts'
 
 const ADMIN_TOOL_SECRET = Deno.env.get('ADMIN_TOOL_SECRET')
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
@@ -129,7 +130,7 @@ function segredoConfere(recebido: string | null, esperado: string) {
   return diff === 0
 }
 
-Deno.serve(comSentry('admin-create-salon', async (req: Request) => {
+Deno.serve(comSentry('admin-create-salon', async (req: Request, ctx) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -325,6 +326,11 @@ Deno.serve(comSentry('admin-create-salon', async (req: Request) => {
   let organizationId: string | null = null
   const salonIds: string[] = []
 
+  function registrarSalaoCriado(id: string) {
+    salonIds.push(id)
+    marcarSalao(ctx, id)
+  }
+
   async function rollback() {
     if (salonIds.length) await admin.from('salons').delete().in('id', salonIds)
     if (organizationId) await admin.from('organizations').delete().eq('id', organizationId)
@@ -371,7 +377,7 @@ Deno.serve(comSentry('admin-create-salon', async (req: Request) => {
         .select('id, nome')
         .single()
       if (salonError || !salon) throw salonError ?? new Error('Falha ao criar a unidade.')
-      salonIds.push(salon.id)
+      registrarSalaoCriado(salon.id)
       criadas.push({ id: salon.id, nome: salon.nome })
 
       const { error: vinculoError } = await admin

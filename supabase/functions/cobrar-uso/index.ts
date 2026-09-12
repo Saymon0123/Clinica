@@ -1,6 +1,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { capturarErro, comSentry } from '../_shared/sentry.ts'
 import type { ClienteAdmin } from '../_shared/supabase.ts'
+import { marcarSalao } from '../_shared/log.ts'
 
 /**
  * Transforma faturas de uso abertas em cobranças PIX no AbacatePay.
@@ -188,7 +189,7 @@ async function liberarParaReemissao(
   return null
 }
 
-Deno.serve(comSentry('cobrar-uso', async (req) => {
+Deno.serve(comSentry('cobrar-uso', async (req, ctx) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
   if (!ABACATE_API_KEY || !ABACATE_BASE_URL) {
@@ -248,6 +249,7 @@ Deno.serve(comSentry('cobrar-uso', async (req) => {
   }
 
   const salonIds = [...new Set(faturas.map((f) => f.salon_id))]
+  for (const id of salonIds) marcarSalao(ctx, id)
   const [{ data: salons }, { data: subs }] = await Promise.all([
     admin
       .from('salons')

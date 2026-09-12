@@ -2,6 +2,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { capturarErro, comSentry } from '../_shared/sentry.ts'
 import { ehPedidoDeSaida } from '../_shared/optOut.ts'
 import type { ClienteAdmin } from '../_shared/supabase.ts'
+import { marcarSalao } from '../_shared/log.ts'
 
 /**
  * Webhook da Cloud API da Meta — a porta de entrada das mensagens.
@@ -378,7 +379,7 @@ function conteudoDaMensagem(m: MensagemRecebida): Conteudo {
   return { texto: null, media_id: null, tipo: m.type }
 }
 
-Deno.serve(comSentry('whatsapp-webhook', async (req) => {
+Deno.serve(comSentry('whatsapp-webhook', async (req, ctx) => {
   const url = new URL(req.url)
 
   // ---------- Verificação do webhook ----------
@@ -438,6 +439,11 @@ Deno.serve(comSentry('whatsapp-webhook', async (req) => {
         const { data: salonId } = await admin.rpc('salon_por_phone_number_id', {
           p_phone_number_id: phoneNumberId,
         })
+        // Um POST da Meta pode trazer mensagens de barbearias diferentes, porque
+        // o numero central atende todas. Marcando dentro do laco, a linha de fim
+        // diz o id quando foi uma so e `varios` quando foram mais -- e nunca
+        // atribui a conversa de uma barbearia a outra.
+        marcarSalao(ctx, salonId as string | null)
         if (!salonId) {
           const { data: central } = await admin
             .from('remetentes_oficiais')

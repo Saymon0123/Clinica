@@ -1,6 +1,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { comSentry } from '../_shared/sentry.ts'
 import { AVISO_WHATSAPP_DA_BARBEARIA, telefoneValido } from '../_shared/telefone.ts'
+import { marcarSalao } from '../_shared/log.ts'
 
 /**
  * Cria uma unidade nova a partir de uma barbearia que o chamador já possui.
@@ -42,7 +43,7 @@ function json(body: unknown, status = 200) {
   })
 }
 
-Deno.serve(comSentry('add-salon-unit', async (req) => {
+Deno.serve(comSentry('add-salon-unit', async (req, ctx) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'Método não permitido.' }, 405)
 
@@ -108,6 +109,7 @@ Deno.serve(comSentry('add-salon-unit', async (req) => {
   if (origemError || !origem) {
     return json({ error: 'Barbearia de origem não encontrada.' }, 404)
   }
+  marcarSalao(ctx, origem.id as string)
 
   // ---------- A promoção ----------
   // Origem sem organização = primeira unidade de uma rede que ainda não

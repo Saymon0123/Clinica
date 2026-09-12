@@ -2,6 +2,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { instanceNameFor } from '../_shared/instanceName.ts'
 import { capturarErro, comSentry } from '../_shared/sentry.ts'
 import evolutionConfig from '../_shared/evolutionConfig.json' with { type: 'json' }
+import { marcarSalao } from '../_shared/log.ts'
 
 const EVOLUTION_API_URL = Deno.env.get('EVOLUTION_API_URL')
 const EVOLUTION_API_KEY = Deno.env.get('EVOLUTION_API_KEY')
@@ -47,7 +48,7 @@ async function evoFetch(path: string, init: RequestInit = {}) {
   return { ok: res.ok, status: res.status, data }
 }
 
-Deno.serve(comSentry('whatsapp', async (req: Request) => {
+Deno.serve(comSentry('whatsapp', async (req: Request, ctx) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -104,6 +105,7 @@ Deno.serve(comSentry('whatsapp', async (req: Request) => {
   }
 
   const salonId = vinculo.salon_id as string
+  marcarSalao(ctx, salonId)
   const instanceName = instanceNameFor(salonId)
 
   try {

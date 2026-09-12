@@ -287,7 +287,8 @@ o Asaas como operador).
     fluxo e o experimento de Realtime acima.
 
     **Testado pelo dono no navegador em 11/09.**
-10. **Sem CPF/CNPJ = uso ilimitado sem bloqueio** — o bloqueio olha
+10. ~~**Sem CPF/CNPJ = uso ilimitado sem bloqueio**~~ — **RESOLVIDO em 11/09
+    (migration 0156), com o desenho decidido.** Era assim: o bloqueio olhava
     `cobranca_vence_em`, que só existe quando há cobrança.
 
     **DESENHO DECIDIDO (10/09):** o dono determinou trabalhar com **"emite nota
@@ -314,6 +315,35 @@ o Asaas como operador).
     NFS-e, e o `customerId` sequer se liga a cobrança `transparents` (a API
     engole campo desconhecido e devolve sucesso; provado com campo inventado).
     Nota fiscal exige fornecedor de outra categoria.
+
+    **Como ficou (0156):** a renovação diária (`estender_acesso_sem_debito`,
+    agora uma casca de `private.estender_acesso`) passou a exigir documento
+    **válido** de quem paga — o da rede quando a cobrança é unificada, senão o
+    da assinatura, a mesma escolha do `cobrar-uso`. Terminou o teste sem ele,
+    o acesso não renova e bloqueia como inadimplência: CRM trancado, WhatsApp
+    nos 3 dias de sempre. A tela de bloqueio pede o CPF ou CNPJ ali mesmo — só
+    ao dono da unidade, que é quem a policy deixa gravar; o resto da equipe lê
+    "avise o dono" —, e gatilhos em `subscriptions` e `organizations`
+    destravam **na hora** em que o documento chega. `situacao_do_acesso` passou
+    a dizer o motivo do bloqueio (`sem_documento`, `cobranca_vencida`,
+    `cancelada`, `vencido`), e a faixa dos 3 últimos dias e a aba Assinatura
+    pedem o documento antes de travar. Termos e Ajuda dizem a regra.
+
+    **O gancho do WhatsApp não existia:** o "Aviso de Fim de Teste" nunca
+    enviou nada, porque o modelo `fim_do_teste_gratis` segue **rascunho** na
+    Meta e a view só manda com modelo aprovado. A Ajuda prometia esse aviso e
+    deixou de prometer; o texto proposto do modelo, em
+    `docs/templates-para-a-meta.md`, já pede o documento, para quando for
+    submetido. Até lá, o aviso é só dentro do CRM.
+
+    **Continua para depois:** emitir a nota em si (razão social, endereço e um
+    fornecedor de NFS-e). A 0156 só garante que ninguém passa do teste sem
+    documento.
+
+    **Achado de passagem:** na primeira madrugada depois do teste, das 0h à
+    1h20 de São Paulo (o cron roda às 04:20 UTC), a barbearia aparece bloqueada
+    mesmo com documento, até o job renovar. É anterior à 0156; resolve
+    adiantando o cron para logo depois da meia-noite de São Paulo.
 
 **Dívida de rótulo no n8n (10/09):** o fluxo `8Qh33uoFm4VqT1eO` (Detalhamento de
 Uso) foi migrado para PIX no funcional — lê `cobrancas_a_enviar`, grava

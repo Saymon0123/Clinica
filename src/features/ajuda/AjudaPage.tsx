@@ -395,7 +395,8 @@ const SECOES: Secao[] = [
         intro:
           'Ao criar a barbearia você tem **7 dias com tudo liberado**, e nada é cobrado nesses dias — nem os agendamentos que o atendimento automático fizer neles. A aba **Assinatura** mostra quantos dias faltam e a data exata em que acaba.',
         dicas: [
-          { t: 'Quando o teste está perto do fim, você recebe um aviso no WhatsApp: 3 dias antes e no dia.' },
+          { t: 'Nos 3 últimos dias do teste, uma faixa no topo do sistema avisa quanto falta.' },
+          { t: 'Para continuar depois do teste, cadastre em Assinatura o CPF ou CNPJ de quem vai pagar. Sem ele, o acesso bloqueia quando o teste acaba — e volta na hora em que você cadastrar.' },
           { t: 'Terminado o teste, você passa a pagar só pelo que usar. Mês sem agendamento pelo WhatsApp continua sendo mês sem cobrança.' },
         ],
       },
@@ -404,7 +405,7 @@ const SECOES: Secao[] = [
         intro:
           'O mês fecha no último dia e a cobrança chega **por e-mail** e fica visível na aba **Assinatura**, no aviso amarelo — toque em **Pagar com Pix** e leia o QR Code, ou copie o código e cole no app do banco (Pix › Pix Copia e Cola). Pagou? O acesso renova sozinho em minutos.',
         dicas: [
-          { t: 'Antes disso, cadastre seu CPF ou CNPJ na mesma aba — sem ele a cobrança não é gerada.' },
+          { t: 'O CPF ou CNPJ de quem paga fica na mesma aba — é com ele que a cobrança é gerada.' },
           { t: 'O QR vale 7 dias. Depois disso ele para de funcionar e é preciso gerar outro.' },
         ],
       },

@@ -42,6 +42,12 @@ export function TermosPage() {
           <strong>seu primeiro acesso</strong>, não no dia em que o convite foi criado — se você
           demorar para entrar, não perde dias.
         </p>
+        <p>
+          Para continuar depois do teste, é preciso informar na tela de assinatura o{' '}
+          <strong>CPF ou CNPJ de quem paga</strong> — é com ele que a cobrança é emitida. Sem o
+          documento, o acesso é bloqueado quando o teste termina, como numa cobrança vencida, e volta
+          assim que ele é informado.
+        </p>
       </Secao>
 
       <Secao titulo="4. Preço: você paga pelo que usa">

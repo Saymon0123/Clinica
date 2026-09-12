@@ -43,3 +43,11 @@ logos/preview.png
 
 .vercel
 .env*
+
+# Parecer da auditoria e material derivado — DESCREVEM FALHAS AINDA ABERTAS e
+# este repositorio e PUBLICO. Ficam so no disco do dono, de proposito.
+# Ignorados aqui depois de terem ido para o GitHub por engano em 11/09/2026.
+docs/auditoria/
+docs/relatorio-tecnico.md
+docs/aula-arquitetura.md
+_backup-claude-2026-09-01/

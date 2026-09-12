@@ -137,7 +137,7 @@ export function AppLayout() {
   // venceu, o barbeiro também não usa o CRM. O que é só do gestor é o **aviso**
   // de vencimento — avisar o barbeiro de uma cobrança que não é dele geraria
   // preocupação sem ação possível.
-  const { assinatura } = useAssinatura(salonId)
+  const { assinatura, reload: recarregarAssinatura } = useAssinatura(salonId)
 
   // "Rede" e "Equipe da rede" são exclusivas do dono de mais de uma unidade
   // (`podeVerRede`, do contexto — passo 4.3). Gerente e barbeiro nunca veem.
@@ -232,7 +232,7 @@ export function AppLayout() {
   // e **não é bloqueada**: quem já usava não pode ser trancado do lado de fora
   // por uma funcionalidade que chegou depois.
   if (assinatura?.expirada && location.pathname !== '/assinatura') {
-    return <AcessoBloqueado assinatura={assinatura} />
+    return <AcessoBloqueado assinatura={assinatura} onRegularizou={recarregarAssinatura} />
   }
 
   return (

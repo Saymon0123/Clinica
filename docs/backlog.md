@@ -4129,3 +4129,86 @@ estava no parecer e veio do CodeQL, que também só existe por causa do M11.
 - **`@tanstack/react-query`** é dependência de produção e não é importado por
   nenhum arquivo de `src/` — entra no bundle sem servir a nada.
 - **A limpeza do commit `6ce8584`** no GitHub (o parecer vazado em 11/09).
+
+---
+
+## A primeira cobrança real — e os dois defeitos que só ela revelou (2026-09-12)
+
+**R$ 1,50 cobrados e pagos de verdade.** Primeira vez que a cadeia de cobrança
+roda ponta a ponta em produção, desde que existe.
+
+O objetivo era testar. O valor saiu de uso real: 2 agendamentos feitos pelo
+agente × R$ 0,75. Nenhum dado foi inventado para chegar lá.
+
+### O que a tentativa revelou, e a leitura de código não tinha revelado
+
+**1. `cobrar-uso` não podia ser chamado por ninguém.** Ele comparava o
+`Authorization` com o `SUPABASE_SERVICE_ROLE_KEY` injetado pela plataforma — e
+esse valor deixou de ser qualquer chave que o projeto exibe. Conferido por
+resumo SHA-256, uma a uma: service_role legada, secret nova, anon legada,
+publishable. Nenhuma bate. O Supabase migrou este projeto para o formato novo
+(a prova: o `SUPABASE_ANON_KEY` injetado virou a chave *publishable*) e o valor
+de service_role ficou de uma rotação anterior — **irrecuperável**, porque chave
+rotacionada não é exibida em lugar nenhum.
+
+**2. E nada o chamava.** Sem cron, e nenhum dos 16 fluxos do n8n — apesar de o
+comentário no topo do arquivo afirmar que "roda pelo n8n a cada hora". A fatura
+nascia pelo `pg_cron` e ficava parada. **Os dois defeitos escondiam um ao
+outro:** ninguém notava o 401 porque ninguém chamava.
+
+Consertado no PR #135: a autenticação passa a usar um segredo **nosso**
+(`COBRAR_USO_TOKEN`, em `x-cobrar-token`), gerado e guardado em
+`~/.clubcut/cobrar-uso.env`. O `Authorization` continua levando um JWT, então o
+`verify_jwt` do portão segue ligado. Sem o segredo, ninguém entra — falhar
+fechado é a única opção defensável numa porta que cria cobrança.
+
+Junto, o mínimo de cobrança virou configurável (`COBRANCA_MINIMA`, padrão 5).
+É regra de negócio, não constante técnica — e era o que faltava para testar com
+R$1,50 sem publicar número temporário nem inventar agendamento no banco.
+
+### O caminho inteiro, verificado em produção
+
+| Etapa | Resultado |
+|---|---|
+| `gerar_fatura_de_uso` | fatura de R$1,50, período 09/09 |
+| `cobrar-uso` | `{cobrancas: 1, faturasCobertas: 1}` |
+| AbacatePay | PIX `pix_char_h4EpP5DDt2qTJBqamGKez3ad`, `devMode: false` |
+| Pagamento | evento real `transparent.completed`, `status: PAID`, `amount: 150` |
+| `abacate-webhook` | `paga_em` gravado às 11:42 |
+| Acesso | `status: ativa`, `acesso_ate: hoje+1`, `atendimento_ate: hoje+8` |
+| Auditoria | 0 alertas de cobrança |
+
+**Um susto que não era defeito:** o `acesso_ate` caiu de 19/09 para 13/09 ao
+pagar, e parecia que pagar encurtava o acesso. Não é. O acesso é uma **licença
+rolante de 1 dia**, renovada todo dia pelo cron `estende-acesso-sem-debito`
+enquanto não houver dívida vencida. O 19/09 era a data do teste, que tinha
+acabado; o 13/09 é o modelo normal. Conferido lendo `private.estender_acesso`
+antes de acusar.
+
+**Mas fica a observação:** a folga do acesso é de **um dia**. Se o cron das 4h20
+falhar dois dias seguidos, toda barbearia pagante perde o acesso ao CRM — e não
+há alarme para cron que para de rodar. O `atendimento_ate` tem 8 dias de folga;
+o acesso, um. A assimetria é proposital (o agente continua atendendo enquanto o
+CRM bloqueia), mas a margem é fina.
+
+**A taxa do AbacatePay apareceu:** `platformFee: 80` numa cobrança de 150, ou
+seja **R$ 0,80 de R$ 1,50**. É o componente fixo dominando um valor minúsculo —
+a R$5 ele pesaria 16%, e o mínimo de R$5 existe justamente por isso. Vale
+recalcular o mínimo com a taxa real em mãos.
+
+### Estado devolvido
+
+El Guardians voltou ao teste: `cobravel = false`, `status = trial`,
+`trial_ate = 19/09` **e `acesso_ate = 19/09`**. O acesso teve de voltar junto —
+durante o teste o cron não renova (a condição dele é `trial_ate < hoje`), então
+devolver só o trial travaria a barbearia no dia seguinte. `COBRANCA_MINIMA` de
+volta para 5, confirmado por resumo.
+
+A fatura paga **fica** como registro histórico. É real e foi paga.
+
+### Fica aberto, e é o maior de todos
+
+**`cobrar-uso` continua sem quem o chame.** O PR #135 o tornou *chamável*; não o
+tornou *chamado*. Enquanto não houver agendador (cron ou n8n, a cada hora),
+fatura nascida pelo fechamento mensal fica parada até alguém disparar à mão.
+Para uma barbearia real, é a diferença entre cobrar e não cobrar.

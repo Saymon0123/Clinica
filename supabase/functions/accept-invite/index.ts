@@ -2,8 +2,8 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { jornadaDoHorario } from '../_shared/jornada.ts'
 import { capturarErro, comSentry } from '../_shared/sentry.ts'
 import { AVISO_WHATSAPP_DA_BARBEARIA, telefoneValido } from '../_shared/telefone.ts'
-import type { ClienteAdmin } from '../_shared/supabase.ts'
 import { marcarSalao } from '../_shared/log.ts'
+import { ipDe, taxaExcedida } from '../_shared/limite.ts'
 
 /**
  * Aceite de convite para a equipe — com DOIS caminhos, e a diferença importa.
@@ -49,27 +49,6 @@ function json(body: unknown, status = 200) {
  * Em erro do proprio limitador, deixa passar: derrubar o fluxo legitimo por
  * falha do freio seria pior que uma janela sem freio.
  */
-async function taxaExcedida(admin: ClienteAdmin, chave: string, limite: number, janelaSegundos: number) {
-  const { data, error } = await admin.rpc('taxa_excedida', {
-    p_chave: chave,
-    p_limite: limite,
-    p_janela_segundos: janelaSegundos,
-  })
-  if (error) {
-    console.error('Limitador de taxa indisponivel:', error)
-    return false
-  }
-  return data === true
-}
-
-function ipDe(req: Request) {
-  return (
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    req.headers.get('cf-connecting-ip') ??
-    'sem-ip'
-  )
-}
-
 Deno.serve(comSentry('accept-invite', async (req: Request, ctx) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -158,7 +137,7 @@ Deno.serve(comSentry('accept-invite', async (req: Request, ctx) => {
   // Freios do giro de 2026-08-25: o token chega por e-mail/WhatsApp, entao
   // quem o tiver nao pode ganhar um endpoint de forca bruta de senha.
   // 30 chamadas por IP a cada 10 min cobre uso real com folga.
-  if (await taxaExcedida(admin, `invite:${ipDe(req)}`, 30, 600)) {
+  if (await taxaExcedida(admin, `invite:${ipDe(req)}`, 30, 600, 'deixa-passar')) {
     return json({ error: 'Muitas tentativas. Aguarde alguns minutos.' }, 429)
   }
 
@@ -218,7 +197,7 @@ Deno.serve(comSentry('accept-invite', async (req: Request, ctx) => {
       // separa "o dono do e-mail aceitou" de "alguém com o link aceitou".
       const anon = createClient(SUPABASE_URL, ANON_KEY)
       // 5 senhas erradas por token a cada 15 min: forca bruta morre aqui.
-      if (await taxaExcedida(admin, `invite-senha:${token}`, 5, 900)) {
+      if (await taxaExcedida(admin, `invite-senha:${token}`, 5, 900, 'bloqueia')) {
         return json({ error: 'Muitas tentativas de senha. Aguarde 15 minutos.' }, 429)
       }
 

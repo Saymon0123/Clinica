@@ -1,6 +1,6 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { comSentry } from '../_shared/sentry.ts'
-import type { ClienteAdmin } from '../_shared/supabase.ts'
+import { ipDe, taxaExcedida } from '../_shared/limite.ts'
 
 /**
  * Metricas do produto para o painel administrativo.
@@ -32,28 +32,6 @@ function json(body: unknown, status = 200) {
   })
 }
 
-/** Limite de tentativas via banco (0111). Erro do limitador deixa passar. */
-async function taxaExcedida(admin: ClienteAdmin, chave: string, limite: number, janelaSegundos: number) {
-  const { data, error } = await admin.rpc('taxa_excedida', {
-    p_chave: chave,
-    p_limite: limite,
-    p_janela_segundos: janelaSegundos,
-  })
-  if (error) {
-    console.error('Limitador de taxa indisponivel:', error)
-    return false
-  }
-  return data === true
-}
-
-function ipDe(req: Request) {
-  return (
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    req.headers.get('cf-connecting-ip') ??
-    'sem-ip'
-  )
-}
-
 /** Comparacao em tempo constante: '!==' vaza pelo relogio quantos bytes bateram. */
 function segredoConfere(recebido: string | null, esperado: string) {
   if (!recebido || recebido.length !== esperado.length) return false
@@ -73,7 +51,7 @@ Deno.serve(comSentry('admin-metricas', async (req: Request) => {
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
   // A mesma chave das outras funcoes do painel: quem martela uma delas
   // tentando a senha nao ganha outra porta para continuar.
-  if (await taxaExcedida(admin, `admin:${ipDe(req)}`, 20, 600)) {
+  if (await taxaExcedida(admin, `admin:${ipDe(req)}`, 20, 600, 'bloqueia')) {
     return json({ error: 'Muitas tentativas. Aguarde alguns minutos.' }, 429)
   }
   if (!segredoConfere(req.headers.get('x-admin-secret'), ADMIN_TOOL_SECRET)) {

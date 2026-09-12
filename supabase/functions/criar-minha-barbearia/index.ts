@@ -3,6 +3,7 @@ import { jornadaDoHorario } from '../_shared/jornada.ts'
 import { capturarErro, comSentry } from '../_shared/sentry.ts'
 import { AVISO_WHATSAPP_DA_BARBEARIA, somenteDigitos, telefoneValido } from '../_shared/telefone.ts'
 import { marcarSalao } from '../_shared/log.ts'
+import { ipDe } from '../_shared/limite.ts'
 
 /**
  * Segundo passo do cadastro aberto: quem já tem conta cria a própria barbearia.
@@ -155,20 +156,33 @@ Deno.serve(comSentry('criar-minha-barbearia', async (req: Request, ctx) => {
     return json({ salonId: vinculos[0].salon_id, jaExistia: true })
   }
 
-  const ip =
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    req.headers.get('cf-connecting-ip') ??
-    null
+  // O IP do LIMITE e o IP do REGISTRO sao coisas diferentes, e trata-los como
+  // um so custava caro dos dois lados.
+  //
+  // Antes era `if (ip) { ...limite... }`: sem cabecalho de IP, o limite inteiro
+  // era PULADO -- cadastro ilimitado para quem chegasse sem ele. Na pratica a
+  // Cloudflare sempre poe o `cf-connecting-ip`, mas "na pratica sempre vem" e
+  // exatamente o tipo de aposta que o M10 existe para desfazer.
+  //
+  // Ja o valor GRAVADO em `termos_aceites` e registro de consentimento, com
+  // peso legal. Ali nulo e a verdade ("nao tinhamos o IP"); escrever 'sem-ip'
+  // seria inventar um dado num documento que existe para ser confiavel.
+  const ipDoLimite = ipDe(req)
+  const ipRegistrado = ipDoLimite === 'sem-ip' ? null : ipDoLimite
 
-  if (ip) {
+  {
     const desdeOntem = new Date(Date.now() - 86400000).toISOString()
-    const { count } = await admin
+    const consulta = admin
       .from('termos_aceites')
       .select('id', { count: 'exact', head: true })
-      .eq('ip', ip)
       .gte('aceito_em', desdeOntem)
+    // Quem chega sem IP cai num balde comum -- o das linhas com `ip` nulo. Nao
+    // e preciso, e nao precisa ser: o ponto e nao existir porta sem contador.
+    const { count } = await (ipRegistrado === null
+      ? consulta.is('ip', null)
+      : consulta.eq('ip', ipRegistrado))
     if ((count ?? 0) >= LIMITE_POR_IP_POR_DIA) {
-      console.warn('Limite de cadastros por IP atingido:', ip)
+      console.warn('Limite de cadastros por IP atingido:', ipDoLimite)
       return json(
         { error: 'Muitos cadastros a partir desta conexao. Tente novamente amanha.' },
         429,
@@ -239,7 +253,7 @@ Deno.serve(comSentry('criar-minha-barbearia', async (req: Request, ctx) => {
       user_id: userId,
       salon_id: salon.id,
       versao: versaoTermos,
-      ip,
+      ip: ipRegistrado,
       user_agent: req.headers.get('user-agent'),
     })
     if (erroAceite) throw erroAceite

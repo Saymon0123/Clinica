@@ -19,7 +19,7 @@ create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
 begin;
-select plan(8);
+select plan(10);
 
 \set salao    'eeee9000-0000-0000-0000-000000000001'
 \set barbeiro 'eeee9001-0000-0000-0000-000000000001'
@@ -109,10 +109,26 @@ select ok(
 );
 
 select ok(
-  not has_function_privilege('anon', 'public.dias_com_horario(uuid,date,integer,integer)', 'execute')
-  and not has_function_privilege('authenticated', 'public.dias_com_horario(uuid,date,integer,integer)', 'execute')
-  and has_function_privilege('service_role', 'public.dias_com_horario(uuid,date,integer,integer)', 'execute'),
+  not has_function_privilege('anon', 'public.dias_com_horario(uuid,date,integer,integer,uuid)', 'execute')
+  and not has_function_privilege('authenticated', 'public.dias_com_horario(uuid,date,integer,integer,uuid)', 'execute')
+  and has_function_privilege('service_role', 'public.dias_com_horario(uuid,date,integer,integer,uuid)', 'execute'),
   'dias_com_horario idem: sem isto a agenda de catorze dias de qualquer barbearia sai por REST, sem edge no meio'
+);
+
+-- ── A faixa de dias conta a MESMA coisa que a grade (0170) ─────────────────
+-- Sem `p_ignorar_agendamento` aqui, a faixa diria "N livres" e a grade mostraria
+-- N+7 no mesmo dia, na mesma tela. Quem compara os dias para achar o mais vazio
+-- decidiria pelo numero que mente.
+select is(
+  (select livres from dias_com_horario(:'salao', (current_date + 1)::date, 1, 30, :'agenda')),
+  (select count(*)::int from horarios_livres(:'salao', (current_date + 1)::date, 30, null, :'agenda')),
+  'a faixa de dias e a grade contam o mesmo quando as duas ignoram o agendamento que esta sendo movido'
+);
+
+select ok(
+  (select livres from dias_com_horario(:'salao', (current_date + 1)::date, 1, 30, :'agenda'))
+  > (select livres from dias_com_horario(:'salao', (current_date + 1)::date, 1, 30)),
+  'ignorando, a faixa conta MAIS naquele dia -- e o que faz os dois numeros da tela pararem de brigar'
 );
 
 select * from finish();

@@ -31,8 +31,11 @@ import { supabase } from '../../lib/supabase'
 
 type Cancelamento = {
   id: string
+  /** 'cancelou' ou 'remarcou'. Sao noticias diferentes: uma libera a cadeira,
+   *  a outra a move -- e o barbeiro faz coisas diferentes com cada uma. */
+  tipo: string
   data_hora_inicio: string
-  cancelado_em: string
+  mexido_em: string
   cliente: string | null
   barbeiro: string | null
   servicos: string | null
@@ -47,6 +50,23 @@ const QUANDO = new Intl.DateTimeFormat('pt-BR', {
   minute: '2-digit',
 })
 
+/**
+ * O titulo diz o que aconteceu, nao "voce tem 3 avisos".
+ *
+ * Cancelar e remarcar sao noticias diferentes: uma libera a cadeira, a outra a
+ * move. Misturar as duas num "3 mudancas" obrigaria o dono a ler a lista para
+ * saber se sobrou buraco na agenda -- que e a pergunta que ele faz primeiro.
+ */
+function tituloDoAviso(lista: Cancelamento[]) {
+  const cancelados = lista.filter((c) => c.tipo !== 'remarcou').length
+  const remarcados = lista.length - cancelados
+  const partes: string[] = []
+  if (cancelados) partes.push(cancelados === 1 ? 'um cliente cancelou' : `${cancelados} clientes cancelaram`)
+  if (remarcados) partes.push(remarcados === 1 ? 'um mudou de horário' : `${remarcados} mudaram de horário`)
+  const frase = partes.join(' e ')
+  return frase.charAt(0).toUpperCase() + frase.slice(1)
+}
+
 export function AvisoDeCancelamentos({ salonId }: { salonId: string | null }) {
   const [lista, setLista] = useState<Cancelamento[]>([])
   const [dandoCiencia, setDandoCiencia] = useState(false)
@@ -55,7 +75,7 @@ export function AvisoDeCancelamentos({ salonId }: { salonId: string | null }) {
     if (!salonId) return
     const { data, error } = await supabase
       .from('cancelamentos_a_avisar')
-      .select('id, data_hora_inicio, cancelado_em, cliente, barbeiro, servicos, ainda_da_para_encaixar')
+      .select('id, tipo, data_hora_inicio, mexido_em, cliente, barbeiro, servicos, ainda_da_para_encaixar')
       .eq('salon_id', salonId)
       .order('data_hora_inicio')
     // Falha de carga NÃO vira caixa de erro aqui. Este é um aviso extra sobre
@@ -84,11 +104,17 @@ export function AvisoDeCancelamentos({ salonId }: { salonId: string | null }) {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'appointments', filter: `salon_id=eq.${salonId}` },
         (payload) => {
-          const linha = payload.new as { status?: string | null; cancelado_por?: string | null }
+          const linha = payload.new as {
+            status?: string | null
+            cancelado_por?: string | null
+            remarcado_pelo_cliente_em?: string | null
+          }
           // Qualquer update da unidade chega aqui (arrastar horário, marcar
-          // presença, o flag do lembrete). Só o cancelamento do cliente
+          // presença, o flag do lembrete). Só o que o CLIENTE mexeu sozinho
           // interessa, e a consulta de volta é o que confirma.
-          if (linha.status === 'cancelado' && linha.cancelado_por === 'cliente') void buscar()
+          const cancelou = linha.status === 'cancelado' && linha.cancelado_por === 'cliente'
+          const remarcou = !!linha.remarcado_pelo_cliente_em
+          if (cancelou || remarcou) void buscar()
         },
       )
       .subscribe()
@@ -121,11 +147,7 @@ export function AvisoDeCancelamentos({ salonId }: { salonId: string | null }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <CalendarX2 size={18} className="shrink-0 text-warning" aria-hidden />
-          <h2 className="text-sm font-semibold text-foreground">
-            {lista.length === 1
-              ? 'Um cliente cancelou o horário dele'
-              : `${lista.length} clientes cancelaram o horário`}
-          </h2>
+          <h2 className="text-sm font-semibold text-foreground">{tituloDoAviso(lista)}</h2>
         </div>
         <button
           type="button"
@@ -151,6 +173,15 @@ export function AvisoDeCancelamentos({ salonId }: { salonId: string | null }) {
             {/* A cadeira que ainda dá para vender é outra conversa da que já
                 passou. Sem essa marca, o dono lê a lista inteira procurando
                 qual ainda vale a pena preencher. */}
+            <span
+              className={`mr-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                c.tipo === 'remarcou'
+                  ? 'bg-primary-soft text-primary-soft-foreground'
+                  : 'bg-danger-soft text-danger'
+              }`}
+            >
+              {c.tipo === 'remarcou' ? 'mudou' : 'cancelou'}
+            </span>
             {c.ainda_da_para_encaixar && (
               <span className="ml-1.5 rounded-full bg-surface px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
                 ainda dá para encaixar

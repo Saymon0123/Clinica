@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from 'react'
 import { MarcaClubCut } from '../../components/MarcaClubCut'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { ArrowRight, CalendarPlus, Check, Clock, MapPin, MessageCircle } from 'lucide-react'
 import { invokeFunction } from '../../lib/invokeFunction'
 import { ErroInline } from '../../components/ErroInline'
@@ -96,6 +96,9 @@ type Consulta = {
   /** Os serviços que o servidor de fato aceitou, na ordem escolhida. Ausente
    *  numa edge anterior à seleção múltipla. */
   servicosEscolhidos?: string[]
+  /** O token do agendamento que esta sendo movido, CONFIRMADO pelo servidor.
+   *  Token invalido nao volta, e a tela nao entra no modo. */
+  remarcando?: string | null
   /** Soma das durações — usada para dizer quanto tempo o atendimento leva. */
   duracaoTotal?: number
   /** O dia que esta resposta descreve, 'YYYY-MM-DD'. Quem manda é o servidor:
@@ -534,6 +537,12 @@ function Esqueleto() {
 
 export function AgendaPublicaPage() {
   const { salonId } = useParams<{ salonId: string }>()
+  // `/agendar/:salonId?remarcar=<token>` — a tela de remarcar E a de marcar.
+  // Reaproveitar em vez de duplicar: a faixa de catorze dias, a grade por
+  // periodo e o destaque do proximo horario ja estao aqui, e manter duas copias
+  // delas garantiria que uma envelheceria.
+  const [parametros] = useSearchParams()
+  const tokenParaRemarcar = parametros.get('remarcar')
 
   const [dados, setDados] = useState<Consulta | null>(null)
   // LISTA, nao um id. Corte + barba num agendamento so ja existia no balcao
@@ -588,6 +597,7 @@ export function AgendaPublicaPage() {
         body: {
           salonId,
           acao: 'consultar',
+          remarcarToken: tokenParaRemarcar,
           servicoIds: servicos,
           // O singular vai junto para a edge ANTERIOR a esta continuar
           // entendendo o pedido durante os minutos entre ela subir e a Vercel
@@ -627,7 +637,7 @@ export function AgendaPublicaPage() {
           : null,
       )
     },
-    [salonId],
+    [salonId, tokenParaRemarcar],
   )
 
   useEffect(() => {
@@ -729,8 +739,50 @@ export function AgendaPublicaPage() {
     setPronto(true)
   }
 
+  /**
+   * Mudar o horario deste mesmo agendamento.
+   *
+   * NAO pede nome nem telefone: quem abriu o link JA e o dono do agendamento, e
+   * o token prova isso. Pedir de novo seria atrito puro -- e pior, deixaria a
+   * pessoa achar que esta criando um segundo horario.
+   */
+  async function remarcar() {
+    if (!escolhido || !remarcando) return
+    setErro(null)
+    setEnviando(true)
+    const { data, error, corpo } = await invokeFunction<{ ok: boolean; conflito?: boolean }>(
+      'agenda-publica',
+      {
+        body: {
+          acao: 'remarcar_horario',
+          token: remarcando,
+          inicio: escolhido.inicio,
+          profissionalId: escolhido.professional_id,
+        },
+      },
+    )
+    setEnviando(false)
+
+    if (error || !data?.ok) {
+      const numeroDoCorpo = (corpo as Consulta | undefined)?.whatsappBarbearia ?? null
+      if (numeroDoCorpo) setWhatsapp(numeroDoCorpo)
+      setErro(error ?? 'Não foi possível remarcar.')
+      // Mesma recarga do agendar: o horario tomado no meio some da grade, mas o
+      // motivo fica na tela.
+      consultar(servicoIds, { manterErro: true, recarga: true, data: dados?.data })
+      return
+    }
+
+    // O celular guarda a hora NOVA no mesmo token -- e por isso `guardar`
+    // desduplica por token em vez de empilhar.
+    if (salonId) guardar(salonId, { token: remarcando, inicio: escolhido.inicio }, new Date())
+    setTokenGestao(remarcando)
+    setPronto(true)
+  }
+
   // Na ORDEM em que a pessoa escolheu, não na do catálogo: é ela que vira
   // `appointment_services.ordem` e decide qual é o serviço principal.
+  const remarcando = dados?.remarcando ?? null
   const servicosEscolhidos = servicoIds
     .map((id) => dados?.servicos.find((s) => s.id === id))
     .filter((s): s is Servico => !!s)
@@ -833,7 +885,9 @@ export function AgendaPublicaPage() {
             <div className="surge mx-auto max-w-md space-y-3 rounded-xl border border-success/40 bg-surface p-5 shadow-[0_12px_32px_-16px_color-mix(in_srgb,var(--foreground)_40%,transparent)]">
               <div className="flex items-center gap-2 text-success">
                 <Check size={20} />
-                <h2 className="text-base font-semibold">Horário marcado!</h2>
+                <h2 className="text-base font-semibold">
+                  {remarcando ? 'Horário alterado!' : 'Horário marcado!'}
+                </h2>
               </div>
               <p className="text-sm text-foreground">
                 <strong>{escolhido?.hora_local}</strong> com {escolhido?.profissional}
@@ -896,6 +950,43 @@ export function AgendaPublicaPage() {
             <div className="mx-auto max-w-md">
               <ErroInline>{erro}</ErroInline>
               <FalarComABarbearia numero={whatsapp} />
+            </div>
+          ) : escolhido && remarcando ? (
+            // ---------- Remarcar: confirmar e pronto ----------
+            // Sem nome e sem telefone: quem abriu o link JA e o dono do
+            // agendamento, e o token prova isso.
+            <div className="surge mx-auto max-w-md space-y-4">
+              <div className="rounded-xl border border-primary/40 bg-primary-soft/40 p-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary-soft-foreground">
+                  Mudar para
+                </div>
+                <div className="mt-1 text-base font-bold text-foreground">
+                  {diaAberto ? `${diaAberto.porExtenso}, ` : ''}
+                  {escolhido.hora_local}
+                </div>
+                <div className="mt-0.5 text-[13px] text-muted-foreground">
+                  {resumoDosServicos} · com {escolhido.profissional} · {duracaoTotal} min
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEscolhido(null)}
+                  className="mt-2 text-xs font-medium text-primary hover:underline"
+                >
+                  escolher outro horário
+                </button>
+              </div>
+
+              <ErroInline>{erro}</ErroInline>
+              {erro && <FalarComABarbearia numero={whatsapp} />}
+
+              <button
+                type="button"
+                onClick={remarcar}
+                disabled={enviando}
+                className="w-full btn-primary rounded-lg px-3 py-3.5 text-base font-semibold"
+              >
+                {enviando ? 'Mudando...' : 'Confirmar mudança'}
+              </button>
             </div>
           ) : escolhido ? (
             // ---------- Passo 3: quem é você ----------
@@ -977,7 +1068,7 @@ export function AgendaPublicaPage() {
                   nunca veio marcar outro — veio ver o que já tem. O cartão
                   responde isso antes do primeiro toque, e sem depender de a
                   pessoa ter salvo o link nos favoritos. */}
-              {meusHorarios.map((h) => (
+              {(remarcando ? [] : meusHorarios).map((h) => (
                 <section
                   key={h.token}
                   className="surge rounded-xl border border-primary/40 bg-primary-soft/40 p-4"
@@ -1032,7 +1123,7 @@ export function AgendaPublicaPage() {
                   POR QUE DISCRETA. Quase todo mundo que abre o QR veio marcar,
                   não desmarcar. Traço pontilhado e texto apagado: quem procura
                   acha, quem não procura não tropeça. */}
-              {meusHorarios.length === 0 && (
+              {meusHorarios.length === 0 && !remarcando && (
                 <FalarComABarbearia
                   numero={whatsapp}
                   forma="porta"
@@ -1040,6 +1131,23 @@ export function AgendaPublicaPage() {
                 />
               )}
 
+              {/* Remarcar e mudar QUANDO, nao o que se faz. Os servicos viram
+                  resumo: trocar um deles muda preco, duracao e cadeira -- isso e
+                  cancelar e marcar de novo, e o `remarcar_horario` do servidor
+                  recusa servico de proposito. */}
+              {remarcando ? (
+                <section className="rounded-xl border border-border bg-surface p-3.5">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                    Mantendo
+                  </div>
+                  <div className="mt-1 text-[15px] font-semibold text-foreground">
+                    {resumoDosServicos}
+                  </div>
+                  <div className="mt-0.5 text-[13px] text-muted-foreground">
+                    R$ {precoTotal} · {duracaoTotal} min · escolha o horário novo abaixo
+                  </div>
+                </section>
+              ) : (
               <section>
                 <div className="mb-2.5 flex items-baseline justify-between gap-3">
                   <h2 className="text-sm font-semibold text-foreground">O que você quer fazer?</h2>
@@ -1093,6 +1201,7 @@ export function AgendaPublicaPage() {
                   </p>
                 )}
               </section>
+              )}
 
               <section
                 aria-busy={atualizando}
@@ -1105,7 +1214,8 @@ export function AgendaPublicaPage() {
 
                 <h2 className="mb-2.5 flex items-center gap-1.5 text-sm font-semibold text-foreground">
                   <Clock size={15} aria-hidden />
-                  {diaAberto ? `Horários livres ${diaAberto.porExtenso}` : 'Horários livres hoje'}
+                  {remarcando ? 'Mudar para' : 'Horários livres'}{' '}
+                  {diaAberto ? diaAberto.porExtenso : 'hoje'}
                 </h2>
 
                 {servicoIds.length === 0 ? (

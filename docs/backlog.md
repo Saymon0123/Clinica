@@ -1429,6 +1429,16 @@ cima de um item antigo.**
 
 ## Infraestrutura e manutenção
 
+### `~/.clubcut/supabase.env` tem uma SUPABASE_SERVICE_ROLE_KEY que não vale
+Achado de passagem em 13/09, ao tentar conferir por REST uma consulta do agente:
+a chave do arquivo devolve `Invalid API key`. Tem 88 caracteres e não é JWT
+(`eyJ...`) nem chave nova (`sb_secret_...`), então não é só rotação — é outra
+coisa gravada no lugar. Nada quebrou por causa disso: o n8n usa a credencial
+dele, e as migrations vão pelo MCP. **Quebra quem for escrever script que fala
+com o PostgREST** achando que o arquivo serve. Trocar pela chave certa ou apagar
+a linha, para não prometer o que não entrega.
+
+
 ### ~~Template de e-mail do Supabase ainda diz "14 dias"~~ — RESOLVIDO em 11/09
 O prazo do teste voltou de 14 para 7 dias. Foi trocado no CRM
 (`src/lib/planos.ts`, fonte única de todas as telas), na meta description do
@@ -1688,6 +1698,46 @@ coisas diferentes — e essa lacuna precisa fechar antes de qualquer campanha
 de tráfego pago apontar para a página nova.
 
 ## Agente de WhatsApp
+
+### O agente contou um horário que não existia mais — 2026-09-13
+O cliente escreveu *"já tenho um horário marcado e queria falar sobre ele"* e o
+agente respondeu **"você já tem um horário agendado, com o barbeiro Saymon às
+15:00"**. O horário de pé era **14/09 às 12:10, Barba + Corte infantil**. O
+15:00 era um agendamento do dia 10/09 que o próprio cliente havia **cancelado**
+na conversa anterior.
+
+A execução `25385` mostra a causa em uma linha: `ai.agent.tool_calls.requested:
+0`. **Ele não consultou nada.** Recitou o texto que ele mesmo escrevera dias
+antes, que continua no histórico da conversa. O prompt já mandava conferir
+(`E. O QUE VOCÊ MESMO DISSE ANTES NÃO É PROVA`) — mandar não bastou, porque a
+regra dependia de o modelo *decidir* chamar a ferramenta.
+
+Ao abrir a ferramenta que ele deveria ter chamado, ela também estava errada:
+
+- **O serviço era só o principal.** A view lia `a.service_id`; desde o corte +
+  barba num agendamento só, o serviço de verdade mora em `appointment_services`.
+  Diria "Barba" para quem marcou "Barba + Corte infantil".
+- **`status <> 'cancelado'` deixava passar `concluido` e `faltou`.** Na conta
+  real deste banco, a consulta devolvia **dois** horários para o mesmo amanhã, e
+  um deles não existia mais.
+
+**Corrigido em 13/09** (migration 0171 + n8n `rJO1n7cFeNDIJyB5`, versão ativa
+`8e9ec722`):
+
+- A view soma `appointment_services` e ganhou `de_pe`, que é `agendado` ou
+  `confirmado` — a regra num lugar só, em vez de espalhada pelos chamadores.
+- Nó novo **Horarios do Cliente (Contexto)**: os horários do cliente passam a ir
+  no CONTEXTO, como já vão o calendário, o catálogo e os barbeiros. Com o fato à
+  vista, não há o que lembrar errado — e não depende de o modelo decidir chamar
+  ferramenta. **Esta é a correção; o resto é higiene.**
+- Prompt: o item E passou a dizer *qual* fonte vence quando o histórico e a
+  agenda discordam.
+
+**A lição, que já é a terceira vez:** fato que o agente não pode inventar não
+mora numa ferramenta, mora no contexto. Foi assim com o calendário (ele
+anunciava sábado como segunda), com o catálogo (ofereceu "Corte com máquina e
+tesoura", que não existe) e agora com a agenda do próprio cliente.
+
 
 ### Agendamento fantasma — corrigido em 2026-08-04, falta reconfirmar
 Nos dois primeiros testes reais por WhatsApp o agente respondeu **"já agendei

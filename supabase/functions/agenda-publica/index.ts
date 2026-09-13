@@ -4,6 +4,7 @@ import { chaveDoDia, motivoSemHorario } from '../_shared/semHorario.ts'
 import { marcarSalao } from '../_shared/log.ts'
 import { ipDe, taxaExcedida } from '../_shared/limite.ts'
 import { numeroParaWhatsApp } from '../_shared/whatsapp.ts'
+import { servicosPedidos, somaDuracao } from '../_shared/servicos.ts'
 
 /**
  * Agenda pública — o QR do balcão.
@@ -179,7 +180,7 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
     const { data: ag } = await admin
       .from('appointments')
       .select(
-        'id, status, data_hora_inicio, services!appointments_service_id_fkey(nome), professionals(nome), salons(nome, telefone)',
+        'id, status, data_hora_inicio, data_hora_fim, services!appointments_service_id_fkey(nome), professionals(nome), salons(nome, telefone)',
       )
       .eq('token_gestao', token)
       .maybeSingle()
@@ -192,10 +193,32 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
       | null
     const whatsappBarbearia = whatsappDe(salaoRel?.telefone)
 
+    // TODOS os serviços, não só o principal. Quem marcou corte+barba pelo QR
+    // abria o próprio link e lia "Corte" — e ficava sem saber se a barba tinha
+    // entrado. `ordem` é a mesma que a pessoa escolheu na tela.
+    const { data: servicosDoAg } = await admin
+      .from('appointment_services')
+      .select('ordem, services(nome, preco)')
+      .eq('appointment_id', ag.id)
+      .order('ordem')
+    type ServicoRel = { nome: string | null; preco: number | null }
+    const servicos = (servicosDoAg ?? [])
+      .map((linha) => {
+        const s = (Array.isArray(linha.services) ? linha.services[0] : linha.services) as
+          | ServicoRel
+          | null
+        return s ? { nome: s.nome, preco: s.preco } : null
+      })
+      .filter((s): s is ServicoRel => !!s)
+
     const info = {
       status: ag.status,
       inicio: ag.data_hora_inicio,
+      fim: ag.data_hora_fim,
+      // `servico` (singular) fica: é o que a tela antiga lê durante a janela
+      // entre a edge subir e a Vercel terminar o build.
       servico: nomeDe(ag.services as Rel),
+      servicos,
       barbeiro: nomeDe(ag.professionals as Rel),
       barbearia: salaoRel?.nome ?? null,
       whatsappBarbearia,
@@ -353,8 +376,12 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
       .eq('ativo', true)
       .order('preco')
 
-    const servicoId = body.servicoId as string | undefined
-    const escolhido = servicos?.find((s) => s.id === servicoId) ?? servicos?.[0]
+    // Sem escolha nenhuma cai no primeiro do catálogo (ordenado por preço), que
+    // é o que a tela sempre mostrou pré-selecionado.
+    const pedidos = servicosPedidos(body, servicos ?? [])
+    const escolhidos = pedidos.length ? pedidos : servicos?.slice(0, 1) ?? []
+    const escolhido = escolhidos[0]
+    const duracaoTotal = somaDuracao(escolhidos)
 
     if (!escolhido) {
       // Sem serviço ativo a tela mostrava um seletor vazio e mandava "tentar
@@ -384,7 +411,8 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
     const { data: horarios, error: erroHorarios } = await admin.rpc('horarios_livres', {
       p_salon_id: salonId,
       p_data: data,
-      p_duracao_minutos: escolhido.duracao_minutos,
+      // A soma, não a duração do principal: é ela que decide se o encaixe cabe.
+      p_duracao_minutos: duracaoTotal,
     })
 
     if (erroHorarios) {
@@ -406,7 +434,7 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
       p_salon_id: salonId,
       p_de: hoje,
       p_dias: DIAS_VISIVEIS,
-      p_duracao_minutos: escolhido.duracao_minutos,
+      p_duracao_minutos: duracaoTotal,
     })
     if (erroDias) console.error('Erro ao contar os dias:', erroDias)
 
@@ -450,7 +478,11 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
     return json({
       ...identidade,
       servicos: servicos ?? [],
+      // `servicoEscolhido` (singular) fica por compatibilidade: a tela antiga
+      // le so ele durante os minutos entre a edge subir e a Vercel terminar.
       servicoEscolhido: escolhido.id,
+      servicosEscolhidos: escolhidos.map((s) => s.id),
+      duracaoTotal,
       data,
       dias: dias ?? [],
       diasDeTrabalho,
@@ -476,7 +508,6 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
 
   const nome = (body.nome as string | undefined)?.trim()
   const telefone = (body.telefone as string | undefined)?.replace(/\D/g, '') ?? ''
-  const servicoId = body.servicoId as string | undefined
   const profissionalId = body.profissionalId as string | undefined
   const inicio = body.inicio as string | undefined
 
@@ -491,7 +522,7 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
       400,
     )
   }
-  if (!servicoId || !profissionalId || !inicio) {
+  if (!profissionalId || !inicio) {
     return json({ error: 'Escolha um horário.' }, 400)
   }
 
@@ -512,15 +543,19 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
     )
   }
 
-  const { data: servico } = await admin
+  // O catálogo inteiro do salão, e os pedidos resolvidos contra ele. Ler os
+  // serviços pelo id de um em um deixaria passar id de outro salão em uma das
+  // consultas; aqui a lista de partida JÁ é só deste salão e só ativa.
+  const { data: catalogo } = await admin
     .from('services')
     .select('id, duracao_minutos')
-    .eq('id', servicoId)
     .eq('salon_id', salonId)
     .eq('ativo', true)
-    .maybeSingle()
 
-  if (!servico) return json({ error: 'Serviço indisponível.' }, 400)
+  const servicos = servicosPedidos(body, catalogo ?? [])
+  if (!servicos.length) return json({ error: 'Serviço indisponível.' }, 400)
+  const duracaoTotal = somaDuracao(servicos)
+  if (duracaoTotal <= 0) return json({ error: 'Serviço indisponível.' }, 400)
 
   // O horário pedido é mesmo um dos livres DAQUELE dia?
   //
@@ -552,7 +587,11 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
   const { data: livres } = await admin.rpc('horarios_livres', {
     p_salon_id: salonId,
     p_data: diaDoPedido,
-    p_duracao_minutos: servico.duracao_minutos,
+    // A SOMA. Revalidar com a duração do principal aceitaria um corte+barba de
+    // 70 min num vão de 40 — a trava de sobreposição do banco recusaria depois,
+    // mas com a mensagem errada; e num vão folgado ela passaria, reservando
+    // menos tempo que o atendimento leva.
+    p_duracao_minutos: duracaoTotal,
     p_professional_id: profissionalId,
   })
 
@@ -642,16 +681,32 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
     clienteCriadoAgora = true
   }
 
-  // `data_hora_fim` sai do trigger `calcula_fim_do_agendamento` (migration
-  // 0035): a duração é conta do banco, não de quem chama.
+  // `data_hora_fim` VAI EXPLÍCITO, e essa é a decisão que impede overbooking.
+  //
+  // Até aqui quem calculava era o trigger `calcula_fim_do_agendamento`. Ele
+  // soma `appointment_services` — mas num INSERT a filha ainda está vazia, e
+  // ele cai no serviço principal (está escrito no código dele: "se a filha
+  // ainda não tem linhas — INSERT, o espelho roda depois — cai no serviço
+  // principal"). Num corte+barba de 70 min isso reservaria 40, e a trava de
+  // sobreposição liberaria os 30 minutos finais para outra pessoa. Duas
+  // pessoas, uma cadeira, e o barbeiro descobrindo no balcão.
+  //
+  // O mesmo trigger tem uma porta para isto: `if tg_op = 'INSERT' and
+  // new.data_hora_fim is not null then return new`. Mandando o fim já somado, a
+  // trava de sobreposição reserva o tempo inteiro no PRIMEIRO instante — antes
+  // mesmo de a filha existir. É o único ponto em que a corrida importa.
+  const fim = new Date(quandoPedido.getTime() + duracaoTotal * 60000).toISOString()
   const { data: agendamento, error: erroAgendamento } = await admin
     .from('appointments')
     .insert({
       salon_id: salonId,
       client_id: clientId,
       professional_id: profissionalId,
-      service_id: servicoId,
+      // O principal é o primeiro escolhido: é o que a agenda do CRM, a fatura e
+      // o histórico do cliente leem quando leem um serviço só.
+      service_id: servicos[0].id,
       data_hora_inicio: inicio,
+      data_hora_fim: fim,
       status: 'agendado',
       origem: 'publico',
     })
@@ -681,6 +736,39 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
       },
       conflito ? 409 : 500,
     )
+  }
+
+  // Os serviços além do principal. O principal já entrou sozinho, pelo trigger
+  // `trg_espelha_servico_principal` (0120) — por isso o `slice(1)` e o
+  // `ignoreDuplicates`.
+  //
+  // NÃO uso `definir_servicos_do_agendamento`: aquela RPC exige que o chamador
+  // tenha vínculo com o salão (`private.salon_ids()`), e aqui não há usuário
+  // nenhum. Ela continua sendo a porta do CRM.
+  if (servicos.length > 1) {
+    const { error: erroServicos } = await admin
+      .from('appointment_services')
+      .upsert(
+        servicos.slice(1).map((s, i) => ({
+          appointment_id: agendamento.id,
+          service_id: s.id,
+          ordem: i + 2,
+        })),
+        { ignoreDuplicates: true },
+      )
+
+    // Falhou aqui: o horário está reservado pelo tempo certo, mas a lista de
+    // serviços ficaria pela metade — o cliente marcou corte+barba e a barbearia
+    // veria só corte, cobrando menos e reservando mais. Desfaz tudo em vez de
+    // deixar um agendamento que mente. Mesma compensação do cliente órfão.
+    if (erroServicos) {
+      console.error('Erro ao gravar os servicos do agendamento:', erroServicos)
+      await admin.from('appointments').delete().eq('id', agendamento.id)
+      if (clienteCriadoAgora && clientId) {
+        await admin.from('clients').delete().eq('id', clientId)
+      }
+      return json({ error: 'Não foi possível agendar. Tente novamente.' }, 500)
+    }
   }
 
   return json({

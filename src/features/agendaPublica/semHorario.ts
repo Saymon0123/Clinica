@@ -24,15 +24,21 @@ export type MotivoSemHorario = 'sem_servicos' | 'fechado_hoje' | 'expediente_aca
 
 export function mensagemSemHorario({
   motivo,
-  temServicoMaisCurto,
+  comoEncurtar,
   temWhatsapp,
   ehHoje,
   temOutroDia,
   diasNaJanela,
 }: {
   motivo: MotivoSemHorario
-  /** Trocar de serviço só ajuda quando existe um mais curto que o escolhido. */
-  temServicoMaisCurto: boolean
+  /**
+   * O que a pessoa pode fazer para o atendimento caber, ou null quando não há
+   * nada a fazer. `'tirar'` entrou com a seleção múltipla (13/09): com
+   * corte+barba escolhidos, mandar "troque por um mais curto" é conselho para
+   * outra tela — o que resolve é desmarcar um dos dois. `'trocar'` só quando há
+   * UM escolhido e existe outro mais curto no catálogo.
+   */
+  comoEncurtar: 'trocar' | 'tirar' | null
   /** Sem número cadastrado não há botão — a frase não pode prometer um. */
   temWhatsapp: boolean
   /**
@@ -62,10 +68,14 @@ export function mensagemSemHorario({
       : motivo === 'expediente_acabou'
         ? 'O expediente de hoje já acabou.'
         : (ehHoje ? 'Não sobrou horário hoje' : 'Não sobrou horário neste dia') +
-          ' para esse serviço.' +
-          // Só faz sentido em dia cheio: às 23h, ou num dia de folga, trocar de
-          // serviço não muda nada.
-          (temServicoMaisCurto ? ' Um serviço mais curto ainda pode caber — troque acima.' : '')
+          (comoEncurtar === 'tirar' ? ' para esses serviços juntos.' : ' para esse serviço.') +
+          // Só faz sentido em dia cheio: às 23h, ou num dia de folga, mexer nos
+          // serviços não muda nada.
+          (comoEncurtar === 'trocar'
+            ? ' Um serviço mais curto ainda pode caber — troque acima.'
+            : comoEncurtar === 'tirar'
+              ? ' Separados eles ainda podem caber — desmarque um acima.'
+              : '')
 
   // Com outro dia disponível a frase para aqui, de propósito: logo abaixo dela
   // há um botão que leva para aquele dia, e repetir "veja outro dia" em texto

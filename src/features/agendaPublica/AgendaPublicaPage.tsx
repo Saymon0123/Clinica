@@ -118,23 +118,35 @@ function iniciaisDe(nome: string) {
  * como. O numero ja estava no banco e o `/meu-horario` ja o usava; faltava
  * aqui, justamente onde a pessoa nao tem mais o que fazer sozinha.
  *
- * Duas formas: `bloco` é a saída de um beco, e ocupa a largura toda porque é a
+ * Três formas: `bloco` é a saída de um beco, e ocupa a largura toda porque é a
  * única coisa que sobrou para fazer; `chip` é o contato no herói, ao lado do
  * endereço, onde ele é uma opção entre outras e não pode competir com o botão
- * de marcar horário.
+ * de marcar horário; `porta` é o "já tenho horário" no topo da tela de marcar.
+ *
+ * TODAS montam o link no MESMO lugar, de propósito. O número já vem pronto da
+ * edge (`numeroParaWhatsApp`), e o `wa.me` já foi construído em cinco lugares
+ * diferentes neste projeto, cada um com uma regra — foi assim que o telefone da
+ * El Guardians passou meses apontando para um número que não existe.
  */
 function FalarComABarbearia({
   numero,
   forma = 'bloco',
+  mensagem,
 }: {
   numero?: string | null
-  forma?: 'bloco' | 'chip'
+  forma?: 'bloco' | 'chip' | 'porta'
+  /** Texto já digitado na conversa. O WhatsApp deixa a pessoa apagar antes de
+   *  enviar, então não é promessa — é economia de digitação, e do outro lado a
+   *  barbearia já sabe do que se trata antes de abrir. */
+  mensagem?: string
 }) {
   if (!numero) return null
+  const href = `https://wa.me/${numero}${mensagem ? `?text=${encodeURIComponent(mensagem)}` : ''}`
+
   if (forma === 'chip') {
     return (
       <a
-        href={`https://wa.me/${numero}`}
+        href={href}
         target="_blank"
         rel="noopener noreferrer"
         className="inline-flex items-center gap-1.5 rounded-full border border-border-strong bg-surface px-3 py-1.5 text-xs font-semibold text-foreground transition-colors duration-150 hover:border-primary hover:text-primary"
@@ -144,9 +156,36 @@ function FalarComABarbearia({
       </a>
     )
   }
+
+  if (forma === 'porta') {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex w-full items-center justify-between gap-3 rounded-xl border border-dashed border-border-strong bg-surface px-3.5 py-3 transition-colors duration-150 hover:border-primary"
+      >
+        <span className="min-w-0">
+          <strong className="block text-sm font-semibold text-foreground">
+            Já tem horário marcado?
+          </strong>
+          {/* O protótipo dizia "receba o link dele no seu WhatsApp". Era verdade
+              no desenho que dependia de um modelo aprovado pela Meta; a decisão
+              do dono (13/09) foi não depender disso e mandar a pessoa direto
+              para a barbearia. A frase teve de mudar junto — prometer um link
+              que não chega é o tipo de mentira que faz a pessoa esperar. */}
+          <span className="block text-[13px] leading-snug text-muted-foreground">
+            Chame a barbearia no WhatsApp para remarcar ou cancelar.
+          </span>
+        </span>
+        <MessageCircle size={18} className="shrink-0 text-primary" aria-hidden />
+      </a>
+    )
+  }
+
   return (
     <a
-      href={`https://wa.me/${numero}`}
+      href={href}
       target="_blank"
       rel="noopener noreferrer"
       className="mt-3 flex w-full items-center justify-center gap-2 btn-primary rounded-lg px-3 py-3 text-sm font-semibold"
@@ -779,6 +818,24 @@ export function AgendaPublicaPage() {
           ) : (
             // ---------- Passos 1 e 2: serviço e horário ----------
             <div className="space-y-6">
+              {/* A porta de quem JÁ tem horário, antes do passo 1.
+
+                  POR QUE NO TOPO. O caminho já existia, mas só abria no fim:
+                  quem quisesse desmarcar tinha de fingir que ia marcar,
+                  escolher serviço, dia e hora, digitar nome e telefone, apertar
+                  "Confirmar horário" e levar um "você já tem um horário" para
+                  então achar o botão. Seis passos até a porta, encontrada por
+                  errar. Aqui ela é o primeiro toque.
+
+                  POR QUE DISCRETA. Quase todo mundo que abre o QR veio marcar,
+                  não desmarcar. Traço pontilhado e texto apagado: quem procura
+                  acha, quem não procura não tropeça. */}
+              <FalarComABarbearia
+                numero={whatsapp}
+                forma="porta"
+                mensagem="Oi! Já tenho um horário marcado e queria falar sobre ele."
+              />
+
               <section>
                 <div className="mb-2.5 flex items-baseline justify-between gap-3">
                   <h2 className="text-sm font-semibold text-foreground">O que você quer fazer?</h2>

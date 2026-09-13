@@ -98,9 +98,30 @@ describe('linkWhatsApp', () => {
     expect(linkWhatsApp('(41) 98727-5895')).toBe('https://wa.me/5541987275895')
   })
 
-  it('deixa intacto quem ja veio com DDI', () => {
-    expect(linkWhatsApp('554187275895')).toBe('https://wa.me/554187275895')
+  it('deixa intacto quem ja veio com DDI e com o nono digito', () => {
     expect(linkWhatsApp('5541987275895')).toBe('https://wa.me/5541987275895')
+  })
+
+  // MUDANÇA DELIBERADA (13/09/2026). Este caso esperava `554187275895` de volta,
+  // intacto. Mas 55 + 41 + 87275895 é um CELULAR sem o nono dígito, e o link
+  // montado com ele nunca abriu conversa nenhuma — a asserção antiga protegia
+  // um link morto. Agora ele é completado.
+  it('poe o nono digito no celular que veio sem ele', () => {
+    expect(linkWhatsApp('554187275895')).toBe('https://wa.me/5541987275895')
+    // O caso real, em produção: o telefone da El Guardians.
+    expect(linkWhatsApp('(41) 9847-2975')).toBe('https://wa.me/5541998472975')
+  })
+
+  it('NAO inventa o nono digito num fixo', () => {
+    // WhatsApp Business roda em fixo: pôr um 9 aqui quebraria quem cadastrou
+    // certo. 2 a 5 depois do DDD é fixo; 6 a 9 é celular.
+    expect(linkWhatsApp('(41) 3344-5566')).toBe('https://wa.me/554133445566')
+  })
+
+  it('nao confunde DDD 55 com DDI 55', () => {
+    // Santa Maria (RS). Descascar os dois primeiros dígitos aqui viraria outro
+    // número — por isso o DDI só sai quando o total tem 12 ou 13 dígitos.
+    expect(linkWhatsApp('5533445566')).toBe('https://wa.me/555533445566')
   })
 
   // O null é contrato de tela: o ClientDetailModal usa exatamente ele para

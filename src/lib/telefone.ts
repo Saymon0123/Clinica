@@ -77,10 +77,51 @@ export function formatarTelefone(telefone: string) {
   return telefone
 }
 
+/**
+ * O número pronto para o WhatsApp — `55` + DDD + número, só dígitos.
+ *
+ * **O nono dígito.** Celular no Brasil é DDD + 9 + 8 dígitos, mas quem cadastra
+ * digita como decorou, e muita gente decorou antes de 2016. O telefone da El
+ * Guardians está assim em produção: `(41) 9847-2975`, dez dígitos. O link
+ * montado com ele não abre conversa nenhuma — e ninguém percebeu, porque o
+ * botão aparece normalmente. Link quebrado não dá erro, só não leva a lugar
+ * algum.
+ *
+ * **Como se sabe que falta:** depois do DDD, celular antigo tem 8 dígitos
+ * começando em 6, 7, 8 ou 9; fixo começa em 2, 3, 4 ou 5. É a faixa da Anatel,
+ * e é o que separa "faltou o 9" de "é um fixo mesmo".
+ *
+ * **Fixo não ganha o 9, de propósito:** WhatsApp Business roda em número fixo,
+ * e inventar um dígito ali quebraria justamente quem cadastrou certo.
+ *
+ * Gêmea de `supabase/functions/_shared/whatsapp.ts` — as edges não importam de
+ * `src/`, então a regra vive nos dois lugares, com os mesmos casos de teste.
+ */
+export function numeroParaWhatsApp(telefone: string | null | undefined): string | null {
+  const digitos = somenteDigitos(telefone ?? '')
+  if (!digitos) return null
+
+  // Tira o DDI para raciocinar sempre sobre o número local — mas só quando o
+  // que sobra tem cara de local: `5533445566` com 10 dígitos é um fixo de Santa
+  // Maria, cujo DDD é 55, e não um número com DDI.
+  let local = digitos
+  if (digitos.startsWith('55') && (digitos.length === 12 || digitos.length === 13)) {
+    local = digitos.slice(2)
+  }
+
+  if (local.length === 11) return `55${local}`
+
+  if (local.length === 10) {
+    const resto = local.slice(2)
+    if (/^[6-9]/.test(resto)) return `55${local.slice(0, 2)}9${resto}`
+    return `55${local}`
+  }
+
+  return null
+}
+
 /** Link wa.me, ou null quando o campo não parece um telefone. */
 export function linkWhatsApp(telefone: string): string | null {
-  let d = somenteDigitos(telefone)
-  if (d.length === 10 || d.length === 11) d = `55${d}`
-  if (d.length < 12 || d.length > 13) return null
-  return `https://wa.me/${d}`
+  const numero = numeroParaWhatsApp(telefone)
+  return numero ? `https://wa.me/${numero}` : null
 }

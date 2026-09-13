@@ -4337,3 +4337,82 @@ exige um `setNodeCredential` em seguida.
 descrição, não pelo conteúdo dos nós, e concluí ausência a partir de uma busca
 rasa. A evidência que me corrigiu não veio de ler o n8n de novo — veio de **olhar
 o log de borda** e ver 401 de hora em hora que eu não sabia explicar.
+
+---
+
+## Uma regra para cancelar, e o nono dígito do WhatsApp (2026-09-13)
+
+Dois consertos irmãos, achados um dentro do outro.
+
+### Três portas, três regras para cancelar — PR #141, aplicado
+
+O cliente cancela o próprio horário por três caminhos, e cada um decidia sozinho
+quando era tarde demais:
+
+| Porta | Regra até 13/09 |
+|---|---|
+| Link público (`agenda-publica`) | 30 minutos |
+| Botão do lembrete (`responder_lembrete`) | só `> agora` — cancelava faltando 1 min |
+| Agente no WhatsApp | nenhuma |
+
+O comentário da `agenda-publica` já dizia isso em 10/09 — *"mesma ação, duas
+portas, duas regras"* — e o conserto daquele dia cobriu **uma**. A ironia: a mais
+frouxa era a **mais usada**, porque o lembrete chega 85 a 100 min antes com o
+botão de cancelar dentro dele.
+
+`private.pode_cancelar` passa a ser o único lugar onde os 30 minutos existem. O
+botão do lembrete já respeita; a `agenda-publica` e o agente vêm depois, um PR
+cada.
+
+**O propósito da regra decidiu o desenho.** Ela não existe para impedir o
+cancelamento — o comentário da edge é explícito: *"quem cancela dentro dos 30 min
+ia faltar de qualquer jeito; a diferença é o barbeiro ficar sabendo"*. Então,
+dentro da janela, a função **não cancela e responde**, mandando falar com a
+barbearia. O horário fica de pé e o barbeiro descobre pela conversa.
+
+**Vale só para cancelar** (decisão do dono, 13/09). Confirmar em cima da hora é
+inofensivo e segue livre — travar isso faria quem avisa que vem parecer que não
+avisou.
+
+**O detalhe que quase escapou:** a recusa **não** marca `lembrete_respondido_em`.
+Se marcasse, o toque seguinte cairia no ramo `'repetido'` e a pessoa ficaria sem
+resposta nenhuma — pior que a recusa. Há uma asserção só para isso.
+
+Ensaiado contra produção, 7 de 7. 8 asserções em pgTAP, uma no limite exato de 30
+minutos: se alguém trocar o `>=` por `>`, é ela que cai.
+
+### O nono dígito — PR #142, aplicado e publicado
+
+O número do WhatsApp era montado em **cinco lugares, com três regras**, e nenhum
+sabia do nono dígito.
+
+**O caso estava em produção:** o telefone da El Guardians é `(41) 9847-2975` —
+dez dígitos. O botão "Falar com a barbearia" dela apontava para um número que não
+existe. Ninguém percebeu porque **link quebrado não dá erro, só não abre**.
+
+A regra: depois do DDD, celular antigo tem 8 dígitos começando em 6–9; fixo
+começa em 2–5 (faixa da Anatel). **Fixo não ganha o 9** — WhatsApp Business roda
+em fixo, e inventar um dígito quebraria quem cadastrou certo. E **DDD 55 não é
+DDI 55**: Santa Maria é DDD 55, então o DDI só é descascado quando o total tem 12
+ou 13 dígitos.
+
+Gêmeas em `src/lib/telefone.ts` e `supabase/functions/_shared/whatsapp.ts`, com
+os mesmos casos. **Não mexe no `telefone_norm`** e não precisa: os últimos 8
+dígitos são imunes ao nono.
+
+Provado em produção depois de publicar: a `agenda-publica` devolve
+`5541998472975` para a El Guardians, onde antes devolvia `554198472975`.
+
+**Uma asserção antiga foi trocada de propósito:** o teste esperava
+`554187275895` intacto, mas isso é um celular sem o nono — a asserção protegia um
+link morto.
+
+### Fica aberto
+
+1. **O nó `Montar Texto de Reagendamento` do n8n** continua com a regra velha:
+   `'https://wa.me/55' + telefone.replace(/\D/g,'')` — prefixo incondicional, e
+   sem o nono. É o quinto lugar, e o único que sobrou.
+2. **A `agenda-publica` e o agente** ainda não usam `pode_cancelar` (PRs 2 e 3
+   do plano de 13/09).
+3. **O cadastro da El Guardians segue com dez dígitos.** O link agora é montado
+   certo, mas arrumar na origem, pela tela de Configurações, é um minuto.

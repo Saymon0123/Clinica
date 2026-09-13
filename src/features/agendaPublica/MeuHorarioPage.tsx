@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { CalendarX2, Check, Clock, MessageCircle } from 'lucide-react'
+import { CalendarClock, CalendarX2, Check, Clock, MessageCircle } from 'lucide-react'
 import { MarcaClubCut } from '../../components/MarcaClubCut'
 import { invokeFunction } from '../../lib/invokeFunction'
 import { ErroInline } from '../../components/ErroInline'
@@ -13,15 +13,25 @@ import { ErroInline } from '../../components/ErroInline'
  * vazar. Cancelar pede confirmação e respeita a antecedência mínima (30min) —
  * a regra mora na edge function, esta tela só a explica.
  *
- * Remarcar não remarca aqui de propósito: reagendar é conversa (outro dia,
- * outro horário, outra preferência), e conversa é com a barbearia no WhatsApp
- * — o botão leva direto para lá.
+ * REMARCAR PASSOU A REMARCAR (13/09/2026). Esta linha dizia o contrário:
+ * "reagendar é conversa (outro dia, outro horário, outra preferência), e
+ * conversa é com a barbearia no WhatsApp". Era verdade enquanto o QR só marcava
+ * para HOJE — escolher outro dia exigia negociar. Com a janela de catorze dias
+ * a grade inteira está na tela, e mandar a pessoa conversar para tocar em dois
+ * botões virou atrito, não cuidado.
+ *
+ * A escolha do horário novo NÃO mora aqui: o botão leva para a agenda pública
+ * em modo remarcar (`/agendar/:salonId?remarcar=<token>`), que já tem a faixa
+ * de catorze dias, a grade por período e o destaque do próximo horário. Duas
+ * cópias disso garantiriam que uma envelheceria.
  */
 
 type Horario = {
   status: string
   inicio: string
   /** O servico PRINCIPAL. Continua vindo por compatibilidade de implantacao. */
+  /** De qual barbearia — para o botao de remarcar abrir a grade dela. */
+  salonId?: string | null
   servico: string | null
   /** Todos os servicos, na ordem escolhida. Ausente numa edge anterior a
    *  selecao multipla (13/09) -- e ai o principal sozinho e a verdade. */
@@ -163,13 +173,29 @@ export function MeuHorarioPage() {
 
             {dePe && (
               <div className="space-y-2">
+                {/* O botao que mudou de destino em 13/09: ele levava ao
+                    WhatsApp da barbearia, e agora leva a grade. So aparece com
+                    `salonId` na resposta -- de uma edge anterior a esta ele nao
+                    vem, e um botao que leva a `/agendar/null` e pior que
+                    nenhum. */}
+                {dados.salonId && (
+                  <a
+                    href={`/agendar/${dados.salonId}?remarcar=${token}`}
+                    className="w-full flex items-center justify-center gap-2 btn-primary rounded-lg px-3 py-3 text-sm font-semibold"
+                  >
+                    <CalendarClock size={16} />
+                    Mudar o horário
+                  </a>
+                )}
+                {/* O WhatsApp continua ali, em segundo plano: remarcar resolve
+                    "quero outro horario", nao "preciso falar com voces". */}
                 {linkWhats && (
                   <a
                     href={linkWhats}
-                    className="w-full flex items-center justify-center gap-2 btn-primary rounded-lg px-3 py-3 text-sm font-semibold"
+                    className="w-full flex items-center justify-center gap-2 btn-secondary rounded-lg px-3 py-3 text-sm font-semibold"
                   >
                     <MessageCircle size={16} />
-                    Mudar o horário pelo WhatsApp
+                    Falar com a barbearia
                   </a>
                 )}
                 {confirmando ? (

@@ -1054,13 +1054,30 @@ Protótipo aprovado pelo dono em 12/09. Etapas:
    meio. Nenhum teste cobria grants de `horarios_livres` nem de
    `dias_com_horario` — agora cobre.
 
-   **Falta (PR seguinte):** a tela. O plano é reaproveitar a agenda pública em
-   modo remarcar (`/agendar/:salonId?remarcar=<token>`), porque a faixa de
-   dias, a grade e os períodos já estão lá; o `meu_horario` já devolve o
-   `salonId` para isso. E **o aviso do CRM precisa incluir a remarcação** — a
-   coluna `remarcado_pelo_cliente_em` já é preenchida, mas a view
-   `cancelamentos_a_avisar` ainda só olha cancelamento. Sem isso, o horário que
-   mudou passa despercebido pela mesma porta que o cancelado passava.
+   **A TELA FICOU PRONTA no mesmo dia (migration 0170).** `/meu-horario` ganhou
+   "Mudar o horário", que leva à agenda pública em modo remarcar
+   (`/agendar/:salonId?remarcar=<token>`) — reaproveitando a faixa de catorze
+   dias, a grade por período e o destaque do próximo horário, em vez de manter
+   duas cópias que envelheceriam em ritmos diferentes. Os serviços viram resumo
+   somente-leitura ("Mantendo: Corte + Barba"), e a confirmação **não pede nome
+   nem telefone**: quem abriu o link já é o dono, e o token prova.
+
+   **A 0170 existe por causa de dois números que discordavam.** A faixa de dias
+   conta pela `dias_com_horario`, que chamava `horarios_livres` sem o
+   `p_ignorar_agendamento`: na tela de remarcar a faixa diria "35 livres" e a
+   grade mostraria 48, no mesmo dia, na mesma tela. São ~13 horários de
+   diferença, e o menor é o errado — quem compara os dias para achar o mais
+   vazio decidiria pelo número que mente. Conferido em produção depois:
+   **35/35 no modo normal, 48/48 no modo remarcar.**
+
+   **O aviso do CRM passou a contar a remarcação** (mesma view, agora com
+   `tipo`): cancelar e remarcar são notícias diferentes — uma libera a cadeira,
+   a outra a move —, e o título separa as duas em vez de dizer "3 mudanças",
+   que obrigaria o dono a ler a lista para saber se sobrou buraco.
+
+   **Não verificado por mim:** o aviso renderizado no CRM (não faço login). O
+   dado está provado: remarcar pela tela gravou `tipo = 'remarcou'` com o
+   horário novo na view.
 5. ~~**Já tenho horário**~~ — **CANCELADA em 13/09, por decisão do dono.**
    **Não peça o modelo à Meta.** Foi substituída por um botão "Já tem horário
    marcado?" no topo da agenda pública, que abre o WhatsApp **da barbearia**

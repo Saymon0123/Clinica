@@ -612,6 +612,45 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
       return json({ error: 'Muitas consultas seguidas. Aguarde um minuto e recarregue.' }, 429)
     }
 
+    // MODO REMARCAR (etapa 4). O token diz QUAL agendamento esta sendo movido, e
+    // isso muda duas coisas na grade:
+    //
+    //   1. os servicos sao os DELE, nao os que a tela pedir -- remarcar e mudar
+    //      quando, nao o que se faz;
+    //   2. a grade E a faixa de dias tem de IGNORA-LO, senao ele esconde os
+    //      horarios vizinhos do proprio, e quem quer sair das 14:00 para as
+    //      14:10 nao ve as 14:10.
+    //
+    // O token e conferido contra ESTE salao: token de uma barbearia aberto na
+    // pagina de outra e recusado, em vez de virar uma grade que mistura as duas.
+    const remarcarToken = (body.remarcarToken as string | undefined)?.trim()
+    let remarcandoId: string | null = null
+    let servicosDoRemarcado: string[] | null = null
+    if (remarcarToken) {
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(remarcarToken)) {
+        return json({ error: 'Link inválido.' }, 400)
+      }
+      const { data: aRemarcar } = await admin
+        .from('appointments')
+        .select('id, salon_id, status, appointment_services(service_id, ordem)')
+        .eq('token_gestao', remarcarToken)
+        .maybeSingle()
+      if (
+        !aRemarcar ||
+        aRemarcar.salon_id !== salonId ||
+        !['agendado', 'confirmado'].includes(aRemarcar.status)
+      ) {
+        return json({ error: 'Esse horário já não está mais de pé.', whatsappBarbearia }, 409)
+      }
+      remarcandoId = aRemarcar.id
+      servicosDoRemarcado = (
+        (aRemarcar.appointment_services ?? []) as { service_id: string; ordem: number }[]
+      )
+        .slice()
+        .sort((x, y) => x.ordem - y.ordem)
+        .map((linha) => linha.service_id)
+    }
+
     // A identidade da barbearia, igual nos dois finais do `consultar`. Campos
     // NOVOS ao lado dos antigos, e não um `salao` virando objeto: a edge sobe
     // antes da Vercel terminar o build, e nesse intervalo a tela antiga
@@ -633,7 +672,13 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
 
     // Sem escolha nenhuma cai no primeiro do catálogo (ordenado por preço), que
     // é o que a tela sempre mostrou pré-selecionado.
-    const pedidos = servicosPedidos(body, servicos ?? [])
+    const pedidos = servicosPedidos(
+      // Em modo remarcar a lista vem do AGENDAMENTO, nunca do corpo: trocar o
+      // servico aqui mudaria preco e duracao sem passar pelo `remarcar_horario`,
+      // que de proposito nao aceita servico nenhum.
+      servicosDoRemarcado ? { servicoIds: servicosDoRemarcado } : body,
+      servicos ?? [],
+    )
     const escolhidos = pedidos.length ? pedidos : servicos?.slice(0, 1) ?? []
     const escolhido = escolhidos[0]
     const duracaoTotal = somaDuracao(escolhidos)
@@ -668,6 +713,7 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
       p_data: data,
       // A soma, não a duração do principal: é ela que decide se o encaixe cabe.
       p_duracao_minutos: duracaoTotal,
+      p_ignorar_agendamento: remarcandoId,
     })
 
     if (erroHorarios) {
@@ -690,6 +736,8 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
       p_de: hoje,
       p_dias: DIAS_VISIVEIS,
       p_duracao_minutos: duracaoTotal,
+      // Sem isto a faixa diria "54 livres" e a grade mostraria 61 no mesmo dia.
+      p_ignorar_agendamento: remarcandoId,
     })
     if (erroDias) console.error('Erro ao contar os dias:', erroDias)
 
@@ -738,6 +786,10 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
       servicoEscolhido: escolhido.id,
       servicosEscolhidos: escolhidos.map((s) => s.id),
       duracaoTotal,
+      /** O token CONFIRMADO pelo servidor. A tela so entra em modo remarcar
+       *  quando ele volta -- token invalido nao vira uma tela que promete
+       *  mudar um horario que nao existe. */
+      remarcando: remarcandoId ? remarcarToken : null,
       data,
       dias: dias ?? [],
       diasDeTrabalho,

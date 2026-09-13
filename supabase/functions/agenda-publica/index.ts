@@ -27,10 +27,15 @@ import { servicosPedidos, somaDuracao } from '../_shared/servicos.ts'
  * superfície e o que continua segurando a porta estão escritos em
  * `DIAS_VISIVEIS`, logo abaixo.
  *
- * Cancelar existe, mas NUNCA pela rua: só pelo `token_gestao` — um uuid
- * impossível de adivinhar, gerado por agendamento e entregue apenas a quem
- * marcou (tela de sucesso do QR). Quem tem o token cancela AQUELE horário e
- * nada mais; remarcar é um link para o WhatsApp da barbearia.
+ * Cancelar e REMARCAR existem, mas NUNCA pela rua: só pelo `token_gestao` — um
+ * uuid impossível de adivinhar, gerado por agendamento e entregue apenas a quem
+ * marcou (tela de sucesso do QR, e o celular dele desde a etapa 3). Quem tem o
+ * token mexe NAQUELE horário e em mais nada.
+ *
+ * "Remarcar é um link para o WhatsApp da barbearia" era o que esta linha dizia
+ * até 13/09/2026. Deixou de ser: com a janela de catorze dias, escolher outro
+ * horário virou dois toques numa grade que já está na tela, e mandar a pessoa
+ * conversar para isso passou a ser atrito, não cuidado.
  */
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
@@ -163,10 +168,6 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
   // ------------------------------------------------------------------
-  // Gestão pelo token: ver e cancelar O PRÓPRIO horário. Sem salonId de
-  // propósito — o token resolve tudo, e não vaza nada de ninguém.
-  // ------------------------------------------------------------------
-  // ------------------------------------------------------------------
   // Os horários guardados NESTE CELULAR (etapa 3).
   //
   // POR QUE UMA AÇÃO NOVA, e não chamar `meu_horario` uma vez por token: o
@@ -262,6 +263,10 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
     return json({ horarios })
   }
 
+  // ------------------------------------------------------------------
+  // Gestão pelo token: ver e cancelar O PRÓPRIO horário. Sem salonId de
+  // propósito — o token resolve tudo, e não vaza nada de ninguém.
+  // ------------------------------------------------------------------
   if (body.acao === 'meu_horario' || body.acao === 'cancelar_horario') {
     const token = (body.token as string | undefined)?.trim() ?? ''
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
@@ -276,7 +281,7 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
     const { data: ag } = await admin
       .from('appointments')
       .select(
-        'id, status, data_hora_inicio, data_hora_fim, services!appointments_service_id_fkey(nome), professionals(nome), salons(nome, telefone)',
+        'id, salon_id, status, data_hora_inicio, data_hora_fim, services!appointments_service_id_fkey(nome), professionals(nome), salons(nome, telefone)',
       )
       .eq('token_gestao', token)
       .maybeSingle()
@@ -309,6 +314,9 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
 
     const info = {
       status: ag.status,
+      // A tela de remarcar precisa dele para abrir a grade da barbearia. Nao e
+      // segredo: o mesmo id esta na URL publica `/agendar/:salonId`.
+      salonId: ag.salon_id,
       inicio: ag.data_hora_inicio,
       fim: ag.data_hora_fim,
       // `servico` (singular) fica: é o que a tela antiga lê durante a janela
@@ -357,6 +365,157 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
       return json({ error: 'Não foi possível cancelar. Tente novamente.' }, 500)
     }
     return json({ ...info, status: 'cancelado', ok: true })
+  }
+
+  // ------------------------------------------------------------------
+  // Remarcar: MESMO agendamento, outro horário (etapa 4).
+  //
+  // REVERTE UMA DECISÃO ESCRITA. O comentário de `MeuHorarioPage.tsx` dizia:
+  // "remarcar não remarca aqui de propósito: reagendar é conversa (outro dia,
+  // outro horário, outra preferência), e conversa é com a barbearia no
+  // WhatsApp". O dono decidiu o contrário em 11/09, e a razão é concreta — com
+  // a janela de catorze dias, escolher outro horário deixou de ser conversa e
+  // virou dois toques numa grade que já está na tela.
+  //
+  // MESMO AGENDAMENTO, MESMO TOKEN, de propósito: o link guardado no celular
+  // (etapa 3) continua valendo depois de remarcar. Cancelar-e-recriar geraria
+  // um token novo e mataria o link que a pessoa tem salvo — ela remarcaria e
+  // perderia o acesso ao que acabou de marcar.
+  //
+  // NÃO MUDA O SERVIÇO. Remarcar é mudar QUANDO. Quem quer outro serviço
+  // cancela e marca de novo — e aí o preço, a duração e a cadeira são outros.
+  // ------------------------------------------------------------------
+  if (body.acao === 'remarcar_horario') {
+    const token = (body.token as string | undefined)?.trim() ?? ''
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
+      return json({ error: 'Link inválido.' }, 400)
+    }
+    if (await taxaExcedida(admin, `gestao:${ipDe(req)}`, 12, 600, 'deixa-passar')) {
+      return json({ error: 'Muitas tentativas. Aguarde alguns minutos.' }, 429)
+    }
+
+    const { data: ag } = await admin
+      .from('appointments')
+      .select('id, salon_id, status, data_hora_inicio, salons(nome, telefone)')
+      .eq('token_gestao', token)
+      .maybeSingle()
+    if (!ag) return json({ error: 'Agendamento não encontrado.' }, 404)
+
+    const salaoRel = (Array.isArray(ag.salons) ? ag.salons[0] : ag.salons) as
+      | { nome: string | null; telefone: string | null }
+      | null
+    const whatsapp = whatsappDe(salaoRel?.telefone)
+
+    if (!['agendado', 'confirmado'].includes(ag.status)) {
+      return json({ error: 'Esse horário já não está mais de pé.', whatsappBarbearia: whatsapp }, 409)
+    }
+
+    // O PISO DE 30 MINUTOS VALE SOBRE O HORÁRIO ATUAL, não sobre o novo.
+    // Mover às 14:50 um corte das 15:00 esvazia a cadeira das 15:00 com o mesmo
+    // aviso em cima da hora que o cancelamento causaria — é a mesma dor, e por
+    // isso a mesma regra (`private.pode_cancelar`, migration 0166).
+    if (new Date(ag.data_hora_inicio).getTime() - Date.now() < 30 * 60000) {
+      return json(
+        {
+          error:
+            'Falta menos de 30 minutos para o seu horário. Para mudar agora, chame a barbearia — assim dá tempo de encaixar outra pessoa.',
+          whatsappBarbearia: whatsapp,
+        },
+        409,
+      )
+    }
+
+    const quando = new Date((body.inicio as string | undefined) ?? '')
+    const profissionalId = body.profissionalId as string | undefined
+    if (Number.isNaN(quando.getTime()) || !profissionalId) {
+      return json({ error: 'Escolha um horário.' }, 400)
+    }
+
+    // A data sai do `inicio`, como no `agendar`: validar um campo e usar outro
+    // é a brecha clássica.
+    const diaNovo = quando.toLocaleDateString('en-CA', { timeZone: TZ })
+    if (!dentroDaJanela(diaNovo, hojeEmSaoPaulo())) {
+      return json(
+        { error: `Só dá para marcar de hoje até ${DIAS_VISIVEIS} dias à frente.`, whatsappBarbearia: whatsapp },
+        400,
+      )
+    }
+
+    // A duração é a dos serviços QUE JÁ ESTÃO no agendamento — nada do corpo da
+    // requisição decide quanto tempo de cadeira se reserva.
+    const { data: linhas } = await admin
+      .from('appointment_services')
+      .select('services(duracao_minutos)')
+      .eq('appointment_id', ag.id)
+    const duracaoTotal = (linhas ?? []).reduce((total, linha) => {
+      const s = (Array.isArray(linha.services) ? linha.services[0] : linha.services) as
+        | { duracao_minutos: number | null }
+        | null
+      return total + (s?.duracao_minutos ?? 0)
+    }, 0)
+    if (duracaoTotal <= 0) {
+      console.error('Agendamento sem duracao ao remarcar:', ag.id)
+      return json({ error: 'Não foi possível remarcar. Fale com a barbearia.', whatsappBarbearia: whatsapp }, 500)
+    }
+
+    // `p_ignorar_agendamento` (migration 0169) é o que permite mover de 10:00
+    // para 10:20: sem ele, o próprio agendamento esconde os horários vizinhos
+    // do seu.
+    const { data: livres } = await admin.rpc('horarios_livres', {
+      p_salon_id: ag.salon_id,
+      p_data: diaNovo,
+      p_duracao_minutos: duracaoTotal,
+      p_professional_id: profissionalId,
+      p_ignorar_agendamento: ag.id,
+    })
+    const valido = (livres ?? []).some(
+      (h: { inicio: string }) => new Date(h.inicio).getTime() === quando.getTime(),
+    )
+    if (!valido) {
+      return json({ error: 'Esse horário não está mais disponível. Escolha outro.', conflito: true }, 409)
+    }
+
+    const { error: erroRemarcar } = await admin
+      .from('appointments')
+      .update({
+        data_hora_inicio: quando.toISOString(),
+        data_hora_fim: new Date(quando.getTime() + duracaoTotal * 60000).toISOString(),
+        professional_id: profissionalId,
+        // VOLTA A 'agendado' mesmo se estava 'confirmado': a pessoa confirmou a
+        // hora ANTIGA. Deixar 'confirmado' mostraria ao barbeiro uma presença
+        // confirmada para um horário que ninguém confirmou.
+        status: 'agendado',
+        // O LEMBRETE TEM DE SER REFEITO. Ele já foi enviado para a hora antiga,
+        // e `lembrete_enviado` impediria o novo. Pior: `lembrete_message_id`
+        // ainda apontaria para a mensagem velha, e o toque nos botões dela
+        // agiria sobre este agendamento com a hora errada na resposta.
+        lembrete_enviado: false,
+        lembrete_message_id: null,
+        lembrete_respondido_em: null,
+        envio_reservado_ate: null,
+        // O pedido de reagendamento foi atendido.
+        reagendamento_pedido_em: null,
+        remarcado_pelo_cliente_em: new Date().toISOString(),
+      })
+      .eq('id', ag.id)
+
+    if (erroRemarcar) {
+      // 23P01: duas pessoas mexeram no mesmo vão ao mesmo tempo, ou a folga
+      // entre atendimentos foi violada. O banco recusou, que é o certo.
+      const conflito = erroRemarcar.code === '23P01'
+      if (!conflito) console.error('Erro ao remarcar:', erroRemarcar)
+      return json(
+        {
+          error: conflito
+            ? 'Esse horário acabou de ser pego. Escolha outro.'
+            : 'Não foi possível remarcar. Tente novamente.',
+          conflito,
+        },
+        conflito ? 409 : 500,
+      )
+    }
+
+    return json({ ok: true, inicio: quando.toISOString(), whatsappBarbearia: whatsapp })
   }
 
   const salonId = body.salonId as string | undefined

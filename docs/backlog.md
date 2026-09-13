@@ -70,11 +70,21 @@ o Asaas como operador).
    era enviada (o envio vem antes), mas o log falhava, tentava 4 vezes e
    disparava e-mail de alerta a cada opt-out. Registrar não pode derrubar quem
    já entregou.
-4. **Mensagem de cliente se perde quando o n8n falha** — nada é persistido antes
-   do POST. O padrão de fila que resolve já existe para a saída (`0104:8-9`);
-   falta na entrada.
-   *(A metade do `.ok` foi resolvida em 10/09 — ver o item 4-b abaixo. O que
-   falta aqui é a fila, que é o conserto de verdade.)*
+4. ~~**Mensagem de cliente se perde quando o n8n falha**~~ — **RESOLVIDO em
+   12/09** (migration 0162, "A3: a mensagem do cliente que some"), e esta
+   entrada ficou **desatualizada por um dia**: ela continuou dizendo "falta a
+   fila na entrada" depois de a fila existir.
+
+   Conferido em 13/09: a tabela `mensagens_recebidas` e a view
+   `mensagens_a_entregar` existem em produção, e o fluxo **"CRM Salao -
+   Reentrega de Mensagens"** está ativo, rodando a cada 5 min. É exatamente o
+   padrão de fila que este item pedia.
+
+   **A lição é do backlog, não do código:** item marcado como aberto depois de
+   fechado custa o mesmo que achado não registrado — alguém trabalha duas vezes,
+   ou decide com base no que já não é verdade. Fechar tem de ser tão obrigatório
+   quanto abrir.
+   *(A metade do `.ok` foi resolvida em 10/09 — ver o item 4-b abaixo.)*
 
    **4-b.** ~~3 dos 4 POSTs ao n8n não checam `.ok`~~ — **RESOLVIDO em 10/09.**
    Os cinco POSTs de resposta passaram a usar um helper único, `entregarAoN8n`,
@@ -4555,9 +4565,22 @@ link morto.
 
 ### Fica aberto
 
-1. **O nó `Montar Texto de Reagendamento` do n8n** continua com a regra velha:
-   `'https://wa.me/55' + telefone.replace(/\D/g,'')` — prefixo incondicional, e
-   sem o nono. É o quinto lugar, e o único que sobrou.
+1. ~~**O nó `Montar Texto de Reagendamento` do n8n**~~ — **FECHADO em 13/09.** O
+   quinto lugar era o pior dos cinco, e estava vivo: quem tocava em "Reagendar"
+   no lembrete recebia do agente um `wa.me` que **não abria**. Com o telefone da
+   El Guardians (`(41) 9847-2975`) saía `554198472975`, sem o nono; com um
+   número já cadastrado com DDI sairia `5555…`; e com um campo sem dígito
+   nenhum saía **`wa.me/55`** — link para lugar nenhum, porque a condição era
+   só `telefone ? link : texto`.
+
+   O nó passou a aplicar a mesma regra de `_shared/whatsapp.ts` (descasca o DDI
+   só com 12 ou 13 dígitos, põe o nono quando o resto começa em 6-9, não inventa
+   nono em fixo) e, **quando o número não serve, cai no texto genérico em vez de
+   montar um link morto** — que é o comportamento das outras quatro portas.
+
+   Conferido antes de publicar, comparando as duas regras nos sete casos reais.
+   **Publicado** (versão ativa `820a43f1`) e lido de volta: editar por API vai
+   para o rascunho, e o agendamento ativo continua rodando o publicado.
 2. **A `agenda-publica` e o agente** ainda não usam `pode_cancelar` (PRs 2 e 3
    do plano de 13/09).
 3. **O cadastro da El Guardians segue com dez dígitos.** O link agora é montado

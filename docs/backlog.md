@@ -956,7 +956,33 @@ Protótipo aprovado pelo dono em 12/09. Etapas:
    edge — e o teste que prova isso precisa trocar o fuso do processo, senão
    passa por acidente); e o **avatar com iniciais da frase de espera**, que
    desenhava um selo verde escrito "CA" de "Carregando...".
-2. **14 dias**: a edge aceita a data e valida no servidor; faixa de dias na tela.
+2. ~~**14 dias**~~ — **FEITA em 13/09**. A edge aceita `data`, valida a janela
+   **nos dois caminhos** e devolve a faixa dos catorze dias com a contagem de
+   vagas de cada um (migration 0167, `dias_com_horario`: uma consulta, 20 ms).
+   Na tela, faixa rolável com "fechado / lotado / encerrado / N livres", título
+   por dia, e o vazio virou porta — "Ver quinta-feira" no lugar de "chame a
+   barbearia".
+
+   **O que isto reverteu:** o comentário da edge dizia "agendar para outro dia
+   … viraria uma porta aberta na rua". Piora a superfície de quem quer encher a
+   agenda (de 1 dia para 14) e torna público o formato da agenda — nunca de
+   quem é cada horário ocupado, só o que está livre. Continuam segurando: 8
+   agendamentos por IP/10 min, `TETO_POR_HORA` por barbearia, 1 agendamento
+   futuro aberto por pessoa. **Entrou junto** um freio de taxa no `consultar`
+   (40/5 min), que era a única ação da função sem limite nenhum — descuido
+   barato quando custava uma consulta, alavanca depois de passar a custar 20.
+
+   **A data sai do `inicio`, nunca de um campo à parte**, senão bastaria pedir
+   `data: hoje` com `inicio` em 2027 para escrever 2027 no banco. Conferido
+   contra produção: 30 dias → 400, ontem → 400, data inexistente → 400, lixo →
+   400, e amanhã às 03:00 → **409** (a janela deixou passar; quem barrou foi a
+   revalidação do horário) — sem escrever nada.
+
+   **EM ABERTO, decisão do dono:** a trava de **1 agendamento futuro por pessoa
+   pelo QR** ficou muito mais apertada. Antes durava horas; agora bloqueia por
+   catorze dias quem marcou para sábado e quer a barba na quinta. Mantida em 1
+   (nada regride). A resposta boa provavelmente é a **etapa 4**: quem já tem
+   horário o vê e remarca, e "você já marcou" deixa de ser um não.
 3. **Seu horário neste celular**, com o botão de pôr na agenda do celular.
 4. **Remarcar pelo link**, no mesmo agendamento: mesmo token, lembrete refeito,
    piso de 30 minutos como o do cancelamento. **Reverte uma decisão escrita:**

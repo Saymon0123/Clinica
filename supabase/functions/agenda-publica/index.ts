@@ -14,11 +14,17 @@ import { numeroParaWhatsApp } from '../_shared/whatsapp.ts'
  *
  * **Roda sem usuário nenhum** (`verify_jwt: false`). Por isso toda a
  * autorização é explícita aqui dentro, e a superfície é mínima: dá para ver
- * horários livres e criar **um** agendamento para hoje. Nada mais.
+ * horários livres e criar **um** agendamento dentro dos próximos `DIAS_VISIVEIS`
+ * dias. Nada mais.
  *
- * O que ela deliberadamente **não** faz: listar clientes, mostrar de quem é o
- * agendamento que ocupa um horário, ou agendar para outro dia. Cada uma dessas
- * viraria uma porta aberta na rua.
+ * O que ela deliberadamente **não** faz: listar clientes, nem mostrar de quem é
+ * o agendamento que ocupa um horário. `horarios_livres` só devolve o que está
+ * LIVRE — quem ocupa cada horário nunca sai daqui.
+ *
+ * "Agendar para outro dia" estava nesta lista até 13/09/2026 e saiu por decisão
+ * do dono (etapa 2 do plano da agenda pelo QR). O que a janela custa em
+ * superfície e o que continua segurando a porta estão escritos em
+ * `DIAS_VISIVEIS`, logo abaixo.
  *
  * Cancelar existe, mas NUNCA pela rua: só pelo `token_gestao` — um uuid
  * impossível de adivinhar, gerado por agendamento e entregue apenas a quem
@@ -33,6 +39,68 @@ const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
  *  uma barbearia real não recebe 10 walk-ins numa hora. É disjuntor contra
  *  alguém que fotografou o QR e resolveu encher a agenda. */
 const TETO_POR_HORA = 10
+
+/**
+ * Catorze dias — e a decisão de segurança que isto reverte.
+ *
+ * O comentário do topo desta função dizia, desde sempre: "agendar para outro
+ * dia … viraria uma porta aberta na rua", e o `consultar` dizia "abrir a agenda
+ * de outros dias transformaria isto na agenda pública inteira, com uma
+ * superfície de abuso muito maior". O dono decidiu o contrário em 11/09, porque
+ * um QR que só marca para hoje é metade de uma agenda: quem escaneia às 19h
+ * bate num muro que o sistema mesmo levantou.
+ *
+ * O QUE PIORA, dito na cara:
+ *
+ * 1. O FORMATO da agenda de catorze dias fica público — dá para saber se a
+ *    barbearia está cheia ou vazia. Continua sem vazar de QUEM é cada horário
+ *    ocupado: `horarios_livres` só devolve o que está livre. É a mesma
+ *    informação que um telefonema dá.
+ * 2. A SUPERFÍCIE de quem quer encher a agenda passa de um dia para catorze.
+ *    As três travas que já existiam continuam valendo e não dependem do dia:
+ *    8 agendamentos por IP a cada 10 min, `TETO_POR_HORA` por barbearia, e um
+ *    agendamento futuro aberto por pessoa pelo QR.
+ * 3. O CUSTO do `consultar` multiplica por ~20 (a faixa de dias conta os
+ *    catorze). E o `consultar` era a ÚNICA ação desta função SEM freio de
+ *    taxa — o que antes era um descuido barato virou alavanca. Por isso o
+ *    `taxaExcedida` novo lá embaixo: ele entra JUNTO com os catorze dias, não
+ *    depois.
+ *
+ * A janela é fechada NOS DOIS CAMINHOS. Validar só no `consultar` deixaria o
+ * `agendar` aceitar qualquer data por chamada direta — e é o `agendar` que
+ * escreve no banco.
+ */
+const DIAS_VISIVEIS = 14
+
+const TZ = 'America/Sao_Paulo'
+
+/** 'YYYY-MM-DD' de hoje em São Paulo — o fuso da barbearia, não o do servidor. */
+function hojeEmSaoPaulo() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: TZ })
+}
+
+/**
+ * 'YYYY-MM-DD' mais N dias. Meio-dia UTC de propósito: somar 24h a partir da
+ * meia-noite escorrega um dia em toda mudança de horário de verão, e o Brasil
+ * pode voltar a ter uma.
+ */
+function somaDias(iso: string, n: number) {
+  const d = new Date(`${iso}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
+/**
+ * A data pedida está dentro da janela? Recusa o que não for data de verdade —
+ * '2026-02-31' casa com o formato e não existe, e `new Date` devolve Invalid
+ * Date para ele. Comparar texto ISO funciona porque o formato é de largura
+ * fixa e ordena igual à data.
+ */
+function dentroDaJanela(iso: string, hoje: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return false
+  if (Number.isNaN(new Date(`${iso}T12:00:00Z`).getTime())) return false
+  return iso >= hoje && iso <= somaDias(hoje, DIAS_VISIVEIS - 1)
+}
 
 /**
  * A faixa do telefone: de 10 dígitos (DDD + fixo) a 13 (DDI 55 + DDD + 9).
@@ -252,6 +320,20 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
   // Consultar: serviços e horários livres de HOJE.
   // ------------------------------------------------------------------
   if (body.acao === 'consultar') {
+    // O freio que faltava. Até a etapa 2 o `consultar` era a única ação desta
+    // função sem limite nenhum — sustentável enquanto ele custava uma consulta
+    // de um dia; indefensável agora que conta catorze. 40 em 5 minutos cobre
+    // com folga a família inteira marcando do mesmo wi-fi (cada carregamento
+    // de página é 1, e trocar de serviço é mais 1), e ainda assim tira a
+    // alavanca de quem quiser martelar.
+    //
+    // `deixa-passar` porque do outro lado está o cliente final: se a nossa
+    // tabela de contagem cair, quem perde o horário é ele e quem perde o
+    // cliente é a barbearia. O risco está escrito, não esquecido.
+    if (await taxaExcedida(admin, `consulta:${ipDe(req)}`, 40, 300, 'deixa-passar')) {
+      return json({ error: 'Muitas consultas seguidas. Aguarde um minuto e recarregue.' }, 429)
+    }
+
     // A identidade da barbearia, igual nos dois finais do `consultar`. Campos
     // NOVOS ao lado dos antigos, e não um `salao` virando objeto: a edge sobe
     // antes da Vercel terminar o build, e nesse intervalo a tela antiga
@@ -285,14 +367,23 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
       })
     }
 
-    // Só HOJE. O QR está no balcão: quem escaneou está lá agora, e abrir a
-    // agenda de outros dias transformaria isto na agenda pública inteira, com
-    // uma superfície de abuso muito maior.
-    const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+    // A data pedida, validada AQUI e não na tela. Fora da janela é 400 e não
+    // "cai para hoje em silêncio": quem pediu 2027 por engano precisa saber que
+    // não deu, senão marca achando que marcou para outra data.
+    const hoje = hojeEmSaoPaulo()
+    const pedida = (body.data as string | undefined)?.trim()
+    if (pedida && !dentroDaJanela(pedida, hoje)) {
+      return json(
+        { error: `Só dá para marcar de hoje até ${DIAS_VISIVEIS} dias à frente.`, whatsappBarbearia },
+        400,
+      )
+    }
+    const data = pedida || hoje
+    const ehHoje = data === hoje
 
     const { data: horarios, error: erroHorarios } = await admin.rpc('horarios_livres', {
       p_salon_id: salonId,
-      p_data: hoje,
+      p_data: data,
       p_duracao_minutos: escolhido.duracao_minutos,
     })
 
@@ -301,31 +392,58 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
       return json({ error: 'Não foi possível carregar os horários.', whatsappBarbearia }, 500)
     }
 
+    // A faixa de dias: quantos horários sobraram em cada um dos catorze.
+    //
+    // SEM A CONTAGEM a faixa seria uma armadilha — a pessoa toca terça, não
+    // acha nada, toca quarta, não acha nada, e desiste no terceiro toque sem
+    // nunca ver que sexta estava cheia de vaga. Um dia que parece disponível e
+    // não está é pior que um dia marcado como cheio.
+    //
+    // Uma consulta só (`dias_com_horario`, migration 0167): medida em 20 ms
+    // para os catorze na El Guardians. Catorze chamadas daqui seriam catorze
+    // idas e voltas de rede.
+    const { data: dias, error: erroDias } = await admin.rpc('dias_com_horario', {
+      p_salon_id: salonId,
+      p_de: hoje,
+      p_dias: DIAS_VISIVEIS,
+      p_duracao_minutos: escolhido.duracao_minutos,
+    })
+    if (erroDias) console.error('Erro ao contar os dias:', erroDias)
+
+    // Em que dias da semana ALGUÉM da equipe trabalha. A tela precisa disto
+    // para separar "fechado" de "lotado" na faixa: um dia sem ninguém de
+    // jornada não está cheio, está fechado — e `horarios_livres` devolve zero
+    // para os dois.
+    //
+    // Substitui a consulta que antes só rodava quando a lista vinha vazia: esta
+    // serve à faixa E ao motivo, então é uma no lugar de uma.
+    const { data: jornadas } = await admin
+      .from('professional_schedules')
+      .select('dia_semana, professionals!inner(salon_id, ativo)')
+      .eq('professionals.salon_id', salonId)
+      .eq('professionals.ativo', true)
+      .eq('ativo', true)
+    // 0 = domingo, como o `extract(dow)` de `horarios_livres`.
+    const diasDeTrabalho = [...new Set((jornadas ?? []).map((j) => j.dia_semana as number))].sort()
+
     // Lista vazia tem quatro causas, e a tela dizia a mesma frase para todas —
     // "tente outro serviço acima", inclusive às 23h e em dia de folga (M8). O
-    // motivo vai junto para ela poder dizer a verdade. Só custa consulta a mais
-    // quando a lista veio vazia.
+    // motivo vai junto para ela poder dizer a verdade.
     let motivoVazio: string | null = null
     if (!horarios?.length) {
-      const { data: jornadaHoje } = await admin
-        .from('professional_schedules')
-        .select('professional_id, professionals!inner(salon_id, ativo)')
-        .eq('professionals.salon_id', salonId)
-        .eq('professionals.ativo', true)
-        .eq('ativo', true)
-        // 0 = domingo, como o `extract(dow)` de `horarios_livres`.
-        .eq('dia_semana', new Date(`${hoje}T12:00:00Z`).getUTCDay())
-        .limit(1)
       motivoVazio = motivoSemHorario({
         horario: salao.horario_funcionamento,
-        dia: chaveDoDia(hoje),
+        dia: chaveDoDia(data),
         agora: new Date().toLocaleTimeString('en-GB', {
-          timeZone: 'America/Sao_Paulo',
+          timeZone: TZ,
           hour: '2-digit',
           minute: '2-digit',
           hourCycle: 'h23',
         }),
-        alguemTrabalhaHoje: (jornadaHoje?.length ?? 0) > 0,
+        alguemTrabalhaHoje: diasDeTrabalho.includes(new Date(`${data}T12:00:00Z`).getUTCDay()),
+        // Só no dia de hoje o relógio decide alguma coisa. Num dia futuro,
+        // "o expediente já acabou" seria a frase certa no dia errado.
+        ehHoje,
       })
     }
 
@@ -333,6 +451,9 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
       ...identidade,
       servicos: servicos ?? [],
       servicoEscolhido: escolhido.id,
+      data,
+      dias: dias ?? [],
+      diasDeTrabalho,
       horarios: horarios ?? [],
       motivoVazio,
     })
@@ -401,25 +522,41 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
 
   if (!servico) return json({ error: 'Serviço indisponível.' }, 400)
 
-  // O horário pedido é mesmo um dos livres de hoje?
+  // O horário pedido é mesmo um dos livres DAQUELE dia?
   //
-  // Sem esta checagem, a regra "só hoje" existiria apenas na tela: quem
+  // Sem esta checagem, a janela de catorze dias existiria apenas na tela: quem
   // chamasse a função direto podia marcar às 3h da manhã, num dia em que a
-  // barbearia fecha, ou com um barbeiro que não trabalha. A trava de
-  // sobreposição do banco impede colisão, mas não impede horário absurdo.
+  // barbearia fecha, com um barbeiro que não trabalha, ou para daqui a dois
+  // anos. A trava de sobreposição do banco impede colisão, mas não impede
+  // horário absurdo.
   //
+  // A DATA SAI DO `inicio`, nunca de um campo à parte do corpo. Aceitar uma
+  // `data` enviada junto criaria a brecha clássica: validar um valor e usar
+  // outro — pedir `data: hoje` e `inicio` em 2027 passaria pelo teto da janela
+  // e escreveria a data de 2027 no banco.
+  const quandoPedido = new Date(inicio)
+  if (Number.isNaN(quandoPedido.getTime())) {
+    return json({ error: 'Escolha um horário.' }, 400)
+  }
+  const diaDoPedido = quandoPedido.toLocaleDateString('en-CA', { timeZone: TZ })
+  if (!dentroDaJanela(diaDoPedido, hojeEmSaoPaulo())) {
+    return json(
+      { error: `Só dá para marcar de hoje até ${DIAS_VISIVEIS} dias à frente.`, whatsappBarbearia },
+      400,
+    )
+  }
+
   // Revalidar contra a mesma função que gerou a lista fecha a porta e, de
   // quebra, resolve o caso de alguém deixar a tela aberta por meia hora: o
   // horário some da lista e a marcação é recusada com explicação.
-  const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
   const { data: livres } = await admin.rpc('horarios_livres', {
     p_salon_id: salonId,
-    p_data: hoje,
+    p_data: diaDoPedido,
     p_duracao_minutos: servico.duracao_minutos,
     p_professional_id: profissionalId,
   })
 
-  const pedido = new Date(inicio).getTime()
+  const pedido = quandoPedido.getTime()
   const valido = (livres ?? []).some(
     (h: { inicio: string }) => new Date(h.inicio).getTime() === pedido,
   )
@@ -453,6 +590,22 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
   // Lista positiva de status, em vez de "tudo menos cancelado e concluído":
   // é a mesma que o cancelamento pelo link usa, e não deixa passar um status
   // novo por esquecimento.
+  //
+  // ─── O QUE ESTA TRAVA VIROU COM CATORZE DIAS (13/09/2026) ─────────────────
+  //
+  // Ela ficou MUITO mais apertada do que era, e isso não é acidente de código,
+  // é consequência da janela. Com "só hoje", ter um agendamento futuro pelo QR
+  // era raro — durava algumas horas. Com catorze dias, quem marcar para sábado
+  // fica bloqueado por catorze dias: não consegue marcar a barba de quinta.
+  //
+  // MANTIDA EM 1 DE PROPÓSITO, e a decisão é do dono, não minha. Mantê-la é o
+  // estado atual (nada regride) e é o lado seguro. Afrouxar é uma escolha de
+  // negócio: mais gente marcando dois serviços na mesma semana, e menos atrito
+  // com quem quer.
+  //
+  // A resposta certa provavelmente não é "2 em vez de 1": é a ETAPA 4, em que
+  // a pessoa que já tem horário o VÊ e pode remarcar. Aí "você já marcou" deixa
+  // de ser um não e vira "aqui está o seu — quer trocar?".
   if (clientId) {
     const { count: emAberto } = await admin
       .from('appointments')

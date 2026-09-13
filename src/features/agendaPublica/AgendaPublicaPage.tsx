@@ -13,6 +13,13 @@ import {
   type Situacao,
 } from './horarioFuncionamento'
 import { agruparPorPeriodo } from './periodos'
+import {
+  montarFaixa,
+  proximoDiaComVaga,
+  temAlgumDiaLivre,
+  type ContagemDoDia,
+  type DiaDaFaixa,
+} from './dias'
 
 /**
  * A página que o QR do balcão abre.
@@ -74,6 +81,14 @@ type Consulta = {
   horarioFuncionamento?: HorarioFuncionamento
   servicos: Servico[]
   servicoEscolhido?: string
+  /** O dia que esta resposta descreve, 'YYYY-MM-DD'. Quem manda é o servidor:
+   *  ele valida a janela e devolve o dia que de fato consultou. */
+  data?: string
+  /** Quantos horários sobraram em cada um dos dias da janela (etapa 2). */
+  dias?: ContagemDoDia[]
+  /** Dias da semana (0 = domingo) em que alguém da equipe tem jornada. Separa
+   *  "fechado" de "lotado" na faixa. */
+  diasDeTrabalho?: number[]
   horarios: Horario[]
   /** Por que `horarios` veio vazio (M8). Ausente numa função anterior a isto. */
   motivoVazio?: MotivoSemHorario | null
@@ -287,6 +302,83 @@ function SemanaDeFuncionamento({
 }
 
 /**
+ * A faixa dos catorze dias (etapa 2).
+ *
+ * ROLA NA HORIZONTAL com encaixe, porque catorze botões não cabem na largura de
+ * um celular e empilhá-los comeria a tela inteira antes do primeiro horário.
+ *
+ * DIA FECHADO FICA DESABILITADO, não escondido. Escondê-lo faria a faixa pular
+ * de sábado para segunda sem explicação, e a pessoa procuraria o domingo
+ * achando que a página bugou. Desabilitado com a palavra "fechado" embaixo ela
+ * lê a folga da barbearia de relance — que é informação que ela queria.
+ *
+ * A CONTAGEM embaixo de cada dia é o que impede a faixa de virar armadilha: sem
+ * ela, todo dia parece disponível, e a pessoa toca três em sequência antes de
+ * desistir.
+ */
+function FaixaDeDias({
+  faixa,
+  atual,
+  aoEscolher,
+}: {
+  faixa: DiaDaFaixa[]
+  atual?: string
+  aoEscolher: (data: string) => void
+}) {
+  return (
+    <div
+      role="group"
+      aria-label="Escolha o dia"
+      // A faixa rola DENTRO de si mesma. A primeira versão sangrava até a borda
+      // com `-mx-4 px-4`, que é bonito e estava errado: o elemento ficava mais
+      // largo que o contêiner e quem passava a rolar na horizontal era a PÁGINA
+      // — cartão de serviço cortado à direita, botão "Ver amanhã" pela metade.
+      className="mb-4 flex snap-x snap-mandatory gap-2 overflow-x-auto pb-2"
+    >
+      {faixa.map((d) => {
+        const fechado = d.estado === 'fechado'
+        return (
+          <button
+            key={d.data}
+            type="button"
+            disabled={fechado}
+            aria-pressed={d.data === atual}
+            aria-label={`${d.porExtenso}: ${rotuloDoEstado(d)}`}
+            onClick={() => aoEscolher(d.data)}
+            className="group grid w-[72px] shrink-0 snap-start justify-items-center gap-0.5 rounded-xl border-[1.5px] border-border bg-surface px-1 py-2 text-foreground transition-[border-color,background-color] duration-150 hover:border-primary disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-border aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground"
+          >
+            {/* `group-aria-pressed` e não `aria-pressed`: a variante olha o
+                elemento em que está escrita, e o `aria-pressed` mora no botão.
+                Sem o grupo, o rótulo e a contagem ficariam cinza sobre o verde
+                do dia selecionado — ilegíveis. */}
+            <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground group-aria-pressed:text-inherit">
+              {d.rotulo}
+            </span>
+            <span
+              className={`text-[19px] font-extrabold leading-tight tabular-nums text-inherit ${
+                fechado ? 'line-through' : ''
+              }`}
+            >
+              {d.numero}
+            </span>
+            <span className="text-[10px] text-muted-foreground group-aria-pressed:text-inherit">
+              {rotuloDoEstado(d)}
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function rotuloDoEstado(d: DiaDaFaixa) {
+  if (d.estado === 'fechado') return 'fechado'
+  if (d.estado === 'encerrado') return 'encerrado'
+  if (d.estado === 'lotado') return 'lotado'
+  return `${d.livres} ${d.livres === 1 ? 'livre' : 'livres'}`
+}
+
+/**
  * O esqueleto tem a FORMA do que vem: título, cartões de serviço, o destaque do
  * próximo horário e a grade. É isso que o diferencia de um "carregando" — ele
  * já diz que tipo de página é, antes de a página existir.
@@ -354,7 +446,10 @@ export function AgendaPublicaPage() {
   const [agora] = useState(() => new Date())
 
   const consultar = useCallback(
-    async (servico?: string, opcoes?: { manterErro?: boolean; recarga?: boolean }) => {
+    async (
+      servico?: string,
+      opcoes?: { manterErro?: boolean; recarga?: boolean; data?: string },
+    ) => {
       if (opcoes?.recarga) setAtualizando(true)
       else setCarregando(true)
       // A recarga depois de um "não" NÃO apaga o motivo (achado 25 da revisão
@@ -364,7 +459,7 @@ export function AgendaPublicaPage() {
       // tenta descobrir; desiste.
       if (!opcoes?.manterErro) setErro(null)
       const { data, error, corpo } = await invokeFunction<Consulta>('agenda-publica', {
-        body: { salonId, acao: 'consultar', servicoId: servico },
+        body: { salonId, acao: 'consultar', servicoId: servico, data: opcoes?.data },
       })
       setCarregando(false)
       setAtualizando(false)
@@ -441,7 +536,10 @@ export function AgendaPublicaPage() {
       // Se o horário dela ainda estiver livre — erro de telefone, por exemplo
       // — ele continua escolhido: ela corrige o campo e tenta de novo, sem
       // recomeçar do zero.
-      consultar(servicoId ?? undefined, { manterErro: true, recarga: true })
+      // Recarrega NO MESMO DIA que estava na tela. Sem passar a data, a lista
+      // voltaria para hoje e a pessoa que tinha escolhido sexta perderia o dia
+      // junto com o horário — por causa de um erro de telefone.
+      consultar(servicoId ?? undefined, { manterErro: true, recarga: true, data: dados?.data })
       return
     }
     setTokenGestao(data.tokenGestao ?? null)
@@ -458,9 +556,30 @@ export function AgendaPublicaPage() {
   const ehOEscolhido = (h: Horario) =>
     !!escolhido && escolhido.inicio === h.inicio && escolhido.professional_id === h.professional_id
 
+  // A faixa dos catorze dias. Vazia quando a resposta é de uma edge anterior à
+  // etapa 2 — e aí a tela volta a se comportar como antes, com o dia de hoje e
+  // sem faixa, em vez de quebrar. Isso acontece de verdade na janela entre a
+  // edge subir e a Vercel terminar o build.
+  const faixa: DiaDaFaixa[] = dados?.dias?.length
+    ? montarFaixa({
+        dias: dados.dias,
+        horario: dados.horarioFuncionamento,
+        diasDeTrabalho: dados.diasDeTrabalho ?? [],
+        agora,
+      })
+    : []
+  const diaAberto = faixa.find((d) => d.data === dados?.data) ?? null
+  const proximoComVaga = dados?.data ? proximoDiaComVaga(faixa, dados.data) : null
+
   function escolher(h: Horario) {
     setEscolhido(h)
     setErro(null)
+  }
+
+  function abrirDia(data: string) {
+    if (data === dados?.data) return
+    setEscolhido(null)
+    consultar(servicoId ?? undefined, { recarga: true, data })
   }
 
   // No celular o herói é o topo da tela inicial e some nos passos seguintes,
@@ -490,7 +609,12 @@ export function AgendaPublicaPage() {
           />
         </aside>
 
-        <main className="px-4 pb-10 pt-5 lg:px-8 lg:pt-8">
+        {/* `min-w-0` não é enfeite: item de grid nasce com `min-width: auto`, e
+            aí a coluna estica até caber o conteúdo mais largo em vez de o
+            conteúdo rolar dentro dela. Com a faixa de catorze dias (≈1100 px de
+            botões) a coluna inteira ia a 1100 px, e quem rolava na horizontal
+            era a página — cartão de serviço cortado, botão pela metade. */}
+        <main className="min-w-0 px-4 pb-10 pt-5 lg:px-8 lg:pt-8">
           {pronto ? (
             <div className="surge mx-auto max-w-md space-y-3 rounded-xl border border-success/40 bg-surface p-5 shadow-[0_12px_32px_-16px_color-mix(in_srgb,var(--foreground)_40%,transparent)]">
               <div className="flex items-center gap-2 text-success">
@@ -588,7 +712,14 @@ export function AgendaPublicaPage() {
             // Sem serviço não há passo 1: o seletor ficava vazio, sem uma opção,
             // e a frase de baixo mandava trocar de serviço (M8).
             <div className="mx-auto max-w-md rounded-lg border border-border p-4 text-sm text-muted-foreground">
-              {mensagemSemHorario({ motivo: 'sem_servicos', temServicoMaisCurto: false, temWhatsapp: !!whatsapp })}
+              {mensagemSemHorario({
+                motivo: 'sem_servicos',
+                temServicoMaisCurto: false,
+                temWhatsapp: !!whatsapp,
+                ehHoje: true,
+                temOutroDia: false,
+                diasNaJanela: faixa.length,
+              })}
               <FalarComABarbearia numero={whatsapp} />
             </div>
           ) : (
@@ -607,7 +738,12 @@ export function AgendaPublicaPage() {
                       onClick={() => {
                         if (s.id === servicoId) return
                         setServicoId(s.id)
-                        consultar(s.id, { recarga: true })
+                        // O DIA continua o mesmo. Trocar de serviço olhando a
+                        // sexta e ser jogado de volta para hoje faria a pessoa
+                        // refazer a escolha do dia a cada troca — e a duração do
+                        // serviço muda a contagem de TODOS os dias da faixa, que
+                        // é justamente o que ela quer comparar.
+                        consultar(s.id, { recarga: true, data: dados.data })
                       }}
                       className="grid grid-cols-[1fr_auto] items-center gap-x-3 rounded-xl border-[1.5px] border-border bg-surface p-3.5 text-left transition-[border-color,background-color,transform] duration-150 hover:border-primary active:scale-[0.99] aria-pressed:border-primary aria-pressed:bg-primary-soft/50"
                     >
@@ -628,9 +764,14 @@ export function AgendaPublicaPage() {
                 aria-busy={atualizando}
                 className={atualizando ? 'pointer-events-none opacity-50 transition-opacity' : 'transition-opacity'}
               >
+                {/* A faixa dos catorze dias (etapa 2). Só aparece quando a edge
+                    mandou a contagem — resposta de uma versão anterior devolve
+                    a tela ao comportamento de um dia só, em vez de quebrar. */}
+                {faixa.length > 0 && <FaixaDeDias faixa={faixa} atual={dados.data} aoEscolher={abrirDia} />}
+
                 <h2 className="mb-2.5 flex items-center gap-1.5 text-sm font-semibold text-foreground">
                   <Clock size={15} aria-hidden />
-                  Horários livres hoje
+                  {diaAberto ? `Horários livres ${diaAberto.porExtenso}` : 'Horários livres hoje'}
                 </h2>
 
                 {dados.horarios.length === 0 ? (
@@ -642,11 +783,30 @@ export function AgendaPublicaPage() {
                       temServicoMaisCurto:
                         !!servico && dados.servicos.some((s) => s.duracao_minutos < servico.duracao_minutos),
                       temWhatsapp: !!whatsapp,
+                      // Sem faixa (edge antiga) o dia olhado só pode ser hoje.
+                      ehHoje: diaAberto ? diaAberto.ehHoje : true,
+                      temOutroDia: temAlgumDiaLivre(faixa),
+                      diasNaJanela: faixa.length,
                     })}
-                    <FalarComABarbearia numero={whatsapp} />
+                    {/* A porta no lugar do beco: em vez de mandar a pessoa para
+                        o WhatsApp por um dia cheio, leva ao próximo dia que tem
+                        vaga. O WhatsApp volta a aparecer só quando a janela
+                        inteira está sem nada — aí ele é a saída de verdade. */}
+                    {proximoComVaga ? (
+                      <button
+                        type="button"
+                        onClick={() => abrirDia(proximoComVaga.data)}
+                        className="mt-3 flex w-full items-center justify-center gap-2 btn-primary rounded-lg px-3 py-3 text-sm font-semibold"
+                      >
+                        Ver {proximoComVaga.porExtenso}
+                        <ArrowRight size={16} aria-hidden />
+                      </button>
+                    ) : (
+                      <FalarComABarbearia numero={whatsapp} />
+                    )}
                   </div>
                 ) : (
-                  <div key={servicoId ?? 'todos'} className="space-y-5">
+                  <div key={`${servicoId ?? 'todos'}-${dados.data ?? 'hoje'}`} className="space-y-5">
                     {/* O mais cedo, em destaque. É o que quem está de pé no
                         balcão veio buscar, e era justamente o que ficava
                         enterrado sob quarenta linhas de rolagem. */}
@@ -659,12 +819,17 @@ export function AgendaPublicaPage() {
                       >
                         <span>
                           <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] opacity-85">
-                            Próximo horário livre
+                            {diaAberto?.ehHoje === false ? 'Primeiro horário do dia' : 'Próximo horário livre'}
                           </span>
                           <span className="mt-0.5 block text-[19px] font-extrabold tabular-nums">
                             {proximo.hora_local}
                           </span>
-                          <span className="text-[13px] opacity-90">hoje · com {proximo.profissional}</span>
+                          {/* O dia sai da faixa, não da palavra "hoje" fixa: com
+                              catorze dias, esta linha dizia "hoje" na tela de
+                              uma sexta-feira da semana que vem. */}
+                          <span className="text-[13px] opacity-90">
+                            {diaAberto?.porExtenso ?? 'hoje'} · com {proximo.profissional}
+                          </span>
                         </span>
                         <ArrowRight size={20} aria-hidden className="shrink-0" />
                       </button>

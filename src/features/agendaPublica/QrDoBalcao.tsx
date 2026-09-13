@@ -130,8 +130,12 @@ export function QrDoBalcao() {
       </div>
 
       <p className="text-sm text-muted-foreground">
+        {/* Dizia "os horários livres de hoje" até 13/09, quando a janela passou
+            de um dia para catorze. Frase que descreve errado o que o produto
+            faz vende menos do que ele entrega: o dono lê "só hoje" e não oferece
+            o QR a quem quer marcar para sábado. */}
         Imprima e deixe no balcão. Quem chegar sem hora marcada aponta a câmera, vê os horários
-        livres de hoje e marca sozinho — sem tirar você da cadeira.
+        livres dos próximos 14 dias e marca sozinho — sem tirar você da cadeira.
       </p>
 
       {temAgendaPublica ? (

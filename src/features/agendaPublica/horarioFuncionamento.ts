@@ -81,7 +81,7 @@ export function faixaDoDia(
  * aparelho. O meio-dia UTC na conversão de volta é a mesma defesa que
  * `chaveDoDia` usa na edge — longe da virada, o dia não escorrega.
  */
-export function agoraEmSaoPaulo(agora: Date): { dia: number; hhmm: string } {
+export function agoraEmSaoPaulo(agora: Date): { data: string; dia: number; hhmm: string } {
   const data = agora.toLocaleDateString('en-CA', { timeZone: TZ })
   const hhmm = agora.toLocaleTimeString('en-GB', {
     timeZone: TZ,
@@ -89,7 +89,18 @@ export function agoraEmSaoPaulo(agora: Date): { dia: number; hhmm: string } {
     minute: '2-digit',
     hourCycle: 'h23',
   })
-  return { dia: new Date(`${data}T12:00:00Z`).getUTCDay(), hhmm }
+  return { data, dia: new Date(`${data}T12:00:00Z`).getUTCDay(), hhmm }
+}
+
+/** O dia da semana de um 'YYYY-MM-DD', na contagem do `getDay()` (0 = domingo).
+ *  Meio-dia UTC pelo mesmo motivo de sempre: longe da virada. */
+export function diaDaSemanaDe(iso: string) {
+  return new Date(`${iso}T12:00:00Z`).getUTCDay()
+}
+
+/** A chave de `horario_funcionamento` para um 'YYYY-MM-DD'. */
+export function chaveDe(iso: string): ChaveDoDia {
+  return CHAVES[diaDaSemanaDe(iso)]
 }
 
 export type Situacao =

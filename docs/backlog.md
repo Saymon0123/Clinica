@@ -1044,10 +1044,33 @@ Protótipo aprovado pelo dono em 12/09. Etapas:
    telefone, nem no aviso de "você já tem um horário". É a ideia que parece
    óbvia e é a perigosa: eu digito o SEU telefone, preencho qualquer nome, e
    recebo o link que cancela o SEU horário. Se reaparecer, recuse.
-6. **Aviso para a barbearia** quando o cliente cancela ou remarca sozinho.
-   **Hoje ninguém é avisado:** o cancelamento pelo link só faz `update` do
-   status, e nenhum trigger de `appointments` chama fora (conferido em 11/09).
-   Canal a decidir.
+6. ~~**Aviso para a barbearia** quando o cliente cancela sozinho~~ — **FEITA em
+   13/09** (migration 0168). Canal escolhido pelo dono: **dentro do CRM**, sem
+   WhatsApp — não gasta template, não depende da Meta e não some no meio do
+   caminho. Um aviso no topo da Agenda lista o que o cliente cancelou e a
+   barbearia ainda não viu, com "Ok, vi".
+
+   **A decisão que sustenta tudo:** quem cancelou é **inferido de
+   `auth.uid()`** dentro de `carimba_cancelamento`, não marcado em cada
+   chamador. Sessão logada (só o CRM tem) é a barbearia; edge, n8n e pg_cron
+   são o cliente. Marcar um a um faria o próximo caminho — ou o que eu não
+   encontrei — nascer sem marca, e **um aviso que falha em silêncio é pior que
+   não ter aviso**, porque o dono passa a confiar nele. A única exceção é
+   explícita: o cron de reativação marca `'sistema'`, senão o convite que
+   venceu sem resposta viraria "o cliente cancelou" todo dia e o aviso viraria
+   ruído.
+
+   Os 8 cancelamentos anteriores ficaram **sem marca de propósito**: backfill
+   inventaria um culpado e encheria o aviso no primeiro dia.
+
+   **Não verificado por mim:** o aviso na tela. Não faço login no CRM. O que
+   está provado em produção (em transação desfeita): a inferência nos dois
+   sentidos, que a barbearia não é avisada do que ela mesma cancelou, que dar
+   ciência remove, que ressuscitar limpa o carimbo inteiro — e que **outro
+   usuário não vê o cancelamento alheio**.
+
+   **Remarcar sozinho** (etapa 4) ainda não existe, então o aviso hoje só fala
+   de cancelamento. Quando a 4 entrar, ela precisa alimentar este mesmo aviso.
 
 **Fora da lista de etapas, pedida pelo dono em 13/09 e FEITA no mesmo dia:**
 **vários serviços num agendamento só pelo QR.** Era a "fase 2" que a migration

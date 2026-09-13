@@ -81,6 +81,11 @@ type Consulta = {
   horarioFuncionamento?: HorarioFuncionamento
   servicos: Servico[]
   servicoEscolhido?: string
+  /** Os serviços que o servidor de fato aceitou, na ordem escolhida. Ausente
+   *  numa edge anterior à seleção múltipla. */
+  servicosEscolhidos?: string[]
+  /** Soma das durações — usada para dizer quanto tempo o atendimento leva. */
+  duracaoTotal?: number
   /** O dia que esta resposta descreve, 'YYYY-MM-DD'. Quem manda é o servidor:
    *  ele valida a janela e devolve o dia que de fato consultou. */
   data?: string
@@ -414,7 +419,9 @@ export function AgendaPublicaPage() {
   const { salonId } = useParams<{ salonId: string }>()
 
   const [dados, setDados] = useState<Consulta | null>(null)
-  const [servicoId, setServicoId] = useState<string | null>(null)
+  // LISTA, nao um id. Corte + barba num agendamento so ja existia no balcao
+  // desde a migration 0120; o QR era a "fase 2" que ela deixou escrita.
+  const [servicoIds, setServicoIds] = useState<string[]>([])
   const [escolhido, setEscolhido] = useState<Horario | null>(null)
   const [nome, setNome] = useState('')
   const [telefone, setTelefone] = useState('')
@@ -447,7 +454,7 @@ export function AgendaPublicaPage() {
 
   const consultar = useCallback(
     async (
-      servico?: string,
+      servicos?: string[],
       opcoes?: { manterErro?: boolean; recarga?: boolean; data?: string },
     ) => {
       if (opcoes?.recarga) setAtualizando(true)
@@ -459,7 +466,17 @@ export function AgendaPublicaPage() {
       // tenta descobrir; desiste.
       if (!opcoes?.manterErro) setErro(null)
       const { data, error, corpo } = await invokeFunction<Consulta>('agenda-publica', {
-        body: { salonId, acao: 'consultar', servicoId: servico, data: opcoes?.data },
+        body: {
+          salonId,
+          acao: 'consultar',
+          servicoIds: servicos,
+          // O singular vai junto para a edge ANTERIOR a esta continuar
+          // entendendo o pedido durante os minutos entre ela subir e a Vercel
+          // terminar o build. Sem ele, aquela edge nao veria servico nenhum e
+          // cairia no mais barato do catalogo -- marcaria o servico errado.
+          servicoId: servicos?.[0],
+          data: opcoes?.data,
+        },
       })
       setCarregando(false)
       setAtualizando(false)
@@ -473,7 +490,12 @@ export function AgendaPublicaPage() {
       setWhatsapp(data.whatsappBarbearia ?? null)
       setNomeSalao(data.salao)
       setDados(data)
-      setServicoId(data.servicoEscolhido ?? null)
+      // Quem manda é o servidor: ele resolveu os ids contra o catálogo real e
+      // descartou o que não era dele. `servicoEscolhido` (singular) é o retorno
+      // de uma edge anterior a isto, e vale como lista de um.
+      setServicoIds(
+        data.servicosEscolhidos ?? (data.servicoEscolhido ? [data.servicoEscolhido] : []),
+      )
       // O horário escolhido só sobrevive se ainda estiver na lista nova. Se
       // alguém o pegou no meio, ele some da tela sem a pessoa precisar clicar —
       // e a mensagem de cima diz o porquê.
@@ -508,7 +530,7 @@ export function AgendaPublicaPage() {
     const estadoDoTelefone = classificarTelefone(telefone)
     if (estadoDoTelefone === 'vazio') return setErro('Informe seu WhatsApp com DDD.')
     if (estadoDoTelefone === 'invalido') return setErro(AVISO_TELEFONE_FORMATO)
-    if (!escolhido || !servicoId) return setErro('Escolha um horário.')
+    if (!escolhido || !servicoIds.length) return setErro('Escolha um horário.')
 
     setEnviando(true)
     const { data, error, corpo } = await invokeFunction<{ ok: boolean; conflito?: boolean; tokenGestao?: string }>(
@@ -519,7 +541,8 @@ export function AgendaPublicaPage() {
           acao: 'agendar',
           nome: nome.trim(),
           telefone: telefone.trim(),
-          servicoId,
+          servicoIds,
+          servicoId: servicoIds[0],
           profissionalId: escolhido.professional_id,
           inicio: escolhido.inicio,
         },
@@ -539,14 +562,21 @@ export function AgendaPublicaPage() {
       // Recarrega NO MESMO DIA que estava na tela. Sem passar a data, a lista
       // voltaria para hoje e a pessoa que tinha escolhido sexta perderia o dia
       // junto com o horário — por causa de um erro de telefone.
-      consultar(servicoId ?? undefined, { manterErro: true, recarga: true, data: dados?.data })
+      consultar(servicoIds, { manterErro: true, recarga: true, data: dados?.data })
       return
     }
     setTokenGestao(data.tokenGestao ?? null)
     setPronto(true)
   }
 
-  const servico = dados?.servicos.find((s) => s.id === servicoId)
+  // Na ORDEM em que a pessoa escolheu, não na do catálogo: é ela que vira
+  // `appointment_services.ordem` e decide qual é o serviço principal.
+  const servicosEscolhidos = servicoIds
+    .map((id) => dados?.servicos.find((s) => s.id === id))
+    .filter((s): s is Servico => !!s)
+  const precoTotal = servicosEscolhidos.reduce((t, s) => t + s.preco, 0)
+  const duracaoTotal = servicosEscolhidos.reduce((t, s) => t + s.duracao_minutos, 0)
+  const resumoDosServicos = servicosEscolhidos.map((s) => s.nome).join(' + ')
   const situacao = situacaoAgora(dados?.horarioFuncionamento, agora)
   // O nome do barbeiro em cada botão só quando há mais de um na lista. Com um
   // barbeiro só — que é a barbearia mais comum — o nome é a mesma palavra
@@ -579,7 +609,31 @@ export function AgendaPublicaPage() {
   function abrirDia(data: string) {
     if (data === dados?.data) return
     setEscolhido(null)
-    consultar(servicoId ?? undefined, { recarga: true, data })
+    consultar(servicoIds, { recarga: true, data })
+  }
+
+  /**
+   * Marca ou desmarca um serviço.
+   *
+   * O HORÁRIO ESCOLHIDO CAI JUNTO, sempre. Trocar a lista muda a duração, e um
+   * horário que cabia para o corte de 40 min pode não caber para corte+barba de
+   * 70 — manter a escolha na tela levaria a pessoa ao passo 3 com um horário que
+   * o servidor vai recusar, e ela só descobriria depois de digitar nome e
+   * telefone.
+   *
+   * DESMARCAR TUDO É PERMITIDO. A alternativa — ignorar o toque no único serviço
+   * marcado — é um botão que não responde, e a pessoa toca de novo achando que
+   * a tela travou. Com zero, a lista de horários dá lugar a uma frase pedindo
+   * que escolha um; e não se gasta consulta nenhuma no servidor.
+   */
+  function alternarServico(id: string) {
+    const novo = servicoIds.includes(id)
+      ? servicoIds.filter((x) => x !== id)
+      : [...servicoIds, id]
+    setServicoIds(novo)
+    setEscolhido(null)
+    setErro(null)
+    if (novo.length) consultar(novo, { recarga: true, data: dados?.data })
   }
 
   // No celular o herói é o topo da tela inicial e some nos passos seguintes,
@@ -623,7 +677,7 @@ export function AgendaPublicaPage() {
               </div>
               <p className="text-sm text-foreground">
                 <strong>{escolhido?.hora_local}</strong> com {escolhido?.profissional}
-                {servico ? `, ${servico.nome}` : ''}.
+                {resumoDosServicos ? `, ${resumoDosServicos}` : ''}.
               </p>
               {tokenGestao ? (
                 <p className="text-sm text-muted-foreground">
@@ -658,9 +712,9 @@ export function AgendaPublicaPage() {
                 <div className="text-base font-semibold text-foreground">
                   {escolhido.hora_local} com {escolhido.profissional}
                 </div>
-                {servico && (
+                {servicosEscolhidos.length > 0 && (
                   <div className="mt-1 text-xs text-muted-foreground">
-                    {servico.nome} · R$ {servico.preco} · {servico.duracao_minutos} min
+                    {resumoDosServicos} · R$ {precoTotal} · {duracaoTotal} min
                   </div>
                 )}
                 <button
@@ -714,7 +768,7 @@ export function AgendaPublicaPage() {
             <div className="mx-auto max-w-md rounded-lg border border-border p-4 text-sm text-muted-foreground">
               {mensagemSemHorario({
                 motivo: 'sem_servicos',
-                temServicoMaisCurto: false,
+                comoEncurtar: null,
                 temWhatsapp: !!whatsapp,
                 ehHoje: true,
                 temOutroDia: false,
@@ -726,38 +780,57 @@ export function AgendaPublicaPage() {
             // ---------- Passos 1 e 2: serviço e horário ----------
             <div className="space-y-6">
               <section>
-                <h2 className="mb-2.5 text-sm font-semibold text-foreground">
-                  O que você quer fazer?
-                </h2>
-                <div className="grid gap-2.5 sm:grid-cols-2">
-                  {dados.servicos.map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      aria-pressed={s.id === servicoId}
-                      onClick={() => {
-                        if (s.id === servicoId) return
-                        setServicoId(s.id)
-                        // O DIA continua o mesmo. Trocar de serviço olhando a
-                        // sexta e ser jogado de volta para hoje faria a pessoa
-                        // refazer a escolha do dia a cada troca — e a duração do
-                        // serviço muda a contagem de TODOS os dias da faixa, que
-                        // é justamente o que ela quer comparar.
-                        consultar(s.id, { recarga: true, data: dados.data })
-                      }}
-                      className="grid grid-cols-[1fr_auto] items-center gap-x-3 rounded-xl border-[1.5px] border-border bg-surface p-3.5 text-left transition-[border-color,background-color,transform] duration-150 hover:border-primary active:scale-[0.99] aria-pressed:border-primary aria-pressed:bg-primary-soft/50"
-                    >
-                      <strong className="text-[15px] font-semibold text-foreground">{s.nome}</strong>
-                      <span className="row-span-2 self-center text-base font-extrabold tabular-nums text-foreground">
-                        R$ {s.preco}
-                      </span>
-                      <span className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
-                        <Clock size={13} aria-hidden />
-                        {s.duracao_minutos} min
-                      </span>
-                    </button>
-                  ))}
+                <div className="mb-2.5 flex items-baseline justify-between gap-3">
+                  <h2 className="text-sm font-semibold text-foreground">O que você quer fazer?</h2>
+                  <span className="text-xs text-muted-foreground">Pode escolher mais de um</span>
                 </div>
+                <div className="grid gap-2.5 sm:grid-cols-2">
+                  {dados.servicos.map((s) => {
+                    const marcado = servicoIds.includes(s.id)
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        aria-pressed={marcado}
+                        // O DIA continua o mesmo ao trocar de serviço. Ser jogado
+                        // de volta para hoje faria a pessoa refazer a escolha do
+                        // dia a cada toque — e a duração muda a contagem de TODOS
+                        // os dias da faixa, que é justamente o que ela compara.
+                        onClick={() => alternarServico(s.id)}
+                        className="group grid grid-cols-[auto_1fr_auto] items-center gap-x-3 rounded-xl border-[1.5px] border-border bg-surface p-3.5 text-left transition-[border-color,background-color,transform] duration-150 hover:border-primary active:scale-[0.99] aria-pressed:border-primary aria-pressed:bg-primary-soft/50"
+                      >
+                        {/* Quadradinho, não bolinha: é a forma que diz "dá para
+                            marcar vários". Com o círculo do rádio a pessoa
+                            assume que escolher o segundo desmarca o primeiro. */}
+                        <span
+                          aria-hidden
+                          className="row-span-2 flex h-5 w-5 items-center justify-center rounded-md border-[1.5px] border-border-strong text-primary-foreground group-aria-pressed:border-primary group-aria-pressed:bg-primary"
+                        >
+                          {marcado && <Check size={13} strokeWidth={3} />}
+                        </span>
+                        <strong className="text-[15px] font-semibold text-foreground">{s.nome}</strong>
+                        <span className="row-span-2 self-center text-base font-extrabold tabular-nums text-foreground">
+                          R$ {s.preco}
+                        </span>
+                        <span className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
+                          <Clock size={13} aria-hidden />
+                          {s.duracao_minutos} min
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* O total só aparece a partir do segundo: com um serviço só ele
+                    repetiria o preço que já está no cartão logo acima. */}
+                {servicosEscolhidos.length > 1 && (
+                  <p className="mt-2.5 flex items-center justify-between rounded-lg bg-surface-2 px-3.5 py-2.5 text-sm">
+                    <span className="min-w-0 truncate text-muted-foreground">{resumoDosServicos}</span>
+                    <strong className="shrink-0 pl-3 font-bold tabular-nums text-foreground">
+                      R$ {precoTotal} · {duracaoTotal} min
+                    </strong>
+                  </p>
+                )}
               </section>
 
               <section
@@ -774,14 +847,28 @@ export function AgendaPublicaPage() {
                   {diaAberto ? `Horários livres ${diaAberto.porExtenso}` : 'Horários livres hoje'}
                 </h2>
 
-                {dados.horarios.length === 0 ? (
+                {servicoIds.length === 0 ? (
+                  // Desmarcou tudo. A lista que está na tela é a do serviço
+                  // anterior e não vale mais para nada — mostrá-la ofereceria
+                  // horários calculados para uma duração que ninguém escolheu.
+                  <div className="rounded-lg border border-dashed border-border-strong p-4 text-sm text-muted-foreground">
+                    Escolha ao menos um serviço acima para ver os horários.
+                  </div>
+                ) : dados.horarios.length === 0 ? (
                   <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
                     {mensagemSemHorario({
                       // Função anterior a isto não manda o motivo: cai no caso
                       // comum, e a frase continua verdadeira.
                       motivo: dados.motivoVazio ?? 'lotado',
-                      temServicoMaisCurto:
-                        !!servico && dados.servicos.some((s) => s.duracao_minutos < servico.duracao_minutos),
+                      // Com dois serviços marcados, "troque por um mais curto"
+                      // é conselho para outra tela: o que faz caber é desmarcar
+                      // um. Com um só, vale trocar — se existir outro menor.
+                      comoEncurtar:
+                        servicosEscolhidos.length > 1
+                          ? 'tirar'
+                          : dados.servicos.some((s) => s.duracao_minutos < duracaoTotal)
+                            ? 'trocar'
+                            : null,
                       temWhatsapp: !!whatsapp,
                       // Sem faixa (edge antiga) o dia olhado só pode ser hoje.
                       ehHoje: diaAberto ? diaAberto.ehHoje : true,
@@ -806,7 +893,7 @@ export function AgendaPublicaPage() {
                     )}
                   </div>
                 ) : (
-                  <div key={`${servicoId ?? 'todos'}-${dados.data ?? 'hoje'}`} className="space-y-5">
+                  <div key={`${servicoIds.join('-')}-${dados.data ?? 'hoje'}`} className="space-y-5">
                     {/* O mais cedo, em destaque. É o que quem está de pé no
                         balcão veio buscar, e era justamente o que ficava
                         enterrado sob quarenta linhas de rolagem. */}

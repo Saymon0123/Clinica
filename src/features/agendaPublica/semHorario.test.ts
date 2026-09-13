@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mensagemSemHorario } from './semHorario'
 
 /** O caso mais comum: dia sem vaga, mas a janela tem outros dias. */
-const base = { temServicoMaisCurto: false, temWhatsapp: true, ehHoje: true, temOutroDia: true, diasNaJanela: 14 }
+const base = { comoEncurtar: null, temWhatsapp: true, ehHoje: true, temOutroDia: true, diasNaJanela: 14 } as const
 
 /** M8: quatro causas de lista vazia, quatro frases — e nenhuma promete o que não existe. */
 describe('frase da agenda pública sem horário', () => {
@@ -15,15 +15,26 @@ describe('frase da agenda pública sem horário', () => {
   })
 
   it('agenda cheia sugere serviço mais curto só quando ele existe', () => {
-    expect(mensagemSemHorario({ ...base, motivo: 'lotado', temServicoMaisCurto: true })).toBe(
+    expect(mensagemSemHorario({ ...base, motivo: 'lotado', comoEncurtar: 'trocar' })).toBe(
       'Não sobrou horário hoje para esse serviço. Um serviço mais curto ainda pode caber — troque acima.',
     )
     expect(mensagemSemHorario({ ...base, motivo: 'lotado' })).not.toContain('troque')
   })
 
+  // Seleção múltipla (13/09): com corte+barba marcados, "troque por um mais
+  // curto" manda a pessoa fazer o que não resolve — os dois juntos é que não
+  // cabem. O conselho certo é desmarcar um.
+  it('com varios servicos marcados, manda DESMARCAR e nao trocar', () => {
+    const texto = mensagemSemHorario({ ...base, motivo: 'lotado', comoEncurtar: 'tirar' })
+    expect(texto).toBe(
+      'Não sobrou horário hoje para esses serviços juntos. Separados eles ainda podem caber — desmarque um acima.',
+    )
+    expect(texto).not.toContain('troque')
+  })
+
   it('expediente encerrado não manda trocar de serviço', () => {
     // Às 23h, trocar de serviço não ajuda — mesmo existindo um mais curto.
-    const tarde = mensagemSemHorario({ ...base, motivo: 'expediente_acabou', temServicoMaisCurto: true })
+    const tarde = mensagemSemHorario({ ...base, motivo: 'expediente_acabou', comoEncurtar: 'trocar' })
     expect(tarde).toBe('O expediente de hoje já acabou.')
     expect(tarde).not.toContain('troque')
   })

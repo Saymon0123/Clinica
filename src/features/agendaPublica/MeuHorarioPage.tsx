@@ -21,7 +21,11 @@ import { ErroInline } from '../../components/ErroInline'
 type Horario = {
   status: string
   inicio: string
+  /** O servico PRINCIPAL. Continua vindo por compatibilidade de implantacao. */
   servico: string | null
+  /** Todos os servicos, na ordem escolhida. Ausente numa edge anterior a
+   *  selecao multipla (13/09) -- e ai o principal sozinho e a verdade. */
+  servicos?: { nome: string | null; preco: number | null }[]
   barbeiro: string | null
   barbearia: string | null
   whatsappBarbearia: string | null
@@ -145,7 +149,12 @@ export function MeuHorarioPage() {
                 {f?.dia}, {f?.hora}
               </div>
               <div className="text-sm text-muted-foreground">
-                {dados.servico ?? 'Serviço'}
+                {/* Corte + barba aparece inteiro. Quem marcou dois pelo QR lia
+                    só "Corte" aqui e ficava sem saber se a barba entrou —
+                    justamente na tela que existe para ele conferir. */}
+                {dados.servicos?.length
+                  ? dados.servicos.map((s) => s.nome).filter(Boolean).join(' + ')
+                  : (dados.servico ?? 'Serviço')}
                 {dados.barbeiro ? ` · com ${dados.barbeiro}` : ''}
               </div>
             </div>

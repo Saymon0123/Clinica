@@ -996,6 +996,34 @@ Protótipo aprovado pelo dono em 12/09. Etapas:
    status, e nenhum trigger de `appointments` chama fora (conferido em 11/09).
    Canal a decidir.
 
+**Fora da lista de etapas, pedida pelo dono em 13/09 e FEITA no mesmo dia:**
+**vários serviços num agendamento só pelo QR.** Era a "fase 2" que a migration
+0120 já deixava escrita — `appointment_services`, o trigger que soma as
+durações e a RPC do CRM existem desde agosto; faltava ligar a agenda pública.
+**Sem migration.** Escopo decidido pelo dono: só o QR (o agente do WhatsApp
+segue com um serviço), e soma pura, sem detectar combo mais barato.
+
+A decisão que impede overbooking: a edge manda `data_hora_fim` **já somado** no
+insert. O trigger só soma a tabela filha quando ela existe, e num INSERT ela
+ainda está vazia — ele cairia no serviço principal e reservaria 40 min num
+corte+barba de 70. Ensaiado em produção nos dois sentidos: sem o conserto, um
+segundo agendamento aos 45 min **entrava**; com ele, a trava de sobreposição
+recusa.
+
+**Ainda com UM serviço:** o agente do WhatsApp. É o risco que a própria 0120
+nomeou — quem calcula a duração lá é a IA.
+
+### Achado (13/09): nó morto no fluxo de lembretes
+
+`CRM Salão - Lembretes de Agendamento` (`DW0nq1Jyp9xeOJwm`) tem um nó **"Buscar
+Serviço"** que consulta `services` pelo `service_id` do agendamento — e
+**nenhum outro nó consome a saída dele**. O texto do lembrete é "Oi, {nome}!
+Seu horário na *{salão}* é hoje às {HH:MM}, com {barbeiro}. Você vem?", e os 4
+parâmetros do template da Meta são nome, salão, hora e barbeiro. Uma consulta
+ao banco por lembrete enviado, para nada. Descoberto ao conferir se a seleção
+múltipla exigia mexer no n8n (não exigia, justamente por isso). Tirar é seguro,
+mas mexer em fluxo que fala com cliente pede janela própria.
+
 Depois: logo e Instagram. `salons` não tem nenhum dos dois; pedem colunas novas
 e envio de imagem. Até lá, entram as iniciais.
 

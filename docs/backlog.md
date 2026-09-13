@@ -936,6 +936,20 @@ por ele em 11/09:
 
 Protótipo aprovado pelo dono em 12/09. Etapas:
 
+> **Testado em produção pelo dono em 13/09**, com agendamentos reais na El
+> Guardians — etapas 1 e 2, a seleção múltipla e o botão novo. A prova que
+> faltava: `14/09 10:00 → 11:10`, **70 min reservados**, 2 serviços gravados
+> (Barba 30 + Corte masculino 40), R$ 80. `minutos_reservados` igual a
+> `soma_das_duracoes` é o que diz que a cadeira não será vendida duas vezes. O
+> combo das 09:00 foi ainda `concluido` pelo CRM, então o caminho do dinheiro
+> para um agendamento nascido no QR também rodou.
+>
+> **Observação de comportamento, não de código:** havendo um serviço chamado
+> "Corte + barba" (60 min, R$70) e a opção de marcar os dois avulsos (70 min,
+> R$80), o dono clicou no combo sem pensar. O cliente vai fazer igual — o que é
+> bom: mais barato para ele, mais rápido para a cadeira. Se a barbearia quiser
+> garantir o preço do combo, o caminho é o catálogo, não o código.
+
 1. ~~**Cara de barbearia**~~ — **FEITA em 13/09**. Iniciais, nome, "aberto
    agora", endereço e WhatsApp no lugar do ícone do Club Cut (que desceu para o
    rodapé); serviços em cartões com preço e duração; próximo horário livre em
@@ -988,9 +1002,28 @@ Protótipo aprovado pelo dono em 12/09. Etapas:
    piso de 30 minutos como o do cancelamento. **Reverte uma decisão escrita:**
    o comentário de `MeuHorarioPage.tsx` diz que remarcar ia para o WhatsApp de
    propósito ("reagendar é conversa"); o dono decidiu o contrário.
-5. **Já tenho horário**: depende de um **modelo novo aprovado pela Meta**
-   (quem inicia é a plataforma, então é o número central pela Cloud API).
-   Pedir a aprovação cedo. Mapear o n8n antes de começar.
+5. ~~**Já tenho horário**~~ — **CANCELADA em 13/09, por decisão do dono.**
+   **Não peça o modelo à Meta.** Foi substituída por um botão "Já tem horário
+   marcado?" no topo da agenda pública, que abre o WhatsApp **da barbearia**
+   com a mensagem já digitada.
+
+   O desenho original mandava o link de gestão para o WhatsApp do cliente, e
+   por isso dependia de modelo aprovado pela Meta: quem inicia a conversa seria
+   a plataforma, pelo número central. O dono recusou, com um argumento que eu
+   não tinha valorizado — **a mensagem chegaria de um número que o cliente não
+   conhece, com um link, logo depois de ele digitar o telefone numa página.
+   Isso tem cara de golpe**, e número denunciado na Meta é problema para todas
+   as barbearias de uma vez.
+
+   **O que se perde, registrado de propósito:** a pessoa não cancela sozinha —
+   alguém da barbearia tem de ler e agir. Isso contraria a frase que abre este
+   plano ("sem falar com a barbearia"). Quem entrega aquilo para a maioria é a
+   **etapa 3**; esta porta é para quem trocou de aparelho.
+
+   **NUNCA mostrar o horário na própria tela** depois de a pessoa digitar o
+   telefone, nem no aviso de "você já tem um horário". É a ideia que parece
+   óbvia e é a perigosa: eu digito o SEU telefone, preencho qualquer nome, e
+   recebo o link que cancela o SEU horário. Se reaparecer, recuse.
 6. **Aviso para a barbearia** quando o cliente cancela ou remarca sozinho.
    **Hoje ninguém é avisado:** o cancelamento pelo link só faz `update` do
    status, e nenhum trigger de `appointments` chama fora (conferido em 11/09).

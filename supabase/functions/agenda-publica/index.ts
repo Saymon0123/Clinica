@@ -3,6 +3,7 @@ import { comSentry } from '../_shared/sentry.ts'
 import { chaveDoDia, motivoSemHorario } from '../_shared/semHorario.ts'
 import { marcarSalao } from '../_shared/log.ts'
 import { ipDe, taxaExcedida } from '../_shared/limite.ts'
+import { numeroParaWhatsApp } from '../_shared/whatsapp.ts'
 
 /**
  * Agenda pública — o QR do balcão.
@@ -71,9 +72,11 @@ function normalizar(telefone: string) {
 }
 
 /** '55' + DDD + número, só dígitos — pronto para o wa.me. Nulo sem telefone. */
-function whatsappDe(telefone: string | null | undefined) {
-  return telefone ? '55' + String(telefone).replace(/\D/g, '').replace(/^55/, '') : null
-}
+// A montagem do numero mora em `_shared/whatsapp.ts` desde 13/09. O que havia
+// aqui tirava o DDI e recolocava sem validar nada -- e, principalmente, nao
+// sabia do nono digito: o telefone da El Guardians tem dez digitos, e o botao
+// "Falar com a barbearia" dela apontava para um numero que nao existe.
+const whatsappDe = numeroParaWhatsApp
 
 
 

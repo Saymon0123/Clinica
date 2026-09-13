@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { traduzirErroDoBanco } from '../../lib/erroDoBanco'
 import { useSalon } from '../auth/useSalon'
 import { useAgendaData } from './useAgendaData'
+import { AvisoDeCancelamentos } from './AvisoDeCancelamentos'
 import { MiniCalendar } from './MiniCalendar'
 import { NewAppointmentModal } from './NewAppointmentModal'
 import { AppointmentDetailModal } from './AppointmentDetailModal'
@@ -340,6 +341,12 @@ export function AgendaPage() {
       <div className="flex-1 min-w-0">
         <PageHeader titulo="Agenda" subtitulo="As reservas do dia, por profissional" />
         <CardAtivacao />
+
+        {/* O que o cliente cancelou sozinho e a barbearia ainda nao viu.
+            Acima da grade de propósito: é a informação que muda o que o dono
+            vai fazer nos próximos minutos — a cadeira que esvaziou. Some
+            sozinho quando não há nada. */}
+        <AvisoDeCancelamentos salonId={salonId} />
 
         {/* Toolbar */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">

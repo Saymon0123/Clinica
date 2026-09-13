@@ -694,6 +694,35 @@ body {
   animation-delay: calc(var(--i, 0) * 28ms);
 }
 
+/* Esqueleto de carregamento (agenda pública, 13/09).
+
+   A tela pública mostrava "Carregando horários..." numa linha de texto, e a
+   página inteira aparecia de uma vez depois. Quem escaneia o QR está de pé no
+   balcão, no 4G da rua: nesse intervalo ele olha uma tela quase branca e não
+   sabe se o link prestou. O bloco cinza no formato do conteúdo que vem diz
+   duas coisas de uma vez — está vindo, e vai ter essa cara.
+
+   O brilho é o gradiente andando, não opacidade piscando: piscar em tela cheia
+   incomoda e, com `prefers-reduced-motion`, some (bloco abaixo) deixando o
+   bloco cinza parado, que continua informando. */
+@keyframes esqueleto-brilha {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.esqueleto {
+  background-image: linear-gradient(
+    90deg,
+    var(--surface-2) 0%,
+    var(--surface) 50%,
+    var(--surface-2) 100%
+  );
+  background-size: 200% 100%;
+  animation: esqueleto-brilha 1.4s linear infinite;
+  border-radius: 12px;
+}
+
 /* A revelacao por scroll da landing saiu daqui para o Motion: a versao em CSS
    nao consegue escalonar o atraso entre os filhos de uma secao, que e o que faz
    a entrada parecer uma sequencia em vez de um bloco piscando de uma vez. */
@@ -760,6 +789,11 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .surge,
   .surge-stagger > * {
+    animation: none;
+  }
+  /* O bloco cinza fica; só o brilho para. Tirar o esqueleto inteiro devolveria
+     a tela quase branca que ele existe para resolver. */
+  .esqueleto {
     animation: none;
   }
   .btn-primary {

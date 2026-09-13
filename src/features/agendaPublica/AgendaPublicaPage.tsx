@@ -1,11 +1,18 @@
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from 'react'
 import { MarcaClubCut } from '../../components/MarcaClubCut'
 import { useParams } from 'react-router-dom'
-import { Check, Clock, MessageCircle } from 'lucide-react'
+import { ArrowRight, Check, Clock, MapPin, MessageCircle } from 'lucide-react'
 import { invokeFunction } from '../../lib/invokeFunction'
 import { ErroInline } from '../../components/ErroInline'
 import { AVISO_TELEFONE_FORMATO, classificarTelefone } from '../../lib/telefone'
 import { mensagemSemHorario, type MotivoSemHorario } from './semHorario'
+import {
+  semanaDe,
+  situacaoAgora,
+  type HorarioFuncionamento,
+  type Situacao,
+} from './horarioFuncionamento'
+import { agruparPorPeriodo } from './periodos'
 
 /**
  * A página que o QR do balcão abre.
@@ -23,10 +30,37 @@ import { mensagemSemHorario, type MotivoSemHorario } from './semHorario'
  * Mostra por **horário**, com o barbeiro em cada um, e não o contrário. Escolher
  * o barbeiro primeiro e descobrir que ele está cheio é porta fechada; ver que
  * tem 14:30 com o Rafael é porta aberta.
+ *
+ * ─── Etapa 1 da versão 2 (13/09/2026) ───────────────────────────────────────
+ *
+ * O dono olhou a página e disse: "muito vazia, pouco profissional". Estava
+ * certo, e a causa era concreta — o topo trazia o ícone do **Club Cut**, não o
+ * da barbearia. Quem escaneia o QR não veio procurar o Club Cut; veio marcar
+ * horário na barbearia em que está de pé. O dado para fazer diferente já estava
+ * no banco desde sempre (`endereco`, `horario_funcionamento`) e ninguém o
+ * mostrava.
+ *
+ * O que mudou, e por quê:
+ *
+ * - **Herói da barbearia** no lugar da marca do produto: iniciais, nome,
+ *   "aberto agora", endereço e WhatsApp. Sem endereço cadastrado a linha some,
+ *   em vez de deixar um espaço vazio que parece defeito.
+ * - **Serviços em cartões** com preço e duração, no lugar de um `<select>` que
+ *   escondia as duas informações que decidem a escolha atrás de um toque.
+ * - **Próximo horário livre em destaque** e o resto por período. Isto SUBSTITUI
+ *   o "ver mais N horários": o corte em 12 existia porque o mais cedo ficava
+ *   enterrado, e um botão dedicado ao mais cedo resolve isso melhor do que
+ *   esconder a tarde inteira.
+ * - **Esqueleto** no carregamento, no lugar de "Carregando horários...".
+ * - **Duas colunas no computador**, com a identidade fixa na lateral.
+ *
+ * O Club Cut sai do topo e vai para o rodapé. A marca continua lá — em tamanho
+ * de assinatura, que é o lugar dela numa página que é da barbearia.
+ *
+ * O que NÃO entrou aqui, de propósito (etapas 2 a 6 do plano em
+ * `docs/backlog.md`): os 14 dias, o horário guardado no celular, remarcar pelo
+ * link, o "já tenho horário" e o aviso à barbearia quando o cliente cancela.
  */
-/** Quantos horários aparecem antes do "ver mais". Seis linhas de dois — cabe na
- *  tela do celular sem rolar, e os primeiros são justamente os mais cedo. */
-const PRIMEIROS = 12
 
 type Servico = { id: string; nome: string; preco: number; duracao_minutos: number }
 type Horario = { professional_id: string; profissional: string; inicio: string; hora_local: string }
@@ -34,11 +68,26 @@ type Consulta = {
   salao: string
   /** Ja pronto para o wa.me: DDI + DDD + numero, so digitos. Pode faltar. */
   whatsappBarbearia?: string | null
+  /** Ausente na maioria das barbearias: o campo e opcional no cadastro. */
+  endereco?: string | null
+  /** `{seg: {abre, fecha}, ...}`, com null no dia de folga. Pode nao vir. */
+  horarioFuncionamento?: HorarioFuncionamento
   servicos: Servico[]
   servicoEscolhido?: string
   horarios: Horario[]
   /** Por que `horarios` veio vazio (M8). Ausente numa função anterior a isto. */
   motivoVazio?: MotivoSemHorario | null
+}
+
+/** Palavras que não viram inicial: "Barbearia do João" é BJ, não BDJ. */
+const LIGACOES = /^(de|da|do|das|dos|e|em|no|na|the|of)$/i
+
+function iniciaisDe(nome: string) {
+  const partes = nome.trim().split(/\s+/).filter((p) => p && !LIGACOES.test(p))
+  if (!partes.length) return '?'
+  const letras =
+    partes.length === 1 ? partes[0].slice(0, 2) : partes[0][0] + partes[partes.length - 1][0]
+  return letras.toUpperCase()
 }
 
 /**
@@ -48,9 +97,33 @@ type Consulta = {
  * desligado, barbearia sem cadastro -- diziam "fale com a barbearia" sem dizer
  * como. O numero ja estava no banco e o `/meu-horario` ja o usava; faltava
  * aqui, justamente onde a pessoa nao tem mais o que fazer sozinha.
+ *
+ * Duas formas: `bloco` é a saída de um beco, e ocupa a largura toda porque é a
+ * única coisa que sobrou para fazer; `chip` é o contato no herói, ao lado do
+ * endereço, onde ele é uma opção entre outras e não pode competir com o botão
+ * de marcar horário.
  */
-function FalarComABarbearia({ numero }: { numero?: string | null }) {
+function FalarComABarbearia({
+  numero,
+  forma = 'bloco',
+}: {
+  numero?: string | null
+  forma?: 'bloco' | 'chip'
+}) {
   if (!numero) return null
+  if (forma === 'chip') {
+    return (
+      <a
+        href={`https://wa.me/${numero}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 rounded-full border border-border-strong bg-surface px-3 py-1.5 text-xs font-semibold text-foreground transition-colors duration-150 hover:border-primary hover:text-primary"
+      >
+        <MessageCircle size={14} />
+        WhatsApp
+      </a>
+    )
+  }
   return (
     <a
       href={`https://wa.me/${numero}`}
@@ -64,6 +137,187 @@ function FalarComABarbearia({ numero }: { numero?: string | null }) {
   )
 }
 
+/** A pílula do "aberto agora". Some quando não há horário utilizável no
+ *  cadastro — dizer "Fechado" para quem está vendo o barbeiro cortar seria
+ *  mentira, e uma mentira que faz a pessoa ir embora. */
+function PilulaDeSituacao({ situacao }: { situacao: Situacao | null }) {
+  if (!situacao) return null
+  const aberta = situacao.aberta
+  return (
+    <span
+      className={`mt-3 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${
+        aberta
+          ? 'border-success/40 bg-success-soft text-success'
+          : 'border-border bg-surface-2 text-muted-foreground'
+      }`}
+    >
+      <span
+        aria-hidden
+        className={`block h-2 w-2 rounded-full ${aberta ? 'bg-success' : 'bg-muted-foreground'}`}
+      />
+      {aberta
+        ? `Aberto agora · fecha às ${situacao.fecha}`
+        : `Fechado agora · abre ${situacao.quando} às ${situacao.hora}`}
+    </span>
+  )
+}
+
+function Heroi({
+  nome,
+  endereco,
+  situacao,
+  whatsapp,
+  desistiu,
+}: {
+  /** Nulo enquanto a resposta não chegou, e também quando ela falhou antes de
+   *  dizer de quem é a barbearia. */
+  nome: string | null
+  endereco?: string | null
+  situacao: Situacao | null
+  whatsapp?: string | null
+  /** Já falhou: não há mais nome para esperar, e o esqueleto viraria uma
+   *  espera que nunca termina. */
+  desistiu?: boolean
+}) {
+  return (
+    <div className="border-b border-border bg-surface px-4 pb-4 pt-6 lg:border-b-0 lg:bg-transparent lg:px-6 lg:pt-8">
+      {!nome && desistiu ? (
+        <h1 className="text-xl font-bold leading-tight tracking-tight text-foreground">
+          Agendar horário
+        </h1>
+      ) : nome ? (
+        <div className="flex items-center gap-3">
+          <span
+            aria-hidden
+            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary text-xl font-extrabold tracking-tight text-primary-foreground"
+          >
+            {iniciaisDe(nome)}
+          </span>
+          <h1 className="min-w-0 text-balance text-xl font-bold leading-tight tracking-tight text-foreground">
+            {nome}
+          </h1>
+        </div>
+      ) : (
+        // Sem o nome não há iniciais. Passar a frase de espera para
+        // `iniciaisDe` rendia um selo verde escrito "CA", de "Carregando..." —
+        // uma marca inventada no lugar exato onde a pessoa procura confirmação
+        // de que abriu o link certo. O esqueleto não afirma nada.
+        <div className="flex items-center gap-3" aria-hidden>
+          <div className="esqueleto h-14 w-14 shrink-0 rounded-2xl" />
+          <div className="grid w-full gap-2">
+            <div className="esqueleto h-5 w-2/3" />
+            <div className="esqueleto h-3.5 w-1/2" />
+          </div>
+        </div>
+      )}
+
+      {/* A pílula fica FORA da linha do avatar de propósito. Encaixada ao lado
+          do nome ela dispunha de uns 220px na lateral do computador e quebrava
+          "Fechado agora · abre amanhã às 09:00" em duas linhas, com a bolinha
+          órfã na primeira. Aqui ela tem a largura toda. */}
+      <PilulaDeSituacao situacao={situacao} />
+
+      {/* Sem endereço cadastrado a linha inteira some. O campo é opcional no
+          CRM e a maioria das barbearias não preenche; deixar o ícone com um
+          espaço em branco ao lado parece campo que não carregou. */}
+      {endereco && (
+        <p className="mt-3.5 flex items-start gap-2 text-[13px] leading-snug text-muted-foreground">
+          <MapPin size={15} className="mt-0.5 shrink-0" aria-hidden />
+          <span>
+            {endereco}{' '}
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(endereco)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-primary underline"
+            >
+              ver no mapa
+            </a>
+          </span>
+        </p>
+      )}
+
+      {whatsapp && (
+        <div className="mt-3.5">
+          <FalarComABarbearia numero={whatsapp} forma="chip" />
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** O quadro de funcionamento. Some por inteiro quando nenhum dia tem faixa
+ *  válida — sete linhas de "Fechado" não informam nada e ainda passam a
+ *  impressão de barbearia fechada para sempre. */
+function SemanaDeFuncionamento({
+  horario,
+  agora,
+  className = '',
+}: {
+  horario: HorarioFuncionamento
+  agora: Date
+  className?: string
+}) {
+  const semana = semanaDe(horario, agora)
+  if (!semana) return null
+  return (
+    <section className={className}>
+      <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        Horário de funcionamento
+      </h2>
+      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[13px]">
+        {semana.map((d) => (
+          <div key={d.chave} className="contents">
+            <dt className={d.hoje ? 'font-semibold text-foreground' : 'text-muted-foreground'}>
+              {d.nome}
+              {d.hoje ? ' (hoje)' : ''}
+            </dt>
+            <dd
+              className={`text-right tabular-nums ${
+                d.hoje ? 'font-semibold text-foreground' : 'text-muted-foreground'
+              }`}
+            >
+              {d.faixa ? `${d.faixa.abre} – ${d.faixa.fecha}` : 'Fechado'}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  )
+}
+
+/**
+ * O esqueleto tem a FORMA do que vem: título, cartões de serviço, o destaque do
+ * próximo horário e a grade. É isso que o diferencia de um "carregando" — ele
+ * já diz que tipo de página é, antes de a página existir.
+ *
+ * `aria-hidden` no bloco inteiro: leitor de tela não tem o que anunciar sobre
+ * retângulos cinzas, e o `aria-busy` da região é que carrega a informação.
+ */
+function Esqueleto() {
+  return (
+    <div aria-hidden className="space-y-6">
+      <div className="space-y-3">
+        <div className="esqueleto h-4 w-40" />
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          {Array.from({ length: 4 }, (_, i) => (
+            <div key={i} className={`esqueleto h-[72px] w-full ${i > 1 ? 'hidden sm:block' : ''}`} />
+          ))}
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="esqueleto h-4 w-32" />
+        <div className="esqueleto h-[68px] w-full rounded-2xl" />
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+          {Array.from({ length: 9 }, (_, i) => (
+            <div key={i} className="esqueleto h-11 w-full" />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function AgendaPublicaPage() {
   const { salonId } = useParams<{ salonId: string }>()
 
@@ -73,14 +327,12 @@ export function AgendaPublicaPage() {
   const [nome, setNome] = useState('')
   const [telefone, setTelefone] = useState('')
 
-  // Quem escaneia o QR está de pé no balcão e quer o horário mais cedo. A grade
-  // passou de 15 para 10 minutos e ganhou âncora no fim de cada atendimento
-  // (migration 0066) — bom para não desperdiçar cadeira, ruim para a lista: num
-  // dia de dois barbeiros são mais de oitenta botões, e o mais cedo, que é o que
-  // ele veio buscar, fica enterrado sob quarenta linhas de rolagem.
-  const [verTodos, setVerTodos] = useState(false)
-
   const [carregando, setCarregando] = useState(true)
+  // Trocar de serviço recarrega a lista. Antes isso caía em `carregando` e
+  // apagava a tela inteira — inclusive os cartões de serviço, que não mudam —
+  // e o esqueleto tornaria o pisca-pisca pior, não melhor. Aqui a lista velha
+  // fica na tela, esmaecida, e só a grade de horários espera.
+  const [atualizando, setAtualizando] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [pronto, setPronto] = useState(false)
@@ -94,9 +346,17 @@ export function AgendaPublicaPage() {
   // o nome dela confirma que a pessoa abriu o link certo.
   const [nomeSalao, setNomeSalao] = useState<string | null>(null)
 
+  // Fixado na montagem de propósito. A pílula "aberto agora" e o quadro da
+  // semana são lidos nos primeiros segundos; recalcular a cada render faria a
+  // frase mudar no meio do preenchimento sem nada ter acontecido, e prender o
+  // relógio num estado só para ver a hora virar é peso sem retorno numa tela
+  // que a pessoa usa por dois minutos.
+  const [agora] = useState(() => new Date())
+
   const consultar = useCallback(
-    async (servico?: string, opcoes?: { manterErro?: boolean }) => {
-      setCarregando(true)
+    async (servico?: string, opcoes?: { manterErro?: boolean; recarga?: boolean }) => {
+      if (opcoes?.recarga) setAtualizando(true)
+      else setCarregando(true)
       // A recarga depois de um "não" NÃO apaga o motivo (achado 25 da revisão
       // de 01/09). Antes apagava: a mensagem era gravada e, uma linha depois,
       // esta consulta a zerava — o cliente via a lista piscar e nada explicava
@@ -107,6 +367,7 @@ export function AgendaPublicaPage() {
         body: { salonId, acao: 'consultar', servicoId: servico },
       })
       setCarregando(false)
+      setAtualizando(false)
       const doCorpo = corpo as Consulta | undefined
       if (doCorpo?.whatsappBarbearia) setWhatsapp(doCorpo.whatsappBarbearia)
       if (doCorpo?.salao) setNomeSalao(doCorpo.salao)
@@ -129,9 +390,6 @@ export function AgendaPublicaPage() {
           ? atual
           : null,
       )
-      // Trocar de serviço muda a lista inteira: volta ao topo, senão ele fica
-      // olhando o fim do dia de um serviço que nem escolheu mais.
-      setVerTodos(false)
     },
     [salonId],
   )
@@ -183,7 +441,7 @@ export function AgendaPublicaPage() {
       // Se o horário dela ainda estiver livre — erro de telefone, por exemplo
       // — ele continua escolhido: ela corrige o campo e tenta de novo, sem
       // recomeçar do zero.
-      consultar(servicoId ?? undefined, { manterErro: true })
+      consultar(servicoId ?? undefined, { manterErro: true, recarga: true })
       return
     }
     setTokenGestao(data.tokenGestao ?? null)
@@ -191,203 +449,286 @@ export function AgendaPublicaPage() {
   }
 
   const servico = dados?.servicos.find((s) => s.id === servicoId)
+  const situacao = situacaoAgora(dados?.horarioFuncionamento, agora)
+  // O nome do barbeiro em cada botão só quando há mais de um na lista. Com um
+  // barbeiro só — que é a barbearia mais comum — o nome é a mesma palavra
+  // repetida quarenta vezes, e ruído repetido some da vista junto com o resto.
+  const variosBarbeiros = new Set(dados?.horarios.map((h) => h.professional_id)).size > 1
+  const proximo = dados?.horarios[0] ?? null
+  const ehOEscolhido = (h: Horario) =>
+    !!escolhido && escolhido.inicio === h.inicio && escolhido.professional_id === h.professional_id
+
+  function escolher(h: Horario) {
+    setEscolhido(h)
+    setErro(null)
+  }
+
+  // No celular o herói é o topo da tela inicial e some nos passos seguintes,
+  // onde o espaço vale mais que a identidade — a pessoa já sabe onde está. No
+  // computador ele fica na lateral, sempre visível, porque lá o espaço sobra.
+  const heroiNoCelular = !pronto && !escolhido
 
   return (
-    <div className="min-h-[100dvh] bg-background px-4 py-8">
-      <div className="w-full max-w-sm mx-auto space-y-6">
-        {/* Cabecalho de marca. Quem escaneia o QR chega sem contexto nenhum: o
-            nome da barbearia grande e a primeira coisa que confirma que ele
-            esta no lugar certo. */}
-        <div className="flex items-center gap-3">
-          <span className="flex items-center justify-center w-11 h-11 rounded-xl bg-primary text-primary-foreground shrink-0">
-            <MarcaClubCut size={20} />
-          </span>
-          {/* Enquanto o erro nao chegou, "Carregando..." e verdade. Depois dele,
-              vira mentira: a tela mostrava a caixa vermelha "Barbearia nao
-              encontrada" com o cabecalho ainda dizendo que carregava, e o
-              conjunto parecia sistema quebrado (achado de 04/09/2026). */}
-          <span className="text-lg font-bold tracking-tight text-foreground leading-tight">
-            {nomeSalao ?? (erro ? 'Agendar horário' : 'Carregando...')}
-          </span>
-        </div>
+    <div className="min-h-[100dvh] bg-background">
+      <div className="mx-auto grid w-full max-w-[1120px] lg:grid-cols-[340px_minmax(0,1fr)]">
+        <aside
+          className={`lg:sticky lg:top-0 lg:h-[100dvh] lg:self-start lg:overflow-y-auto lg:border-r lg:border-border lg:bg-surface ${
+            heroiNoCelular ? '' : 'hidden lg:block'
+          }`}
+        >
+          <Heroi
+            nome={nomeSalao}
+            endereco={dados?.endereco}
+            situacao={situacao}
+            whatsapp={whatsapp}
+            desistiu={!!erro}
+          />
+          <SemanaDeFuncionamento
+            horario={dados?.horarioFuncionamento}
+            agora={agora}
+            className="hidden px-6 pb-8 pt-2 lg:block"
+          />
+        </aside>
 
-        {pronto ? (
-          <div className="surge rounded-xl border border-success/40 bg-surface p-5 space-y-3 shadow-[0_12px_32px_-16px_color-mix(in_srgb,var(--foreground)_40%,transparent)]">
-            <div className="flex items-center gap-2 text-success">
-              <Check size={20} />
-              <h1 className="text-base font-semibold">Horário marcado!</h1>
-            </div>
-            <p className="text-sm text-foreground">
-              <strong>{escolhido?.hora_local}</strong> com {escolhido?.profissional}
-              {servico ? `, ${servico.nome}` : ''}.
-            </p>
-            {tokenGestao ? (
-              <p className="text-sm text-muted-foreground">
-                Precisou desmarcar?{' '}
-                <a
-                  href={`/meu-horario/${tokenGestao}`}
-                  className="font-medium text-primary underline"
-                >
-                  Gerencie seu horário por este link
-                </a>{' '}
-                — salve nos favoritos ou tire um print.
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                É só aguardar. Se precisar mudar alguma coisa, fale com a barbearia.
-              </p>
-            )}
-          </div>
-        ) : carregando ? (
-          <p className="text-sm text-muted-foreground">Carregando horários...</p>
-        ) : !dados ? (
-          <>
-            <ErroInline>{erro}</ErroInline>
-            <FalarComABarbearia numero={whatsapp} />
-          </>
-        ) : escolhido ? (
-          // ---------- Passo 3: quem é você ----------
-          <form onSubmit={agendar} className="surge space-y-4">
-            <div className="rounded-xl border border-primary/40 bg-primary-soft/40 p-4">
-              <div className="text-base font-semibold text-foreground">
-                {escolhido.hora_local} com {escolhido.profissional}
+        <main className="px-4 pb-10 pt-5 lg:px-8 lg:pt-8">
+          {pronto ? (
+            <div className="surge mx-auto max-w-md space-y-3 rounded-xl border border-success/40 bg-surface p-5 shadow-[0_12px_32px_-16px_color-mix(in_srgb,var(--foreground)_40%,transparent)]">
+              <div className="flex items-center gap-2 text-success">
+                <Check size={20} />
+                <h2 className="text-base font-semibold">Horário marcado!</h2>
               </div>
-              {servico && (
-                <div className="text-xs text-muted-foreground mt-1">
-                  {servico.nome} · R$ {servico.preco} · {servico.duracao_minutos} min
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => setEscolhido(null)}
-                className="text-xs font-medium text-primary hover:underline mt-2"
-              >
-                trocar horário
-              </button>
-            </div>
-
-            <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Seu nome</span>
-              <input
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                autoComplete="name"
-                className="mt-1.5 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3.5 py-3 text-base transition-colors duration-150 focus:border-primary"
-              />
-            </label>
-
-            <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Seu WhatsApp</span>
-              <input
-                value={telefone}
-                onChange={(e) => setTelefone(e.target.value)}
-                placeholder="(41) 99999-9999"
-                inputMode="tel"
-                autoComplete="tel"
-                className="mt-1.5 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3.5 py-3 text-base transition-colors duration-150 focus:border-primary"
-              />
-              <span className="block text-[11px] text-muted-foreground mt-1.5">
-                É por aqui que a barbearia fala com você sobre esse horário.
-              </span>
-            </label>
-
-            <ErroInline>{erro}</ErroInline>
-            {erro && <FalarComABarbearia numero={whatsapp} />}
-
-            <button
-              type="submit"
-              disabled={enviando}
-              className="w-full btn-primary rounded-lg px-3 py-3.5 text-base font-semibold disabled:opacity-50"
-            >
-              {enviando ? 'Marcando...' : 'Confirmar horário'}
-            </button>
-          </form>
-        ) : dados.servicos.length === 0 ? (
-          // Sem serviço não há passo 1: o seletor ficava vazio, sem uma opção,
-          // e a frase de baixo mandava trocar de serviço (M8).
-          <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
-            {mensagemSemHorario({ motivo: 'sem_servicos', temServicoMaisCurto: false, temWhatsapp: !!whatsapp })}
-            <FalarComABarbearia numero={whatsapp} />
-          </div>
-        ) : (
-          // ---------- Passos 1 e 2: serviço e horário ----------
-          <div className="space-y-5">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">O que você quer fazer?</label>
-              <select
-                value={servicoId ?? ''}
-                onChange={(e) => {
-                  setServicoId(e.target.value)
-                  consultar(e.target.value)
-                }}
-                className="mt-1.5 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3.5 py-3 text-base transition-colors duration-150 focus:border-primary"
-              >
-                {dados.servicos.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.nome} · R$ {s.preco}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
-                <Clock size={14} />
-                Horários livres hoje
-              </div>
-
-              {dados.horarios.length === 0 ? (
-                <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
-                  {mensagemSemHorario({
-                    // Função anterior a isto não manda o motivo: cai no caso
-                    // comum, e a frase continua verdadeira.
-                    motivo: dados.motivoVazio ?? 'lotado',
-                    temServicoMaisCurto:
-                      !!servico && dados.servicos.some((s) => s.duracao_minutos < servico.duracao_minutos),
-                    temWhatsapp: !!whatsapp,
-                  })}
-                  <FalarComABarbearia numero={whatsapp} />
-                </div>
+              <p className="text-sm text-foreground">
+                <strong>{escolhido?.hora_local}</strong> com {escolhido?.profissional}
+                {servico ? `, ${servico.nome}` : ''}.
+              </p>
+              {tokenGestao ? (
+                <p className="text-sm text-muted-foreground">
+                  Precisou desmarcar?{' '}
+                  <a
+                    href={`/meu-horario/${tokenGestao}`}
+                    className="font-medium text-primary underline"
+                  >
+                    Gerencie seu horário por este link
+                  </a>{' '}
+                  — salve nos favoritos ou tire um print.
+                </p>
               ) : (
-                <div key={servicoId ?? 'todos'} className="surge-stagger grid grid-cols-2 gap-2">
-                  {(verTodos ? dados.horarios : dados.horarios.slice(0, PRIMEIROS)).map((h, i) => (
+                <p className="text-sm text-muted-foreground">
+                  É só aguardar. Se precisar mudar alguma coisa, fale com a barbearia.
+                </p>
+              )}
+            </div>
+          ) : carregando ? (
+            <div aria-busy="true" aria-label="Carregando os horários">
+              <Esqueleto />
+            </div>
+          ) : !dados ? (
+            <div className="mx-auto max-w-md">
+              <ErroInline>{erro}</ErroInline>
+              <FalarComABarbearia numero={whatsapp} />
+            </div>
+          ) : escolhido ? (
+            // ---------- Passo 3: quem é você ----------
+            <form onSubmit={agendar} className="surge mx-auto max-w-md space-y-4">
+              <div className="rounded-xl border border-primary/40 bg-primary-soft/40 p-4">
+                <div className="text-base font-semibold text-foreground">
+                  {escolhido.hora_local} com {escolhido.profissional}
+                </div>
+                {servico && (
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {servico.nome} · R$ {servico.preco} · {servico.duracao_minutos} min
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setEscolhido(null)}
+                  className="mt-2 text-xs font-medium text-primary hover:underline"
+                >
+                  trocar horário
+                </button>
+              </div>
+
+              <label className="block">
+                <span className="text-xs font-medium text-muted-foreground">Seu nome</span>
+                <input
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  autoComplete="name"
+                  className="mt-1.5 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3.5 py-3 text-base transition-colors duration-150 focus:border-primary"
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-xs font-medium text-muted-foreground">Seu WhatsApp</span>
+                <input
+                  value={telefone}
+                  onChange={(e) => setTelefone(e.target.value)}
+                  placeholder="(41) 99999-9999"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  className="mt-1.5 w-full border border-border-strong bg-surface text-foreground rounded-lg px-3.5 py-3 text-base transition-colors duration-150 focus:border-primary"
+                />
+                <span className="mt-1.5 block text-[11px] text-muted-foreground">
+                  É por aqui que a barbearia fala com você sobre esse horário.
+                </span>
+              </label>
+
+              <ErroInline>{erro}</ErroInline>
+              {erro && <FalarComABarbearia numero={whatsapp} />}
+
+              <button
+                type="submit"
+                disabled={enviando}
+                className="w-full btn-primary rounded-lg px-3 py-3.5 text-base font-semibold"
+              >
+                {enviando ? 'Marcando...' : 'Confirmar horário'}
+              </button>
+            </form>
+          ) : dados.servicos.length === 0 ? (
+            // Sem serviço não há passo 1: o seletor ficava vazio, sem uma opção,
+            // e a frase de baixo mandava trocar de serviço (M8).
+            <div className="mx-auto max-w-md rounded-lg border border-border p-4 text-sm text-muted-foreground">
+              {mensagemSemHorario({ motivo: 'sem_servicos', temServicoMaisCurto: false, temWhatsapp: !!whatsapp })}
+              <FalarComABarbearia numero={whatsapp} />
+            </div>
+          ) : (
+            // ---------- Passos 1 e 2: serviço e horário ----------
+            <div className="space-y-6">
+              <section>
+                <h2 className="mb-2.5 text-sm font-semibold text-foreground">
+                  O que você quer fazer?
+                </h2>
+                <div className="grid gap-2.5 sm:grid-cols-2">
+                  {dados.servicos.map((s) => (
                     <button
-                      key={`${h.professional_id}-${h.inicio}`}
-                      style={{ '--i': i } as CSSProperties}
+                      key={s.id}
+                      type="button"
+                      aria-pressed={s.id === servicoId}
                       onClick={() => {
-                        setEscolhido(h)
-                        setErro(null)
+                        if (s.id === servicoId) return
+                        setServicoId(s.id)
+                        consultar(s.id, { recarga: true })
                       }}
-                      className="rounded-lg border border-border-strong bg-surface p-3 text-left transition-[border-color,background-color,transform] duration-150 hover:border-primary hover:bg-primary-soft/30 active:scale-[0.98]"
+                      className="grid grid-cols-[1fr_auto] items-center gap-x-3 rounded-xl border-[1.5px] border-border bg-surface p-3.5 text-left transition-[border-color,background-color,transform] duration-150 hover:border-primary active:scale-[0.99] aria-pressed:border-primary aria-pressed:bg-primary-soft/50"
                     >
-                      <div className="text-base font-semibold text-foreground">{h.hora_local}</div>
-                      <div className="text-xs text-muted-foreground truncate">{h.profissional}</div>
+                      <strong className="text-[15px] font-semibold text-foreground">{s.nome}</strong>
+                      <span className="row-span-2 self-center text-base font-extrabold tabular-nums text-foreground">
+                        R$ {s.preco}
+                      </span>
+                      <span className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
+                        <Clock size={13} aria-hidden />
+                        {s.duracao_minutos} min
+                      </span>
                     </button>
                   ))}
                 </div>
-              )}
+              </section>
 
-              {!verTodos && dados.horarios.length > PRIMEIROS && (
-                <button
-                  onClick={() => setVerTodos(true)}
-                  className="mt-2 w-full rounded-lg border border-border p-2.5 text-sm font-medium text-muted-foreground transition-colors duration-150 hover:border-border-strong hover:bg-surface-2"
-                >
-                  Ver mais {dados.horarios.length - PRIMEIROS} horários
-                </button>
-              )}
+              <section
+                aria-busy={atualizando}
+                className={atualizando ? 'pointer-events-none opacity-50 transition-opacity' : 'transition-opacity'}
+              >
+                <h2 className="mb-2.5 flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                  <Clock size={15} aria-hidden />
+                  Horários livres hoje
+                </h2>
+
+                {dados.horarios.length === 0 ? (
+                  <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
+                    {mensagemSemHorario({
+                      // Função anterior a isto não manda o motivo: cai no caso
+                      // comum, e a frase continua verdadeira.
+                      motivo: dados.motivoVazio ?? 'lotado',
+                      temServicoMaisCurto:
+                        !!servico && dados.servicos.some((s) => s.duracao_minutos < servico.duracao_minutos),
+                      temWhatsapp: !!whatsapp,
+                    })}
+                    <FalarComABarbearia numero={whatsapp} />
+                  </div>
+                ) : (
+                  <div key={servicoId ?? 'todos'} className="space-y-5">
+                    {/* O mais cedo, em destaque. É o que quem está de pé no
+                        balcão veio buscar, e era justamente o que ficava
+                        enterrado sob quarenta linhas de rolagem. */}
+                    {proximo && (
+                      <button
+                        type="button"
+                        aria-pressed={ehOEscolhido(proximo)}
+                        onClick={() => escolher(proximo)}
+                        className="surge flex w-full items-center justify-between gap-3 rounded-2xl bg-primary p-3.5 text-left text-primary-foreground transition-transform duration-150 active:scale-[0.99]"
+                      >
+                        <span>
+                          <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] opacity-85">
+                            Próximo horário livre
+                          </span>
+                          <span className="mt-0.5 block text-[19px] font-extrabold tabular-nums">
+                            {proximo.hora_local}
+                          </span>
+                          <span className="text-[13px] opacity-90">hoje · com {proximo.profissional}</span>
+                        </span>
+                        <ArrowRight size={20} aria-hidden className="shrink-0" />
+                      </button>
+                    )}
+
+                    {agruparPorPeriodo(dados.horarios).map((periodo) => (
+                      <div key={periodo.nome}>
+                        <h3 className="mb-2 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                          <span>{periodo.nome}</span>
+                          <span className="tabular-nums">{periodo.itens.length}</span>
+                        </h3>
+                        <div className="surge-stagger grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+                          {periodo.itens.map((h, i) => (
+                            <button
+                              key={`${h.professional_id}-${h.inicio}`}
+                              type="button"
+                              style={{ '--i': i } as CSSProperties}
+                              aria-pressed={ehOEscolhido(h)}
+                              onClick={() => escolher(h)}
+                              className="min-h-11 rounded-xl border-[1.5px] border-border bg-surface px-1 py-2 text-center transition-[border-color,background-color,transform] duration-150 hover:border-primary active:scale-[0.97] aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground"
+                            >
+                              <span className="block text-[15px] font-bold tabular-nums text-inherit">
+                                {h.hora_local}
+                              </span>
+                              {variosBarbeiros && (
+                                <span className="block truncate text-[11px] text-inherit opacity-70">
+                                  {h.profissional}
+                                </span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <ErroInline>{erro}</ErroInline>
+
+              <SemanaDeFuncionamento
+                horario={dados.horarioFuncionamento}
+                agora={agora}
+                className="rounded-xl border border-border bg-surface p-4 lg:hidden"
+              />
             </div>
+          )}
 
-            <ErroInline>{erro}</ErroInline>
-          </div>
-        )}
-
-        <p className="text-center text-[11px] text-muted-foreground pt-2">
-          Ao agendar, você concorda com a{' '}
-          <a href="/privacidade" target="_blank" rel="noopener noreferrer" className="underline">
-            política de privacidade
-          </a>
-          .
-        </p>
+          {/* A assinatura. O Club Cut saiu do topo — a página é da barbearia —
+              mas continua aqui, no tamanho de quem assina em vez de anunciar. */}
+          <footer className="pt-7 text-center text-[11px] text-muted-foreground">
+            <p>
+              Ao agendar, você concorda com a{' '}
+              <a href="/privacidade" target="_blank" rel="noopener noreferrer" className="underline">
+                política de privacidade
+              </a>
+              .
+            </p>
+            <p className="mt-2 inline-flex items-center gap-1.5 opacity-70">
+              <MarcaClubCut size={13} />
+              Agenda por Club Cut
+            </p>
+          </footer>
+        </main>
       </div>
     </div>
   )

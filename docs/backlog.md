@@ -1028,10 +1028,39 @@ Protótipo aprovado pelo dono em 12/09. Etapas:
    conteúdo do arquivo está conferido (`DTSTART`/`DTEND` batendo com a duração
    somada, alarme 1h antes, dobra de linha em 75 bytes); o gesto de cada
    aparelho só o telefone de verdade responde.
-4. **Remarcar pelo link**, no mesmo agendamento: mesmo token, lembrete refeito,
-   piso de 30 minutos como o do cancelamento. **Reverte uma decisão escrita:**
-   o comentário de `MeuHorarioPage.tsx` diz que remarcar ia para o WhatsApp de
-   propósito ("reagendar é conversa"); o dono decidiu o contrário.
+4. **Remarcar pelo link** — **o servidor está pronto (13/09, migration 0169 +
+   ação `remarcar_horario`); falta a tela.** Mesmo agendamento, **mesmo
+   token** (o link guardado no celular continua valendo), lembrete refeito,
+   piso de 30 minutos sobre o horário ATUAL. **Reverte uma decisão escrita:**
+   o comentário de `MeuHorarioPage.tsx` dizia que remarcar ia para o WhatsApp
+   de propósito ("reagendar é conversa"); com a janela de catorze dias isso
+   virou atrito, não cuidado.
+
+   **A parte difícil não era a regra, era `horarios_livres`.** Ela esconde todo
+   horário que colide com um agendamento de pé — e o agendamento que está sendo
+   movido é um deles. Quem quisesse sair das 14:00 para as 14:10 não veria as
+   14:10: ele mesmo bloqueava. `p_ignorar_agendamento` resolve nos dois pontos
+   em que a função olha os agendamentos (a âncora no fim do atendimento e a
+   sobreposição).
+
+   **Precisou DERRUBAR e recriar a função**, não `create or replace`: parâmetro
+   novo com padrão vira sobrecarga, e aí toda chamada de quatro argumentos fica
+   ambígua e a agenda pública inteira para. Conferido antes de mexer que só a
+   edge e `dias_com_horario` chamam, e depois de aplicar que a edge antiga (com
+   4 argumentos) continua respondendo.
+
+   **O trinco virou teste.** Função recriada nasce com EXECUTE para `public`;
+   sem o revoke, a agenda de qualquer barbearia sairia por REST sem a edge no
+   meio. Nenhum teste cobria grants de `horarios_livres` nem de
+   `dias_com_horario` — agora cobre.
+
+   **Falta (PR seguinte):** a tela. O plano é reaproveitar a agenda pública em
+   modo remarcar (`/agendar/:salonId?remarcar=<token>`), porque a faixa de
+   dias, a grade e os períodos já estão lá; o `meu_horario` já devolve o
+   `salonId` para isso. E **o aviso do CRM precisa incluir a remarcação** — a
+   coluna `remarcado_pelo_cliente_em` já é preenchida, mas a view
+   `cancelamentos_a_avisar` ainda só olha cancelamento. Sem isso, o horário que
+   mudou passa despercebido pela mesma porta que o cancelado passava.
 5. ~~**Já tenho horário**~~ — **CANCELADA em 13/09, por decisão do dono.**
    **Não peça o modelo à Meta.** Foi substituída por um botão "Já tem horário
    marcado?" no topo da agenda pública, que abre o WhatsApp **da barbearia**

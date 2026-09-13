@@ -1028,8 +1028,8 @@ Protótipo aprovado pelo dono em 12/09. Etapas:
    conteúdo do arquivo está conferido (`DTSTART`/`DTEND` batendo com a duração
    somada, alarme 1h antes, dobra de linha em 75 bytes); o gesto de cada
    aparelho só o telefone de verdade responde.
-4. **Remarcar pelo link** — **o servidor está pronto (13/09, migration 0169 +
-   ação `remarcar_horario`); falta a tela.** Mesmo agendamento, **mesmo
+4. ~~**Remarcar pelo link**~~ — **FEITA em 13/09** (servidor: migration 0169 +
+   ação `remarcar_horario`, PR #152; tela: PR #153). Mesmo agendamento, **mesmo
    token** (o link guardado no celular continua valendo), lembrete refeito,
    piso de 30 minutos sobre o horário ATUAL. **Reverte uma decisão escrita:**
    o comentário de `MeuHorarioPage.tsx` dizia que remarcar ia para o WhatsApp
@@ -1337,15 +1337,29 @@ isso sozinho ao ler a resposta do lembrete.
 **Não verificado em conversa real.** O teste é responder "confirmo" a um lembrete
 e ver `appointments.status` virar `confirmado`.
 
-### `whatsapp/index.ts` escolhe salão arbitrário sem `salonId`
-Em `supabase/functions/whatsapp/index.ts`, quando `body.salonId` não vem, a
-consulta faz `.limit(1).maybeSingle()` e pega um vínculo qualquer. O comentário
-logo acima diz por que isso é errado. Para dono de rede com várias unidades,
-uma chamada sem `salonId` pode conectar, desconectar ou consultar status da
-unidade errada.
+### ~~`whatsapp/index.ts` escolhe salão arbitrário sem `salonId`~~ — RESOLVIDO em 13/09
+Quando `body.salonId` não vinha, a consulta fazia `.limit(1).maybeSingle()` e
+pegava um vínculo qualquer — sem `order by`, então nem sempre o mesmo. O
+comentário três linhas acima explicava por que isso era errado; o `else` fazia
+exatamente isso.
 
-Saídas: exigir `salonId` (400 sem ele), ou aceitar o fallback só quando o
-usuário tem exatamente um vínculo.
+**A idade é a parte interessante:** o fallback nasceu em **26/07/2026**, no
+commit *"Conexao do WhatsApp respeita a unidade selecionada"* — o commit que
+**consertou** este bug na tela e guardou o comportamento antigo no `else`, por
+precaução. Ficou 49 dias. Meio conserto que preserva o defeito "por segurança"
+é o defeito com data marcada.
+
+**Alcance real, medido lendo as cinco ações:** `send` e `resume_agent` já
+comparavam `conversation.salon_id !== salonId` e devolviam 404 — nunca houve
+vazamento entre inquilinos. Quem machucava eram `connect`, `status` e
+`disconnect`, que agem sobre `instanceNameFor(salonId)`: **`disconnect` derruba
+o WhatsApp de uma unidade que está atendendo** enquanto o dono acha que desligou
+outra, e as três gravam `whatsapp_connections` do salão errado.
+
+**Resolvido exigindo o salão** (`_shared/salaoDoPedido.ts`, 400 sem ele): não
+existe fallback seguro para "qual unidade?", e ambiguidade em ação destrutiva se
+resolve recusando. Os três chamadores do CRM já mandavam `salonId` desde 26/07 e
+todos têm `if (!salonId) return` antes — nenhum quebra. Edge redeployada (v51).
 
 ---
 

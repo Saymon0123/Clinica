@@ -1,5 +1,6 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { instanceNameFor } from '../_shared/instanceName.ts'
+import { SemSalao, salaoDoPedido } from '../_shared/salaoDoPedido.ts'
 import { capturarErro, comSentry } from '../_shared/sentry.ts'
 import evolutionConfig from '../_shared/evolutionConfig.json' with { type: 'json' }
 import { marcarSalao } from '../_shared/log.ts'
@@ -89,16 +90,28 @@ Deno.serve(comSentry('whatsapp', async (req: Request, ctx) => {
   // Cada unidade tem a própria instância na Evolution (`salon-<id>`), com
   // número e conversas próprios. Numa rede, portanto, o salão precisa vir do
   // que está selecionado na tela — pegar o primeiro vínculo faria o dono
-  // conectar a unidade errada.
-  const consulta = supabase
+  // conectar, ou DESCONECTAR, a unidade errada.
+  //
+  // Até 13/09 havia um fallback aqui para o pedido que não mandasse `salonId`:
+  // `consulta.limit(1)`, exatamente o que o parágrafo acima diz que não pode.
+  // Pedido ambíguo agora é recusado — o porquê está em `_shared/salaoDoPedido.ts`.
+  let salonPedido: string
+  try {
+    salonPedido = salaoDoPedido(body)
+  } catch (err) {
+    if (err instanceof SemSalao) {
+      return json({ error: 'É preciso dizer em qual salão mexer.' }, 400)
+    }
+    throw err
+  }
+
+  const { data: vinculo, error: vinculoError } = await supabase
     .from('user_salons')
     .select('salon_id, role')
     .eq('user_id', userData.user.id)
     .in('role', ['owner', 'gerente'])
-
-  const { data: vinculo, error: vinculoError } = body.salonId
-    ? await consulta.eq('salon_id', body.salonId).maybeSingle()
-    : await consulta.limit(1).maybeSingle()
+    .eq('salon_id', salonPedido)
+    .maybeSingle()
 
   if (vinculoError || !vinculo) {
     return json({ error: 'Salão não encontrado para este usuário.' }, 404)

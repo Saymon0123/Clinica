@@ -166,6 +166,102 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
   // Gestão pelo token: ver e cancelar O PRÓPRIO horário. Sem salonId de
   // propósito — o token resolve tudo, e não vaza nada de ninguém.
   // ------------------------------------------------------------------
+  // ------------------------------------------------------------------
+  // Os horários guardados NESTE CELULAR (etapa 3).
+  //
+  // POR QUE UMA AÇÃO NOVA, e não chamar `meu_horario` uma vez por token: o
+  // freio de gestão é de 12 chamadas por 10 minutos, e ele existe para tornar
+  // caro martelar token. Buscando um por vez, quem tem dois horários salvos e
+  // recarrega seis vezes bate no teto — o freio passaria a punir justamente o
+  // cliente de casa. Aqui é UMA chamada para todos, e o freio segue inteiro.
+  //
+  // O teto de 12 chamadas × 5 tokens dá 60 tentativas por 10 min no lugar de
+  // 12. Contra `gen_random_uuid()` (2^122 possibilidades) a diferença não
+  // existe; o que o freio segura é o custo de banda e banco, e esse continua
+  // sendo uma consulta por chamada.
+  //
+  // TOKEN DESCONHECIDO SOME DA RESPOSTA, sem erro. Dizer "esse não existe"
+  // transformaria isto num verificador de tokens.
+  // ------------------------------------------------------------------
+  if (body.acao === 'meus_horarios') {
+    const brutos = Array.isArray(body.tokens) ? (body.tokens as unknown[]).slice(0, 5) : []
+    const tokens = [
+      ...new Set(
+        brutos.filter(
+          (t): t is string =>
+            typeof t === 'string' &&
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(t.trim()),
+        ),
+      ),
+    ].map((t) => t.trim())
+    if (!tokens.length) return json({ horarios: [] })
+
+    if (await taxaExcedida(admin, `gestao:${ipDe(req)}`, 12, 600, 'deixa-passar')) {
+      return json({ error: 'Muitas tentativas. Aguarde alguns minutos.' }, 429)
+    }
+
+    const { data: agendamentos, error: erroAg } = await admin
+      .from('appointments')
+      .select(
+        'token_gestao, status, data_hora_inicio, data_hora_fim, professionals(nome), salons(nome, telefone)',
+      )
+      .in('token_gestao', tokens)
+    if (erroAg) {
+      console.error('Erro ao buscar horarios guardados:', erroAg)
+      return json({ error: 'Não foi possível carregar seus horários.' }, 500)
+    }
+
+    // Os serviços de todos de uma vez: a ficha do celular mostra "Corte + barba",
+    // não só o principal.
+    const porToken = new Map((agendamentos ?? []).map((a) => [a.token_gestao as string, a]))
+    const { data: linhas } = await admin
+      .from('appointment_services')
+      .select('appointment_id, ordem, services(nome), appointments!inner(token_gestao)')
+      .in('appointments.token_gestao', tokens)
+      .order('ordem')
+
+    const servicosPorToken = new Map<string, string[]>()
+    for (const linha of linhas ?? []) {
+      const dono = (Array.isArray(linha.appointments) ? linha.appointments[0] : linha.appointments) as
+        | { token_gestao: string }
+        | null
+      const servico = (Array.isArray(linha.services) ? linha.services[0] : linha.services) as
+        | { nome: string | null }
+        | null
+      if (!dono?.token_gestao || !servico?.nome) continue
+      const lista = servicosPorToken.get(dono.token_gestao) ?? []
+      lista.push(servico.nome)
+      servicosPorToken.set(dono.token_gestao, lista)
+    }
+
+    type Rel = { nome: string | null } | { nome: string | null }[] | null
+    const nomeDe = (r: Rel) => (Array.isArray(r) ? r[0]?.nome : r?.nome) ?? null
+
+    // A ORDEM É A QUE O CELULAR PEDIU. Devolver na ordem do banco faria o
+    // cartão de cima trocar de lugar entre uma carga e outra.
+    const horarios = tokens
+      .map((token) => {
+        const ag = porToken.get(token)
+        if (!ag) return null
+        const salaoRel = (Array.isArray(ag.salons) ? ag.salons[0] : ag.salons) as
+          | { nome: string | null; telefone: string | null }
+          | null
+        return {
+          token,
+          status: ag.status,
+          inicio: ag.data_hora_inicio,
+          fim: ag.data_hora_fim,
+          servicos: servicosPorToken.get(token) ?? [],
+          barbeiro: nomeDe(ag.professionals as Rel),
+          barbearia: salaoRel?.nome ?? null,
+          whatsappBarbearia: whatsappDe(salaoRel?.telefone),
+        }
+      })
+      .filter((h) => h !== null)
+
+    return json({ horarios })
+  }
+
   if (body.acao === 'meu_horario' || body.acao === 'cancelar_horario') {
     const token = (body.token as string | undefined)?.trim() ?? ''
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {

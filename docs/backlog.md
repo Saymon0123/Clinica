@@ -997,7 +997,27 @@ Protótipo aprovado pelo dono em 12/09. Etapas:
    catorze dias quem marcou para sábado e quer a barba na quinta. Mantida em 1
    (nada regride). A resposta boa provavelmente é a **etapa 4**: quem já tem
    horário o vê e remarca, e "você já marcou" deixa de ser um não.
-3. **Seu horário neste celular**, com o botão de pôr na agenda do celular.
+3. ~~**Seu horário neste celular**~~ — **FEITA em 13/09.** O aparelho guarda o
+   token no `localStorage` ao marcar (`guardados.ts`) e, ao voltar ao link da
+   barbearia, o horário aparece num cartão no topo, com "Ver ou cancelar" e
+   "Pôr na agenda" (`.ics`, `calendario.ts`). Aposentou o **"salve nos
+   favoritos ou tire um print"** da tela de sucesso, que era o sistema pedindo
+   à pessoa que fizesse o trabalho dele.
+
+   **Ação nova na edge, `meus_horarios`**, que resolve todos os tokens numa
+   chamada só. Um token por chamada esbarraria no freio de gestão (12 por 10
+   min), que existe para encarecer o martelo — não para punir quem tem dois
+   horários e recarrega a página.
+
+   **A regra mais perigosa mora em `tokensAEsquecer`, com teste:** "o servidor
+   não respondeu" (rede, 429, 500) **não é** "nenhum está de pé". Sem essa
+   distinção, um soluço de conexão apagaria os horários guardados para sempre,
+   e a pessoa só descobriria ao chegar na barbearia.
+
+   **Não verificado por mim:** o que cada celular FAZ ao receber o `.ics`. O
+   conteúdo do arquivo está conferido (`DTSTART`/`DTEND` batendo com a duração
+   somada, alarme 1h antes, dobra de linha em 75 bytes); o gesto de cada
+   aparelho só o telefone de verdade responde.
 4. **Remarcar pelo link**, no mesmo agendamento: mesmo token, lembrete refeito,
    piso de 30 minutos como o do cancelamento. **Reverte uma decisão escrita:**
    o comentário de `MeuHorarioPage.tsx` diz que remarcar ia para o WhatsApp de

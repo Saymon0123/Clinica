@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from 'react'
 import { MarcaClubCut } from '../../components/MarcaClubCut'
 import { useParams } from 'react-router-dom'
-import { ArrowRight, Check, Clock, MapPin, MessageCircle } from 'lucide-react'
+import { ArrowRight, CalendarPlus, Check, Clock, MapPin, MessageCircle } from 'lucide-react'
 import { invokeFunction } from '../../lib/invokeFunction'
 import { ErroInline } from '../../components/ErroInline'
 import { AVISO_TELEFONE_FORMATO, classificarTelefone } from '../../lib/telefone'
@@ -20,6 +20,8 @@ import {
   type ContagemDoDia,
   type DiaDaFaixa,
 } from './dias'
+import { esquecer, guardar, lerGuardados, tokensAEsquecer } from './guardados'
+import { eventoIcs } from './calendario'
 
 /**
  * A página que o QR do balcão abre.
@@ -64,9 +66,19 @@ import {
  * O Club Cut sai do topo e vai para o rodapé. A marca continua lá — em tamanho
  * de assinatura, que é o lugar dela numa página que é da barbearia.
  *
- * O que NÃO entrou aqui, de propósito (etapas 2 a 6 do plano em
- * `docs/backlog.md`): os 14 dias, o horário guardado no celular, remarcar pelo
- * link, o "já tenho horário" e o aviso à barbearia quando o cliente cancela.
+ * ─── O que veio depois, no mesmo dia ───────────────────────────────────────
+ *
+ * - **Etapa 2:** catorze dias, com a faixa contando as vagas de cada um.
+ * - **Vários serviços** num agendamento (fase 2 da migration 0120).
+ * - **Porta do "já tenho horário"** no topo, direto para o WhatsApp da
+ *   barbearia — no lugar da etapa 5, que dependia da Meta e foi cancelada.
+ * - **Etapa 3:** o horário guardado NESTE celular (`guardados.ts`) e o botão de
+ *   pôr na agenda (`calendario.ts`). Foi o que aposentou o "salve nos favoritos
+ *   ou tire um print" da tela de sucesso.
+ *
+ * AINDA FORA, de propósito: **remarcar pelo link** (etapa 4) e o **aviso à
+ * barbearia** quando o cliente cancela sozinho (etapa 6) — que fica mais
+ * urgente agora, porque a etapa 3 faz mais gente cancelar sem avisar ninguém.
  */
 
 type Servico = { id: string; nome: string; preco: number; duracao_minutos: number }
@@ -97,6 +109,72 @@ type Consulta = {
   horarios: Horario[]
   /** Por que `horarios` veio vazio (M8). Ausente numa função anterior a isto. */
   motivoVazio?: MotivoSemHorario | null
+}
+
+/** Um horário que este celular guardou, já conferido com o servidor. */
+type MeuHorario = {
+  token: string
+  status: string
+  inicio: string
+  fim: string
+  servicos: string[]
+  barbeiro: string | null
+  barbearia: string | null
+}
+
+/** Os únicos status em que ainda há o que fazer. Lista positiva, como no
+ *  cancelamento pelo link: status novo não entra por esquecimento. */
+const DE_PE = ['agendado', 'confirmado']
+
+/** O mesmo piso de `private.pode_cancelar` (migration 0166). Aqui ele só
+ *  escolhe o texto do botão — quem recusa de verdade é o servidor. */
+const PISO_PARA_CANCELAR_MS = 30 * 60_000
+
+const DIA_LONGO = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: 'America/Sao_Paulo',
+  weekday: 'long',
+  day: '2-digit',
+  month: '2-digit',
+})
+const HORA_CURTA = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: 'America/Sao_Paulo',
+  hour: '2-digit',
+  minute: '2-digit',
+})
+
+/** "segunda-feira, 14/09 às 10:00", sempre no fuso da barbearia. */
+function quandoPorExtenso(iso: string) {
+  const d = new Date(iso)
+  return `${DIA_LONGO.format(d)} às ${HORA_CURTA.format(d)}`
+}
+
+/**
+ * Baixa o `.ics` do horário.
+ *
+ * O NOME DO ARQUIVO importa mais do que parece: é o que a pessoa vê na lista de
+ * downloads do Android. "horario.ics" some entre dez outros; com a barbearia e
+ * o dia ela reconhece.
+ */
+function baixarNaAgenda(h: MeuHorario, endereco?: string | null) {
+  const titulo = [h.servicos.join(' + ') || 'Horário', h.barbearia].filter(Boolean).join(' — ')
+  const ics = eventoIcs({
+    id: h.token,
+    titulo,
+    inicio: new Date(h.inicio),
+    fim: new Date(h.fim),
+    local: endereco,
+    descricao: h.barbeiro ? `Com ${h.barbeiro}.` : null,
+    agora: new Date(),
+  })
+  const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${(h.barbearia ?? 'horario').replace(/[^\p{L}\p{N}]+/gu, '-').toLowerCase()}.ics`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  // Revogar na hora corta o download no meio em alguns navegadores.
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }
 
 /** Palavras que não viram inicial: "Barbearia do João" é BJ, não BDJ. */
@@ -476,6 +554,8 @@ export function AgendaPublicaPage() {
   const [pronto, setPronto] = useState(false)
   // O link de gestão: é a única chave para cancelar este horário depois.
   const [tokenGestao, setTokenGestao] = useState<string | null>(null)
+  // Os horários que este celular guarda, já conferidos com o servidor.
+  const [meusHorarios, setMeusHorarios] = useState<MeuHorario[]>([])
   // Guardado FORA de `dados` porque o caso que mais precisa dele é justamente
   // aquele em que `dados` fica nulo: recurso desligado, teto batido, falha de
   // carga. Vem no corpo da resposta mesmo quando ela é de erro.
@@ -554,6 +634,41 @@ export function AgendaPublicaPage() {
     consultar()
   }, [consultar])
 
+  /**
+   * Os horários que ESTE celular guardou, conferidos com o servidor.
+   *
+   * Uma chamada só para todos os tokens (`meus_horarios`), e não uma por
+   * token: o freio de gestão é de 12 por 10 minutos, e ele existe para
+   * encarecer o martelo — não para punir quem tem dois horários e recarrega a
+   * página.
+   */
+  useEffect(() => {
+    if (!salonId) return
+    const guardados = lerGuardados(salonId, new Date())
+    if (!guardados.length) return
+
+    let descartar = false
+    void (async () => {
+      const { data } = await invokeFunction<{ horarios: MeuHorario[] }>('agenda-publica', {
+        body: { acao: 'meus_horarios', tokens: guardados.map((g) => g.token) },
+      })
+      if (descartar) return
+
+      // `data` indefinido é o servidor NÃO ter respondido (rede, 429, 500), e
+      // `tokensAEsquecer` trata isso como "não esqueça nada". A regra mora lá,
+      // e não aqui, porque é a mais perigosa do recurso — dentro do efeito ela
+      // não tinha como ser testada.
+      for (const token of tokensAEsquecer(guardados, data?.horarios ?? null)) {
+        esquecer(salonId, token, new Date())
+      }
+      if (!data) return
+      setMeusHorarios((data.horarios ?? []).filter((h) => DE_PE.includes(h.status)))
+    })()
+    return () => {
+      descartar = true
+    }
+  }, [salonId])
+
   async function agendar(e: FormEvent) {
     e.preventDefault()
     setErro(null)
@@ -605,6 +720,12 @@ export function AgendaPublicaPage() {
       return
     }
     setTokenGestao(data.tokenGestao ?? null)
+    // O aparelho guarda o link sozinho. Era isto ou o "salve nos favoritos ou
+    // tire um print" — que é pedir para a pessoa fazer o trabalho do sistema,
+    // no minuto em que ela está com pressa e já conseguiu o que queria.
+    if (salonId && data.tokenGestao && escolhido) {
+      guardar(salonId, { token: data.tokenGestao, inicio: escolhido.inicio }, new Date())
+    }
     setPronto(true)
   }
 
@@ -718,17 +839,49 @@ export function AgendaPublicaPage() {
                 <strong>{escolhido?.hora_local}</strong> com {escolhido?.profissional}
                 {resumoDosServicos ? `, ${resumoDosServicos}` : ''}.
               </p>
-              {tokenGestao ? (
-                <p className="text-sm text-muted-foreground">
-                  Precisou desmarcar?{' '}
-                  <a
-                    href={`/meu-horario/${tokenGestao}`}
-                    className="font-medium text-primary underline"
+              {tokenGestao && escolhido ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      baixarNaAgenda(
+                        {
+                          token: tokenGestao,
+                          status: 'agendado',
+                          inicio: escolhido.inicio,
+                          // O fim sai da soma das durações, a mesma conta que o
+                          // servidor usou para reservar a cadeira.
+                          fim: new Date(
+                            new Date(escolhido.inicio).getTime() + duracaoTotal * 60_000,
+                          ).toISOString(),
+                          servicos: servicosEscolhidos.map((s) => s.nome),
+                          barbeiro: escolhido.profissional,
+                          barbearia: nomeSalao,
+                        },
+                        dados?.endereco,
+                      )
+                    }
+                    className="flex w-full items-center justify-center gap-2 btn-secondary rounded-lg px-3 py-3 text-sm font-semibold"
                   >
-                    Gerencie seu horário por este link
-                  </a>{' '}
-                  — salve nos favoritos ou tire um print.
-                </p>
+                    <CalendarPlus size={16} aria-hidden />
+                    Pôr na agenda do celular
+                  </button>
+
+                  {/* O "salve nos favoritos ou tire um print" saiu daqui.
+                      Era o sistema pedindo à pessoa que fizesse o trabalho
+                      dele, no minuto em que ela está com pressa e já conseguiu
+                      o que queria — e quem não fazia nunca mais achava o link.
+                      Agora o aparelho guarda sozinho (etapa 3). */}
+                  <p className="rounded-lg bg-surface-2 p-3 text-[13px] leading-snug text-muted-foreground">
+                    <strong className="text-foreground">Salvo neste celular.</strong> Ao abrir o
+                    link da barbearia de novo, seu horário aparece no topo, com a opção de
+                    cancelar.{' '}
+                    <a href={`/meu-horario/${tokenGestao}`} className="font-medium text-primary underline">
+                      Ver agora
+                    </a>
+                    .
+                  </p>
+                </>
               ) : (
                 <p className="text-sm text-muted-foreground">
                   É só aguardar. Se precisar mudar alguma coisa, fale com a barbearia.
@@ -818,6 +971,55 @@ export function AgendaPublicaPage() {
           ) : (
             // ---------- Passos 1 e 2: serviço e horário ----------
             <div className="space-y-6">
+              {/* O horário que ESTE celular guarda, acima de tudo (etapa 3).
+
+                  Quem volta ao link da barbearia com um horário marcado quase
+                  nunca veio marcar outro — veio ver o que já tem. O cartão
+                  responde isso antes do primeiro toque, e sem depender de a
+                  pessoa ter salvo o link nos favoritos. */}
+              {meusHorarios.map((h) => (
+                <section
+                  key={h.token}
+                  className="surge rounded-xl border border-primary/40 bg-primary-soft/40 p-4"
+                >
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary-soft-foreground">
+                    Seu horário neste celular
+                  </div>
+                  <div className="mt-1 text-base font-bold text-foreground">
+                    {quandoPorExtenso(h.inicio)}
+                  </div>
+                  <div className="mt-0.5 text-[13px] text-muted-foreground">
+                    {[h.servicos.join(' + '), h.barbeiro && `com ${h.barbeiro}`]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <a
+                      href={`/meu-horario/${h.token}`}
+                      className="btn-primary rounded-lg px-3 py-2 text-sm font-semibold"
+                    >
+                      {/* O texto diz a verdade sobre o que dá para fazer AGORA.
+                          Dentro dos 30 minutos o servidor recusa o cancelamento
+                          (`private.pode_cancelar`), e prometer "cancelar" ali
+                          levaria a pessoa a um "não" que ela não esperava. */}
+                      {new Date(h.inicio).getTime() - Date.now() >= PISO_PARA_CANCELAR_MS
+                        ? 'Ver ou cancelar'
+                        : 'Ver meu horário'}
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => baixarNaAgenda(h, dados.endereco)}
+                      className="btn-secondary rounded-lg px-3 py-2 text-sm font-semibold"
+                    >
+                      <span className="inline-flex items-center gap-1.5">
+                        <CalendarPlus size={15} aria-hidden />
+                        Pôr na agenda
+                      </span>
+                    </button>
+                  </div>
+                </section>
+              ))}
+
               {/* A porta de quem JÁ tem horário, antes do passo 1.
 
                   POR QUE NO TOPO. O caminho já existia, mas só abria no fim:
@@ -830,11 +1032,13 @@ export function AgendaPublicaPage() {
                   POR QUE DISCRETA. Quase todo mundo que abre o QR veio marcar,
                   não desmarcar. Traço pontilhado e texto apagado: quem procura
                   acha, quem não procura não tropeça. */}
-              <FalarComABarbearia
-                numero={whatsapp}
-                forma="porta"
-                mensagem="Oi! Já tenho um horário marcado e queria falar sobre ele."
-              />
+              {meusHorarios.length === 0 && (
+                <FalarComABarbearia
+                  numero={whatsapp}
+                  forma="porta"
+                  mensagem="Oi! Já tenho um horário marcado e queria falar sobre ele."
+                />
+              )}
 
               <section>
                 <div className="mb-2.5 flex items-baseline justify-between gap-3">

@@ -32,6 +32,50 @@ salões. Trocar no servidor e atualizar o secret no Supabase.
 
 ## Correção de comportamento
 
+### ~~A fila de auditoria parou de ser fila~~ — RESOLVIDO em 13/09 (migration 0172)
+Por 40 horas, o fluxo "Auditoria do Agente" falhou a cada 30 minutos com
+`duplicate key value violates unique constraint "auditoria_avisos_pkey"`. ~80
+execuções vermelhas, e **dois e-mails por ciclo** para o dono: o relatório de
+auditoria — sempre com os mesmos dois achados, de 08 e 09/09 — e o alerta de
+falha.
+
+**A causa.** `auditoria_pendente` deixou de filtrar o que já tinha sido avisado.
+A 0152 a definia com o anti-join:
+
+```sql
+from ( ...oito fontes em union all... ) a
+left join auditoria_avisos av on av.chave = a.chave
+where av.chave is null
+```
+
+A **0162** a recriou para somar `auditoria_mensagens` e escreveu só o `union
+all`. A **0165** acrescentou a décima fonte copiando o `pg_get_viewdef` da
+versão já quebrada, e levou o erro adiante com a cara de quem só somou uma
+linha.
+
+**É a terceira vez que um `create or replace view` perde algo que não estava na
+cara:** as três views de cobrança perderam `security_invoker` (A2, 0144), a
+própria `auditoria_pendente` perdeu (0152, consertado pela 0157), e agora o
+anti-join. O replace não carrega nada da versão anterior — nem opção, nem
+cláusula que quem reescreve não tenha copiado.
+
+**O que salvou de ser pior:** a chave primária de `auditoria_avisos`. Ela é a
+trava de "avisa uma vez só", e é por causa dela que isto explodiu em vez de
+duplicar aviso em silêncio. Restrição no banco fez o trabalho que o código não
+fez.
+
+**Nada se perdeu** — conferido antes de mexer: não havia nenhum achado na fila
+que não estivesse já em `auditoria_avisos`. O e-mail vinha repetido, não
+faltando. Mas o canal de alerta virou ruído, que é pior do que mudo: um achado
+NOVO chegaria no meio da enxurrada e ninguém veria.
+
+**A catraca que faltava, e que já estava meio escrita.**
+`a_mensagem_nao_se_perde.test.sql` — que shipou **junto com a 0162** — já
+provava que o achado CHEGA em `auditoria_pendente`. Nunca que ele SAI depois de
+avisado. Cobria exatamente a metade que continuou funcionando. As duas
+asserções que faltavam entraram na 0172.
+
+
 ### ~~Laço infinito de render remontava as telas sem parar~~ — CORRIGIDO
 Achado em 2026-08-02, perseguindo por que a aba WEB não abria a conversa
 clicada. O `AuthContext` recriava o objeto `value` e as funções `signIn` /

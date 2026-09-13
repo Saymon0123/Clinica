@@ -10,7 +10,7 @@ create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
 begin;
-select plan(11);
+select plan(13);
 
 \set salao   'eeee9000-0000-0000-0000-000000000001'
 \set wamid   'wamid.TESTE0001'
@@ -114,6 +114,32 @@ select is(
   (select count(*)::int from auditoria_pendente where chave = 'mensagem-parada:' || :'wamid4'),
   1,
   'e chega em auditoria_pendente, que e por onde o aviso sai'
+);
+
+-- ── E SAI DE LA DEPOIS DE AVISADO (migration 0172) ─────────────────────────
+-- A metade que faltava. O teste acima nasceu junto com a 0162 e ficou verde
+-- enquanto a 0162 QUEBRAVA justamente isto: ela recriou `auditoria_pendente`
+-- para somar `auditoria_mensagens` e escreveu so o `union all`, sem o anti-join
+-- com `auditoria_avisos` que a 0152 tinha. A fila deixou de ser fila.
+--
+-- O estrago: o fluxo de auditoria do n8n mandava o MESMO e-mail a cada 30
+-- minutos e depois batia na chave primaria de `auditoria_avisos` ao tentar
+-- marcar de novo -- ~80 execucoes vermelhas e dois e-mails por ciclo, por 40
+-- horas. Achado novo chegaria no meio da enxurrada e ninguem veria.
+--
+-- Provar que o achado CHEGA e metade do contrato. Esta e a outra.
+insert into auditoria_avisos (chave) values ('mensagem-parada:' || :'wamid4');
+
+select is(
+  (select count(*)::int from auditoria_pendente where chave = 'mensagem-parada:' || :'wamid4'),
+  0,
+  'e SAI da fila depois de avisado -- sem isto o mesmo alarme volta a cada 30 min e a gravacao esbarra na chave primaria'
+);
+
+select is(
+  (select count(*)::int from auditoria_mensagens where chave = 'mensagem-parada:' || :'wamid4'),
+  1,
+  'mas continua em auditoria_mensagens: quem some da FILA nao some do historico'
 );
 
 -- ---------------------------------------------------------------------------

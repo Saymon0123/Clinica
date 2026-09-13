@@ -934,12 +934,28 @@ por ele em 11/09:
    dono antes da próxima.
 4. **Protótipo navegável antes do código**, para aprovar o desenho.
 
-Etapas propostas, aguardando a aprovação do protótipo:
+Protótipo aprovado pelo dono em 12/09. Etapas:
 
-1. **Cara de barbearia** com o que já existe (nome, endereço, horário de
-   funcionamento, WhatsApp): serviços em cartões com preço e duração, próximo
-   horário em destaque e o resto por período, esqueleto no carregamento, duas
-   colunas no computador. Sem endereço cadastrado, a linha some.
+1. ~~**Cara de barbearia**~~ — **FEITA em 13/09**. Iniciais, nome, "aberto
+   agora", endereço e WhatsApp no lugar do ícone do Club Cut (que desceu para o
+   rodapé); serviços em cartões com preço e duração; próximo horário livre em
+   destaque e o resto por manhã/tarde/noite; quadro de funcionamento; esqueleto
+   no carregamento; duas colunas no computador. Sem endereço cadastrado, a
+   linha some — é o caso da El Guardians, cujo `endereco` é nulo.
+
+   **Sem migration:** `endereco` e `horario_funcionamento` já existiam em
+   `salons` E na view `salons_atendendo`; só faltava a edge devolvê-los. Os
+   campos entraram AO LADO de `salao` (string), e não trocando o seu tipo,
+   porque a edge sobe antes de a Vercel terminar o build — nesse intervalo a
+   tela antiga ignora campo a mais, mas quebraria com campo de tipo trocado.
+
+   Três coisas foram derrubadas junto, e vale o registro: o **"ver mais N
+   horários"** (o corte em 12 existia porque o mais cedo ficava enterrado, e o
+   destaque do próximo resolve isso sem esconder a noite); o **fuso do
+   aparelho** (a pílula lê o horário em `America/Sao_Paulo`, como a RPC e a
+   edge — e o teste que prova isso precisa trocar o fuso do processo, senão
+   passa por acidente); e o **avatar com iniciais da frase de espera**, que
+   desenhava um selo verde escrito "CA" de "Carregando...".
 2. **14 dias**: a edge aceita a data e valida no servidor; faixa de dias na tela.
 3. **Seu horário neste celular**, com o botão de pôr na agenda do celular.
 4. **Remarcar pelo link**, no mesmo agendamento: mesmo token, lembrete refeito,

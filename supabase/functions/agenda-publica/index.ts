@@ -186,9 +186,15 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
   // termina em "não dá" precisa oferecer a conversa com a barbearia. O número
   // já existe no banco e o `/meu-horario` já o usa; faltava aqui, justamente
   // nas telas em que a pessoa não tem mais o que fazer sozinha.
+  // `endereco` e `horario_funcionamento` saem daqui desde 13/09 para a tela ter
+  // cara de barbearia (etapa 1 da agenda pelo QR v2): nome, "aberto agora",
+  // endereço e WhatsApp no lugar do ícone do Club Cut. Os dois campos já
+  // existiam em `salons` e na view — ninguém os mostrava, e quem escaneava o QR
+  // às 21h não tinha como saber se o expediente tinha acabado ou se a agenda
+  // estava só cheia.
   const { data: salao } = await admin
     .from('salons_atendendo')
-    .select('id, nome, telefone, horario_funcionamento')
+    .select('id, nome, endereco, telefone, horario_funcionamento')
     .eq('id', salonId)
     .maybeSingle()
 
@@ -246,6 +252,18 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
   // Consultar: serviços e horários livres de HOJE.
   // ------------------------------------------------------------------
   if (body.acao === 'consultar') {
+    // A identidade da barbearia, igual nos dois finais do `consultar`. Campos
+    // NOVOS ao lado dos antigos, e não um `salao` virando objeto: a edge sobe
+    // antes da Vercel terminar o build, e nesse intervalo a tela antiga
+    // continua lendo `salao` como string. Campo a mais ela ignora; campo que
+    // mudou de tipo quebraria o cabeçalho de todo mundo por alguns minutos.
+    const identidade = {
+      salao: salao.nome,
+      endereco: salao.endereco,
+      horarioFuncionamento: salao.horario_funcionamento,
+      whatsappBarbearia,
+    }
+
     const { data: servicos } = await admin
       .from('services')
       .select('id, nome, preco, duracao_minutos')
@@ -260,8 +278,7 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
       // Sem serviço ativo a tela mostrava um seletor vazio e mandava "tentar
       // outro serviço acima" (M8). Agora ela sabe o que dizer.
       return json({
-        salao: salao.nome,
-        whatsappBarbearia,
+        ...identidade,
         servicos: [],
         horarios: [],
         motivoVazio: 'sem_servicos',
@@ -313,8 +330,7 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
     }
 
     return json({
-      salao: salao.nome,
-      whatsappBarbearia,
+      ...identidade,
       servicos: servicos ?? [],
       servicoEscolhido: escolhido.id,
       horarios: horarios ?? [],

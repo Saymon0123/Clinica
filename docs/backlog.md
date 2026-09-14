@@ -1375,6 +1375,16 @@ percentual.
 
 ## Funcionalidade ausente
 
+### "Pediu para falar com o dono" não entra no sino de notificações — 2026-09-14
+O sino (migration 0173) mostra o que o cliente fez sozinho: marcou, mudou,
+cancelou. O quarto evento que gera aviso efêmero — **pediu o dono** — ficou de
+fora porque `whatsapp_conversations` guarda só o booleano `needs_human`, sem
+carimbo de QUANDO o pedido aconteceu. Para entrar: coluna
+`needs_human_em timestamptz` preenchida pelo agente (n8n, ferramenta Chamar o
+Dono) e um quarto ramo na view `notificacoes_do_salao`. Sem o carimbo, o
+histórico mentiria a hora.
+
+
 ### ~~Instância de WhatsApp própria para os alertas~~ — RESOLVIDO em 2026-08-21
 Não virou instância própria: virou **e-mail**. Na API oficial, mensagem que o
 sistema inicia exige template aprovado, e alerta de auditoria tem texto

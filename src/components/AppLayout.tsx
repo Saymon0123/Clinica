@@ -26,6 +26,7 @@ import { usePendingConversations } from '../features/whatsappWeb/usePendingConve
 import { usePedidosDeHumano } from '../features/whatsappWeb/usePedidosDeHumano'
 import { PedidoDeHumanoBanner } from '../features/whatsappWeb/PedidoDeHumanoBanner'
 import { Toasts } from './Toast'
+import { SinoDeNotificacoes } from '../features/notificacoes/SinoDeNotificacoes'
 import { useAssinatura } from '../features/assinatura/useAssinatura'
 import { AvisoAssinatura } from '../features/assinatura/AvisoAssinatura'
 import { AcessoBloqueado } from '../features/assinatura/AcessoBloqueado'
@@ -248,6 +249,7 @@ export function AppLayout() {
           <span className="font-semibold text-foreground truncate">{salonName ?? 'Rede'}</span>
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          <SinoDeNotificacoes />
           <ThemeToggle />
           <ProfileMenu />
         </div>
@@ -286,7 +288,10 @@ export function AppLayout() {
             Mesmo ProfileMenu de sempre — só mudou de lugar e abre para cima. */}
         <div className="px-3 py-3 border-t border-sidebar-border flex items-center justify-between gap-2">
           <ProfileMenu direcao="cima" />
-          <ThemeToggle />
+          <div className="flex items-center gap-1">
+            <SinoDeNotificacoes direcao="cima" />
+            <ThemeToggle />
+          </div>
         </div>
       </aside>
 

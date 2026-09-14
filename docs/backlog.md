@@ -4705,3 +4705,23 @@ link morto.
    do plano de 13/09).
 3. **O cadastro da El Guardians segue com dez dígitos.** O link agora é montado
    certo, mas arrumar na origem, pela tela de Configurações, é um minuto.
+
+## O aviso do canal não oficial — camadas 3 e 4 pendentes (2026-09-14)
+
+O produto passou a dizer com todas as letras que o pareamento por QR é uma
+conexão espelhada (como o WhatsApp Web), **não oficial nem endossada pela
+Meta**. Entrou em duas camadas: a cláusula 8 dos termos foi reescrita
+(`VERSAO_DOS_TERMOS` → `2026-09-14`, com o banco zerado ninguém precisou
+re-aceitar) e o card da aba Conexão ganhou duas frases discretas no ponto
+exato da decisão — com link "Entenda os dois canais" para os termos.
+
+**Fica aberto** (camadas recomendadas e ainda não feitas):
+
+1. **Central de Ajuda** — pergunta nova "O WhatsApp da minha barbearia pode
+   ser bloqueado?", explicando os dois canais, por que o híbrido protege o
+   número (tudo que nós iniciamos sai pelo oficial), o risco real do espelhado
+   e o que fazer se acontecer. Hoje o link do card da Conexão aponta para os
+   termos; quando esta entrada existir, pode apontar para ela.
+2. **Política de Privacidade** — não diz por onde as conversas dos clientes
+   da barbearia trafegam (infraestrutura do Club Cut). Uma frase fecha a
+   lacuna de LGPD.

@@ -120,18 +120,23 @@ export function TermosPage() {
 
       <Secao titulo="8. Sobre o WhatsApp">
         <p>
-          O atendimento automático conversa com seus clientes <strong>pelo número da sua
-          barbearia</strong>, conectado ao sistema por pareamento (QR code). Avisos automáticos —
-          como lembretes e confirmações de horário — são enviados por um número do Club Cut na{' '}
-          <strong>API oficial do WhatsApp (Meta)</strong>, sempre identificando a sua barbearia na
-          mensagem. O WhatsApp é um serviço da Meta, sujeito às políticas dela: a Meta pode
-          restringir ou suspender números, a critério dela, e nesse caso o atendimento ou os avisos
-          deixam de funcionar até a situação ser resolvida. Não respondemos por decisões da Meta, e
-          vamos ajudar você a regularizar sempre que acontecer.
+          O Club Cut usa <strong>dois canais</strong> de WhatsApp. Os avisos automáticos —
+          lembretes, confirmações de horário, reativação e pedidos de avaliação — saem por um
+          número do Club Cut na <strong>API oficial do WhatsApp (Meta)</strong>, com modelos
+          aprovados pela Meta, sempre identificando a sua barbearia na mensagem. Já a{' '}
+          <strong>conversa</strong> do atendimento automático com seus clientes acontece pelo
+          número da sua barbearia, conectado ao sistema por pareamento (QR code).
         </p>
         <p>
-          Mensagens que o sistema envia por iniciativa própria (como lembretes) usam modelos
-          aprovados pela Meta, como as regras dela exigem.
+          Esse pareamento é uma <strong>conexão espelhada, equivalente ao WhatsApp Web — um canal
+          que não é oficial nem endossado pela Meta</strong>. A Meta pode restringir ou suspender
+          números conectados assim, a critério dela e sem aviso. Por isso recomendamos conectar um{' '}
+          <strong>número dedicado à barbearia</strong>, separado do seu número pessoal.
+        </p>
+        <p>
+          Se uma restrição acontecer, o atendimento automático para até o número ser reconectado;
+          os avisos automáticos continuam, porque saem pelo canal oficial. Não respondemos por
+          decisões da Meta, e vamos ajudar você a regularizar sempre que acontecer.
         </p>
       </Secao>
 

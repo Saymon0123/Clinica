@@ -300,8 +300,24 @@ function ConexaoEvolutionLegada({ salonId }: { salonId: string }) {
         <p className="text-xs text-muted-foreground">
           Este é o número que <strong>conversa</strong> com seus clientes — o agente responde por
           ele. Já os <strong>lembretes e confirmações</strong> chegam ao cliente por um número do
-          Club Cut, sempre com o nome da sua barbearia na mensagem. Vale avisar no balcão: “o
-          lembrete chega por outro número, mas é da gente”.
+          Club Cut, na API oficial do WhatsApp, sempre com o nome da sua barbearia na mensagem.
+          Vale avisar no balcão: “o lembrete chega por outro número, mas é da gente”.
+        </p>
+        {/* O aviso mora onde a decisão acontece: é aqui que o dono pareia o
+            número DELE. Discreto de propósito — mesmo tom do resto do card. */}
+        <p className="text-xs text-muted-foreground mt-2">
+          A conexão é espelhada, como o WhatsApp Web — <strong>não é o canal oficial da Meta</strong>,
+          e em casos raros a Meta restringe números conectados assim. Prefira um número só da
+          barbearia, separado do seu pessoal.{' '}
+          <a
+            href="/termos"
+            target="_blank"
+            rel="noreferrer"
+            className="text-primary hover:underline"
+          >
+            Entenda os dois canais
+          </a>
+          .
         </p>
       </div>
 

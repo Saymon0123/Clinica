@@ -26,7 +26,7 @@ import { ipDe, taxaExcedida } from '../_shared/limite.ts'
 const ADMIN_TOOL_SECRET = Deno.env.get('ADMIN_TOOL_SECRET')
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const APP_URL = Deno.env.get('APP_URL') ?? 'https://clubcut.vercel.app'
+const APP_URL = Deno.env.get('APP_URL') ?? 'https://clubcut.space'
 
 /** Dias que o link fica de pé. Decidido em 2026-08-11: convite eterno vira
  *  link vazando por aí que cria acesso. */

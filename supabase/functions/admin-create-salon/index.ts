@@ -11,7 +11,7 @@ const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 // secret `APP_URL` sumir -- mas ai ele decide sozinho para onde a pessoa e
 // mandada, sem erro nenhum aparecer. Apontava para `clinica-crm-kappa` mesmo
 // depois de o produto virar Club Cut, e o dominio antigo um dia sai do ar.
-const APP_URL = Deno.env.get('APP_URL') ?? 'https://clubcut.vercel.app'
+const APP_URL = Deno.env.get('APP_URL') ?? 'https://clubcut.space'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

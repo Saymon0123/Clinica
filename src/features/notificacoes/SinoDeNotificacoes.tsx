@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Bell, CalendarClock, CalendarPlus, CalendarX, Inbox } from 'lucide-react'
 import { useSalon } from '../auth/useSalon'
-import { useNotificacoes } from './useNotificacoes'
+import { useNotificacoesDoShell } from './NotificacoesContext'
 import { rotuloDaNotificacao, tempoRelativo, type Notificacao } from './notificacoes'
 import { SkeletonLinhas } from '../../components/Skeleton'
 import { ErroInline } from '../../components/ErroInline'
@@ -64,8 +64,11 @@ function Item({ n, nova }: { n: Notificacao; nova: boolean }) {
  */
 export function SinoDeNotificacoes({ direcao = 'baixo' }: { direcao?: 'baixo' | 'cima' } = {}) {
   const { salonId } = useSalon()
+  // O estado vem do provider do AppLayout: o sino aparece DUAS vezes (celular
+  // e sidebar), e cada um chamando o hook abria dois canais com o mesmo nome —
+  // o segundo `subscribe()` derrubava o app (Sentry REACT-NATIVE-7).
   const { notificacoes, naoVistas, carregando, erro, recarregar, marcarVistas } =
-    useNotificacoes(salonId)
+    useNotificacoesDoShell()
   const [aberto, setAberto] = useState(false)
   // O marco de ANTES desta abertura: é ele que decide quais itens ganham o
   // pontinho, já que abrir o painel grava um marco novo na mesma hora.

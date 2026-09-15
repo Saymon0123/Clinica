@@ -5,8 +5,8 @@ import { Reveal } from './primitivos'
  * O programa de patentes do Club Cut.
  *
  * Chamava-se "Reconhecimento Aura", o que dava à feature o nome da empresa
- * (Aura Studio) e somava um quarto nome à página — Club Cut, Aura, Aurora,
- * Aura Studio. O programa é do produto, então leva o nome do produto.
+ * (hoje grafada Aura IA) e somava um quarto nome à página — Club Cut, Aura,
+ * Aurora, Aura IA. O programa é do produto, então leva o nome do produto.
  * (Auditoria 2026-08-28, P0 de marca.)
  *
  * Adaptado de um mockup de referência (não é a página original) para os

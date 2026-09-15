@@ -1042,10 +1042,10 @@ export function Rodape() {
         <span className="landing-label text-[var(--l-fg-faint)]">
           © {new Date().getFullYear()} Club Cut
         </span>
-        {/* "criado pela Aura" contradizia a própria página: Aura era o nome
-            do programa de patentes, e a empresa é Aura Studio. Uma marca, uma
-            assinatura. (Auditoria 2026-08-28, P0 de marca.) */}
-        <span className="landing-label text-[var(--l-fg-faint)]">um produto Aura Studio</span>
+        {/* Uma marca, uma assinatura (auditoria 2026-08-28, P0 de marca) — e
+            a grafia é a que a Meta verificou como empresa: Aura IA, a mesma
+            do nome de exibição do WhatsApp (decisão do dono, 15/09). */}
+        <span className="landing-label text-[var(--l-fg-faint)]">um produto Aura IA</span>
       </div>
     </footer>
   )

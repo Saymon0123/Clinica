@@ -39,8 +39,9 @@ usada no teste de pagamento.
 
 - **Backup** — Supabase no plano gratuito, **sem backup gerenciado**. É o único
   item que pode acabar com o negócio num dia.
-- **Domínio próprio** — ainda em `clubcut.vercel.app`. Falta o endereço e o
-  registrador para montar o passo a passo do DNS.
+- ~~**Domínio próprio**~~ — resolvido: `clubcut.space` no ar desde 04/09
+  (Hostinger, renova 04/09/2027), com Vercel, Supabase Auth, n8n e QR do
+  balcão apontados; canonical e OG do `index.html` alinhados em 15/09.
 
 **Trava o funil:**
 

@@ -4725,3 +4725,83 @@ exato da decisão — com link "Entenda os dois canais" para os termos.
 2. **Política de Privacidade** — não diz por onde as conversas dos clientes
    da barbearia trafegam (infraestrutura do Club Cut). Uma frase fecha a
    lacuna de LGPD.
+
+## O nome "Club Cut" rejeitado pela Meta — motivo verificado (2026-09-14)
+
+O dono enviou o nome de exibição do número oficial (+55 41 8475-4172) para
+análise e a Meta recusou. Verificado em duas fontes:
+
+- **Webhook** (`eventos_da_waba`): `phone_number_name_update` com
+  `decision: REJECTED` e `rejection_reason: BIZ_COMMERCE_VIOLATION_OTHER` —
+  **duas vezes**: `Club_Cut` em 08/09 e `Club Cut` em 14/09 às 21:30 UTC.
+- **Graph API**: `name_status: DECLINED`, `new_name_status: NONE`. O número
+  segue `CONNECTED`, qualidade `GREEN` — só o nome foi recusado; quem recebe
+  mensagem vê o número cru em vez de "Club Cut".
+
+**Por que o revisor recusou** (política de comércio, não o formato do nome):
+ele não consegue ligar "Club Cut" a um negócio identificável. O que ele vê:
+
+1. O portfólio do negócio se chama **MB001** — nada liga MB001 a "Club Cut".
+2. O perfil comercial do número está **vazio**: sem site, sem descrição, sem
+   e-mail, sem foto, `vertical: OTHER`.
+
+**A peça que faltava (dono, 14/09):** a empresa VERIFICADA na Análise de
+empresa é **"Aura IA"** — "MB001" é só o apelido do portfólio. A diretriz de
+nome de exibição exige relação clara com o negócio verificado e, quando o nome
+não a mostra por si, manda indicá-la no próprio nome ("by [BUSINESS NAME]").
+"Club Cut" sozinho + perfil vazio + nada público ligando a Aura IA = a recusa.
+
+**Feito em 14/09 (3º envio, com o terreno preparado):**
+
+1. ✅ Perfil comercial preenchido via API: site **`https://clubcut.space`**
+   (domínio próprio, revelado pelo dono em 14/09 — responde 200 com a
+   landing), about e descrição dizendo "um produto Aura IA", e-mail
+   **contato@clubcut.space**, `vertical: BEAUTY`. (Primeira tentativa saiu
+   com mojibake — o shell do Windows mandou os acentos em codepage errada;
+   refeito com `--data-binary @arquivo.json` UTF-8 e conferido byte a byte.
+   Segunda correção: eu tinha usado vercel.app e o e-mail da Aura; o dono
+   corrigiu para o domínio e e-mail próprios.)
+2. ✅ Nome reenviado via API (`new_display_name`): **"Club Cut - Aura IA"**,
+   com o nome verificado dentro, como a diretriz manda ("by [BUSINESS
+   NAME]"). Estado: `new_name_status: PENDING_REVIEW`. A decisão chega pelo
+   webhook `phone_number_name_update` em `eventos_da_waba`.
+
+**Fica aberto:**
+
+1. A foto do perfil (logo) — pela WhatsApp Manager, ação do dono.
+2. Alinhamentos que tiram atrito de revisões futuras: renomear o apelido do
+   portfólio (MB001) e o rodapé público — a landing diz "um produto **Aura
+   Studio**" e a verificação diz "**Aura IA**"; quem cruzar vê dois nomes.
+3. Se rejeitar de novo: apelar pelo formulário de suporte da Meta (tópico
+   "WABiz: Phone Number & Registration"), anexando documento do negócio.
+4. **Alinhar o produto ao domínio próprio** (`clubcut.space`) — varredura
+   completa em 15/09, estado VERIFICADO ao vivo:
+   - ✅ Vercel `VITE_APP_URL`, QR do balcão, convite/redefinição do front,
+     Auth do Supabase (site URL, allow-list, SMTP `contato@clubcut.space`),
+     n8n (convite ativo com link novo + 8 remetentes), templates da Meta e
+     views: **tudo já no domínio/e-mail novos**. Secret `APP_URL` existe
+     desde 04/09 (valor ilegível por digest; presumido certo pela data).
+   - ❌ `index.html` 35/41/47/58: canonical, `og:url` e `og:image` (2×) em
+     `clubcut.vercel.app` — o preview de link compartilhado mostra o domínio
+     de infra.
+   - ❌ About do repositório no GitHub: homepage
+     `https://clinica-crm-kappa.vercel.app` (o domínio mais antigo de todos,
+     num repo público).
+   - ❌ `src/lib/contato.ts`: `contato@aurastudioai.com.br` / `@auraiagency`
+     (miolo do PR #85; o substituto natural é `contato@clubcut.space`).
+   - ⚠️ Fallbacks das edges `admin-create-salon`/`admin-invite-salon` ainda
+     dizem vercel.app — adormecidos (o secret existe), trocar por coerência.
+   - ⚠️ `docs/estado-do-projeto.md:42` diz "ainda em clubcut.vercel.app" —
+     doc desatualizado.
+   - Observação de marca (não é domínio): rodapé da landing diz "um produto
+     **Aura Studio**" e razão social no código é "Aura Studio Ltda.",
+     enquanto a verificação da Meta diz "**Aura IA**".
+
+**Achado paralelo a confirmar:** `health_status` da WABA diz
+`can_send_message: BLOCKED` no nível do **APP** `1054189290929803` (erro
+141011, "faltam permissões de mensagem"). O token de gestão daqui não envia
+mesmo (só `whatsapp_business_management`, por desenho) — a dúvida é qual token
+o n8n usa nos disparos. Os testes até hoje foram para o número do próprio
+dono (admin do app), que em modo dev passa mesmo sem acesso avançado; cliente
+real pode ficar sem lembrete. Verificar no primeiro lembrete da rodada de
+testes (execução do n8n acusa 141011 se for o caso).

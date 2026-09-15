@@ -21,7 +21,12 @@
 // realidade atual: a conversa acontece no número da barbearia (pareado por QR)
 // e os avisos automáticos saem por número do Club Cut na API oficial. Quem
 // aceitou versões anteriores continua com o registro delas.
-export const VERSAO_DOS_TERMOS = '2026-08-31'
+// 2026-09-14: a cláusula do WhatsApp passou a dizer com todas as letras que o
+// pareamento por QR é uma conexão espelhada (como o WhatsApp Web), não oficial
+// nem endossada pela Meta — com o risco de restrição e a recomendação de
+// número dedicado. O texto de 08-31 descrevia os dois canais sem nomear a
+// natureza do segundo.
+export const VERSAO_DOS_TERMOS = '2026-09-14'
 
 /**
  * O texto ainda não passou por advogado.

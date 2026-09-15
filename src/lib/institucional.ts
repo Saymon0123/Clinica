@@ -80,7 +80,11 @@ export const QUEM_FAZ: Pessoa[] = [
 
 /** Dados da empresa. É o que separa "empresa" de "landing page". */
 export const EMPRESA = {
-  razaoSocial: 'Aura Studio Ltda.' as string | null,
+  // O nome é o do CADASTRO do CNPJ (MEI), conferido na Receita via BrasilAPI
+  // em 15/09/2026 — a linha anterior dizia "Aura Studio Ltda.", que não
+  // existe no registro; razão social ao lado do CNPJ real tem de ser a real.
+  // A marca é outra coisa: Aura IA (a grafia verificada na Meta).
+  razaoSocial: '67.127.614 Samuel Rocha Almeida dos Santos' as string | null,
   /** Formatado como se lê: '00.000.000/0001-00'. */
   cnpj: '67.127.614/0001-00' as string | null,
   cidade: 'Curitiba, PR' as string | null,

@@ -4793,9 +4793,14 @@ não a mostra por si, manda indicá-la no próprio nome ("by [BUSINESS NAME]").
      dizem vercel.app — adormecidos (o secret existe), trocar por coerência.
    - ⚠️ `docs/estado-do-projeto.md:42` diz "ainda em clubcut.vercel.app" —
      doc desatualizado.
-   - Observação de marca (não é domínio): rodapé da landing diz "um produto
-     **Aura Studio**" e razão social no código é "Aura Studio Ltda.",
-     enquanto a verificação da Meta diz "**Aura IA**".
+   - ~~Observação de marca~~ — RESOLVIDA em 15/09, decisão do dono: a marca
+     é **Aura IA** (a grafia verificada na Meta). Rodapé da landing e
+     comentários trocados. E no caminho caiu uma mentira institucional: a
+     razão social exibida na /sobre era "Aura Studio Ltda.", mas o CNPJ
+     67.127.614/0001-00 é **MEI** — registro real "67.127.614 Samuel Rocha
+     Almeida dos Santos" (BrasilAPI, situação ATIVA, Curitiba/PR). A ficha
+     passou a mostrar o nome do cadastro; "Aura IA Ltda." não existe e não
+     foi inventada.
 
 **Achado paralelo a confirmar:** `health_status` da WABA diz
 `can_send_message: BLOCKED` no nível do **APP** `1054189290929803` (erro

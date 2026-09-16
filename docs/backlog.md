@@ -4810,3 +4810,18 @@ o n8n usa nos disparos. Os testes até hoje foram para o número do próprio
 dono (admin do app), que em modo dev passa mesmo sem acesso avançado; cliente
 real pode ficar sem lembrete. Verificar no primeiro lembrete da rodada de
 testes (execução do n8n acusa 141011 se for o caso).
+
+## Rodada de testes, achado nº 1 — o crash dos dois sinos (2026-09-15)
+
+O teste 1.x (primeiro cadastro) derrubou o shell na primeira tela: error
+boundary, recarregar não resolvia. Sentry REACT-NATIVE-7: "cannot add
+postgres_changes callbacks after subscribe()". Causa: o sino (merge de
+14/09) montado DUAS vezes no AppLayout (celular + sidebar), cada um abrindo
+canal realtime de MESMO nome — o supabase-js devolve o mesmo canal para o
+mesmo tópico e o segundo assinante derruba o app. Ninguém tinha logado com
+barbearia desde o merge (banco zerado no mesmo dia), então o primeiro
+render real foi o do dono. Corrigido na hora (regra: defeito de teste se
+conserta dentro do teste) no PR #166: NotificacoesProvider (um estado para
+os dois sinos) + sufixo useId no tópico; catraca em
+dois_sinos_um_canal.test.tsx, verificada ao contrário. O cadastro em si
+funcionou inteiro — conta, confirmação e a barbearia El Corte intactos.

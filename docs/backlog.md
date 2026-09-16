@@ -4825,3 +4825,18 @@ conserta dentro do teste) no PR #166: NotificacoesProvider (um estado para
 os dois sinos) + sufixo useId no tópico; catraca em
 dois_sinos_um_canal.test.tsx, verificada ao contrário. O cadastro em si
 funcionou inteiro — conta, confirmação e a barbearia El Corte intactos.
+
+## O teste que só falhava à noite (2026-09-15)
+
+O CI do PR #167 (só documentação) caiu no pgTAP: teste 5 de
+`o_horario_que_o_agente_conta` esperava "amanha" e recebeu "dia 17/09".
+Rodada às 00:15 UTC = 21:15 em São Paulo — a janela em que `current_date`
+(UTC, no runner) já virou e o relógio de São Paulo ainda não. A fixture
+marcava "amanhã" no relógio errado e o rótulo `quando` da view responde no
+relógio de SP. Latente desde o PR #154; nunca tinha rodado CI nessa janela.
+Consertado no próprio #167 com `pg_temp.amanha_sp()` (o padrão da
+`folga_entre_atendimentos`), e a asserção de `data_local` acompanhou. Prova
+ao vivo: o rerun aconteceu DENTRO da mesma janela noturna — vermelho antes,
+verde depois, mesmíssimo horário. Varredura nos outros testes: só este
+acoplava fixture UTC a rótulo SP; os demais usam `current_date` dos dois
+lados da mesma comparação (autoconsistentes) ou com margem de dias.

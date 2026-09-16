@@ -7,7 +7,9 @@ export default defineConfig({
     environment: 'jsdom',
     // supabase/functions/_shared é código puro compartilhado com as edge
     // functions (sem APIs do Deno), justamente para poder ser testado aqui.
-    include: ['src/**/*.test.ts', 'supabase/functions/_shared/**/*.test.ts'],
+    // `.tsx` incluído em 15/09: o primeiro teste de componente chegou com o
+    // crash dos dois sinos (um canal realtime por shell, não por sino).
+    include: ['src/**/*.test.{ts,tsx}', 'supabase/functions/_shared/**/*.test.ts'],
     /**
      * Fuso fixo, senão o resultado depende de onde o teste roda.
      *

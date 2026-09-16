@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useId, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
 import { contarNaoVistas, type Notificacao } from './notificacoes'
@@ -14,6 +14,13 @@ import { contarNaoVistas, type Notificacao } from './notificacoes'
  */
 export function useNotificacoes(salonId: string | null) {
   const { user } = useAuth()
+  // O nome do canal leva um sufixo único por montagem: `supabase.channel()`
+  // devolve o MESMO canal para o mesmo tópico, e um segundo assinante no
+  // tópico já assinado derruba o app ("cannot add postgres_changes callbacks
+  // after subscribe()" — Sentry REACT-NATIVE-7). O provider garante UMA
+  // montagem; o sufixo garante que remontagem (StrictMode, troca de salão no
+  // meio do teardown) nunca colida com um canal ainda vivo.
+  const instancia = useId()
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([])
   const [vistoEm, setVistoEm] = useState<string | null>(null)
   const [carregando, setCarregando] = useState(true)
@@ -63,7 +70,7 @@ export function useNotificacoes(salonId: string | null) {
       timer = setTimeout(() => carregar(), 2000)
     }
     const channel = supabase
-      .channel(`notificacoes_${salonId}`)
+      .channel(`notificacoes_${salonId}_${instancia}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'appointments', filter: `salon_id=eq.${salonId}` },
@@ -74,7 +81,7 @@ export function useNotificacoes(salonId: string | null) {
       clearTimeout(timer)
       supabase.removeChannel(channel)
     }
-  }, [salonId, carregar])
+  }, [salonId, carregar, instancia])
 
   /**
    * "Vi até aqui" — chamado ao ABRIR o painel. Grava agora e devolve o marco

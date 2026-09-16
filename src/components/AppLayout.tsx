@@ -27,6 +27,7 @@ import { usePedidosDeHumano } from '../features/whatsappWeb/usePedidosDeHumano'
 import { PedidoDeHumanoBanner } from '../features/whatsappWeb/PedidoDeHumanoBanner'
 import { Toasts } from './Toast'
 import { SinoDeNotificacoes } from '../features/notificacoes/SinoDeNotificacoes'
+import { NotificacoesProvider } from '../features/notificacoes/NotificacoesContext'
 import { useAssinatura } from '../features/assinatura/useAssinatura'
 import { AvisoAssinatura } from '../features/assinatura/AvisoAssinatura'
 import { AcessoBloqueado } from '../features/assinatura/AcessoBloqueado'
@@ -237,6 +238,10 @@ export function AppLayout() {
   }
 
   return (
+    // Um estado de notificações para os DOIS sinos (celular + sidebar): cada
+    // um com o próprio hook abria dois canais realtime de mesmo nome, e o
+    // segundo subscribe derrubava o shell inteiro (Sentry REACT-NATIVE-7).
+    <NotificacoesProvider salonId={salonId}>
     <div className="min-h-screen flex flex-col md:flex-row bg-background">
       {/* Topbar (mobile only) */}
       {/* z-40: o header cria contexto de empilhamento, e a folha do perfil
@@ -404,5 +409,6 @@ export function AppLayout() {
       </PilhaDeAvisos>
       <Toasts />
     </div>
+    </NotificacoesProvider>
   )
 }

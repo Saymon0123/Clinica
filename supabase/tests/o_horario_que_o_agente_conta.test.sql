@@ -45,14 +45,26 @@ insert into services (id, salon_id, nome, duracao_minutos, preco, ativo) values
 insert into clients (id, salon_id, nome, telefone) values (:'cliente', :'salao', 'Fulano', '41999990000');
 
 -- Cinco horários amanhã, um por status, e um deles com dois serviços.
+--
+-- "Amanhã" NO RELÓGIO DE SÃO PAULO, não em `current_date`: o rótulo `quando`
+-- da view é calculado no fuso de São Paulo, e o runner do CI vive em UTC.
+-- Entre 21h e meia-noite (hora de SP) os dois relógios divergem de um dia —
+-- com `current_date` a fixture marcava para depois de amanhã e o teste 5
+-- caía SÓ nas rodadas noturnas (primeira vez: 16/09 00:15 UTC, PR #167).
+-- A mesma lição da `cadeia_de_cobranca`: o teste usa o relógio da função.
+create function pg_temp.amanha_sp(h time) returns timestamptz
+language sql as $$
+  select (((now() at time zone 'America/Sao_Paulo')::date + 1) + h) at time zone 'America/Sao_Paulo'
+$$;
+
 insert into appointments (id, salon_id, client_id, professional_id, service_id, data_hora_inicio, status, origem)
 values
-  (:'dois',  :'salao', :'cliente', :'barbeiro', :'corte', ((current_date + 1) + time '09:00') at time zone 'America/Sao_Paulo', 'agendado',  'publico'),
-  (:'um',    :'salao', :'cliente', :'barbeiro', :'corte', ((current_date + 1) + time '11:00') at time zone 'America/Sao_Paulo', 'agendado',  'agente'),
-  (:'feito', :'salao', :'cliente', :'barbeiro', :'corte', ((current_date + 1) + time '13:00') at time zone 'America/Sao_Paulo', 'concluido', 'crm'),
-  (:'furou', :'salao', :'cliente', :'barbeiro', :'corte', ((current_date + 1) + time '15:00') at time zone 'America/Sao_Paulo', 'faltou',    'crm'),
-  (:'morto', :'salao', :'cliente', :'barbeiro', :'corte', ((current_date + 1) + time '17:00') at time zone 'America/Sao_Paulo', 'cancelado', 'publico'),
-  (:'firme', :'salao', :'cliente', :'barbeiro', :'corte', ((current_date + 1) + time '18:00') at time zone 'America/Sao_Paulo', 'confirmado','publico');
+  (:'dois',  :'salao', :'cliente', :'barbeiro', :'corte', pg_temp.amanha_sp(time '09:00'), 'agendado',  'publico'),
+  (:'um',    :'salao', :'cliente', :'barbeiro', :'corte', pg_temp.amanha_sp(time '11:00'), 'agendado',  'agente'),
+  (:'feito', :'salao', :'cliente', :'barbeiro', :'corte', pg_temp.amanha_sp(time '13:00'), 'concluido', 'crm'),
+  (:'furou', :'salao', :'cliente', :'barbeiro', :'corte', pg_temp.amanha_sp(time '15:00'), 'faltou',    'crm'),
+  (:'morto', :'salao', :'cliente', :'barbeiro', :'corte', pg_temp.amanha_sp(time '17:00'), 'cancelado', 'publico'),
+  (:'firme', :'salao', :'cliente', :'barbeiro', :'corte', pg_temp.amanha_sp(time '18:00'), 'confirmado','publico');
 
 -- O de 09:00 foi marcado como corte + barba. Só a barba entra à mão: o gatilho
 -- `trg_espelha_servico_principal` já gravou o corte com ordem 1 no insert
@@ -103,7 +115,7 @@ select is(
 
 select is(
   (select data_local from agendamentos_do_cliente where id = :'dois'),
-  to_char(current_date + 1, 'DD/MM/YYYY'),
+  to_char((now() at time zone 'America/Sao_Paulo')::date + 1, 'DD/MM/YYYY'),
   'data_local em horario de Sao Paulo, nao em UTC'
 );
 

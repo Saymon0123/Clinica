@@ -4840,3 +4840,39 @@ ao vivo: o rerun aconteceu DENTRO da mesma janela noturna — vermelho antes,
 verde depois, mesmíssimo horário. Varredura nos outros testes: só este
 acoplava fixture UTC a rótulo SP; os demais usam `current_date` dos dois
 lados da mesma comparação (autoconsistentes) ou com margem de dias.
+
+## O agente solta a gravata — modelo e voz (2026-09-20)
+
+O dono achou o agente "engessado" e a leitura da systemMessage ativa deu
+razão pela metade: 95% cerca, 5% voz, rodando em gpt-4o-mini sem ajuste — e
+as cercas são cicatrizes que FICAM. Mudanças publicadas no n8n (workflow
+`rJO1n7cFeNDIJyB5`, versão ativa `7c431343`, conferida byte a byte por sha):
+
+1. **Modelo: gpt-4o-mini → gpt-4o.** Custo estimado ~R$0,10/mensagem
+   (~R$0,30 numa conversa de 3) contra ~R$0,02/conversa no mini — centavos
+   contra a cobrança por agendamento em reais. Medir no uso real.
+2. **Prompt em duas camadas**: persona nova na abertura ("papo de balcão"),
+   COMO VOCE SOA ganhou instrução positiva + 3 exemplos de tom (cada um
+   amarrado às cercas: "afirmar só depois da ferramenta"), regra de responder
+   cumprimento antes de pedir dado, exemplo do passo 1 deixou de ser
+   interrogatório, e reclamação ganhou UMA frase de acolhimento antes de
+   chamar o dono. **Cercas intactas**: prova por reversão — desfazendo as 4
+   trocas, o texto volta ao original byte a byte.
+
+Método (lições aplicadas): patch por script com assert de ocorrência única,
+nunca redigitação; publish + conferência de versionId == activeVersionId; a
+extração revelou que o prompt usa CRLF e a normalização para LF foi
+deliberada e uniforme. Fica aberto: teste vivo na rodada (Bloco 7 — precisa
+parear a Evolution) e comparar o custo real por conversa no painel da OpenAI.
+
+## Meta: terceira recusa do nome e chamado aberto (2026-09-19/20)
+
+"Club Cut - Aura IA" rejeitado em 19/09 13:30 UTC — mesmo código
+(BIZ_COMMERCE_VIOLATION_OTHER) das outras duas, JÁ com perfil comercial
+preenchido e forma composta da diretriz. Três grafias, um código: o bloqueio
+é a avaliação do negócio, não a string. Chamado aberto no Direct Support em
+20/09 (Request Type "Change Display Name (non Official Business Account)",
+WABA 975811062135581) pedindo o motivo específico; Cartão CNPJ/CCMEI como
+anexo. Regra até a resposta: NÃO reenviar 4ª variação. Hipótese a sondar só
+se o suporte devolver genérico: cláusulas de AI Provider dos termos do
+WhatsApp Business (o site vende IA que atende terceiros).

@@ -88,6 +88,18 @@ import { MarcaClubCut } from '../../components/MarcaClubCut'
  * ---------------------------------------------------------------------------
  */
 const CTA = `Testar ${DIAS_DE_TESTE} dias grátis`
+
+/**
+ * As três âncoras do herói. Valor em cima, o que ele significa embaixo.
+ *
+ * Saem dos mesmos valores que o resto da página usa — preço e prazo não são
+ * digitados aqui, senão viram a quarta cópia a envelhecer sozinha.
+ */
+const ANCORAS = [
+  { valor: `R$ ${PRECO_POR_AGENDAMENTO.toFixed(2).replace('.', ',')}`, rotulo: 'por horário marcado' },
+  { valor: `${DIAS_DE_TESTE} dias`, rotulo: 'grátis, sem cartão' },
+  { valor: 'Zero', rotulo: 'mensalidade' },
+]
 const MICROCOPY = 'Sem cartão. Cancela quando quiser.'
 
 /**
@@ -286,6 +298,32 @@ function Hero() {
             <Cta className="mt-11" microcopy={MICROCOPY}>
               {CTA}
             </Cta>
+          </Reveal>
+
+          {/*
+            As três âncoras: preço, risco e amarração, antes de qualquer
+            rolagem.
+
+            O preço morava a ~60% da página. Enquanto isso, o concorrente com
+            o modelo PIOR (mensalidade que sobe a cada barbeiro) põe o número
+            colado no CTA do herói, e outro põe no título da aba — quem abre
+            as duas abas vê o preço deles primeiro e o nosso nunca.
+            (Cruzamento de 20/09.)
+
+            "Sem mensalidade" fica na MESMA faixa de propósito: R$ 0,75
+            sozinho, ao lado de um concorrente de R$ 39,90 por mês, é lido
+            como caro por quem ainda não fez a conta. As três só funcionam
+            juntas — é a ausência de mensalidade que explica o preço unitário.
+          */}
+          <Reveal delay={0.2}>
+            <dl className="mt-10 flex flex-wrap gap-x-10 gap-y-4">
+              {ANCORAS.map((a) => (
+                <div key={a.rotulo}>
+                  <dt className="landing-num text-[19px] text-[var(--l-fg)]">{a.valor}</dt>
+                  <dd className="landing-label mt-1.5 text-[var(--l-fg-faint)]">{a.rotulo}</dd>
+                </div>
+              ))}
+            </dl>
           </Reveal>
         </div>
 
@@ -775,6 +813,44 @@ const RECURSOS_INCLUSOS = [
   'Confirmação 10 min antes',
 ]
 
+/**
+ * A regra de cobrança, publicada.
+ *
+ * Ela já existia decidida e implementada, e a página não dizia uma linha —
+ * então o leitor assumia que TODO agendamento conta, fazia a conta contra
+ * nós, e a conta dele estava certa para a informação que ele tinha. Um
+ * concorrente de mensalidade fixa ganha essa comparação com facilidade
+ * quando o nosso medidor parece contar tudo. (Cruzamento de 20/09.)
+ *
+ * ────────────────────────────────────────────────────────────────────────────
+ * CADA LINHA FOI CONFERIDA CONTRA O CÓDIGO QUE COBRA, não contra os Termos.
+ *
+ * `gerar_fatura_de_uso` (migration 0130, linhas 134-137) conta
+ * `origem = 'agente'` e descarta `status = 'bloqueio'`; a Parte A da mesma
+ * migration exclui os dias dentro de `trial_ate`. Remarcar não gera linha
+ * nova: a migration 0169 diz, no cabeçalho, que remarcar é "escolher outro
+ * horário para o MESMO agendamento". Lembrete e envio de reativação entram
+ * na fatura como CONTAGEM (`v_lembretes`, `v_reativacoes`), nunca como valor.
+ *
+ * O QUE FICOU DE FORA DE PROPÓSITO: a 0130 também cobra
+ * `origem = 'reativacao'` quando o cliente confirmou. É regra real, mas o
+ * disparo da reativação ainda não está no ar (falta o fluxo n8n), e anunciar
+ * regra de cobrança de uma função que o dono não recebe seria vender o que
+ * não existe. Quando o fluxo subir, esta lista ganha a linha — e não antes.
+ * ────────────────────────────────────────────────────────────────────────────
+ */
+const O_QUE_CONTA = [
+  'O horário que o atendimento automático marcou — mesmo que o cliente cancele depois. O serviço de marcar foi prestado.',
+]
+
+const O_QUE_NAO_CONTA = [
+  'Horário que você lançou no sistema',
+  'Horário marcado pelo QR do balcão',
+  'Remarcação de um horário que já existe',
+  'Lembrete e mensagem de retorno',
+  `Qualquer horário nos ${DIAS_DE_TESTE} dias de teste`,
+]
+
 function Preco() {
   return (
     <section id="preco" className={`${SECAO} secao-ancora`}>
@@ -835,6 +911,45 @@ function Preco() {
                 </li>
               ))}
             </ul>
+
+            {/*
+              A régua do medidor, dentro do card de preço e não em letra
+              miúda: é ela que muda a conta que o leitor faz. Duas colunas
+              para a assimetria aparecer — uma linha conta, cinco não.
+            */}
+            <div className="mt-9 grid gap-6 border-t border-[var(--l-line)] pt-8 sm:grid-cols-2 sm:gap-10">
+              <div>
+                <div className="landing-label text-[var(--l-accent-ink)]">O que conta</div>
+                <ul className="mt-3.5 flex flex-col gap-2.5">
+                  {O_QUE_CONTA.map((i) => (
+                    <li
+                      key={i}
+                      className="max-w-[40ch] text-[14px] leading-relaxed text-[var(--l-fg-mute)]"
+                    >
+                      {i}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <div className="landing-label text-[var(--l-fg-faint)]">O que não conta</div>
+                <ul className="mt-3.5 flex flex-col gap-2.5">
+                  {O_QUE_NAO_CONTA.map((i) => (
+                    <li
+                      key={i}
+                      className="flex gap-2.5 text-[14px] leading-relaxed text-[var(--l-fg-faint)]"
+                    >
+                      {/* Travessão, não "x": a lista não é de coisas que
+                          faltam, é de coisas que saem do medidor. */}
+                      <span aria-hidden="true" className="select-none">
+                        —
+                      </span>
+                      {i}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
           </div>
         </Reveal>
 

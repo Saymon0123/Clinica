@@ -4906,3 +4906,24 @@ leitura; o addNode passou a credencial e foi aceito - o primeiro teste do
 Bloco 7 confirma), e as partes A (chip de pacote no modal e detalhe da
 Agenda) e C (aviso "usar pacote?" no caixa), desenhadas em 20/09,
 aguardando ordem do dono.
+
+## Pacotes, parte A — a Agenda enxerga o pacote (2026-09-21)
+
+O detalhe do agendamento ganhou a linha "Pacote": saldo vigente do cliente,
+com o que casa com o servico do horario PRIMEIRO e em verde, e o aviso "da
+para usar no Concluir e cobrar" — visivel exatamente no trampolim do caixa,
+que era onde o barbeiro so descobria o credito se reparasse.
+
+Ajuste de desenho contra o plano de 20/09, pelo motivo certo: o chip NAO
+entrou no modal de CRIAR agendamento — ali o cliente e nome livre + telefone,
+resolvido so no submit (as vezes por cima da RLS, via garantir_cliente).
+Chip ali seria chute por nome digitado, o "supor" que o produto proibe. O
+lugar com identidade conhecida e o detalhe.
+
+Miolo: `src/features/pacotes/` novo (helpers puros + hook), catraca com 8
+testes (singular/plural, vencimento por corte de string sem Date, vencido e
+zerado nunca passam, ordenacao por cobertura). RLS conferida ao vivo:
+policies "membros leem" da 0112 cobrem barbeiro — zero migration. Erro e
+vazio ficam mudos por decisao (saldo e apoio; nunca trava o detalhe).
+
+Fica aberto: parte C (o caixa cutuca o consumo), desenhada em 20/09.

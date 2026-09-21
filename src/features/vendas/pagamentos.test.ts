@@ -81,6 +81,20 @@ describe('pagamentos da comanda', () => {
     expect(lerValor('x')).toBeNaN()
   })
 
+  it('comanda zerada (pacote cobriu tudo) fecha SEM linha de pagamento', () => {
+    // O caso que derrubou a primeira venda real com pacote (20/09): total 0
+    // com uma linha única virava payment de R$ 0,00, e o CHECK do banco
+    // (valor > 0) rejeitava a venda inteira. Zero a receber = zero linhas.
+    const r = pagamentosDaComanda([{ forma: 'pix', valor: '' }], 0)
+    expect(r).toEqual({ ok: true, pagamentos: [] })
+  })
+
+  it('valor digitado com comanda zerada e recusado com o motivo', () => {
+    const r = pagamentosDaComanda([{ forma: 'pix', valor: '30' }], 0)
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.erro).toMatch(/pacote ja cobriu|pacote já cobriu/)
+  })
+
   it('preço zero só é válido no consumo de pacote', () => {
     expect(itemComPrecoValido({ preco_unitario: 0 })).toBe(false)
     expect(itemComPrecoValido({ preco_unitario: 0, viaPacote: 'p1' })).toBe(true)

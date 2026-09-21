@@ -4949,3 +4949,20 @@ decisao humana — um clique, mas impossivel de nao ver.
 Com A + B + C entregues, o plano de pacotes de 20/09 fecha. Prova visual das
 tres pontas: rodada do dono (Agenda e caixa no proximo login; agente ao
 parear a Evolution no Bloco 7).
+
+## Rodada, achado nº 2 — a comanda zerada não fechava (2026-09-21)
+
+Primeiro uso REAL de pacote (20/09, ~15h): o dono vendeu o pacote, abriu
+outra comanda para o mesmo cliente, usou "Usar 1 do pacote" e finalizou —
+"Não foi possível completar a venda. Nada foi salvo". Diagnóstico pelos
+logs da API: orders 201, order_items 201, **payments 400** às 17:59:59Z.
+Causa: comanda que fecha em R$ 0,00 (consumo cobrindo tudo) com linha única
+de pagamento virava `payment` de R$ 0,00 — e o CHECK `payments_valor_positivo
+(valor > 0)` derrubava tudo no rollback. O CHECK está certo; faltava o
+cliente saber que **zero a receber = zero linhas de pagamento**.
+
+Fix em `pagamentosDaComanda`: total zero devolve lista vazia; valor digitado
+com total zero é recusado com o motivo ("o pacote já cobriu tudo") em vez de
+engolir o número. Catraca: 2 testes novos (10/10 no arquivo). Defeito
+pré-existia às partes A/C (mergeadas só hoje) — o fluxo antigo nunca tinha
+sido usado com comanda 100% coberta.

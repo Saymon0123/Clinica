@@ -4997,5 +4997,5 @@ Só CRM (a RPC 0174 já devolvia os campos): segunda faixa de cards na ficha —
 produto ("nunca levou produto" é oportunidade de campanha, não defeito;
 detalhe em cinza de propósito) e **Faltas e cancelamentos** ("Nenhum" em
 verde quando o histórico existe e está limpo — a proteção de campanha começa
-por dar nome ao comportamento). Travessão em tudo que não tem dado; 7 testes
+por dar nome ao comportamento). Travessão em tudo que não tem dado; 5 testes
 novos dos helpers. Fica: lote 3 (pacote saldo/vencimento + última nota).

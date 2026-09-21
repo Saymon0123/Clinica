@@ -97,7 +97,11 @@ const TETO: Record<string, number> = {
   'src/features/agenda/AgendaPage.tsx': 6,
   'src/features/agenda/AppointmentDetailModal.tsx': 3,
   'src/features/agenda/NewAppointmentModal.tsx': 1,
-  'src/features/financeiro/FinanceiroPage.tsx': 10,
+  // Desceu de 10 em 21/09: o seletor de período saiu para componente próprio.
+  'src/features/financeiro/FinanceiroPage.tsx': 7,
+  // O seletor Dia|Mês é dialeto feito à mão por natureza (chevrons + rótulos
+  // dentro da pílula); nasce medido, e o número só desce.
+  'src/features/financeiro/SeletorDePeriodo.tsx': 6,
   'src/features/clientes/ClientesPage.tsx': 4,
   'src/features/catalogo/CatalogoPage.tsx': 0,
   'src/features/equipe/EquipePage.tsx': 10,

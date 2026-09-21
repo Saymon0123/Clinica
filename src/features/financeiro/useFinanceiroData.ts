@@ -92,18 +92,31 @@ type Periods = {
   monthEnd: Date
 }
 
-/** refMonth no formato 'YYYY-MM'; ignorado no filtro "dia" (dia é sempre hoje). */
-function computePeriods(filter: PeriodFilter, refMonth: string): Periods {
+/** 'YYYY-MM-DD' → Date LOCAL daquele dia (new Date('YYYY-MM-DD') seria UTC e
+ *  voltaria um dia em qualquer fuso negativo — o Brasil inteiro). */
+function parseDiaLocal(refDia: string): Date {
+  const [ano, mes, dia] = refDia.split('-').map(Number)
+  return new Date(ano, mes - 1, dia)
+}
+
+/**
+ * refMonth no formato 'YYYY-MM' (filtro "mes"); refDia no formato
+ * 'YYYY-MM-DD' — o filtro "dia" deixou de ser sempre hoje (pedido de 21/09:
+ * o dono quer descer a qualquer dia e achar os de mais movimento). Sem
+ * refDia, "dia" continua sendo hoje. Exportada para os testes.
+ */
+export function computePeriods(filter: PeriodFilter, refMonth: string, refDia?: string): Periods {
   const now = new Date()
 
   if (filter === 'dia') {
-    const currentStart = startOfDay(now)
-    const currentEnd = endOfDay(now)
-    const prevStart = startOfDay(new Date(now.getTime() - 86400000))
-    const prevEnd = endOfDay(new Date(now.getTime() - 86400000))
+    const base = refDia ? parseDiaLocal(refDia) : now
+    const currentStart = startOfDay(base)
+    const currentEnd = endOfDay(base)
+    const prevStart = startOfDay(new Date(currentStart.getTime() - 86400000))
+    const prevEnd = endOfDay(new Date(currentStart.getTime() - 86400000))
     const sparkDays: Date[] = []
-    for (let i = 6; i >= 0; i--) sparkDays.push(startOfDay(new Date(now.getTime() - i * 86400000)))
-    const monthStart = startOfDay(new Date(now.getFullYear(), now.getMonth(), 1))
+    for (let i = 6; i >= 0; i--) sparkDays.push(startOfDay(new Date(currentStart.getTime() - i * 86400000)))
+    const monthStart = startOfDay(new Date(base.getFullYear(), base.getMonth(), 1))
     // A janela precisa cobrir o mês inteiro, senão o donut da meta soma só a
     // última semana — era exatamente esse o defeito no filtro "Hoje".
     const windowStart = monthStart < sparkDays[0] ? monthStart : sparkDays[0]
@@ -166,7 +179,12 @@ type OrderRow = {
  * e comissões dele — os mesmos cards mostram o salão para um e "os seus
  * números" para o outro, como o subtítulo da página promete.
  */
-export function useFinanceiroData(salonId: string | null, filter: PeriodFilter, refMonth: string) {
+export function useFinanceiroData(
+  salonId: string | null,
+  filter: PeriodFilter,
+  refMonth: string,
+  refDia?: string,
+) {
   const [data, setData] = useState<FinanceiroData>(EMPTY_DATA)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -176,7 +194,7 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter, 
     setLoading(true)
     setError(null)
 
-    const p = computePeriods(filter, refMonth)
+    const p = computePeriods(filter, refMonth, refDia)
     const windowStartISO = p.windowStart.toISOString()
     const currentEndISO = p.currentEnd.toISOString()
 
@@ -394,7 +412,7 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter, 
       commissions,
     })
     setLoading(false)
-  }, [salonId, filter, refMonth])
+  }, [salonId, filter, refMonth, refDia])
 
   useEffect(() => {
     reload()

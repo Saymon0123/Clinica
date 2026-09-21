@@ -25,6 +25,7 @@ export function VendasSection({
   salonId,
   period,
   refMonth,
+  refDia,
   periodLabel,
   prefill,
   onPrefillConsumed,
@@ -32,6 +33,8 @@ export function VendasSection({
 }: {
   salonId: string
   period: 'dia' | 'mes'
+  /** 'YYYY-MM-DD' — o dia escolhido quando period='dia' (sem ele, hoje). */
+  refDia?: string
   /** 'YYYY-MM' do mês exibido; omitido = mês corrente. */
   refMonth?: string
   periodLabel?: string
@@ -42,7 +45,7 @@ export function VendasSection({
    *  horário (ver `quitarVendaPendente` em lib/vendaPendente). */
   onVendaSalva?: (appointmentId: string | null) => void
 }) {
-  const { sales, loading, error, reload } = useVendasData(salonId, period, refMonth)
+  const { sales, loading, error, reload } = useVendasData(salonId, period, refMonth, refDia)
   const [modalOpen, setModalOpen] = useState(false)
   const [activePrefill, setActivePrefill] = useState<SalePrefill | null>(null)
   // Comanda aberta para detalhe/estorno (achado 8).

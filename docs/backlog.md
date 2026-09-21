@@ -5081,3 +5081,21 @@ só as minhas), então nada vazava por REST — era mudança de tela mesmo:
 Prova visual pendente de um login de barbeiro (convite por e-mail está
 travado pelo SMTP — achado nº 3 —, mas o dono pode copiar o link do convite
 na tela de Equipe).
+
+## O Financeiro desce ao dia (2026-09-21)
+
+Pedido do dono: o filtro tinha só "Hoje" e mês navegável — agora o lado
+"Dia" anda de um em um (chevrons) e salta para QUALQUER data (calendário
+nativo embutido na pílula), com rótulo humano ("sáb, 20/09" — o dia da
+semana é o que responde "qual dia tem mais movimento"). O badge de variação
+compara com o dia imediatamente anterior; o spark são os 7 dias até o
+escolhido; o donut da meta olha o mês DO DIA até ele; a aba Vendas
+acompanha o dia (com FIM de período — o "hoje" antigo podia ficar aberto,
+um dia passado não). Datas parseadas por partes, LOCAIS — new Date('YYYY-
+MM-DD') seria UTC e voltaria um dia no Brasil. Entrar no lado Dia com um
+mês passado navegado começa no último dia daquele mês, não salta para hoje.
+
+A catraca de botões (D5) pegou os 3 botões novos e a saída foi a certa: o
+seletor inteiro virou componente próprio (SeletorDePeriodo.tsx, teto 6
+medido) e o teto da página DESCEU de 10 para 7. computePeriods foi exportada
+e ganhou 6 testes (virada de mês inclusa).

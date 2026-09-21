@@ -4927,3 +4927,25 @@ policies "membros leem" da 0112 cobrem barbeiro — zero migration. Erro e
 vazio ficam mudos por decisao (saldo e apoio; nunca trava o detalhe).
 
 Fica aberto: parte C (o caixa cutuca o consumo), desenhada em 20/09.
+
+## Pacotes, parte C — o caixa cutuca o consumo (2026-09-21)
+
+A leitura do caixa mudou o desenho para melhor: a caixinha de saldos com
+"Usar 1 do pacote" JA existia abaixo do cliente — a lacuna real era ela ser
+passiva. Dava para ter o Corte COBRADO na comanda com "restam 3" escrito
+logo acima e finalizar assim: quem pagou adiantado pagava de novo.
+
+Agora cada linha COBRADA que casa com saldo disponivel ganha um aviso
+warning inline com "Usar o pacote neste item": a linha vira consumo no lugar
+(preco 0, vinculo viaPacote, sem comissionar de novo); quantidade > 1 solta
+uma unidade e mantem o resto cobrado. A conta de disponibilidade e a mesma
+do botao existente (desconta consumos da propria comanda), senao a sugestao
+mandaria o barbeiro para a trava de erro.
+
+Miolo: `sugestaoDePacote.ts` puro (generico, sem cast) + 6 testes de
+catraca; handler `trocarItemParaPacote` no NewSaleModal. Dinheiro continua
+decisao humana — um clique, mas impossivel de nao ver.
+
+Com A + B + C entregues, o plano de pacotes de 20/09 fecha. Prova visual das
+tres pontas: rodada do dono (Agenda e caixa no proximo login; agente ao
+parear a Evolution no Bloco 7).

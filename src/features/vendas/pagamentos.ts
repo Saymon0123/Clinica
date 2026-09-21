@@ -35,6 +35,23 @@ export function lerValor(texto: string): number {
 }
 
 export function pagamentosDaComanda(linhas: LinhaDePagamento[], total: number): ResultadoPagamentos {
+  // Comanda que fecha em ZERO — consumo de pacote pagando tudo — não tem o
+  // que receber, e o registro verdadeiro é NENHUMA linha de pagamento. A
+  // linha de R$ 0,00 que saía daqui batia no CHECK do banco (valor > 0) e
+  // derrubava a venda inteira no rollback, com a mensagem genérica — foi o
+  // primeiro uso real de pacote, em 20/09. Valor digitado com total zero é
+  // erro da pessoa, e o aviso diz o porquê em vez de engolir o número.
+  if (centavos(total) === 0) {
+    const digitado = linhas.reduce((s, l) => s + (lerValor(l.valor) || 0), 0)
+    if (digitado > 0) {
+      return {
+        ok: false,
+        erro: `Os pagamentos somam ${moeda(digitado)}, mas a comanda fecha em ${moeda(0)} — o pacote já cobriu tudo.`,
+      }
+    }
+    return { ok: true, pagamentos: [] }
+  }
+
   if (linhas.length === 0) return { ok: false, erro: 'Escolha a forma de pagamento.' }
 
   // Uma forma só: o valor é o total, digitado ou não.

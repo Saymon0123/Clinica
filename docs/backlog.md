@@ -4876,3 +4876,33 @@ WABA 975811062135581) pedindo o motivo específico; Cartão CNPJ/CCMEI como
 anexo. Regra até a resposta: NÃO reenviar 4ª variação. Hipótese a sondar só
 se o suporte devolver genérico: cláusulas de AI Provider dos termos do
 WhatsApp Business (o site vende IA que atende terceiros).
+
+## Pacotes, parte B — o agente conta o saldo ao marcar (2026-09-21)
+
+Das tres lacunas do mapa de pacotes (dono pediu o desenho em 20/09), a B
+entrou: cliente com pacote agora OUVE do agente, na confirmacao do horario,
+que tem credito daquele servico e quantos restam.
+
+Como (workflow `rJO1n7cFeNDIJyB5`, versao ativa `f2cc2730`, tudo conferido
+byte a byte apos publish):
+- No novo `Saldo de Pacotes (Contexto)` lendo `saldo_de_pacotes_por_telefone`
+  (salon + telefone + vencido=false), com o trio executeOnce +
+  alwaysOutputData + continueRegularOutput, em serie na cadeia de contexto
+  (Horarios -> Saldo -> Montar Contexto).
+- Assignment 12 `saldo_de_pacotes` no Montar Contexto; linha nova no
+  [CONTEXTO INTERNO]: "SALDO DE PACOTES DELE (lido agora; NENHUM = nao tem
+  pacote)". E a 4a vez que a licao "fato no contexto, nao na ferramenta"
+  paga (calendario, catalogo, agenda do cliente, agora pacotes).
+- Prompt: cerca DINHEIRO passou a aceitar o CONTEXTO como fonte legitima do
+  saldo (senao a regra nova conflitava com a cerca), e AVALIACAO E PACOTES
+  ganhou a regra proativa: ao confirmar horario cujo servico casa com o
+  saldo, COPIAR o numero de restantes ("voce tem 3 cortes no pacote - e so
+  usar um nesse horario"); NAO fazer conta do depois (o debito e no balcao);
+  NENHUM = nao tocar no assunto; saldo de outro servico nao promete
+  cobertura; o aviso nunca vira venda.
+
+Fica aberto: prova de execucao real (a API do n8n omite credenciais na
+leitura; o addNode passou a credencial e foi aceito - o primeiro teste do
+Bloco 7 confirma), e as partes A (chip de pacote no modal e detalhe da
+Agenda) e C (aviso "usar pacote?" no caixa), desenhadas em 20/09,
+aguardando ordem do dono.

@@ -4989,3 +4989,13 @@ mudo (achado 31); sem histórico, travessão. 8 testes vitest dos helpers.
 
 Ficam: lote 2 (ticket médio, serviço de sempre + produto, faltas/cancels) e
 lote 3 (pacote saldo/vencimento via useSaldoDePacotes, última nota).
+
+## Métricas de campanha, lote 2 de 3 — ticket, hábito, confiabilidade (2026-09-21)
+
+Só CRM (a RPC 0174 já devolvia os campos): segunda faixa de cards na ficha —
+**Ticket médio** (por comanda fechada), **Serviço de sempre** com o gancho de
+produto ("nunca levou produto" é oportunidade de campanha, não defeito;
+detalhe em cinza de propósito) e **Faltas e cancelamentos** ("Nenhum" em
+verde quando o histórico existe e está limpo — a proteção de campanha começa
+por dar nome ao comportamento). Travessão em tudo que não tem dado; 7 testes
+novos dos helpers. Fica: lote 3 (pacote saldo/vencimento + última nota).

@@ -4999,3 +4999,14 @@ detalhe em cinza de propósito) e **Faltas e cancelamentos** ("Nenhum" em
 verde quando o histórico existe e está limpo — a proteção de campanha começa
 por dar nome ao comportamento). Travessão em tudo que não tem dado; 5 testes
 novos dos helpers. Fica: lote 3 (pacote saldo/vencimento + última nota).
+
+## Métricas de campanha, lote 3 de 3 — pacote e última nota (2026-09-21)
+
+Fecha as 8 métricas aprovadas. Só CRM: card **Pacote** na ficha reusando o
+hook e o rótulo da parte A ("Sem pacote ativo" é DADO, não ausência — é o
+alvo da venda; com saldo, "Corte: 3 restantes (vence 12/10)") e card
+**Última nota** ("5 de 5" verde = pedir indicação; 3 para baixo âmbar = caso
+de dono, não de campanha; data por corte de string). +2 testes (487).
+Com A+B+C de pacotes e os 3 lotes de métricas, a ficha virou painel de
+campanha; o próximo passo natural (não pedido) segue sendo filtros em lote
+na lista de Clientes.

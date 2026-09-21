@@ -23,6 +23,7 @@ type HistoryOrder = {
 import { PacotesDoCliente } from './PacotesDoCliente'
 import { ErroInline } from '../../components/ErroInline'
 import {
+  rotuloDaNota,
   rotuloDaUltimaVisita,
   rotuloDeFaltas,
   rotuloDoRitmo,
@@ -30,6 +31,8 @@ import {
   situacaoDoCiclo,
   type MetricasDoCliente,
 } from './metricasDoCliente'
+import { useSaldoDePacotes } from '../pacotes/useSaldoDePacotes'
+import { rotuloDoSaldo } from '../pacotes/saldoDoCliente'
 
 const STATUS_LABELS: Record<string, string> = {
   agendado: 'Agendado',
@@ -74,6 +77,9 @@ export function ClientDetailModal({
   // MESMOS números. Erro aqui fica mudo (console) — métrica é apoio e não
   // pode derrubar a ficha (a regra do achado 31).
   const [metricas, setMetricas] = useState<MetricasDoCliente | null>(null)
+  // Lote 3: o saldo de pacote na ficha vem do MESMO hook da Agenda (parte A)
+  // — uma fonte derivada, um jeito de mostrar.
+  const saldosDePacote = useSaldoDePacotes(client.id)
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState(false)
   const [recusou, setRecusou] = useState(client.recusou_contato)
@@ -312,6 +318,42 @@ export function ClientDetailModal({
                 >
                   {r}
                 </div>
+              )
+            })()}
+          </div>
+        </div>
+
+        {/* Lote 3 — fecha as 8: pacote (renovação na hora certa) e a última
+            nota (5 = pedir indicação; 3 para baixo é caso de dono, não de
+            campanha). "Sem pacote" é dado, não ausência: é o alvo da venda. */}
+        <div className="grid grid-cols-2 gap-3 mb-5">
+          <div className="bg-surface-2 rounded-lg p-3 min-w-0">
+            <div className="text-xs text-muted-foreground mb-0.5">Pacote</div>
+            {saldosDePacote.length === 0 ? (
+              <div className="text-sm font-semibold text-foreground">Sem pacote ativo</div>
+            ) : (
+              <div className="text-sm font-semibold text-foreground truncate">
+                {saldosDePacote.map(rotuloDoSaldo).join(' · ')}
+              </div>
+            )}
+          </div>
+          <div className="bg-surface-2 rounded-lg p-3">
+            <div className="text-xs text-muted-foreground mb-0.5">Última nota</div>
+            {(() => {
+              const n = rotuloDaNota(
+                metricas?.ultima_nota ?? null,
+                metricas?.ultima_avaliacao_em ?? null,
+              )
+              if (!n) return <div className="text-sm font-semibold text-foreground">—</div>
+              const cor =
+                n.tom === 'boa' ? 'text-success' : n.tom === 'ruim' ? 'text-warning' : 'text-foreground'
+              return (
+                <>
+                  <div className={`text-sm font-semibold ${cor}`}>{n.texto}</div>
+                  {n.detalhe && (
+                    <div className="text-[11px] text-muted-foreground">{n.detalhe}</div>
+                  )}
+                </>
               )
             })()}
           </div>

@@ -9,6 +9,8 @@ import { useSalon } from '../auth/useSalon'
 import { toast } from '../../components/Toast'
 import type { Appointment } from './types'
 import { ErroInline } from '../../components/ErroInline'
+import { useSaldoDePacotes } from '../pacotes/useSaldoDePacotes'
+import { cobreAlgumServico, ordenarPorCobertura, rotuloDoSaldo } from '../pacotes/saldoDoCliente'
 
 const STATUS_LABELS: Record<string, string> = {
   agendado: 'Agendado',
@@ -92,6 +94,20 @@ export function AppointmentDetailModal({
   // que já existia (service_nome).
   const [servicos, setServicos] = useState<ServicoDoAgendamento[] | null>(null)
   const { salonId } = useSalon()
+
+  // Parte A do plano de pacotes (20/09): o barbeiro descobria o pacote só no
+  // caixa — se não reparasse, cobrava normal de quem já pagou adiantado. O
+  // saldo aparece AQUI, que é o trampolim do "Concluir e cobrar". Bloqueio não
+  // tem client_id, então a linha nem tenta.
+  const saldosDePacote = useSaldoDePacotes(appointment.client_id)
+  const servicosDoAgendamento =
+    servicos && servicos.length > 0
+      ? servicos.map((s) => s.service_id)
+      : appointment.service_id
+        ? [appointment.service_id]
+        : []
+  const saldosOrdenados = ordenarPorCobertura(saldosDePacote, servicosDoAgendamento)
+  const pacoteCobreEsteHorario = cobreAlgumServico(saldosDePacote, servicosDoAgendamento)
 
   useEffect(() => {
     let cancelado = false
@@ -279,6 +295,27 @@ export function AppointmentDetailModal({
             <span className="text-sm text-muted-foreground">Cliente</span>
             <span className="text-sm font-medium text-foreground">{appointment.client_nome ?? '—'}</span>
           </div>
+          {/* Só aparece quando há saldo vigente: erro e vazio ficam mudos —
+              saldo é apoio, nunca pode sujar nem travar o detalhe. */}
+          {saldosOrdenados.length > 0 && (
+            <div className="flex items-start justify-between gap-4">
+              <span className="text-sm text-muted-foreground shrink-0">Pacote</span>
+              <span className="text-right">
+                <span
+                  className={`block text-sm font-medium ${
+                    pacoteCobreEsteHorario ? 'text-success' : 'text-foreground'
+                  }`}
+                >
+                  {saldosOrdenados.map(rotuloDoSaldo).join(' · ')}
+                </span>
+                {pacoteCobreEsteHorario && (
+                  <span className="block text-xs text-muted-foreground">
+                    dá para usar no “Concluir e cobrar”
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
           <div className="flex items-center justify-between gap-4">
             <span className="text-sm text-muted-foreground shrink-0">Serviço</span>
             <span className="text-sm font-medium text-foreground text-right">

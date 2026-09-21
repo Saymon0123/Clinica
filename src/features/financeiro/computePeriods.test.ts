@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { computePeriods } from './useFinanceiroData'
+// Do módulo puro, não do hook: o hook importa o client do Supabase, que
+// exige .env já no import — e o runner do CI não tem .env (quebrou lá,
+// passava aqui). Importar daqui mantém o teste rodando em qualquer máquina.
+import { computePeriods } from './computePeriods'
 
 /**
  * O filtro "dia" com data escolhida (21/09). O que se prende:

@@ -5061,3 +5061,23 @@ SMTP Hostinger) → o ciclo seguinte entrega o feedback preso e marca
 `notificado_em` sozinho → conferir também o Custom SMTP do Auth no painel
 do Supabase. Fica aberto pensar um ALARME para "erro repetido na saída de
 erro" — o silêncio de 24h só quebrou porque o dono testou.
+
+## A visão do barbeiro no Financeiro: comissão, não faturamento (2026-09-21)
+
+Pedido do dono: barbeiro não vê faturamento — nem o próprio — só a comissão
+sobre os atendimentos dele. A verificação antes do bisturi mostrou que a
+RLS já estava certa (orders = gestor OU professional_id meu; commissions =
+só as minhas), então nada vazava por REST — era mudança de tela mesmo:
+
+- O card-herói do barbeiro virou **"Sua comissão"** (soma das linhas que a
+  RLS já limita a ele), sem spark nem variação — comissão por dia não
+  existe no hook e número inventado é pior que card simples. O card
+  "Faturamento" sai da lista dele; atendidos/agendamentos/cancelamentos
+  (dele) ficam.
+- **"Serviços mais vendidos · por faturamento"** passou a ser só de gestor.
+- O que já era só de gestor continua (meta, caixa, exportar, fechar
+  comissões); a aba Vendas segue mostrando as comandas DELE (operacional).
+
+Prova visual pendente de um login de barbeiro (convite por e-mail está
+travado pelo SMTP — achado nº 3 —, mas o dono pode copiar o link do convite
+na tela de Equipe).

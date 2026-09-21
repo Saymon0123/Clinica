@@ -440,9 +440,26 @@ export function FinanceiroPage() {
         <>
       <ErroDeCarga mensagem={error} aoTentarDeNovo={reload} tentando={loading} />
 
-      {/* Cards de métrica com mini-gráfico animado */}
+      {/* Cards de métrica com mini-gráfico animado.
+
+          BARBEIRO NÃO VÊ FATURAMENTO — nem o próprio (pedido do dono, 21/09):
+          o herói dele é a COMISSÃO (a soma que a RLS já limita às linhas
+          dele). Sem spark nem variação: comissão por dia não existe no hook,
+          e número inventado é pior que card simples. */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {CARD_CONFIG.map(({ key, label, icon: Icon, format }) => {
+        {!isManager && (
+          <StatsCard
+            icon={<HandCoins size={16} />}
+            label="Sua comissão"
+            value={loading ? 0 : data.commissions.reduce((s, c) => s + c.valor, 0)}
+            formattedValue={(n) => (error ? '—' : formatCurrency(n))}
+            badge={null}
+            bars={[]}
+            hero
+          />
+        )}
+        {(isManager ? CARD_CONFIG : CARD_CONFIG.filter((c) => c.key !== 'faturamento')).map(
+          ({ key, label, icon: Icon, format }) => {
           const metric = data.metrics[key]
           const invert = key === 'cancelamentos'
           const bars = metric.spark.map((p, i) => ({
@@ -618,7 +635,9 @@ export function FinanceiroPage() {
         )}
       </div>
 
-      {/* Serviços mais vendidos */}
+      {/* Serviços mais vendidos — ranking POR FATURAMENTO, então só gestor:
+          a visão do barbeiro é comissão, não receita (pedido de 21/09). */}
+      {isManager && (
       <div className="bg-surface border border-border rounded-2xl shadow-sm p-5">
         <div className="mb-4">
           <h2 className="text-sm font-semibold text-foreground">Serviços mais vendidos</h2>
@@ -653,6 +672,7 @@ export function FinanceiroPage() {
           </div>
         )}
       </div>
+      )}
 
       {isManager && (
         <div id="caixa">

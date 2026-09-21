@@ -20,7 +20,12 @@ function one<T>(rel: T | T[] | null): T | null {
   return Array.isArray(rel) ? (rel[0] ?? null) : rel
 }
 
-export function useVendasData(salonId: string | null, period: Period, refMonth?: string) {
+export function useVendasData(
+  salonId: string | null,
+  period: Period,
+  refMonth?: string,
+  refDia?: string,
+) {
   const [sales, setSales] = useState<Sale[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -30,16 +35,22 @@ export function useVendasData(salonId: string | null, period: Period, refMonth?:
     setLoading(true)
     setError(null)
 
-    // refMonth ('YYYY-MM') permite navegar para meses anteriores; sem ele,
-    // o comportamento é o de sempre (hoje / mês corrente).
+    // refMonth ('YYYY-MM') navega meses; refDia ('YYYY-MM-DD') escolhe o DIA
+    // do filtro "dia" (21/09 — antes era sempre hoje). O parse é por partes,
+    // LOCAL: new Date('YYYY-MM-DD') seria UTC e voltaria um dia no Brasil.
     const now = new Date()
     const [ano, mes] =
       period === 'mes' && refMonth ? refMonth.split('-').map(Number) : [now.getFullYear(), now.getMonth() + 1]
+    const [diaAno, diaMes, diaDia] = refDia
+      ? refDia.split('-').map(Number)
+      : [now.getFullYear(), now.getMonth() + 1, now.getDate()]
     const start =
       period === 'dia'
-        ? new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        ? new Date(diaAno, diaMes - 1, diaDia)
         : new Date(ano, mes - 1, 1)
-    const end = period === 'dia' ? null : new Date(ano, mes, 1)
+    // Dia escolhido precisa de FIM: sem ele, um dia passado somaria tudo
+    // dali em diante (o "hoje" antigo podia ficar aberto; um dia qualquer não).
+    const end = period === 'dia' ? new Date(diaAno, diaMes - 1, diaDia + 1) : new Date(ano, mes, 1)
 
     let query = supabase
       .from('orders')
@@ -77,7 +88,7 @@ export function useVendasData(salonId: string | null, period: Period, refMonth?:
       })),
     )
     setLoading(false)
-  }, [salonId, period, refMonth])
+  }, [salonId, period, refMonth, refDia])
 
   useEffect(() => {
     reload()

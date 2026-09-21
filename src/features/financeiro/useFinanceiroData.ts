@@ -2,8 +2,12 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { agruparPorProfissional } from './fechamentoDeComissao'
 import { perdasNoIntervalo, SEM_PERDAS, type Perdas } from './perdas'
+import { computePeriods, dayKey, endOfDay, startOfDay, type PeriodFilter } from './computePeriods'
 
-export type PeriodFilter = 'dia' | 'mes'
+// As telas sempre importaram o filtro daqui; só o cálculo de períodos mudou
+// de endereço (computePeriods.ts), para os testes não arrastarem o client.
+export type { PeriodFilter } from './computePeriods'
+export { computePeriods } from './computePeriods'
 
 // Meta mensal de faturamento (placeholder — será configurável futuramente).
 export const META_FATURAMENTO_MENSAL = 3000
@@ -61,78 +65,6 @@ const EMPTY_DATA: FinanceiroData = {
   commissions: [],
 }
 
-function dayKey(d: Date) {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-function startOfDay(d: Date) {
-  const x = new Date(d)
-  x.setHours(0, 0, 0, 0)
-  return x
-}
-
-function endOfDay(d: Date) {
-  const x = new Date(d)
-  x.setHours(23, 59, 59, 999)
-  return x
-}
-
-type Periods = {
-  currentStart: Date
-  currentEnd: Date
-  prevStart: Date
-  prevEnd: Date
-  windowStart: Date
-  sparkDays: Date[]
-  /** Mês do donut da meta: o mês selecionado no filtro "mes", o mês corrente no "dia". */
-  monthStart: Date
-  monthEnd: Date
-}
-
-/** refMonth no formato 'YYYY-MM'; ignorado no filtro "dia" (dia é sempre hoje). */
-function computePeriods(filter: PeriodFilter, refMonth: string): Periods {
-  const now = new Date()
-
-  if (filter === 'dia') {
-    const currentStart = startOfDay(now)
-    const currentEnd = endOfDay(now)
-    const prevStart = startOfDay(new Date(now.getTime() - 86400000))
-    const prevEnd = endOfDay(new Date(now.getTime() - 86400000))
-    const sparkDays: Date[] = []
-    for (let i = 6; i >= 0; i--) sparkDays.push(startOfDay(new Date(now.getTime() - i * 86400000)))
-    const monthStart = startOfDay(new Date(now.getFullYear(), now.getMonth(), 1))
-    // A janela precisa cobrir o mês inteiro, senão o donut da meta soma só a
-    // última semana — era exatamente esse o defeito no filtro "Hoje".
-    const windowStart = monthStart < sparkDays[0] ? monthStart : sparkDays[0]
-    return { currentStart, currentEnd, prevStart, prevEnd, windowStart, sparkDays, monthStart, monthEnd: currentEnd }
-  }
-
-  const [ano, mes] = refMonth.split('-').map(Number)
-  const ehMesCorrente = ano === now.getFullYear() && mes === now.getMonth() + 1
-  const currentStart = startOfDay(new Date(ano, mes - 1, 1))
-  const ultimoDia = ehMesCorrente ? now.getDate() : new Date(ano, mes, 0).getDate()
-  const currentEnd = endOfDay(ehMesCorrente ? now : new Date(ano, mes, 0))
-  const prevStart = startOfDay(new Date(ano, mes - 2, 1))
-  const prevEnd = endOfDay(new Date(ano, mes - 1, 0))
-  const sparkDays: Date[] = []
-  for (let d = 1; d <= ultimoDia; d++) {
-    sparkDays.push(startOfDay(new Date(ano, mes - 1, d)))
-  }
-  return {
-    currentStart,
-    currentEnd,
-    prevStart,
-    prevEnd,
-    windowStart: prevStart,
-    sparkDays,
-    monthStart: currentStart,
-    monthEnd: currentEnd,
-  }
-}
-
 function changePct(value: number, previous: number): number | null {
   if (previous === 0) return null
   return ((value - previous) / previous) * 100
@@ -166,7 +98,12 @@ type OrderRow = {
  * e comissões dele — os mesmos cards mostram o salão para um e "os seus
  * números" para o outro, como o subtítulo da página promete.
  */
-export function useFinanceiroData(salonId: string | null, filter: PeriodFilter, refMonth: string) {
+export function useFinanceiroData(
+  salonId: string | null,
+  filter: PeriodFilter,
+  refMonth: string,
+  refDia?: string,
+) {
   const [data, setData] = useState<FinanceiroData>(EMPTY_DATA)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -176,7 +113,7 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter, 
     setLoading(true)
     setError(null)
 
-    const p = computePeriods(filter, refMonth)
+    const p = computePeriods(filter, refMonth, refDia)
     const windowStartISO = p.windowStart.toISOString()
     const currentEndISO = p.currentEnd.toISOString()
 
@@ -394,7 +331,7 @@ export function useFinanceiroData(salonId: string | null, filter: PeriodFilter, 
       commissions,
     })
     setLoading(false)
-  }, [salonId, filter, refMonth])
+  }, [salonId, filter, refMonth, refDia])
 
   useEffect(() => {
     reload()

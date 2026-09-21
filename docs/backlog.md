@@ -5068,3 +5068,41 @@ SMTP Hostinger) → o ciclo seguinte entrega o feedback preso e marca
 `notificado_em` sozinho → conferir também o Custom SMTP do Auth no painel
 do Supabase. Fica aberto pensar um ALARME para "erro repetido na saída de
 erro" — o silêncio de 24h só quebrou porque o dono testou.
+
+## A visão do barbeiro no Financeiro: comissão, não faturamento (2026-09-21)
+
+Pedido do dono: barbeiro não vê faturamento — nem o próprio — só a comissão
+sobre os atendimentos dele. A verificação antes do bisturi mostrou que a
+RLS já estava certa (orders = gestor OU professional_id meu; commissions =
+só as minhas), então nada vazava por REST — era mudança de tela mesmo:
+
+- O card-herói do barbeiro virou **"Sua comissão"** (soma das linhas que a
+  RLS já limita a ele), sem spark nem variação — comissão por dia não
+  existe no hook e número inventado é pior que card simples. O card
+  "Faturamento" sai da lista dele; atendidos/agendamentos/cancelamentos
+  (dele) ficam.
+- **"Serviços mais vendidos · por faturamento"** passou a ser só de gestor.
+- O que já era só de gestor continua (meta, caixa, exportar, fechar
+  comissões); a aba Vendas segue mostrando as comandas DELE (operacional).
+
+Prova visual pendente de um login de barbeiro (convite por e-mail está
+travado pelo SMTP — achado nº 3 —, mas o dono pode copiar o link do convite
+na tela de Equipe).
+
+## O Financeiro desce ao dia (2026-09-21)
+
+Pedido do dono: o filtro tinha só "Hoje" e mês navegável — agora o lado
+"Dia" anda de um em um (chevrons) e salta para QUALQUER data (calendário
+nativo embutido na pílula), com rótulo humano ("sáb, 20/09" — o dia da
+semana é o que responde "qual dia tem mais movimento"). O badge de variação
+compara com o dia imediatamente anterior; o spark são os 7 dias até o
+escolhido; o donut da meta olha o mês DO DIA até ele; a aba Vendas
+acompanha o dia (com FIM de período — o "hoje" antigo podia ficar aberto,
+um dia passado não). Datas parseadas por partes, LOCAIS — new Date('YYYY-
+MM-DD') seria UTC e voltaria um dia no Brasil. Entrar no lado Dia com um
+mês passado navegado começa no último dia daquele mês, não salta para hoje.
+
+A catraca de botões (D5) pegou os 3 botões novos e a saída foi a certa: o
+seletor inteiro virou componente próprio (SeletorDePeriodo.tsx, teto 6
+medido) e o teto da página DESCEU de 10 para 7. computePeriods foi exportada
+e ganhou 6 testes (virada de mês inclusa).

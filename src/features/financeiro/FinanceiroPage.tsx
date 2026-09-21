@@ -12,8 +12,6 @@ import {
   Download,
   PartyPopper,
   HandCoins,
-  ChevronLeft,
-  ChevronRight,
   Wallet,
   Target,
 } from 'lucide-react'
@@ -48,18 +46,14 @@ function formatCurrency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-function somaMes(refMonth: string, delta: number) {
-  const [ano, mes] = refMonth.split('-').map(Number)
-  const d = new Date(ano, mes - 1 + delta, 1)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
-
-const MESES_LABEL = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
-
-function labelDoMes(refMonth: string) {
-  const [ano, mes] = refMonth.split('-').map(Number)
-  return `${MESES_LABEL[mes - 1]} ${ano}`
-}
+import {
+  hojeISO,
+  labelDoDia,
+  labelDoMes,
+  SeletorDePeriodo,
+  somaDia,
+  somaMes,
+} from './SeletorDePeriodo'
 
 const CARD_CONFIG: { key: MetricKey; label: string; icon: typeof DollarSign; format: 'currency' | 'number' }[] = [
   { key: 'faturamento', label: 'Faturamento', icon: DollarSign, format: 'currency' },
@@ -106,10 +100,33 @@ export function FinanceiroPage() {
   const { salonId, isManager, loading: salonLoading } = useSalon()
   const [filter, setFilter] = useState<PeriodFilter>('mes')
   const [refMonth, setRefMonth] = useState(mesCorrente)
+  // O dia do filtro "dia" — que deixou de ser sempre hoje (21/09): o dono
+  // desce a qualquer dia para achar os de mais movimento.
+  const [refDia, setRefDia] = useState(hojeISO)
   const ehMesCorrente = refMonth === mesCorrente()
-  // "Este mês" quando é o corrente; "ago 2026" quando navegou para trás.
-  const rotuloPeriodo = filter === 'dia' ? 'Hoje' : ehMesCorrente ? 'Este mês' : labelDoMes(refMonth)
-  const { data, loading, error, reload } = useFinanceiroData(salonId, filter, refMonth)
+  const ehHoje = refDia === hojeISO()
+  // "Este mês" quando é o corrente; "ago 2026" quando navegou para trás;
+  // "Hoje" ou "sáb, 20/09" no filtro por dia.
+  const rotuloPeriodo =
+    filter === 'dia' ? (ehHoje ? 'Hoje' : labelDoDia(refDia)) : ehMesCorrente ? 'Este mês' : labelDoMes(refMonth)
+  const { data, loading, error, reload } = useFinanceiroData(salonId, filter, refMonth, refDia)
+
+  /**
+   * Entrar no lado "Dia" respeita o mês que o dono está olhando: navegou para
+   * agosto e clicou no dia, começa no último dia de agosto — não salta de
+   * volta para hoje. No mês corrente, começa em hoje.
+   */
+  function ativarDia(delta = 0) {
+    let base = refDia
+    if (filter !== 'dia' && !ehMesCorrente) {
+      const [ano, mes] = refMonth.split('-').map(Number)
+      const ultimo = new Date(ano, mes, 0)
+      base = `${ultimo.getFullYear()}-${String(ultimo.getMonth() + 1).padStart(2, '0')}-${String(ultimo.getDate()).padStart(2, '0')}`
+    }
+    const novo = delta === 0 ? base : somaDia(base, delta)
+    setFilter('dia')
+    setRefDia(novo > hojeISO() ? hojeISO() : novo)
+  }
   const [editingGoal, setEditingGoal] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [showCelebration, setShowCelebration] = useState(false)
@@ -266,49 +283,24 @@ export function FinanceiroPage() {
         titulo="Financeiro"
         subtitulo={isManager ? 'Desempenho e vendas da sua barbearia' : 'Seus atendimentos e sua comissão'}
         acoes={<>
-        <div className="inline-flex items-center rounded-lg bg-surface-2 border border-border p-1 text-sm">
-          <button
-            onClick={() => {
-              setFilter('dia')
-              setRefMonth(mesCorrente())
-            }}
-            className={`px-4 py-1.5 rounded-md font-medium transition-colors ${
-              filter === 'dia' ? 'bg-surface text-foreground shadow-sm' : 'text-muted-foreground'
-            }`}
-          >
-            Hoje
-          </button>
-          <div
-            className={`inline-flex items-center rounded-md transition-colors ${
-              filter === 'mes' ? 'bg-surface text-foreground shadow-sm' : 'text-muted-foreground'
-            }`}
-          >
-            <button
-              onClick={() => {
-                setFilter('mes')
-                setRefMonth((m) => somaMes(m, -1))
-              }}
-              aria-label="Mês anterior"
-              className="px-1.5 py-1.5 hover:text-foreground"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <button onClick={() => setFilter('mes')} className="px-1 py-1.5 font-medium min-w-20 text-center">
-              {filter === 'mes' ? rotuloPeriodo : ehMesCorrente ? 'Este mês' : labelDoMes(refMonth)}
-            </button>
-            <button
-              onClick={() => {
-                setFilter('mes')
-                setRefMonth((m) => somaMes(m, 1))
-              }}
-              disabled={ehMesCorrente}
-              aria-label="Próximo mês"
-              className="px-1.5 py-1.5 hover:text-foreground disabled:opacity-30"
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        </div>
+        {/* O lado "Dia" ganhou navegação e calendário (21/09): antes era
+            sempre hoje; agora anda de um em um e salta para qualquer data —
+            é assim que o dono acha os dias de mais movimento. O seletor mora
+            em componente próprio pela catraca de botões (D5). */}
+        <SeletorDePeriodo
+          filter={filter}
+          refMonth={refMonth}
+          refDia={refDia}
+          aoAtivarDia={ativarDia}
+          aoEscolherDia={(iso) => {
+            setFilter('dia')
+            setRefDia(iso > hojeISO() ? hojeISO() : iso)
+          }}
+          aoAtivarMes={(delta) => {
+            setFilter('mes')
+            if (delta) setRefMonth((m) => somaMes(m, delta))
+          }}
+        />
 
         <div className="flex items-center gap-2">
           {isManager && (
@@ -426,6 +418,7 @@ export function FinanceiroPage() {
           salonId={salonId}
           period={filter}
           refMonth={refMonth}
+          refDia={refDia}
           periodLabel={rotuloPeriodo}
           prefill={salePrefill}
           onPrefillConsumed={clearPrefill}
@@ -440,9 +433,26 @@ export function FinanceiroPage() {
         <>
       <ErroDeCarga mensagem={error} aoTentarDeNovo={reload} tentando={loading} />
 
-      {/* Cards de métrica com mini-gráfico animado */}
+      {/* Cards de métrica com mini-gráfico animado.
+
+          BARBEIRO NÃO VÊ FATURAMENTO — nem o próprio (pedido do dono, 21/09):
+          o herói dele é a COMISSÃO (a soma que a RLS já limita às linhas
+          dele). Sem spark nem variação: comissão por dia não existe no hook,
+          e número inventado é pior que card simples. */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {CARD_CONFIG.map(({ key, label, icon: Icon, format }) => {
+        {!isManager && (
+          <StatsCard
+            icon={<HandCoins size={16} />}
+            label="Sua comissão"
+            value={loading ? 0 : data.commissions.reduce((s, c) => s + c.valor, 0)}
+            formattedValue={(n) => (error ? '—' : formatCurrency(n))}
+            badge={null}
+            bars={[]}
+            hero
+          />
+        )}
+        {(isManager ? CARD_CONFIG : CARD_CONFIG.filter((c) => c.key !== 'faturamento')).map(
+          ({ key, label, icon: Icon, format }) => {
           const metric = data.metrics[key]
           const invert = key === 'cancelamentos'
           const bars = metric.spark.map((p, i) => ({
@@ -618,7 +628,9 @@ export function FinanceiroPage() {
         )}
       </div>
 
-      {/* Serviços mais vendidos */}
+      {/* Serviços mais vendidos — ranking POR FATURAMENTO, então só gestor:
+          a visão do barbeiro é comissão, não receita (pedido de 21/09). */}
+      {isManager && (
       <div className="bg-surface border border-border rounded-2xl shadow-sm p-5">
         <div className="mb-4">
           <h2 className="text-sm font-semibold text-foreground">Serviços mais vendidos</h2>
@@ -653,6 +665,7 @@ export function FinanceiroPage() {
           </div>
         )}
       </div>
+      )}
 
       {isManager && (
         <div id="caixa">

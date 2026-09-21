@@ -11,6 +11,7 @@ import { useSalon } from '../auth/useSalon'
 import type { AppointmentStatus } from '../agenda/types'
 import type { SaleItemDraft } from './types'
 import { PAYMENT_LABELS } from './types'
+import { sugerirTrocas } from './sugestaoDePacote'
 import { ErroInline } from '../../components/ErroInline'
 import {
   faltaOuSobra,
@@ -551,6 +552,43 @@ export function NewSaleModal({
         viaPacoteNovo: uidPacote,
       },
     ])
+  }
+
+  /**
+   * A cutucada (parte C): troca UMA linha cobrada pelo consumo do pacote.
+   *
+   * A caixinha de saldos é passiva — dava para finalizar com o Corte cobrado
+   * e "restam 3" escrito logo acima. Aqui a linha vira consumo no lugar
+   * (preço 0, vínculo, sem comissionar de novo); linha com quantidade > 1
+   * solta uma unidade para o pacote e mantém o resto cobrado.
+   */
+  function trocarItemParaPacote(chave: string, saldo: SaldoPacote) {
+    const alvo = items.find((i) => i.chave === chave)
+    if (!alvo) return
+    const jaUsados = items.filter(
+      (i) => i.viaPacote === saldo.pacote_do_cliente_id && i.refId === saldo.service_id,
+    ).length
+    if (jaUsados >= saldo.restante) {
+      setError(`O pacote só tem ${saldo.restante} de ${saldo.servico} restante${saldo.restante === 1 ? '' : 's'}.`)
+      return
+    }
+    setError(null)
+    const consumo: SaleItemDraft = {
+      chave: gerarId(),
+      tipo: 'servico',
+      refId: saldo.service_id,
+      nome: `${saldo.servico} (pacote)`,
+      quantidade: 1,
+      preco_unitario: 0,
+      viaPacote: saldo.pacote_do_cliente_id,
+    }
+    setItems((prev) =>
+      prev.flatMap((i) => {
+        if (i.chave !== chave) return [i]
+        if (i.quantidade > 1) return [{ ...i, quantidade: i.quantidade - 1 }, consumo]
+        return [consumo]
+      }),
+    )
   }
 
   /**
@@ -1229,6 +1267,28 @@ export function NewSaleModal({
               ))}
             </div>
           )}
+
+          {/* A cutucada: linha cobrada que o pacote do cliente já pagou. Um
+              aviso por linha, com a troca a um clique — dinheiro continua
+              decisão do barbeiro, só que impossível de não ver. */}
+          {sugerirTrocas(items, saldos).map(({ chaveDoItem, saldo }) => (
+            <div
+              key={`sugestao-${chaveDoItem}`}
+              className="rounded-lg border border-warning bg-warning/10 px-3 py-2 flex items-center justify-between gap-3 text-sm"
+            >
+              <span className="text-foreground min-w-0">
+                O <strong>{saldo.servico}</strong> está sendo cobrado, mas o cliente tem{' '}
+                {saldo.restante} no pacote.
+              </span>
+              <button
+                type="button"
+                onClick={() => trocarItemParaPacote(chaveDoItem, saldo)}
+                className="shrink-0 btn-chip btn-chip-primario"
+              >
+                Usar o pacote neste item
+              </button>
+            </div>
+          ))}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
             <div className="space-y-2">

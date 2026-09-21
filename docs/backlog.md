@@ -5055,6 +5055,13 @@ das últimas 24h, mas também sem tráfego — o próximo convite/reset quebra
 igual se a senha for a mesma. Suspeita de causa: senha da caixa trocada ou
 bloqueio da Hostinger por ~290 tentativas falhas (1/5min × 24h).
 
+**Nuance provada em 21/09:** o "convite que chegou" NAO refuta a queda - o
+dono copiou o LINK na tela e o convite foi aceito 44s depois de criado
+(email_enviado_em null; o robo de 10min nem chegou a rodar). E
+list_credentials confirma: existe UMA credencial SMTP ("SMTP Hostinger",
+Ozsdd8R9j8L9vUJO) para os 8 nos - a queda e de TODOS os e-mails da
+plataforma desde 20/09 15:08.
+
 **Ação (dono, senha não passa pelo chat):** conferir a senha da caixa no
 painel da Hostinger → atualizar a credencial SMTP no n8n (Credenciais →
 SMTP Hostinger) → o ciclo seguinte entrega o feedback preso e marca

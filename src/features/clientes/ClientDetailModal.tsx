@@ -24,7 +24,9 @@ import { PacotesDoCliente } from './PacotesDoCliente'
 import { ErroInline } from '../../components/ErroInline'
 import {
   rotuloDaUltimaVisita,
+  rotuloDeFaltas,
   rotuloDoRitmo,
+  rotuloDoServicoDeSempre,
   situacaoDoCiclo,
   type MetricasDoCliente,
 } from './metricasDoCliente'
@@ -264,6 +266,51 @@ export function ClientDetailModal({
               ) : (
                 <div className="text-sm font-semibold text-warning">
                   Atrasado há {s.dias} {s.dias === 1 ? 'dia' : 'dias'}
+                </div>
+              )
+            })()}
+          </div>
+        </div>
+
+        {/* Lote 2: valor e hábito — quem responde a upsell, o serviço de
+            sempre com o gancho de produto, e a proteção de campanha (quem
+            falta muito não recebe oferta de horário nobre). */}
+        <div className="grid grid-cols-3 gap-3 mb-5">
+          <div className="bg-surface-2 rounded-lg p-3">
+            <div className="text-xs text-muted-foreground mb-0.5">Ticket médio</div>
+            <div className="text-sm font-semibold text-foreground">
+              {metricas?.ticket_medio != null ? formatCurrency(Number(metricas.ticket_medio)) : '—'}
+            </div>
+          </div>
+          <div className="bg-surface-2 rounded-lg p-3 min-w-0">
+            <div className="text-xs text-muted-foreground mb-0.5">Serviço de sempre</div>
+            {(() => {
+              const s = rotuloDoServicoDeSempre(
+                metricas?.servico_top ?? null,
+                metricas?.comprou_produto ?? null,
+              )
+              if (!s) return <div className="text-sm font-semibold text-foreground">—</div>
+              return (
+                <>
+                  <div className="text-sm font-semibold text-foreground truncate">{s.titulo}</div>
+                  <div className="text-[11px] text-muted-foreground truncate">{s.detalhe}</div>
+                </>
+              )
+            })()}
+          </div>
+          <div className="bg-surface-2 rounded-lg p-3">
+            <div className="text-xs text-muted-foreground mb-0.5">Faltas e cancelamentos</div>
+            {(() => {
+              const r = rotuloDeFaltas(
+                metricas?.faltas ?? null,
+                metricas?.cancelamentos_dele ?? null,
+              )
+              if (!r) return <div className="text-sm font-semibold text-foreground">—</div>
+              return (
+                <div
+                  className={`text-sm font-semibold ${r === 'Nenhum' ? 'text-success' : 'text-foreground'}`}
+                >
+                  {r}
                 </div>
               )
             })()}

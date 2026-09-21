@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   rotuloDaUltimaVisita,
+  rotuloDeFaltas,
   rotuloDoRitmo,
+  rotuloDoServicoDeSempre,
   situacaoDoCiclo,
 } from './metricasDoCliente'
 
@@ -29,6 +31,37 @@ describe('rotuloDoRitmo', () => {
   it('mediana vira "a cada ~N dias"; sem regua = null', () => {
     expect(rotuloDoRitmo(15)).toBe('a cada ~15 dias')
     expect(rotuloDoRitmo(null)).toBeNull()
+  })
+})
+
+describe('rotuloDoServicoDeSempre', () => {
+  it('junta o servico com o gancho de produto', () => {
+    expect(rotuloDoServicoDeSempre('Corte', false)).toEqual({
+      titulo: 'Corte',
+      detalhe: 'nunca levou produto',
+    })
+    expect(rotuloDoServicoDeSempre('Corte', true)).toEqual({
+      titulo: 'Corte',
+      detalhe: 'e leva produto',
+    })
+  })
+  it('sem consumo registrado nao inventa habito', () => {
+    expect(rotuloDoServicoDeSempre(null, false)).toBeNull()
+  })
+})
+
+describe('rotuloDeFaltas', () => {
+  it('singular e plural, separados por ponto', () => {
+    expect(rotuloDeFaltas(1, 2)).toBe('1 falta · 2 cancelamentos')
+    expect(rotuloDeFaltas(2, 1)).toBe('2 faltas · 1 cancelamento')
+  })
+  it('so um dos lados aparece quando o outro e zero', () => {
+    expect(rotuloDeFaltas(1, 0)).toBe('1 falta')
+    expect(rotuloDeFaltas(0, 3)).toBe('3 cancelamentos')
+  })
+  it('historico limpo e "Nenhum"; sem dados e null', () => {
+    expect(rotuloDeFaltas(0, 0)).toBe('Nenhum')
+    expect(rotuloDeFaltas(null, null)).toBeNull()
   })
 })
 

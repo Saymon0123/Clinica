@@ -35,6 +35,43 @@ export function rotuloDoRitmo(mediana: number | null): string | null {
   return `a cada ~${mediana} dias`
 }
 
+/**
+ * "Corte · nunca levou produto" — o serviço de sempre com o gancho de venda.
+ *
+ * O detalhe é oportunidade, não defeito: quem nunca levou produto é o alvo da
+ * campanha de pomada; quem leva é candidato a combo. Sem consumo registrado,
+ * null — a ficha mostra travessão em vez de inventar hábito.
+ */
+export function rotuloDoServicoDeSempre(
+  servicoTop: string | null,
+  comprouProduto: boolean | null,
+): { titulo: string; detalhe: string } | null {
+  if (!servicoTop) return null
+  return {
+    titulo: servicoTop,
+    detalhe: comprouProduto ? 'e leva produto' : 'nunca levou produto',
+  }
+}
+
+/**
+ * "1 falta · 2 cancelamentos", singular tratado; "Nenhum" quando o histórico
+ * existe e está limpo — a proteção de campanha (quem falta muito não recebe
+ * oferta de horário nobre) começa por dar nome ao comportamento.
+ */
+export function rotuloDeFaltas(
+  faltas: number | null,
+  cancelamentos: number | null,
+): string | null {
+  if (faltas == null && cancelamentos == null) return null
+  const f = faltas ?? 0
+  const c = cancelamentos ?? 0
+  if (f === 0 && c === 0) return 'Nenhum'
+  const partes: string[] = []
+  if (f > 0) partes.push(`${f} falta${f === 1 ? '' : 's'}`)
+  if (c > 0) partes.push(`${c} cancelamento${c === 1 ? '' : 's'}`)
+  return partes.join(' · ')
+}
+
 export type SituacaoDoCiclo =
   | { tipo: 'em_dia' }
   | { tipo: 'atrasado'; dias: number }

@@ -4966,3 +4966,26 @@ com total zero é recusado com o motivo ("o pacote já cobriu tudo") em vez de
 engolir o número. Catraca: 2 testes novos (10/10 no arquivo). Defeito
 pré-existia às partes A/C (mergeadas só hoje) — o fluxo antigo nunca tinha
 sido usado com comanda 100% coberta.
+
+## Métricas de campanha, lote 1 de 3 — última visita, ritmo, situação (2026-09-21)
+
+O dono aprovou as 8 métricas da ficha (de 3 em 3). A fundação veio junto com
+o lote 1 e serve os três lotes:
+
+**RPC `metricas_do_cliente` (0174, DEFINER, aplicada + ensaiada 14/14):** a
+RLS de appointments mostra ao barbeiro só os horários DELE — métrica no
+navegador daria "sumiu há 40 dias" para quem veio há 3 com outro barbeiro, e
+campanha por número enviesado é campanha errada. O definer valida o vínculo
+por dentro (padrão situacao_do_acesso), devolve agregados iguais para todo
+papel, dias no fuso de SP, mediana via percentile_cont, nulls para cliente
+novo (nunca NaN), linha NENHUMA para quem é de outro salão, anon sem execute.
+Catraca pgTAP com 14 asserções — inclusive "barbeiro vê os MESMOS números".
+A RPC já devolve TODOS os campos dos 3 lotes; os lotes 2 e 3 são só CRM.
+
+**UI do lote 1:** faixa de 3 cards na ficha (Última visita / Ritmo /
+Situação), com "Em dia" verde e "Atrasado há N dias" âmbar — atrasado é
+passar do ritmo PRÓPRIO do cliente, não de número fixo. Erro da RPC fica
+mudo (achado 31); sem histórico, travessão. 8 testes vitest dos helpers.
+
+Ficam: lote 2 (ticket médio, serviço de sempre + produto, faltas/cancels) e
+lote 3 (pacote saldo/vencimento via useSaldoDePacotes, última nota).

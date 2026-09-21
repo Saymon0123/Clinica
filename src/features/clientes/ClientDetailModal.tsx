@@ -22,6 +22,12 @@ type HistoryOrder = {
 
 import { PacotesDoCliente } from './PacotesDoCliente'
 import { ErroInline } from '../../components/ErroInline'
+import {
+  rotuloDaUltimaVisita,
+  rotuloDoRitmo,
+  situacaoDoCiclo,
+  type MetricasDoCliente,
+} from './metricasDoCliente'
 
 const STATUS_LABELS: Record<string, string> = {
   agendado: 'Agendado',
@@ -62,6 +68,10 @@ export function ClientDetailModal({
   const [orders, setOrders] = useState<HistoryOrder[]>([])
   const [totalSpent, setTotalSpent] = useState(0)
   const [completedCount, setCompletedCount] = useState(0)
+  // Métricas de campanha (0174): a RPC é definer para todo papel ver os
+  // MESMOS números. Erro aqui fica mudo (console) — métrica é apoio e não
+  // pode derrubar a ficha (a regra do achado 31).
+  const [metricas, setMetricas] = useState<MetricasDoCliente | null>(null)
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState(false)
   const [recusou, setRecusou] = useState(client.recusou_contato)
@@ -100,7 +110,7 @@ export function ClientDetailModal({
       // Os totais vêm de consultas SEM limite — somar em cima da lista de
       // "recentes" (15 linhas) mentia justamente para o cliente fiel, que tem
       // mais histórico do que cabe na lista.
-      const [appts, ords, concluidos] = await Promise.all([
+      const [appts, ords, concluidos, metricasRes] = await Promise.all([
         supabase
           .from('appointments')
           .select('id, data_hora_inicio, status, services!appointments_service_id_fkey(nome)')
@@ -118,7 +128,13 @@ export function ClientDetailModal({
           .select('id', { count: 'exact', head: true })
           .eq('client_id', client.id)
           .eq('status', 'concluido'),
+        supabase.rpc('metricas_do_cliente', { p_client_id: client.id }).maybeSingle(),
       ])
+      if (metricasRes.error) {
+        console.error('Erro ao carregar as métricas do cliente:', metricasRes.error)
+      } else {
+        setMetricas((metricasRes.data as MetricasDoCliente | null) ?? null)
+      }
       if (appts.error || ords.error || concluidos.error) {
         console.error('Erro ao carregar o histórico do cliente:', appts.error ?? ords.error ?? concluidos.error)
         setErro(true)
@@ -216,6 +232,41 @@ export function ClientDetailModal({
           <div className="bg-surface-2 rounded-lg p-3">
             <div className="text-xs text-muted-foreground mb-0.5">Atendimentos concluídos</div>
             <div className="text-lg font-semibold text-foreground">{completedCount}</div>
+          </div>
+        </div>
+
+        {/* Lote 1 das métricas de campanha: quando foi, qual o ritmo DELE, e
+            se está em dia — o gatilho de "chama de volta" com um olho só.
+            Sem histórico, travessão; sem 2 visitas, ritmo não inventa. */}
+        <div className="grid grid-cols-3 gap-3 mb-5">
+          <div className="bg-surface-2 rounded-lg p-3">
+            <div className="text-xs text-muted-foreground mb-0.5">Última visita</div>
+            <div className="text-sm font-semibold text-foreground">
+              {rotuloDaUltimaVisita(metricas?.dias_desde_ultima ?? null) ?? '—'}
+            </div>
+          </div>
+          <div className="bg-surface-2 rounded-lg p-3">
+            <div className="text-xs text-muted-foreground mb-0.5">Ritmo</div>
+            <div className="text-sm font-semibold text-foreground">
+              {rotuloDoRitmo(metricas?.intervalo_mediano_dias ?? null) ?? '—'}
+            </div>
+          </div>
+          <div className="bg-surface-2 rounded-lg p-3">
+            <div className="text-xs text-muted-foreground mb-0.5">Situação</div>
+            {(() => {
+              const s = situacaoDoCiclo(
+                metricas?.dias_desde_ultima ?? null,
+                metricas?.intervalo_mediano_dias ?? null,
+              )
+              if (!s) return <div className="text-sm font-semibold text-foreground">—</div>
+              return s.tipo === 'em_dia' ? (
+                <div className="text-sm font-semibold text-success">Em dia</div>
+              ) : (
+                <div className="text-sm font-semibold text-warning">
+                  Atrasado há {s.dias} {s.dias === 1 ? 'dia' : 'dias'}
+                </div>
+              )
+            })()}
           </div>
         </div>
 

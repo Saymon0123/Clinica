@@ -4999,3 +4999,38 @@ detalhe em cinza de propósito) e **Faltas e cancelamentos** ("Nenhum" em
 verde quando o histórico existe e está limpo — a proteção de campanha começa
 por dar nome ao comportamento). Travessão em tudo que não tem dado; 5 testes
 novos dos helpers. Fica: lote 3 (pacote saldo/vencimento + última nota).
+
+## Métricas de campanha, lote 3 de 3 — pacote e última nota (2026-09-21)
+
+Fecha as 8 métricas aprovadas. Só CRM: card **Pacote** na ficha reusando o
+hook e o rótulo da parte A ("Sem pacote ativo" é DADO, não ausência — é o
+alvo da venda; com saldo, "Corte: 3 restantes (vence 12/10)") e card
+**Última nota** ("5 de 5" verde = pedir indicação; 3 para baixo âmbar = caso
+de dono, não de campanha; data por corte de string). +2 testes (487).
+Com A+B+C de pacotes e os 3 lotes de métricas, a ficha virou painel de
+campanha; o próximo passo natural (não pedido) segue sendo filtros em lote
+na lista de Clientes.
+
+## Os filtros de campanha em lote na lista de Clientes (2026-09-21)
+
+Onde as métricas viram campanha de verdade. Chips na lista — **Todos /
+Atrasados / Pacote vencendo / Nunca levou produto** — cada um com a CONTAGEM
+do lote, compostos com a busca por nome/telefone.
+
+**RPC `metricas_para_filtros` (0175, DEFINER, ensaiada de primeira e
+aplicada):** a irmã em lote da 0174 — uma linha por cliente do salão, mesmo
+motivo (número de campanha não depende de quem abriu a lista), o trinco no
+WHERE (salão fora dos vínculos = linha nenhuma), `pacote_vence_em_dias`
+calculado no SERVIDOR no fuso de SP (o filtro não faz conta de data no
+aparelho). Catraca pgTAP com 9 asserções.
+
+**Réguas dos filtros = as da ficha** (senão lista e ficha discordariam):
+atrasado é o situacaoDoCiclo; pacote vencendo exige saldo + janela de 30
+dias; "nunca levou produto" só mira quem JÁ tem comanda fechada. Chips só
+aparecem com o mapa carregado (erro = some, não mente — achado 31); estado
+vazio com filtro ativo diz a verdade ("ninguém se encaixa") em vez de
+mandar buscar outro nome. 7 testes vitest.
+
+Correção de rota: eu tinha dito que aniversário não existia no cadastro —
+existe (clients.aniversario, usado no export CSV). Filtro "aniversariantes
+do mês" fica barato quando o dono quiser.

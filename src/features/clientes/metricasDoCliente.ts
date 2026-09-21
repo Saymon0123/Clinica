@@ -72,6 +72,21 @@ export function rotuloDeFaltas(
   return partes.join(' · ')
 }
 
+/**
+ * "5 de 5 · 12/09" com o tom da conversa: 5 é convite a pedir indicação
+ * (verde); 3 para baixo é caso de DONO, não de campanha (âmbar); 4 fica
+ * neutro. A data sai por corte de string — fuso do aparelho não muda o dia.
+ */
+export function rotuloDaNota(
+  nota: number | null,
+  dataIso: string | null,
+): { texto: string; detalhe: string | null; tom: 'boa' | 'neutra' | 'ruim' } | null {
+  if (nota == null) return null
+  const detalhe = dataIso ? `${dataIso.slice(8, 10)}/${dataIso.slice(5, 7)}` : null
+  const tom = nota >= 5 ? 'boa' : nota <= 3 ? 'ruim' : 'neutra'
+  return { texto: `${nota} de 5`, detalhe, tom }
+}
+
 export type SituacaoDoCiclo =
   | { tipo: 'em_dia' }
   | { tipo: 'atrasado'; dias: number }

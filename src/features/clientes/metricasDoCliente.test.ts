@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  rotuloDaNota,
   rotuloDaUltimaVisita,
   rotuloDeFaltas,
   rotuloDoRitmo,
@@ -62,6 +63,17 @@ describe('rotuloDeFaltas', () => {
   it('historico limpo e "Nenhum"; sem dados e null', () => {
     expect(rotuloDeFaltas(0, 0)).toBe('Nenhum')
     expect(rotuloDeFaltas(null, null)).toBeNull()
+  })
+})
+
+describe('rotuloDaNota', () => {
+  it('nota com data em DD/MM e o tom certo', () => {
+    expect(rotuloDaNota(5, '2026-09-12')).toEqual({ texto: '5 de 5', detalhe: '12/09', tom: 'boa' })
+    expect(rotuloDaNota(4, '2026-09-12')).toEqual({ texto: '4 de 5', detalhe: '12/09', tom: 'neutra' })
+    expect(rotuloDaNota(3, null)).toEqual({ texto: '3 de 5', detalhe: null, tom: 'ruim' })
+  })
+  it('sem avaliacao, null', () => {
+    expect(rotuloDaNota(null, '2026-09-12')).toBeNull()
   })
 })
 

@@ -1,5 +1,11 @@
 import { inicioDaSemana, inicioDoMes } from '../../lib/periodo'
 import { useMemo, useState } from 'react'
+import {
+  passaNoFiltro,
+  ROTULOS_DOS_FILTROS,
+  type FiltroDeCampanha,
+} from './filtrosDeCampanha'
+import { useMetricasParaFiltros } from './useMetricasParaFiltros'
 import { Download, Inbox, Plus, Search, Upload, UserPlus } from 'lucide-react'
 import { useSalon } from '../auth/useSalon'
 import { useClientsData } from './useClientsData'
@@ -41,6 +47,10 @@ export function ClientesPage() {
   const [importing, setImporting] = useState(false)
   const [novosPeriodo, setNovosPeriodo] = useState<'mes' | 'semana'>('mes')
   const [ordem, setOrdem] = useState<'nome' | 'ultima_visita'>('nome')
+  // Filtros de campanha (0175): as métricas de todos os clientes de uma vez.
+  // Os chips só aparecem com o mapa carregado — filtrar sem dado mentiria.
+  const [filtro, setFiltro] = useState<FiltroDeCampanha>('todos')
+  const metricasDeFiltro = useMetricasParaFiltros(salonId)
 
   // Clientes novos no período escolhido
   const novosCount = useMemo(() => {
@@ -66,9 +76,12 @@ export function ClientesPage() {
     const term = search.trim().toLowerCase()
     const termDigitos = somenteDigitos(term)
     let lista = clients
+    if (filtro !== 'todos' && metricasDeFiltro) {
+      lista = lista.filter((c) => passaNoFiltro(filtro, metricasDeFiltro.get(c.id)))
+    }
     if (term) {
       // Telefone compara por dígitos: "(41) 9..." e "41 9..." são o mesmo número.
-      lista = clients.filter(
+      lista = lista.filter(
         (c) =>
           c.nome.toLowerCase().includes(term) ||
           (termDigitos.length > 0 && somenteDigitos(c.telefone ?? '').includes(termDigitos)),
@@ -83,7 +96,7 @@ export function ClientesPage() {
       })
     }
     return lista
-  }, [clients, search, ordem])
+  }, [clients, search, ordem, filtro, metricasDeFiltro])
 
   if (salonLoading) {
     return <SkeletonPagina />
@@ -191,7 +204,7 @@ export function ClientesPage() {
         </div>
       ) : (
         <div>
-          <div className="bg-surface rounded-2xl border border-border shadow-sm p-3 mb-3">
+          <div className="bg-surface rounded-2xl border border-border shadow-sm p-3 mb-3 space-y-2.5">
             <div className="relative max-w-xs">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -201,14 +214,45 @@ export function ClientesPage() {
                 className="pl-9"
               />
             </div>
+            {/* Filtros de campanha: só aparecem com as métricas na mão —
+                chip sobre dado ausente filtraria para o vazio mentindo. A
+                contagem em cada chip é o tamanho do lote da campanha. */}
+            {metricasDeFiltro && (
+              <div className="flex flex-wrap gap-1.5">
+                {(Object.keys(ROTULOS_DOS_FILTROS) as FiltroDeCampanha[]).map((f) => {
+                  const total =
+                    f === 'todos'
+                      ? clients.length
+                      : clients.filter((c) => passaNoFiltro(f, metricasDeFiltro.get(c.id))).length
+                  return (
+                    <button
+                      key={f}
+                      onClick={() => setFiltro(f)}
+                      aria-pressed={filtro === f}
+                      className={filtro === f ? 'btn-chip btn-chip-primario' : 'btn-chip'}
+                    >
+                      {ROTULOS_DOS_FILTROS[f]} ({total})
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           {filteredClients.length === 0 ? (
             <div className="bg-surface rounded-2xl border border-border shadow-sm">
               <EstadoVazio
                 icone={Search}
-                titulo="Nenhum cliente encontrado."
-                descricao="Tente buscar por outro nome ou telefone."
+                titulo={
+                  filtro !== 'todos' && !search.trim()
+                    ? 'Nenhum cliente neste filtro.'
+                    : 'Nenhum cliente encontrado.'
+                }
+                descricao={
+                  filtro !== 'todos' && !search.trim()
+                    ? 'Hoje ninguém se encaixa aqui — para campanha, isso costuma ser bom sinal.'
+                    : 'Tente buscar por outro nome ou telefone.'
+                }
               />
             </div>
           ) : (

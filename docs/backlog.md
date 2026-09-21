@@ -5034,3 +5034,37 @@ mandar buscar outro nome. 7 testes vitest.
 Correção de rota: eu tinha dito que aniversário não existia no cadastro —
 existe (clients.aniversario, usado no export CSV). Filtro "aniversariantes
 do mês" fica barato quando o dono quiser.
+
+## Rodada, achado nº 3 — o e-mail que falha em silêncio (2026-09-21)
+
+O dono enviou um feedback de teste pelo CRM (20/09 15:08) e ele não chegou
+em lugar nenhum. O funil provou-se saudável até a última porta: gravado no
+banco, listado em `feedbacks_pendentes`, o n8n rodando a cada 5 min e
+ACHANDO o item, e-mail montado — e o nó "Avisar por E-mail" caindo com
+**535 authentication failed**: a credencial SMTP da Hostinger
+(contato@clubcut.space, `Ozsdd8R9j8L9vUJO`) parou de autenticar. Como o nó
+tem saída de erro (onError continua) e o "marcar" só roda depois do envio,
+a execução fecha "success" e o robô falha EM SILÊNCIO a cada 5 minutos
+desde então. Nada se perdeu: o desenho "marca só depois de enviar" segura
+o item na fila — assim que a credencial voltar, o próximo ciclo entrega.
+
+**Raio de alcance:** a mesma credencial serve os 8 nós emailSend de 7
+fluxos (migração de 07/09) — convite de equipe, auditoria, alertas. E o
+**Auth do Supabase** usa a mesma caixa via Custom SMTP: sem erro nos logs
+das últimas 24h, mas também sem tráfego — o próximo convite/reset quebra
+igual se a senha for a mesma. Suspeita de causa: senha da caixa trocada ou
+bloqueio da Hostinger por ~290 tentativas falhas (1/5min × 24h).
+
+**Nuance provada em 21/09:** o "convite que chegou" NAO refuta a queda - o
+dono copiou o LINK na tela e o convite foi aceito 44s depois de criado
+(email_enviado_em null; o robo de 10min nem chegou a rodar). E
+list_credentials confirma: existe UMA credencial SMTP ("SMTP Hostinger",
+Ozsdd8R9j8L9vUJO) para os 8 nos - a queda e de TODOS os e-mails da
+plataforma desde 20/09 15:08.
+
+**Ação (dono, senha não passa pelo chat):** conferir a senha da caixa no
+painel da Hostinger → atualizar a credencial SMTP no n8n (Credenciais →
+SMTP Hostinger) → o ciclo seguinte entrega o feedback preso e marca
+`notificado_em` sozinho → conferir também o Custom SMTP do Auth no painel
+do Supabase. Fica aberto pensar um ALARME para "erro repetido na saída de
+erro" — o silêncio de 24h só quebrou porque o dono testou.

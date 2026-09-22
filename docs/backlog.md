@@ -5133,11 +5133,37 @@ a recusa:
   com VÁRIOS serviços e vaga validada ANTES de gravar (o insert antigo do
   agente só era barrado pela trava crua: sem jornada, fechamento, folga).
 
-**Fase 2 — n8n (próxima):** trocar as ferramentas do agente para as RPCs
-(criar/remarcar/alterar via chamada REST /rpc com a credencial Supabase) +
-prompt com o exemplo da sobrancelha; publish + conferir versão ativa.
-**Fase 3 — agenda pública:** ação `alterar_servicos` na edge (token) + UI
-de serviços editáveis no link de gestão (MeuHorarioPage).
-**Fase 4 — produto pelo WhatsApp:** produto NÃO entra em agendamento nem
-se vende pelo chat; vira RECADO no agendamento (coluna nova) que o
-barbeiro vê na agenda e no Concluir e cobrar.
+**Fase 1b — FEITA (migration 0177):** percorrendo os caminhos antes de
+escrever a tela apareceu um beco: serviço que a barbearia INATIVOU e que
+ainda está num agendamento futuro fazia a lista inteira ser recusada
+(22023 → 500 genérico), e o cliente não conseguia nem acrescentar a
+sobrancelha. Defeito CONFIRMADO em produção com ensaio antes de corrigir.
+A regra virou "pode MANTER o que saiu do cardápio, não pode ACRESCENTAR".
++2 asserts no pgTAP (30 no total).
+
+**Fase 2 — FEITA (n8n, workflow rJO1n7cFeNDIJyB5, publicado):** o nó
+`Criar Agendamento` (supabaseTool, um serviço só) virou httpRequestTool
+para `/rest/v1/rpc/agendar_pelo_agente` com lista de serviços; nasceram
+`Remarcar Agendamento` e `Alterar Servicos do Agendamento`. Credencial
+por referência (Supabase account), três conexões ai_tool conferidas. O
+prompt mudou em 7 pontos (patch por script com assert de ocorrência única
+e prova por reversão; sha256 conferido contra o que o n8n gravou):
+serviços em lista, seção "CANCELAR, REMARCAR E MUDAR OS SERVICOS" com o
+exemplo da sobrancelha e a regra da LISTA COMPLETA, e `ok:false` +
+`sugestoes_no_dia` como linguagem de recusa.
+
+**Fase 3 — FEITA (edge + CRM):** ações `catalogo` e `alterar_servicos` na
+edge `agenda-publica` (autorizadas por token, mesmo freio de 12/10min),
+`appointment_services` passou a devolver o `id` do serviço, e o link de
+gestão ganhou o editor: catálogo carregado SOB DEMANDA, total ao vivo,
+serviço fora do cardápio marcado como tal, e a recusa da RPC mostrada em
+frase de gente. Verificado ponta a ponta no navegador (claro e escuro,
+375px): adicionar sobrancelha levou o fim de 10:40 para 11:15 com o corte
+seguindo principal; com um vizinho colado, a recusa apareceu explicada e
+NADA mudou no banco. `aria-label` nos checkboxes veio de um defeito visto
+na árvore de acessibilidade durante o teste (liam "caixa de seleção" sem
+o nome do serviço).
+
+**Fase 4 — pendente (produto pelo WhatsApp):** produto NÃO entra em
+agendamento nem se vende pelo chat; vira RECADO no agendamento (coluna
+nova) que o barbeiro vê na agenda e no Concluir e cobrar.

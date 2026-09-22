@@ -18,13 +18,16 @@ create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
 begin;
-select plan(28);
+select plan(30);
 
 \set salao    'ee017600-0000-0000-0000-000000000001'
 \set barbeiro 'ee017601-0000-0000-0000-000000000001'
 \set corte    'ee017602-0000-0000-0000-000000000001'
 \set barba    'ee017602-0000-0000-0000-000000000002'
 \set sobranc  'ee017602-0000-0000-0000-000000000003'
+\set fora     'ee017602-0000-0000-0000-000000000004'
+\set morto    'ee017602-0000-0000-0000-000000000005'
+\set saiu     'ee017604-0000-0000-0000-000000000005'
 \set cli      'ee017603-0000-0000-0000-000000000001'
 \set cli2     'ee017603-0000-0000-0000-000000000002'
 \set cli3     'ee017603-0000-0000-0000-000000000003'
@@ -58,7 +61,11 @@ values (:'barbeiro', extract(dow from (now() at time zone 'America/Sao_Paulo')::
 insert into services (id, salon_id, nome, duracao_minutos, preco, ativo) values
   (:'corte',   :'salao', 'Corte',       40, 45, true),
   (:'barba',   :'salao', 'Barba',       30, 30, true),
-  (:'sobranc', :'salao', 'Sobrancelha', 15, 15, true);
+  (:'sobranc', :'salao', 'Sobrancelha', 15, 15, true),
+  -- Os dois que saíram do cardápio (0177): um JÁ está num agendamento, o
+  -- outro não está em lugar nenhum.
+  (:'fora',    :'salao', 'Corte antigo',  40, 45, false),
+  (:'morto',   :'salao', 'Servico morto', 20, 20, false);
 insert into clients (id, salon_id, nome, telefone) values
   (:'cli',  :'salao', 'Fulano',   '41988880001'),
   (:'cli2', :'salao', 'Beltrano', '41988880002'),
@@ -187,6 +194,26 @@ select throws_ok(
          'ee017601-0000-0000-0000-000000000001'::uuid,
          'ee017602-0000-0000-0000-000000000001'::uuid),
   '42501', null, 'cliente de fora do salao leva 42501');
+
+-- ── O que saiu do cardápio (0177) ───────────────────────────────────────────
+-- A barbearia inativou um serviço que já tinha horário marcado. O cliente
+-- continua podendo MEXER (manter o que tinha + somar), mas ninguém acrescenta
+-- o que saiu. Antes da 0177 o primeiro caso estourava 22023 e virava um 500
+-- genérico na cara de quem só queria a sobrancelha.
+insert into appointments (id, salon_id, client_id, professional_id, service_id, data_hora_inicio, data_hora_fim, status, origem)
+values (:'saiu', :'salao', :'cli3', :'barbeiro', :'fora',
+        pg_temp.amanha_sp(time '09:00'), pg_temp.amanha_sp(time '09:40'), 'agendado', 'publico');
+
+select ok(
+  (alterar_servicos_pelo_cliente(:'saiu', array[:'fora', :'sobranc']::uuid[], :'cli3', null)->>'ok')::boolean,
+  'o servico fora do cardapio pode ser MANTIDO ao somar outro');
+select throws_ok(
+  format($$select alterar_servicos_pelo_cliente(%L, array[%L,%L]::uuid[], %L, null)$$,
+         'ee017604-0000-0000-0000-000000000005'::uuid,
+         'ee017602-0000-0000-0000-000000000004'::uuid,
+         'ee017602-0000-0000-0000-000000000005'::uuid,
+         'ee017603-0000-0000-0000-000000000003'::uuid),
+  '22023', null, 'acrescentar servico fora do cardapio continua barrado');
 
 -- ── O trinco ────────────────────────────────────────────────────────────────
 

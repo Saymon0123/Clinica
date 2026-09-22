@@ -297,18 +297,20 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
     // TODOS os serviços, não só o principal. Quem marcou corte+barba pelo QR
     // abria o próprio link e lia "Corte" — e ficava sem saber se a barba tinha
     // entrado. `ordem` é a mesma que a pessoa escolheu na tela.
+    // `id` entra no select desde a fase 3 do "cliente mexe": é ele que deixa a
+    // tela montar o editor de serviços sem adivinhar nada.
     const { data: servicosDoAg } = await admin
       .from('appointment_services')
-      .select('ordem, services(nome, preco)')
+      .select('ordem, services(id, nome, preco)')
       .eq('appointment_id', ag.id)
       .order('ordem')
-    type ServicoRel = { nome: string | null; preco: number | null }
+    type ServicoRel = { id: string | null; nome: string | null; preco: number | null }
     const servicos = (servicosDoAg ?? [])
       .map((linha) => {
         const s = (Array.isArray(linha.services) ? linha.services[0] : linha.services) as
           | ServicoRel
           | null
-        return s ? { nome: s.nome, preco: s.preco } : null
+        return s ? { id: s.id, nome: s.nome, preco: s.preco } : null
       })
       .filter((s): s is ServicoRel => !!s)
 
@@ -516,6 +518,79 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
     }
 
     return json({ ok: true, inicio: quando.toISOString(), whatsappBarbearia: whatsapp })
+  }
+
+  // ------------------------------------------------------------------
+  // Mudar os serviços pelo link de gestão (fase 3 do "cliente mexe").
+  //
+  // A sobrancelha lembrada depois de marcar: a lista de serviços muda SEM
+  // mexer no horário. Toda a régua mora na RPC `alterar_servicos_pelo_cliente`
+  // (0176): de pé, 30 minutos, serviço ativo, jornada, fechamento, e a trava
+  // de sobreposição decidindo se o tempo a mais cabe. Aqui só se valida o
+  // token e se traduz a recusa em frase.
+  //
+  // `catalogo` alimenta o "+ adicionar" do editor. É por TOKEN, como tudo na
+  // gestão: o token identifica o salão, e os serviços ativos são os mesmos
+  // que a página pública de agendar mostra a qualquer um.
+  // ------------------------------------------------------------------
+  if (body.acao === 'alterar_servicos' || body.acao === 'catalogo') {
+    const token = (body.token as string | undefined)?.trim() ?? ''
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
+      return json({ error: 'Link inválido.' }, 400)
+    }
+    if (await taxaExcedida(admin, `gestao:${ipDe(req)}`, 12, 600, 'deixa-passar')) {
+      return json({ error: 'Muitas tentativas. Aguarde alguns minutos.' }, 429)
+    }
+
+    const { data: ag } = await admin
+      .from('appointments')
+      .select('id, salon_id')
+      .eq('token_gestao', token)
+      .maybeSingle()
+    if (!ag) return json({ error: 'Agendamento não encontrado.' }, 404)
+
+    if (body.acao === 'catalogo') {
+      const { data: servicosAtivos, error: erroCatalogo } = await admin
+        .from('services')
+        .select('id, nome, preco, duracao_minutos')
+        .eq('salon_id', ag.salon_id)
+        .eq('ativo', true)
+        .order('nome')
+      if (erroCatalogo) {
+        console.error('Erro ao carregar o catalogo pelo token:', erroCatalogo)
+        return json({ error: 'Não foi possível carregar os serviços. Tente novamente.' }, 500)
+      }
+      return json({ servicos: servicosAtivos ?? [] })
+    }
+
+    // A lista COMPLETA de como o agendamento deve ficar, na ordem. Formato
+    // validado aqui para uuid quebrado virar 400 limpo, não erro de cast na
+    // RPC; o teto de 10 é sanidade (ninguém marca dez serviços num horário).
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    const pedidos = Array.isArray(body.servicos)
+      ? (body.servicos as unknown[])
+          .filter((s): s is string => typeof s === 'string' && UUID_RE.test(s.trim()))
+          .map((s) => s.trim())
+          .slice(0, 10)
+      : []
+    if (!pedidos.length) return json({ error: 'Escolha ao menos um serviço.' }, 400)
+
+    const { data: resultado, error: erroRpc } = await admin.rpc('alterar_servicos_pelo_cliente', {
+      p_appointment_id: ag.id,
+      p_service_ids: pedidos,
+      p_token: token,
+    })
+    if (erroRpc) {
+      console.error('Erro ao alterar servicos pelo token:', erroRpc)
+      return json({ error: 'Não foi possível mudar os serviços. Tente novamente.' }, 500)
+    }
+    const r = resultado as { ok: boolean; motivo?: string } | null
+    if (!r?.ok) {
+      // A recusa da RPC já vem em frase de gente (não cabe, 30 minutos,
+      // fechamento) — repassar é melhor do que reescrever.
+      return json({ error: r?.motivo ?? 'Não foi possível mudar os serviços.' }, 409)
+    }
+    return json({ ok: true })
   }
 
   const salonId = body.salonId as string | undefined

@@ -153,6 +153,7 @@ export function FinanceiroPage() {
         serviceIds: searchParams.get('serviceIds')?.split(',').filter(Boolean) ?? undefined,
         clienteNome: searchParams.get('clienteNome') ?? undefined,
         horaLocal: searchParams.get('horaLocal') ?? undefined,
+        recado: searchParams.get('recado') ?? undefined,
       }
       guardarVendaPendente(salonId, vinculo)
       setTab('vendas')

@@ -281,7 +281,7 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
     const { data: ag } = await admin
       .from('appointments')
       .select(
-        'id, salon_id, status, data_hora_inicio, data_hora_fim, services!appointments_service_id_fkey(nome), professionals(nome), salons(nome, telefone)',
+        'id, salon_id, status, data_hora_inicio, data_hora_fim, recado_do_cliente, services!appointments_service_id_fkey(nome), professionals(nome), salons(nome, telefone)',
       )
       .eq('token_gestao', token)
       .maybeSingle()
@@ -328,6 +328,10 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
       barbeiro: nomeDe(ag.professionals as Rel),
       barbearia: salaoRel?.nome ?? null,
       whatsappBarbearia,
+      // O pedido por fora dos serviços (0178). Vai para a tela porque quem
+      // pediu uma pomada pelo WhatsApp abre este link para conferir se ficou
+      // registrado — e sem isso a única resposta possível era confiar.
+      recado: ag.recado_do_cliente ?? null,
     }
 
     if (body.acao === 'meu_horario') return json(info)

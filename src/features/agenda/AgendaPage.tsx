@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Building2, CalendarDays, ChevronLeft, ChevronRight, Plus, Users } from 'lucide-react'
+import { Building2, CalendarDays, ChevronLeft, ChevronRight, MessageSquareQuote, Plus, Users } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { traduzirErroDoBanco } from '../../lib/erroDoBanco'
 import { useSalon } from '../auth/useSalon'
@@ -118,7 +118,11 @@ function AppointmentBlock({
       onClick={onClick}
       aria-label={`${formatTime(appt.data_hora_inicio)}, ${appt.client_nome ?? 'cliente'}${
         appt.service_nome ? `, ${appt.service_nome}` : ''
-      }, ${rotuloStatus}. Abrir detalhes.`}
+      }, ${rotuloStatus}${
+        // O recado entra no rótulo, e não só no ícone: quem usa leitor de tela
+        // percorre a grade por aqui e não veria um aviso que é só visual.
+        appt.recado_do_cliente ? `. Tem recado do cliente: ${appt.recado_do_cliente}` : ''
+      }. Abrir detalhes.`}
       className={`absolute inset-x-1 text-left rounded-lg border-l-2 px-2 py-1 overflow-hidden cursor-pointer select-none focus-visible:ring-2 focus-visible:ring-primary ${style.container} ${
         dragging ? 'opacity-40' : ''
       }`}
@@ -126,6 +130,12 @@ function AppointmentBlock({
     >
       <div className={`text-xs font-medium truncate ${style.text}`}>
         {formatTime(appt.data_hora_inicio)} · {appt.client_nome ?? 'Cliente'}
+        {/* O ponto do recado (0178): o barbeiro precisa saber que TEM pedido
+            sem abrir cada horário da grade. O texto mora no detalhe — aqui
+            cabe um sinal, e o cartão é estreito. */}
+        {appt.recado_do_cliente && (
+          <MessageSquareQuote size={11} className="inline-block ml-1 align-[-1px]" aria-hidden="true" />
+        )}
       </div>
       {appt.service_nome && (
         <div className={`text-[11px] truncate ${style.subtext}`}>

@@ -5106,3 +5106,38 @@ A catraca de botões (D5) pegou os 3 botões novos e a saída foi a certa: o
 seletor inteiro virou componente próprio (SeletorDePeriodo.tsx, teto 6
 medido) e o teto da página DESCEU de 10 para 7. computePeriods foi exportada
 e ganhou 6 testes (virada de mês inclusa).
+
+## O cliente mexe no próprio horário (2026-09-21, em quatro fases)
+
+Pedido do dono, aprovado com ordem: "ele agenda um corte e dai 10 minutos
+após... lembra que vai fazer tambem a sobrancelha... manda msg e não
+consegue adicionar nem nada". Verificado antes: o agente n8n só tem criar
+(UM serviço — service_id singular), cancelar e confirmar presença; o prompt
+ensina "reagendar = cancelar + criar", que conta um cancelamento FALSO nas
+métricas de campanha; a agenda pública remarca e cancela pelo link de
+gestão, mas trava a lista de serviços de propósito (linha 677 da edge).
+
+**Fase 1 — FEITA (migration 0176, aplicada em produção após ensaio com
+rollback; pgTAP com 28 asserts):** três RPCs security definer, só
+service_role, retorno jsonb {ok/motivo/sugestões} para o agente conversar
+a recusa:
+- `alterar_servicos_pelo_cliente(ag, servicos[], client_id|token)` — troca
+  a lista, recalcula o fim, e A TRAVA de sobreposição (0063) decide se
+  cabe (recusa desfaz tudo por subtransação). Réguas do cliente: 30min de
+  piso (0166), serviço ativo, não passa da jornada nem do fechamento.
+- `remarcar_pelo_cliente(ag, novo_inicio, client_id, prof?)` — remarcação
+  DE VERDADE (mesmo agendamento, mesmo token de gestão), vaga validada por
+  horarios_livres (0169, régua única com a agenda pública), lembrete
+  rearmado, carimbo remarcado_pelo_cliente_em.
+- `agendar_pelo_agente(salon, client, prof, servicos[], inicio)` — criação
+  com VÁRIOS serviços e vaga validada ANTES de gravar (o insert antigo do
+  agente só era barrado pela trava crua: sem jornada, fechamento, folga).
+
+**Fase 2 — n8n (próxima):** trocar as ferramentas do agente para as RPCs
+(criar/remarcar/alterar via chamada REST /rpc com a credencial Supabase) +
+prompt com o exemplo da sobrancelha; publish + conferir versão ativa.
+**Fase 3 — agenda pública:** ação `alterar_servicos` na edge (token) + UI
+de serviços editáveis no link de gestão (MeuHorarioPage).
+**Fase 4 — produto pelo WhatsApp:** produto NÃO entra em agendamento nem
+se vende pelo chat; vira RECADO no agendamento (coluna nova) que o
+barbeiro vê na agenda e no Concluir e cobrar.

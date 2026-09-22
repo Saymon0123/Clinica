@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CalendarCheck, Plus, Trash2 } from 'lucide-react'
+import { CalendarCheck, MessageSquareQuote, Plus, Trash2 } from 'lucide-react'
 import { Modal } from '../../components/Modal'
 import { Campo, Select } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
@@ -66,6 +66,16 @@ export type SalePrefill = {
   serviceIds?: string[]
   /** Hora do horário na agenda ('14:00'), para a comanda mostrar de qual horário ela é. */
   horaLocal?: string
+  /**
+   * O que o cliente pediu por fora dos serviços (migration 0178) — quase
+   * sempre um produto: "separar 1 pomada".
+   *
+   * Aparece na comanda porque é AQUI que ele se resolve: o agente do WhatsApp
+   * não vende produto (não há como cobrar pelo chat, e estoque não se promete),
+   * então o pedido chega como recado e o barbeiro lança o item com o cliente na
+   * frente.
+   */
+  recado?: string
 }
 
 function formatCurrency(value: number) {
@@ -926,6 +936,22 @@ export function NewSaleModal({
       confirmarFechamento={items.length > 0 ? 'Descartar esta comanda? Os itens lançados se perdem.' : false}
     >
         <div className="space-y-4">
+          {/* O recado do cliente (0178) abre a comanda: é aqui que ele se
+              resolve. O agente do WhatsApp não vende produto — ele anota, e
+              quem lança o item é o barbeiro, com o cliente na frente. Fica no
+              topo porque depois de a comanda estar montada já é tarde. */}
+          {prefill?.recado && (
+            <div className="flex items-start gap-2.5 rounded-lg bg-primary-soft border border-primary/30 p-3">
+              <MessageSquareQuote size={16} className="text-primary-soft-foreground shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-medium text-primary-soft-foreground">
+                  O cliente pediu pelo WhatsApp
+                </p>
+                <p className="text-sm text-foreground">{prefill.recado}</p>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Campo rotulo="Cliente (opcional)" htmlFor="venda-cliente">
               <Select

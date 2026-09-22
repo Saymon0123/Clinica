@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { CalendarClock, CalendarX2, Check, Clock, MessageCircle, Scissors } from 'lucide-react'
+import {
+  CalendarClock,
+  CalendarX2,
+  Check,
+  Clock,
+  MessageCircle,
+  MessageSquareQuote,
+  Scissors,
+} from 'lucide-react'
 import { MarcaClubCut } from '../../components/MarcaClubCut'
 import { invokeFunction } from '../../lib/invokeFunction'
 import { ErroInline } from '../../components/ErroInline'
@@ -42,6 +50,9 @@ type Horario = {
   barbeiro: string | null
   barbearia: string | null
   whatsappBarbearia: string | null
+  /** O que ele pediu por fora dos servicos pelo WhatsApp ("separar uma
+   *  pomada"). Aparece aqui para ele CONFERIR que ficou anotado. */
+  recado?: string | null
 }
 
 /**
@@ -260,6 +271,18 @@ export function MeuHorarioPage() {
                   : (dados.servico ?? 'Serviço')}
                 {dados.barbeiro ? ` · com ${dados.barbeiro}` : ''}
               </div>
+              {/* O pedido que ele fez pelo WhatsApp, de volta na tela: sem
+                  isto, quem pediu "separa uma pomada" abria o link e não
+                  encontrava sinal nenhum do pedido — e a única saída era
+                  perguntar de novo à barbearia. */}
+              {dados.recado && (
+                <div className="flex items-start gap-1.5 pt-1.5 text-sm text-muted-foreground">
+                  <MessageSquareQuote size={14} className="shrink-0 mt-0.5 text-primary" />
+                  <span>
+                    Você pediu: <span className="text-foreground">{dados.recado}</span>
+                  </span>
+                </div>
+              )}
             </div>
 
             <ErroInline>{erro}</ErroInline>

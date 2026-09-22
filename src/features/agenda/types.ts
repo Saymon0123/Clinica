@@ -49,4 +49,13 @@ export type Appointment = {
   service_nome?: string | null
   /** Quantos serviços além do principal (corte + barba etc). 0 = só o principal. */
   servicos_extras?: number
+  /**
+   * O que o cliente pediu por fora dos serviços — "separar uma pomada",
+   * "mais curto que a última vez" (migration 0178).
+   *
+   * Vem do agente do WhatsApp ou do link de gestão, e é para o BARBEIRO ler
+   * antes de atender. Produto não se vende pelo chat: o pedido chega como
+   * recado e vira item de comanda no balcão, onde o estoque é real.
+   */
+  recado_do_cliente?: string | null
 }

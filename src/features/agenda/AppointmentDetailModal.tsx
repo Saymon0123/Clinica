@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CalendarClock, Trash2, XCircle, Receipt } from 'lucide-react'
+import { CalendarClock, Trash2, XCircle, Receipt, MessageSquareQuote } from 'lucide-react'
 import { Modal } from '../../components/Modal'
 import { Input, Select } from '../../components/Campo'
 import { supabase } from '../../lib/supabase'
@@ -253,6 +253,10 @@ export function AppointmentDetailModal({
     // Nome e hora viajam junto para a faixa de "cobrança pendente" dizer DE
     // QUEM é o atendimento sem precisar consultar o banco de novo.
     if (appointment.client_nome) params.set('clienteNome', appointment.client_nome)
+    // O recado vai junto porque a comanda é ONDE ele se resolve: o produto
+    // pedido pelo WhatsApp entra como item aqui, e o barbeiro não deveria ter
+    // de voltar para a agenda para lembrar o que era.
+    if (appointment.recado_do_cliente) params.set('recado', appointment.recado_do_cliente)
     params.set(
       'horaLocal',
       new Date(appointment.data_hora_inicio).toLocaleTimeString('pt-BR', {
@@ -280,6 +284,20 @@ export function AppointmentDetailModal({
 
   return (
     <Modal onClose={onClose} titulo="Agendamento" tamanho="sm">
+        {/* O RECADO VEM PRIMEIRO, fora da lista de campos (0178). Ele é a única
+            informação daqui que exige uma AÇÃO do barbeiro antes de atender —
+            "separar uma pomada" só serve se for lido antes de o cliente sentar.
+            Uma linha "Recado: ..." entre Status e Serviço se perde. */}
+        {appointment.recado_do_cliente && (
+          <div className="flex items-start gap-2.5 rounded-lg bg-primary-soft border border-primary/30 p-3 mb-4">
+            <MessageSquareQuote size={16} className="text-primary-soft-foreground shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-medium text-primary-soft-foreground">O cliente pediu</p>
+              <p className="text-sm text-foreground">{appointment.recado_do_cliente}</p>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-2 mb-4">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Status</span>

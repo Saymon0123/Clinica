@@ -5164,6 +5164,36 @@ NADA mudou no banco. `aria-label` nos checkboxes veio de um defeito visto
 na árvore de acessibilidade durante o teste (liam "caixa de seleção" sem
 o nome do serviço).
 
-**Fase 4 — pendente (produto pelo WhatsApp):** produto NÃO entra em
-agendamento nem se vende pelo chat; vira RECADO no agendamento (coluna
-nova) que o barbeiro vê na agenda e no Concluir e cobrar.
+**Fase 4 — FEITA (migration 0178 + n8n + CRM):** produto não entra em
+agendamento nem se vende pelo chat — vira RECADO. A diferença que decidiu
+o desenho: serviço ocupa cadeira (precisa de validação de vaga), produto é
+estoque e dinheiro (exigiria cobrar pelo chat e prometer prateleira). O
+agente ANOTA; o barbeiro lê e lança no balcão.
+
+- **Banco:** `appointments.recado_do_cliente` + `recado_em`, CHECK de 280,
+  RPC `anotar_recado_pelo_cliente` (de pé, futuro, e SEM o piso de 30min —
+  de propósito: avisar em cima da hora AJUDA o barbeiro, esticar a cadeira
+  atrapalha; recado vazio apaga; acima de 280 volta {ok:false} para o
+  agente resumir em vez de truncar mentindo). A view
+  `agendamentos_do_cliente` foi recriada por inteiro com a coluna `recado`
+  (drop+create: coluna nova no meio levanta 42P16, e `replace` perde em
+  silêncio o `security_invoker` e os revokes). pgTAP com 19 asserts.
+- **n8n:** nó `Produtos para Contexto` (products ativos, com o trio
+  executeOnce+alwaysOutputData+onError) entrou na cadeia de contexto; o
+  campo `produtos` e o `RECADO JA ANOTADO` dentro de
+  `horarios_do_cliente` — fato no CONTEXTO, não em ferramenta que o agente
+  esquece de chamar. Ferramenta `Anotar Recado no Horario` e a seção
+  "PRODUTO: VOCE NAO VENDE, VOCE ANOTA" no prompt (patch com prova por
+  reversão; os dois sha256 conferidos contra o que o n8n gravou). Publicado.
+- **CRM:** faixa "O cliente pediu" no topo do detalhe do agendamento (fora
+  da lista de campos — é a única informação que exige AÇÃO antes de
+  atender), ponto de recado no card da grade (e no aria-label, senão leitor
+  de tela não veria), e o recado viaja no prefill até a comanda do
+  "Concluir e cobrar", que é onde o produto se resolve.
+- **Agenda pública:** o link de gestão mostra "Você pediu: ..." — sem isso,
+  quem pedia pela conversa abria o link e não encontrava sinal nenhum do
+  pedido, e a única saída era perguntar de novo.
+
+Verificado ponta a ponta: a RPC pelo caminho REST que o n8n usa (HTTP 200,
+ok:true), o recado aparecendo na tela pública com o texto gravado, e a
+query exata da agenda devolvendo o campo para o barbeiro.

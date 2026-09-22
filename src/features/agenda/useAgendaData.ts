@@ -78,7 +78,7 @@ export function useAgendaData(salonId: string | null, date: Date) {
             // que derrubou a agenda inteira em 31/08. Vale para TODO embed de
             // services a partir de appointments. O count fica no cliente
             // (appointment_services.length) para não depender de agregado.
-            'id, professional_id, client_id, service_id, data_hora_inicio, data_hora_fim, status, chegou_em, iniciado_em, clients(nome), services!appointments_service_id_fkey(nome), appointment_services(service_id)',
+            'id, professional_id, client_id, service_id, data_hora_inicio, data_hora_fim, status, chegou_em, iniciado_em, recado_do_cliente, clients(nome), services!appointments_service_id_fkey(nome), appointment_services(service_id)',
           )
           .eq('salon_id', salonId)
           .gte('data_hora_inicio', start)
@@ -156,6 +156,7 @@ export function useAgendaData(salonId: string | null, date: Date) {
             client_nome: r.clients?.nome ?? null,
             service_nome: r.services?.nome ?? null,
             servicos_extras: totalServicos > 1 ? totalServicos - 1 : 0,
+            recado_do_cliente: r.recado_do_cliente ?? null,
           }
         }),
       )

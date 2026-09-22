@@ -5106,3 +5106,64 @@ A catraca de botões (D5) pegou os 3 botões novos e a saída foi a certa: o
 seletor inteiro virou componente próprio (SeletorDePeriodo.tsx, teto 6
 medido) e o teto da página DESCEU de 10 para 7. computePeriods foi exportada
 e ganhou 6 testes (virada de mês inclusa).
+
+## O cliente mexe no próprio horário (2026-09-21, em quatro fases)
+
+Pedido do dono, aprovado com ordem: "ele agenda um corte e dai 10 minutos
+após... lembra que vai fazer tambem a sobrancelha... manda msg e não
+consegue adicionar nem nada". Verificado antes: o agente n8n só tem criar
+(UM serviço — service_id singular), cancelar e confirmar presença; o prompt
+ensina "reagendar = cancelar + criar", que conta um cancelamento FALSO nas
+métricas de campanha; a agenda pública remarca e cancela pelo link de
+gestão, mas trava a lista de serviços de propósito (linha 677 da edge).
+
+**Fase 1 — FEITA (migration 0176, aplicada em produção após ensaio com
+rollback; pgTAP com 28 asserts):** três RPCs security definer, só
+service_role, retorno jsonb {ok/motivo/sugestões} para o agente conversar
+a recusa:
+- `alterar_servicos_pelo_cliente(ag, servicos[], client_id|token)` — troca
+  a lista, recalcula o fim, e A TRAVA de sobreposição (0063) decide se
+  cabe (recusa desfaz tudo por subtransação). Réguas do cliente: 30min de
+  piso (0166), serviço ativo, não passa da jornada nem do fechamento.
+- `remarcar_pelo_cliente(ag, novo_inicio, client_id, prof?)` — remarcação
+  DE VERDADE (mesmo agendamento, mesmo token de gestão), vaga validada por
+  horarios_livres (0169, régua única com a agenda pública), lembrete
+  rearmado, carimbo remarcado_pelo_cliente_em.
+- `agendar_pelo_agente(salon, client, prof, servicos[], inicio)` — criação
+  com VÁRIOS serviços e vaga validada ANTES de gravar (o insert antigo do
+  agente só era barrado pela trava crua: sem jornada, fechamento, folga).
+
+**Fase 1b — FEITA (migration 0177):** percorrendo os caminhos antes de
+escrever a tela apareceu um beco: serviço que a barbearia INATIVOU e que
+ainda está num agendamento futuro fazia a lista inteira ser recusada
+(22023 → 500 genérico), e o cliente não conseguia nem acrescentar a
+sobrancelha. Defeito CONFIRMADO em produção com ensaio antes de corrigir.
+A regra virou "pode MANTER o que saiu do cardápio, não pode ACRESCENTAR".
++2 asserts no pgTAP (30 no total).
+
+**Fase 2 — FEITA (n8n, workflow rJO1n7cFeNDIJyB5, publicado):** o nó
+`Criar Agendamento` (supabaseTool, um serviço só) virou httpRequestTool
+para `/rest/v1/rpc/agendar_pelo_agente` com lista de serviços; nasceram
+`Remarcar Agendamento` e `Alterar Servicos do Agendamento`. Credencial
+por referência (Supabase account), três conexões ai_tool conferidas. O
+prompt mudou em 7 pontos (patch por script com assert de ocorrência única
+e prova por reversão; sha256 conferido contra o que o n8n gravou):
+serviços em lista, seção "CANCELAR, REMARCAR E MUDAR OS SERVICOS" com o
+exemplo da sobrancelha e a regra da LISTA COMPLETA, e `ok:false` +
+`sugestoes_no_dia` como linguagem de recusa.
+
+**Fase 3 — FEITA (edge + CRM):** ações `catalogo` e `alterar_servicos` na
+edge `agenda-publica` (autorizadas por token, mesmo freio de 12/10min),
+`appointment_services` passou a devolver o `id` do serviço, e o link de
+gestão ganhou o editor: catálogo carregado SOB DEMANDA, total ao vivo,
+serviço fora do cardápio marcado como tal, e a recusa da RPC mostrada em
+frase de gente. Verificado ponta a ponta no navegador (claro e escuro,
+375px): adicionar sobrancelha levou o fim de 10:40 para 11:15 com o corte
+seguindo principal; com um vizinho colado, a recusa apareceu explicada e
+NADA mudou no banco. `aria-label` nos checkboxes veio de um defeito visto
+na árvore de acessibilidade durante o teste (liam "caixa de seleção" sem
+o nome do serviço).
+
+**Fase 4 — pendente (produto pelo WhatsApp):** produto NÃO entra em
+agendamento nem se vende pelo chat; vira RECADO no agendamento (coluna
+nova) que o barbeiro vê na agenda e no Concluir e cobrar.

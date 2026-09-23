@@ -108,25 +108,8 @@ function desenharMarca(
 ) {
   const p = lado / 512 // de coordenadas do SVG para milímetros
 
-  pdf.saveGraphicsState()
-
-  // Recorta no ladrilho: as listras e a tampa do vazado passam da borda por
-  // construção, e sem o recorte elas escorrem para cima da barra.
-  pdf.roundedRect(x, y, lado, lado, 116 * p, 116 * p, null)
-  pdf.clip()
-  pdf.discardPath()
-
-  preencher(pdf, cores.ladrilho)
-  pdf.rect(x, y, lado, lado, 'F')
-
-  // O anel do poste, vazado: um círculo traçado com a cor de quem está atrás.
-  tracar(pdf, cores.anel)
-  pdf.setLineWidth(72 * p)
-  pdf.circle(x + 256 * p, y + 256 * p, 132 * p, 'S')
-
-  // A abertura do "C": no SVG é um retângulo girado -52° que devolve o
-  // ladrilho por cima de um pedaço do anel. jsPDF não gira retângulo, então
-  // ele entra como polígono de quatro pontos já rotacionados.
+  // A abertura do "C": no SVG é um retângulo girado -52°. jsPDF não gira
+  // retângulo, então ele entra como polígono de quatro pontos já rotacionados.
   const ang = (-52 * Math.PI) / 180
   const cos = Math.cos(ang)
   const sen = Math.sin(ang)
@@ -141,19 +124,29 @@ function desenharMarca(
     girar(586, 306),
     girar(256, 306),
   ]
+  const ladosDaAbertura: Array<[number, number]> = [
+    [cantos[1][0] - cantos[0][0], cantos[1][1] - cantos[0][1]],
+    [cantos[2][0] - cantos[1][0], cantos[2][1] - cantos[1][1]],
+    [cantos[3][0] - cantos[2][0], cantos[3][1] - cantos[2][1]],
+  ]
+
+  pdf.saveGraphicsState()
+
+  // Recorta no ladrilho: as listras passam da borda por construção, e sem o
+  // recorte elas escorrem para cima da barra.
+  pdf.roundedRect(x, y, lado, lado, 116 * p, 116 * p, null)
+  pdf.clip()
+  pdf.discardPath()
+
+  // ---- o fundo: ladrilho e listras ----
+  //
+  // As listras vêm ANTES da letra, e não depois. No SVG elas moram dentro do
+  // grupo mascarado, ou seja, existem só no fundo: o vazado do C mostra o
+  // papel limpo. Pintá-las por último, como era até aqui, fazia a diagonal
+  // atravessar o anel e partir a letra em duas meias-luas — a marca virava um
+  // "Ø" com o miolo cortado, que é o oposto do que ela é.
   preencher(pdf, cores.ladrilho)
-  pdf.lines(
-    [
-      [cantos[1][0] - cantos[0][0], cantos[1][1] - cantos[0][1]],
-      [cantos[2][0] - cantos[1][0], cantos[2][1] - cantos[1][1]],
-      [cantos[3][0] - cantos[2][0], cantos[3][1] - cantos[2][1]],
-    ],
-    cantos[0][0],
-    cantos[0][1],
-    [1, 1],
-    'F',
-    true,
-  )
+  pdf.rect(x, y, lado, lado, 'F')
 
   // As três diagonais. São o poste de barbeiro, e é a única listra da peça —
   // as barras do cartaz são chapadas de propósito.
@@ -167,6 +160,25 @@ function desenharMarca(
   for (const [x1, y1, x2, y2] of diagonais) {
     pdf.line(x + x1 * p, y + y1 * p, x + x2 * p, y + y2 * p)
   }
+
+  // ---- a letra, por cima ----
+  //
+  // O anel entra recortado por "ladrilho MENOS abertura", em par-ímpar: assim
+  // o traço simplesmente não chega na boca do C, em vez de ser tapado depois
+  // por um retalho de cor chapada. A diferença aparece aqui dentro — no vão da
+  // abertura continuam passando as listras do fundo, como no SVG; uma tampa
+  // pintada deixaria ali um remendo liso cortando as diagonais.
+  pdf.saveGraphicsState()
+  pdf.rect(x, y, lado, lado, null)
+  pdf.lines(ladosDaAbertura, cantos[0][0], cantos[0][1], [1, 1], null, true)
+  pdf.clip('evenodd')
+  pdf.discardPath()
+
+  // O anel do poste, vazado: um círculo traçado com a cor de quem está atrás.
+  tracar(pdf, cores.anel)
+  pdf.setLineWidth(72 * p)
+  pdf.circle(x + 256 * p, y + 256 * p, 132 * p, 'S')
+  pdf.restoreGraphicsState()
 
   pdf.restoreGraphicsState()
 }

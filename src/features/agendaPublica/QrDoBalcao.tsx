@@ -65,49 +65,29 @@ export function QrDoBalcao() {
     setGerando(true)
     setErro(null)
     try {
-      const [{ default: QRCode }, { jsPDF }] = await Promise.all([
+      const [{ default: QRCode }, { jsPDF }, { desenharCartaz }] = await Promise.all([
         import('qrcode'),
         import('jspdf'),
+        import('./cartazDoBalcao'),
       ])
 
       // Correção de erro alta: o cartaz vai ficar num balcão, sob luz ruim, e
       // pode acabar com um respingo ou um vinco. `H` recupera a leitura com
-      // até 30% do código danificado.
-      const dataUrl = await QRCode.toDataURL(link, {
-        errorCorrectionLevel: 'H',
-        margin: 1,
-        width: 1200,
-      })
+      // até 30% do código danificado — é também o que abre espaço para a marca
+      // no meio do código.
+      //
+      // `create` em vez de `toDataURL`: o cartaz desenha módulo a módulo, em
+      // vetor, e para isso precisa da matriz e não de uma imagem pronta.
+      const { modules } = QRCode.create(link, { errorCorrectionLevel: 'H' })
 
-      // `compress` não é detalhe: o QR é preto e branco puro, e sem ele o PDF
-      // sai com **4,2 MB** contra 11 KB. O dono vai mandar esse arquivo para a
-      // gráfica pelo WhatsApp — 4 MB trava, 11 KB vai na hora. Medido.
+      // `compress` importa MAIS agora, não menos. Com o QR em PNG o PDF ia a
+      // 4,2 MB sem compressão contra 11 KB com ela. Com o QR em vetor são
+      // 475 KB contra 58 KB — mil e cem círculos viram muito texto dentro do
+      // arquivo. O dono manda isso para a gráfica pelo WhatsApp, e a conta de
+      // sempre vale: arquivo grande trava, arquivo pequeno vai na hora.
       const pdf = new jsPDF({ unit: 'mm', format: 'a4', compress: true })
-      const largura = pdf.internal.pageSize.getWidth()
-      const centro = largura / 2
 
-      pdf.setFont('helvetica', 'bold')
-      pdf.setFontSize(30)
-      pdf.text(salonName ?? 'Barbearia', centro, 38, { align: 'center' })
-
-      pdf.setFontSize(20)
-      pdf.text('Chegou sem hora marcada?', centro, 55, { align: 'center' })
-
-      pdf.setFont('helvetica', 'normal')
-      pdf.setFontSize(14)
-      pdf.text('Aponte a câmera do celular para o código', centro, 66, { align: 'center' })
-
-      const lado = 110
-      pdf.addImage(dataUrl, 'PNG', centro - lado / 2, 76, lado, lado)
-
-      pdf.setFontSize(13)
-      pdf.text('Veja os horários livres e marque o seu.', centro, 200, { align: 'center' })
-
-      // O endereço em texto embaixo: câmera velha não lê QR, e sem isto a
-      // pessoa fica sem saída na frente do cartaz.
-      pdf.setFontSize(8)
-      pdf.setTextColor(120)
-      pdf.text(link, centro, 212, { align: 'center' })
+      desenharCartaz(pdf, { nome: salonName ?? 'Barbearia', link, modulos: modules })
 
       pdf.save(`qr-${(salonName ?? 'barbearia').toLowerCase().replace(/\s+/g, '-')}.pdf`)
     } catch (err) {

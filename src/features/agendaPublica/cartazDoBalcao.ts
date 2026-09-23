@@ -31,7 +31,6 @@ const CINZA_TEXTO: Cor = [0x2f, 0x3a, 0x34]
 // vaza para o resto da página se alguém esquecer de restaurar. Cor pronta não
 // tem como vazar.
 const LISTRA_SOBRE_VERDE: Cor = [0x1a, 0x4a, 0x36] // #0D1512 a 26% sobre --primary
-const LISTRA_SOBRE_PAPEL: Cor = [0xb3, 0xc5, 0xb8] // --primary a 30% sobre o papel
 
 // A4, em milímetros.
 const LARGURA = 210
@@ -268,17 +267,41 @@ export function desenharCartaz(
   preencher(pdf, VERDE)
   pdf.rect(0, 0, LARGURA, BARRA_TOPO, 'F')
 
-  const ladoDaLogo = 13
-  desenharMarca(pdf, MARGEM, (BARRA_TOPO - ladoDaLogo) / 2, ladoDaLogo, {
-    ladrilho: PAPEL,
-    anel: VERDE,
-    listra: LISTRA_SOBRE_PAPEL,
+  // A marca entra nas cores dela — ladrilho verde, C em creme — e não no
+  // negativo que estava aqui até agora.
+  //
+  // O negativo existia por um motivo real: a barra já é verde, e um ladrilho
+  // verde em cima dela some. Só que trocar as cores da marca para resolver
+  // contraste tem um custo que não vale: o dono olha o cartaz e não reconhece
+  // o próprio logo, que é como este problema chegou. Quem cede é o fundo, não
+  // a marca — por isso ela entra sobre uma placa de papel, do mesmo jeito que
+  // o QR ali embaixo mora dentro de um cartão claro. É o vocabulário que a
+  // peça já tem.
+  const ladoDaPlaca = 17
+  const respiro = 1.1
+  const ladoDaLogo = ladoDaPlaca - respiro * 2
+  const placaY = (BARRA_TOPO - ladoDaPlaca) / 2
+
+  preencher(pdf, PAPEL)
+  pdf.roundedRect(
+    MARGEM,
+    placaY,
+    ladoDaPlaca,
+    ladoDaPlaca,
+    (116 / 512) * ladoDaPlaca,
+    (116 / 512) * ladoDaPlaca,
+    'F',
+  )
+  desenharMarca(pdf, MARGEM + respiro, placaY + respiro, ladoDaLogo, {
+    ladrilho: VERDE,
+    anel: PAPEL,
+    listra: LISTRA_SOBRE_VERDE,
   })
 
   pdf.setFont('helvetica', 'bold')
   pdf.setFontSize(19)
   escrever(pdf, PAPEL)
-  pdf.text('Club Cut', MARGEM + ladoDaLogo + 5, BARRA_TOPO / 2 + 2.6)
+  pdf.text('Club Cut', MARGEM + ladoDaPlaca + 5, BARRA_TOPO / 2 + 2.6)
 
   pdf.setFont('helvetica', 'normal')
   pdf.setFontSize(8)

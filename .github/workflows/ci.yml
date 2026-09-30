@@ -80,9 +80,19 @@ jobs:
       - name: Varrer a arvore
         run: ./gitleaks detect --no-git --redact -v --exit-code 1 --source .
 
-  # A árvore está limpa hoje -- `npm audit` acusa 0, com as dependências de
-  # desenvolvimento incluídas. Então qualquer vermelho aqui é notícia de
-  # verdade, não dívida herdada.
+  # `--omit=dev`: o alarme olha só o que CHEGA NO CLIENTE.
+  #
+  # Este job nasceu varrendo a árvore inteira, e o comentário dizia que ela
+  # estava limpa, "então qualquer vermelho aqui é notícia de verdade". Em
+  # 30/09/2026 a premissa morreu: `undici` e `brace-expansion` entraram por
+  # baixo do `jsdom`, que só existe para rodar os testes. Nenhuma linha deles
+  # vai para o navegador de ninguém -- `npm audit --omit=dev` acusa zero --,
+  # mas o job ficou vermelho, e vermelho permanente para de ser alarme. A
+  # próxima falha de PRODUÇÃO apareceria no mesmo vermelho que já se aprendeu
+  # a ignorar.
+  #
+  # A dívida de desenvolvimento não some por isso; ela deixa de gritar no lugar
+  # errado. Quando `npm audit fix` couber num PR, ele entra sozinho.
   #
   # Este job de propósito NÃO está entre as checagens obrigatórias da `main`:
   # um aviso novo nasce do mundo lá fora, não do que o PR mudou, e travar o
@@ -97,4 +107,4 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm audit --audit-level=high
+      - run: npm audit --omit=dev --audit-level=high

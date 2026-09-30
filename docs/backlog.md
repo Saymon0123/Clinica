@@ -5328,14 +5328,22 @@ A prova de que não prejudica: `npm audit --omit=dev` acusa **zero
 vulnerabilidades**. Nada disso chega no navegador do cliente — é dependência de
 teste.
 
-**O que a decisão custa, e continua aberto:** o comentário do próprio
-`ci.yml` diz *"a árvore está limpa hoje, então qualquer vermelho aqui é notícia
-de verdade"*. Essa premissa morreu. O job fica vermelho para sempre, e alarme
-que nunca apaga para de ser alarme — a próxima vulnerabilidade **de produção**
-vai aparecer no mesmo vermelho que já se aprendeu a ignorar. A saída de uma
-linha é trocar o comando por `npm audit --omit=dev`, que fica verde hoje e
-vermelho só quando algo alcançar o cliente. **Oferecido ao dono, ainda sem
-resposta.**
+**O que a decisão custava — e foi resolvido no mesmo dia.** O comentário do
+próprio `ci.yml` dizia *"a árvore está limpa hoje, então qualquer vermelho aqui
+é notícia de verdade"*. Essa premissa morreu com o `undici`: o job ficaria
+vermelho para sempre, e alarme que nunca apaga para de ser alarme — a próxima
+vulnerabilidade **de produção** apareceria no mesmo vermelho que já se aprendeu
+a ignorar.
+
+O dono aprovou a troca, e o comando passou a ser `npm audit --omit=dev
+--audit-level=high`. Fica verde hoje (`found 0 vulnerabilities`, conferido) e
+vermelho só quando algo alcançar o navegador do cliente. O job segue **fora**
+das checagens obrigatórias: aviso novo nasce do mundo lá fora, não do que o PR
+mudou, e travar merge por isso ensina a ignorar o vermelho — que é o mesmo
+defeito por outro caminho.
+
+A dívida de desenvolvimento não sumiu; ela deixou de gritar no lugar errado.
+Quando `npm audit fix` couber num PR, entra sozinho.
 
 ## Item 13 — o barbeiro fecha a própria agenda (2026-09-30, migration 0182)
 

@@ -5606,3 +5606,51 @@ A saída é a que a `auditoria_crons` já usa para chegar em `cron.job`: funçã
 cegueira acima — resolvem só "tenho cliente novo?".
 
 **Peças:** Supabase (0185). CRM, Vercel, n8n e edges: nada.
+
+## A agenda ocupa a tela, e a ativação sai da frente (2026-09-30)
+
+Dois pedidos do dono ao abrir o CRM: o cartão de ativação devia ser menor e
+flutuante, e a grade da agenda devia ocupar mais espaço.
+
+### A agenda não era pequena — era desperdiçada
+
+`HOUR_START = 6` e `HOUR_END = 22`: a grade desenhava **dezesseis horas** para
+toda barbearia. Numa que abre 09:00–19:00 isso é **mais de um terço da altura
+em horas que ela nunca usa**.
+
+Eu tinha oferecido ao dono uma escolha entre "ver o dia inteiro sem rolar" e
+"blocos maiores com rolagem". A escolha era falsa: encolhendo a janela para o
+expediente do dia, os mesmos pixels servem menos horas e dão as duas coisas.
+
+A conta saiu para `janelaDaGrade` (módulo puro, 9 asserções). Ela abraça a
+jornada com uma hora de folga de cada lado **e estica para caber horário fora
+do expediente** — encaixe fora da jornada é permitido de propósito neste
+projeto, e um horário das 20h numa barbearia que fecha às 19h ficaria desenhado
+fora da área visível: existindo no banco e invisível na tela.
+
+Sem jornada nem horário (barbearia nova, domingo sem ninguém), cai em 8h–20h —
+generoso e já quatro horas menor que o antigo.
+
+### O cartão de ativação virou pílula
+
+Flutuante no canto superior direito, recolhido por padrão, âmbar enquanto falta
+algo. O estado fica no `localStorage`, com try/catch: aba anônima devolve
+recolhido, que é o padrão seguro porque não cobre nada.
+
+Continua **sem botão de dispensar**, e isso é de propósito: recolher é diferente
+de sumir. Com o WhatsApp desconectado o produto não faz nada, e esconder isso
+não ajuda ninguém — o jeito de tirar da tela é resolver.
+
+### Dois "está faltando" que eram da amostra, não do CRM
+
+Registrados porque custaram investigação:
+
+- **Arrastar na agenda** funciona e sempre funcionou (`handleDrop` muda cadeira
+  E horário, com encaixe de 15 em 15 minutos). O dono não conseguiu porque a
+  amostra de 30/09 tinha os 28 horários do dia **todos finalizados**, e bloco
+  finalizado não arrasta de propósito. Corrigido nos dados.
+- **Promover/rebaixar** existe (`trocarPapel`, com RPC e trava de último dono).
+  O seletor some quando o membro **não tem login** — e as quatro cadeiras
+  fictícias não têm conta. Some em SILÊNCIO, que é o mesmo defeito dos itens 8
+  e 10: deveria aparecer desabilitado dizendo "só depois que ele aceitar o
+  convite". **Em aberto.**

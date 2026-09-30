@@ -306,7 +306,7 @@ export function CatalogoPage() {
                     {isManager ? 'Vendidos no mês' : 'Vendidos no mês (barbearia)'}
                   </Th>
                   <Th>Status</Th>
-                  <Th className={`text-right ${COLUNA_FIXA_A_DIREITA}`}>Ações</Th>
+                  {isManager && <Th className={`text-right ${COLUNA_FIXA_A_DIREITA}`}>Ações</Th>}
                 </tr>
               </thead>
               <tbody>
@@ -327,6 +327,7 @@ export function CatalogoPage() {
                     <Td>
                       <Badge variante={pac.ativo ? 'ok' : 'neutro'}>{pac.ativo ? 'Ativo' : 'Inativo'}</Badge>
                     </Td>
+                    {isManager && (
                     <Td className={`text-right space-x-2 whitespace-nowrap ${COLUNA_FIXA_A_DIREITA}`}>
                       {isManager ? (
                         <>
@@ -341,13 +342,9 @@ export function CatalogoPage() {
                             {pac.ativo ? 'Desativar' : 'Ativar'}
                           </button>
                         </>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                          <Lock size={12} />
-                          Da gestão
-                        </span>
-                      )}
+                      ) : null}
                     </Td>
+                    )}
                   </Linha>
                 ))}
               </tbody>
@@ -402,7 +399,7 @@ export function CatalogoPage() {
                   <Th>Preço de venda</Th>
                   <Th>Estoque</Th>
                   <Th>Status</Th>
-                  <Th className={`text-right ${COLUNA_FIXA_A_DIREITA}`}>Ações</Th>
+                  {isManager && <Th className={`text-right ${COLUNA_FIXA_A_DIREITA}`}>Ações</Th>}
                 </tr>
               </thead>
               <tbody>
@@ -419,6 +416,7 @@ export function CatalogoPage() {
                     <Td>
                       <Badge variante={p.ativo ? 'ok' : 'neutro'}>{p.ativo ? 'Ativo' : 'Inativo'}</Badge>
                     </Td>
+                    {isManager && (
                     <Td className={`text-right space-x-2 whitespace-nowrap ${COLUNA_FIXA_A_DIREITA}`}>
                       {/* Produto é do gestor — RLS bloqueia o barbeiro, então
                           mostrar os botões para ele era um clique que fingia
@@ -443,13 +441,9 @@ export function CatalogoPage() {
                             {p.ativo ? 'Desativar' : 'Ativar'}
                           </button>
                         </>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                          <Lock size={12} />
-                          Da gestão
-                        </span>
-                      )}
+                      ) : null}
                     </Td>
+                    )}
                   </Linha>
                 ))}
               </tbody>

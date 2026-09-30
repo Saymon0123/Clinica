@@ -126,8 +126,14 @@ export function VendasSection({
             </tr>
           </thead>
           <tbody>
+            {/* O detalhe da venda so abre para o gestor (decisao do dono,
+                30/09): estornar e dele, entao para o barbeiro o modal abria com
+                ZERO botoes -- uma tela que so se pode fechar. Sem o clique, a
+                linha tambem deixa de fingir que leva a algum lugar; o que ele
+                precisa conferir (cliente, profissional, pagamento e total) ja
+                esta na propria linha. */}
             {sales.map((s) => (
-              <Linha key={s.id} onClick={() => setDetalheId(s.id)}>
+              <Linha key={s.id} onClick={isManager ? () => setDetalheId(s.id) : undefined}>
                 <Td className="text-foreground whitespace-nowrap">
                   {formatDateTime(s.closed_at ?? s.created_at)}
                 </Td>

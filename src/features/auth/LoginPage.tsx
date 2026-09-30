@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
 import { useAuth } from './AuthContext'
 import { ErroInline } from '../../components/ErroInline'
+import { MarcaClubCut } from '../../components/MarcaClubCut'
 
 export function LoginPage() {
   const { signIn } = useAuth()
@@ -38,6 +39,19 @@ export function LoginPage() {
         onSubmit={handleSubmit}
         className="surge w-full max-w-sm bg-surface p-6 sm:p-8 rounded-2xl border border-border space-y-5 shadow-[0_16px_40px_-24px_color-mix(in_srgb,var(--foreground)_45%,transparent)]"
       >
+        {/* A marca no lugar do titulo solto: o barbeiro chega aqui pelo
+            link do convite e, ate 30/09, caia num card "Entrar" anonimo -- sem
+            saber em que sistema estava digitando a senha. O NOME DA BARBEARIA
+            nao cabe nesta tela: antes de autenticar o app nao sabe de qual
+            salao a pessoa e, e descobrir exigiria o convite carregar o salao
+            na URL. "Club Cut" ja responde a pergunta que importa aqui. */}
+        <div className="flex items-center gap-2.5">
+          <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary text-primary-foreground shrink-0">
+            <MarcaClubCut size={18} />
+          </span>
+          <span className="text-lg font-bold tracking-tight text-foreground">Club Cut</span>
+        </div>
+
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Entrar</h1>
 
         <div>

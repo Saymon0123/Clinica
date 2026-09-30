@@ -29,6 +29,8 @@ import { Toasts } from './Toast'
 import { SinoDeNotificacoes } from '../features/notificacoes/SinoDeNotificacoes'
 import { NotificacoesProvider } from '../features/notificacoes/NotificacoesContext'
 import { useAssinatura } from '../features/assinatura/useAssinatura'
+import { useEntregasPresas } from '../features/notificacoes/useEntregasPresas'
+import { AvisoDeEntrega } from '../features/notificacoes/AvisoDeEntrega'
 import { AvisoAssinatura } from '../features/assinatura/AvisoAssinatura'
 import { AcessoBloqueado } from '../features/assinatura/AcessoBloqueado'
 import { CriarBarbeariaPage } from '../features/onboarding/CriarBarbeariaPage'
@@ -140,6 +142,9 @@ export function AppLayout() {
   // de vencimento — avisar o barbeiro de uma cobrança que não é dele geraria
   // preocupação sem ação possível.
   const { assinatura, reload: recarregarAssinatura } = useAssinatura(salonId)
+  // So o gestor: um barbeiro nao tem o que fazer com convite preso, e a
+  // faixa viraria ruido na tela de quem nao pode agir.
+  const entregasPresas = useEntregasPresas(isManager ? salonId : null)
 
   // "Rede" e "Equipe da rede" são exclusivas do dono de mais de uma unidade
   // (`podeVerRede`, do contexto — passo 4.3). Gerente e barbeiro nunca veem.
@@ -303,6 +308,7 @@ export function AppLayout() {
       {/* Content */}
       <main className="flex-1 pb-20 md:pb-6 w-full">
         <AvisoAssinatura assinatura={isManager ? assinatura : null} />
+        <AvisoDeEntrega entregas={entregasPresas} />
         {/* Largura máxima + centralização (leva 3): sem isto, num monitor
             grande as tabelas esticavam de ponta a ponta e os formulários
             max-w-2xl ficavam grudados na esquerda. 72rem comporta a grade da

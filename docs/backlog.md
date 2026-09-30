@@ -5069,6 +5069,89 @@ SMTP Hostinger) → o ciclo seguinte entrega o feedback preso e marca
 do Supabase. Fica aberto pensar um ALARME para "erro repetido na saída de
 erro" — o silêncio de 24h só quebrou porque o dono testou.
 
+### O prognóstico se cumpriu, e era pior (2026-09-24)
+
+Acima ficou escrito em 21/09: "o **Auth do Supabase** usa a mesma caixa via
+Custom SMTP: sem erro nos logs das últimas 24h, mas também sem tráfego — o
+próximo convite/reset quebra igual se a senha for a mesma". O dono foi criar
+uma barbearia em 24/09 às 23:03 e levou **"Não foi possível criar a conta
+agora"**. Os `auth_logs` provam a mesma causa, sem intermediário:
+
+    path=/signup  status=500
+    erro=535 "5.7.8 Error: authentication failed: (reason unavailable)"
+
+**O agravante que não estava previsto:** não é só o e-mail que não sai. O
+GoTrue trata a falha de envio da confirmação como falha da operação inteira
+e devolve **500** — a conta **não é criada**. Prova independente: o último
+registro em `auth.users` é de **20/09 15:04**, minutos antes de o SMTP cair
+às 15:08. Desde então **ninguém consegue se cadastrar no Club Cut**, e isso
+inclui qualquer pessoa que chegue pelo site. O que continua funcionando é o
+login de quem já tem conta (`/token` 200 no mesmo minuto da falha).
+
+Portanto a senha da caixa não destrava só "os e-mails": ela destrava a
+**porta de entrada do produto**. Três saídas, em ordem de preferência:
+
+1. **Trocar/conferir a senha na Hostinger** e atualizar nos DOIS lugares
+   (Supabase → Auth → SMTP, e n8n → credencial "SMTP Hostinger"). Resolve
+   cadastro, reset de senha, convite de equipe, feedback e alertas de uma vez.
+2. **SMTP padrão do Supabase** como ponte: volta a cadastrar hoje, mas tem
+   teto baixo de envios por hora e remetente genérico — tapa-buraco, não fim.
+3. **Desligar a confirmação de e-mail** no Auth: faz o cadastro voltar na
+   hora, e é a pior das três — sem confirmar o endereço, qualquer um cria
+   conta com o e-mail de outra pessoa. Só com o dono decidindo, e com data
+   para voltar atrás.
+
+**RESOLVIDO em 24/09 23:23**, e com prova tripla: conta nova criada e
+**confirmada** (o e-mail de confirmação chegou e o link foi clicado), e o
+feedback preso desde 20/09 15:08 entregue sozinho às 23:25 pelo ciclo
+seguinte do n8n — exatamente como o desenho "marca só depois de enviar"
+prometia. Fila zerada.
+
+### O alarme que faltava (2026-09-29)
+
+Quatro dias de silêncio não foram culpa da Hostinger: foram de não haver
+quem gritasse. O alarme entrou pela migration **0181**, e a decisão que o
+define é esta: **ele não pode ser um e-mail**. `canal_de_alertas` está com
+`provedor = 'email'` e a fila `auditoria_pendente` é despachada por e-mail
+— um aviso de "os e-mails não estão saindo" mandado por e-mail só chega
+quando já não é preciso. O mesmo vale para WhatsApp, que depende da
+Evolution pareada e de template aprovado pela Meta.
+
+Então o aviso vai para **a tela do CRM**, que é onde o dono olha todo dia e
+que não depende de terceiro nenhum.
+
+- **Detecção pelo sintoma, não pela causa** (o mesmo princípio da 0165 com
+  os crons): não se pergunta ao n8n se ele falhou, porque ele acha que não
+  falhou. Olha-se a fila que devia esvaziar e não esvaziou —
+  `feedbacks.notificado_em` (ciclo de 5 min) e `salon_invites.email_enviado_em`
+  (10 min). Tolerância de **20 minutos**, folgada de propósito: alarme que
+  dispara no atraso normal do agendador vira ruído, e ruído se ignora.
+- **Fica de fora** o convite já aceito pelo link copiado na tela e o convite
+  vencido: nos dois o e-mail deixou de importar, e cobrá-lo seria um alarme
+  que nunca se apaga.
+- **Por salão, e a frase é de cliente.** Quem abre o CRM é dono de
+  barbearia, não administrador de servidor: a faixa diz que *o convite dele*
+  não saiu e oferece a saída que existe hoje (copiar o link em Equipe),
+  em vez de anunciar "SMTP 535". Só o gestor vê — barbeiro não tem o que
+  fazer com convite preso.
+- **Some sozinha** quando a fila esvazia, e não tem botão de fechar: o
+  problema não é da pessoa e não desaparece por ela mandar sumir.
+- Erro na consulta deixa a faixa **muda** (achado 31): anunciar "seu e-mail
+  não saiu" por causa de uma rede instável é pior que o silêncio.
+
+pgTAP com 10 asserts, incluindo o isolamento entre barbearias. Fica aberto:
+o alarme cobre as duas filas que marcam a hora do envio; um nó de e-mail que
+falhe sem fila por trás (alertas de auditoria) continua invisível, e para
+esse o caminho seria a saída de erro do n8n gravar em `entregas_falhadas`.
+
+**A mentira da tela, que é nossa e não da Hostinger:** `CriarContaPage`
+mostra "Tente novamente em instantes" para QUALQUER erro do `signUp`. Aqui
+tentar de novo nunca vai funcionar — a pessoa tenta, tenta e desiste sem
+que ninguém fique sabendo. Vale distinguir a falha de envio de e-mail (que
+pede "fale com a gente") do erro passageiro, e mandar esse caso para o
+Sentry com destaque: a porta de entrada fechada por quatro dias só foi
+descoberta porque o dono resolveu testar.
+
 ## A visão do barbeiro no Financeiro: comissão, não faturamento (2026-09-21)
 
 Pedido do dono: barbeiro não vê faturamento — nem o próprio — só a comissão

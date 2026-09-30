@@ -94,6 +94,13 @@ select is(
 select is(
   (entregas_presas(:'salao')->>'convites')::int, 1,
   'so um convite conta como preso');
+-- O "desde" e o MAIS ANTIGO da fila, nao o mais recente: o convite tem 30
+-- minutos e o feedback 25, entao a data tem de recuar para o convite. Prova
+-- que a funcao usa min() -- com max() o dono leria um problema mais novo do
+-- que ele e, e subestimaria quanto tempo ficou no escuro.
+select ok(
+  (entregas_presas(:'salao')->>'desde')::timestamptz < now() - interval '28 minutes',
+  'o "desde quando" aponta o item mais antigo da fila');
 select pg_temp.sair();
 
 -- ── Isolamento entre barbearias ─────────────────────────────────────────────

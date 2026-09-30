@@ -5101,6 +5101,49 @@ Portanto a senha da caixa não destrava só "os e-mails": ela destrava a
    conta com o e-mail de outra pessoa. Só com o dono decidindo, e com data
    para voltar atrás.
 
+**RESOLVIDO em 24/09 23:23**, e com prova tripla: conta nova criada e
+**confirmada** (o e-mail de confirmação chegou e o link foi clicado), e o
+feedback preso desde 20/09 15:08 entregue sozinho às 23:25 pelo ciclo
+seguinte do n8n — exatamente como o desenho "marca só depois de enviar"
+prometia. Fila zerada.
+
+### O alarme que faltava (2026-09-29)
+
+Quatro dias de silêncio não foram culpa da Hostinger: foram de não haver
+quem gritasse. O alarme entrou pela migration **0181**, e a decisão que o
+define é esta: **ele não pode ser um e-mail**. `canal_de_alertas` está com
+`provedor = 'email'` e a fila `auditoria_pendente` é despachada por e-mail
+— um aviso de "os e-mails não estão saindo" mandado por e-mail só chega
+quando já não é preciso. O mesmo vale para WhatsApp, que depende da
+Evolution pareada e de template aprovado pela Meta.
+
+Então o aviso vai para **a tela do CRM**, que é onde o dono olha todo dia e
+que não depende de terceiro nenhum.
+
+- **Detecção pelo sintoma, não pela causa** (o mesmo princípio da 0165 com
+  os crons): não se pergunta ao n8n se ele falhou, porque ele acha que não
+  falhou. Olha-se a fila que devia esvaziar e não esvaziou —
+  `feedbacks.notificado_em` (ciclo de 5 min) e `salon_invites.email_enviado_em`
+  (10 min). Tolerância de **20 minutos**, folgada de propósito: alarme que
+  dispara no atraso normal do agendador vira ruído, e ruído se ignora.
+- **Fica de fora** o convite já aceito pelo link copiado na tela e o convite
+  vencido: nos dois o e-mail deixou de importar, e cobrá-lo seria um alarme
+  que nunca se apaga.
+- **Por salão, e a frase é de cliente.** Quem abre o CRM é dono de
+  barbearia, não administrador de servidor: a faixa diz que *o convite dele*
+  não saiu e oferece a saída que existe hoje (copiar o link em Equipe),
+  em vez de anunciar "SMTP 535". Só o gestor vê — barbeiro não tem o que
+  fazer com convite preso.
+- **Some sozinha** quando a fila esvazia, e não tem botão de fechar: o
+  problema não é da pessoa e não desaparece por ela mandar sumir.
+- Erro na consulta deixa a faixa **muda** (achado 31): anunciar "seu e-mail
+  não saiu" por causa de uma rede instável é pior que o silêncio.
+
+pgTAP com 10 asserts, incluindo o isolamento entre barbearias. Fica aberto:
+o alarme cobre as duas filas que marcam a hora do envio; um nó de e-mail que
+falhe sem fila por trás (alertas de auditoria) continua invisível, e para
+esse o caminho seria a saída de erro do n8n gravar em `entregas_falhadas`.
+
 **A mentira da tela, que é nossa e não da Hostinger:** `CriarContaPage`
 mostra "Tente novamente em instantes" para QUALQUER erro do `signUp`. Aqui
 tentar de novo nunca vai funcionar — a pessoa tenta, tenta e desiste sem

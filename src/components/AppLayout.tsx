@@ -157,9 +157,10 @@ export function AppLayout() {
   // "Rede" e "Equipe da rede" são exclusivas do dono de mais de uma unidade
   // (`podeVerRede`, do contexto — passo 4.3). Gerente e barbeiro nunca veem.
 
-  // Barbeiro fica só com Agenda, Financeiro e Catálogo (o banco também
-  // bloqueia o resto). Enquanto o dono não escolher uma barbearia, o menu
-  // mostra apenas as telas da rede — as outras não teriam salon_id.
+  // Barbeiro fica com Agenda, Financeiro ("Meus ganhos" para ele), Clientes,
+  // Catálogo e Central de Ajuda — cinco (o banco também bloqueia o resto).
+  // Enquanto o dono não escolher uma barbearia, o menu mostra apenas as telas
+  // da rede — as outras não teriam salon_id.
   const gruposVisiveis = NAV_GROUPS.map((g) => ({
     ...g,
     items: g.items.filter(
@@ -177,8 +178,8 @@ export function AppLayout() {
   /**
    * A barra inferior do celular só comporta cinco itens.
    *
-   * Dono de rede tem dez itens de menu. Dividindo a largura de um celular por
-   * dez sobram ~37px por item — menos que a palavra "Configurações" ocupa, e
+   * Dono de rede tem onze itens de menu. Dividindo a largura de um celular por
+   * onze sobram ~34px por item — menos que a palavra "Configurações" ocupa, e
    * era isso que embolava a barra. O resto vai para uma folha "Mais".
    *
    * Com cinco ou menos, todos cabem e o "Mais" não aparece. É exatamente o

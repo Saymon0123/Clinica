@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { HelpCircle, Search } from 'lucide-react'
 import { PageHeader } from '../../components/PageHeader'
+import { useSalon } from '../auth/useSalon'
 
 /**
  * Central de Ajuda: os tutoriais passo a passo de tudo que o sistema faz,
@@ -17,7 +18,26 @@ import { PageHeader } from '../../components/PageHeader'
 
 type Dica = { t: string; atencao?: boolean }
 type Item = { p: string; intro?: string; passos?: string[]; extra?: string; dicas?: Dica[] }
-type Secao = { titulo: string; itens: Item[] }
+type Secao = {
+  titulo: string
+  itens: Item[]
+  /**
+   * Seção sobre telas que só o gestor alcança.
+   *
+   * Metade das perguntas (24 de 49) era sobre Equipe, Configurações, Pagamento
+   * do sistema e WhatsApp — telas que o barbeiro não tem no menu. Ele buscava
+   * "comissão" e recebia "como pago as comissões dos barbeiros" em vez de como
+   * a dele é calculada. Ajuda que responde o que não dá para fazer não ajuda:
+   * confunde e faz duvidar do resto.
+   *
+   * Esconde-se só com CERTEZA (`role === 'barbeiro'`), nunca por `isManager`:
+   * sem unidade selecionada o papel é nulo e `isManager` fica falso, e esta
+   * tela é alcançável nesse estado (`semUnidade`). Pela outra regra, o dono
+   * de rede que abrisse a Ajuda antes de escolher a barbearia via a versão
+   * do barbeiro.
+   */
+  soGestor?: boolean
+}
 
 const SECOES: Secao[] = [
   {
@@ -255,6 +275,7 @@ const SECOES: Secao[] = [
   },
   {
     titulo: 'Equipe',
+    soGestor: true,
     itens: [
       {
         p: 'Como coloco um barbeiro novo no sistema?',
@@ -319,6 +340,7 @@ const SECOES: Secao[] = [
   },
   {
     titulo: 'Configurações da barbearia',
+    soGestor: true,
     itens: [
       {
         p: 'Como mudo o horário de funcionamento?',
@@ -379,6 +401,7 @@ const SECOES: Secao[] = [
   },
   {
     titulo: 'Pagamento do sistema',
+    soGestor: true,
     itens: [
       {
         p: 'Quanto eu pago pelo Club Cut?',
@@ -418,6 +441,7 @@ const SECOES: Secao[] = [
   },
   {
     titulo: 'WhatsApp e atendimento automático',
+    soGestor: true,
     itens: [
       {
         p: 'Um cliente pediu para falar comigo. O que eu faço?',
@@ -524,14 +548,18 @@ function textoDoItem(item: Item) {
 export function AjudaPage() {
   const [busca, setBusca] = useState('')
   const termo = normalizar(busca.trim())
+  const { role } = useSalon()
+  const ehBarbeiro = role === 'barbeiro'
 
   const visiveis = useMemo(
     () =>
-      SECOES.map((s) => ({
-        ...s,
-        itens: termo ? s.itens.filter((i) => normalizar(textoDoItem(i)).includes(termo)) : s.itens,
-      })).filter((s) => s.itens.length > 0),
-    [termo],
+      SECOES.filter((s) => !s.soGestor || !ehBarbeiro)
+        .map((s) => ({
+          ...s,
+          itens: termo ? s.itens.filter((i) => normalizar(textoDoItem(i)).includes(termo)) : s.itens,
+        }))
+        .filter((s) => s.itens.length > 0),
+    [termo, ehBarbeiro],
   )
 
   return (

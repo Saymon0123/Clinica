@@ -78,6 +78,36 @@ export type SalePrefill = {
   recado?: string
 }
 
+/**
+ * A explicação de um campo, recolhida.
+ *
+ * Os dois campos de captação (avisar de volta, agendamento automático) trazem
+ * um roteiro do que o barbeiro precisa FALAR em voz alta — é isso que torna a
+ * mensagem legítima depois, e por isso o texto não pode sumir. Só que somados
+ * davam 86 palavras ANTES do primeiro item da comanda, numa tela que ele abre
+ * dez vezes por dia com o cliente esperando na cadeira. Na décima vez, parede.
+ *
+ * `<details>` nativo: abre e fecha sem estado, é acessível por teclado e leitor
+ * de tela de graça, e o navegador lembra nada — na próxima venda volta fechado,
+ * que é o certo para quem já aprendeu o roteiro.
+ *
+ * FICA FORA DO <label> de propósito: dentro dele, clicar em "por que perguntar
+ * isso?" alternaria o checkbox.
+ */
+function PorQuePerguntar({ children }: { children: React.ReactNode }) {
+  return (
+    <details className="mt-1">
+      {/* Mesmo padrao do `CaixaSection`: `list-none` tira o triangulo do
+          navegador e a cor de link diz que abre. Sem variantes `group-open`,
+          que nao tem precedente aqui. */}
+      <summary className="text-xs text-primary hover:underline cursor-pointer list-none w-fit">
+        por que perguntar isso?
+      </summary>
+      <span className="block text-xs text-muted-foreground mt-1">{children}</span>
+    </details>
+  )
+}
+
 function formatCurrency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
@@ -982,26 +1012,27 @@ export function NewSaleModal({
             </Campo>
 
             {clientId && (
-              <label className="flex items-start gap-2.5 rounded-lg border border-border bg-surface-2 p-2.5">
-                <input
-                  type="checkbox"
-                  checked={avisarRetorno}
-                  onChange={(e) => setAvisarRetorno(e.target.checked)}
-                  className="mt-0.5 accent-primary"
-                />
-                <span className="text-sm text-foreground">
-                  Avisar quando der tempo de voltar
-                  <span className="block text-xs text-muted-foreground mt-0.5">
-                    Fale com ele agora: <em>“quer que a gente te avise daqui a umas semanas?”</em>{' '}
-                    Se ele não quiser, desmarque. Mensagem para quem não foi avisado vira reclamação
-                    — e bloqueio derruba o alcance dos lembretes.
-                  </span>
-                </span>
-              </label>
+              <div className="rounded-lg border border-border bg-surface-2 p-2.5">
+                <label className="flex items-start gap-2.5">
+                  <input
+                    type="checkbox"
+                    checked={avisarRetorno}
+                    onChange={(e) => setAvisarRetorno(e.target.checked)}
+                    className="mt-0.5 accent-primary"
+                  />
+                  <span className="text-sm text-foreground">Avisar quando der tempo de voltar</span>
+                </label>
+                <PorQuePerguntar>
+                  Fale com ele agora: <em>“quer que a gente te avise daqui a umas semanas?”</em>{' '}
+                  Se ele não quiser, desmarque. Mensagem para quem não foi avisado vira reclamação
+                  — e bloqueio derruba o alcance dos lembretes.
+                </PorQuePerguntar>
+              </div>
             )}
 
             {clientId && (
-              <label className="flex items-start gap-2.5 rounded-lg border border-border bg-surface-2 p-2.5 sm:col-span-2">
+              <div className="rounded-lg border border-border bg-surface-2 p-2.5 sm:col-span-2">
+                <label className="flex items-start gap-2.5">
                 <input
                   type="number"
                   min={1}
@@ -1030,14 +1061,15 @@ export function NewSaleModal({
                         </span>
                       )
                     })()}
-                  <span className="block text-xs text-muted-foreground mt-0.5">
-                    Pergunte agora: <em>“de quanto em quanto tempo você corta? Quer que eu já
-                    deixe o próximo horário reservado?”</em> Com o número preenchido, o sistema
-                    reserva o mesmo dia e horário e confirma com ele no WhatsApp 1 dia antes.
-                    Deixe vazio se ele não quiser.
-                  </span>
                 </span>
-              </label>
+                </label>
+                <PorQuePerguntar>
+                  Pergunte agora: <em>“de quanto em quanto tempo você corta? Quer que eu já
+                  deixe o próximo horário reservado?”</em> Com o número preenchido, o sistema
+                  reserva o mesmo dia e horário e confirma com ele no WhatsApp 1 dia antes.
+                  Deixe vazio se ele não quiser.
+                </PorQuePerguntar>
+              </div>
             )}
 
             {/* Logo abaixo do cliente: é ao escolher quem está na cadeira que

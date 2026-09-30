@@ -21,6 +21,61 @@ const STATUS_LABELS: Record<string, string> = {
   faltou: 'Não veio',
 }
 
+/**
+ * A linha de excluir — uma só, servindo o agendamento e o bloqueio (0182).
+ *
+ * Extraída em vez de duplicada por causa da catraca de botões
+ * (`botoesDoSistema.test.ts`): este arquivo tem teto 3 e o teto só desce, então
+ * um segundo botão vermelho para o bloqueio custaria o quarto. Extrair mantém
+ * **uma** tag servindo os dois — foi a mesma saída da última vez que a catraca
+ * reclamou.
+ *
+ * O aviso é parâmetro porque as duas ações não pesam igual: apagar um
+ * atendimento perde histórico, tirar um bloqueio devolve o horário aos clientes.
+ */
+function LinhaDeExcluir({
+  rotulo,
+  aviso,
+  confirmando,
+  ocupado,
+  aoPedirConfirmacao,
+  aoVoltar,
+  aoConfirmar,
+}: {
+  rotulo: string
+  aviso: string
+  confirmando: boolean
+  ocupado: boolean
+  aoPedirConfirmacao: () => void
+  aoVoltar: () => void
+  aoConfirmar: () => void
+}) {
+  if (confirmando) {
+    return (
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-danger">{aviso}</span>
+        <div className="flex gap-2">
+          <button onClick={aoVoltar} className="btn-chip">
+            Voltar
+          </button>
+          <button onClick={aoConfirmar} disabled={ocupado} className="btn-chip btn-chip-perigo">
+            Sim, {rotulo.toLowerCase().startsWith('remover') ? 'remover' : 'excluir'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+  return (
+    <button
+      onClick={aoPedirConfirmacao}
+      className="flex items-center gap-1.5 text-xs font-medium text-danger"
+    >
+      <Trash2 size={14} />
+      {rotulo}
+    </button>
+  )
+}
+
 const STATUS_STYLES: Record<string, string> = {
   agendado: 'bg-primary-soft text-primary-soft-foreground',
   confirmado: 'bg-success-soft text-success',
@@ -282,6 +337,58 @@ export function AppointmentDetailModal({
   // e fantasma não há — cobrar exige lançar a venda, com pagamento.
   const podeCobrar = !isFinal || appointment.status === 'faltou'
 
+  // BLOQUEIO tem saída própria (0182), e não mais um `status === 'bloqueio'`
+  // enfiado em cada um dos doze `&&` abaixo.
+  //
+  // Um almoço não se confirma, não chega, não senta na cadeira, não conclui e
+  // não se cobra. Deixá-lo cair na tela de agendamento ofereceria cinco botões
+  // que não fazem nada e um "Cliente: —" -- exatamente o defeito que a lista de
+  // Vendas acabou de perder no item 10, repetido noutra tela. Sobra a única
+  // ação que existe: tirar o bloqueio.
+  //
+  // Vem depois de TODOS os hooks de propósito: saída antecipada acima deles
+  // mudaria a ordem de chamada entre um bloqueio e um agendamento.
+  if (appointment.status === 'bloqueio') {
+    return (
+      <Modal onClose={onClose} titulo="Horário bloqueado" tamanho="sm">
+        <div className="space-y-2 mb-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Motivo</span>
+            <span className="text-sm font-medium text-foreground">
+              {appointment.motivo_do_bloqueio || 'Sem motivo escrito'}
+            </span>
+          </div>
+          <div className="flex items-start justify-between gap-4">
+            <span className="text-sm text-muted-foreground shrink-0">Quando</span>
+            <span className="text-sm font-medium text-foreground text-right">
+              {formatDateTime(appointment.data_hora_inicio)} às{' '}
+              {toTimeInput(appointment.data_hora_fim)}
+            </span>
+          </div>
+        </div>
+
+        <p className="text-xs text-muted-foreground bg-surface-2 rounded-lg px-3 py-2">
+          Enquanto existir, este intervalo não aparece na agenda pública nem é
+          oferecido pelo atendente do WhatsApp.
+        </p>
+
+        <ErroInline>{error}</ErroInline>
+
+        <div className="mt-3 pt-3 border-t border-border">
+          <LinhaDeExcluir
+            rotulo="Remover bloqueio"
+            aviso="Remover? O horário volta a ser oferecido aos clientes."
+            confirmando={confirmDelete}
+            ocupado={busy}
+            aoPedirConfirmacao={() => setConfirmDelete(true)}
+            aoVoltar={() => setConfirmDelete(false)}
+            aoConfirmar={handleDelete}
+          />
+        </div>
+      </Modal>
+    )
+  }
+
   return (
     <Modal onClose={onClose} titulo="Agendamento" tamanho="sm">
         {/* O RECADO VEM PRIMEIRO, fora da lista de campos (0178). Ele é a única
@@ -487,26 +594,16 @@ export function AppointmentDetailModal({
               Este atendimento já foi concluído e pode ter comanda ligada a ele, por isso não é
               possível excluí-lo. Para corrigir valores, ajuste a venda no Financeiro.
             </p>
-          ) : confirmDelete ? (
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs text-danger">Excluir de vez? Não dá para desfazer.</span>
-              <div className="flex gap-2">
-                <button onClick={() => setConfirmDelete(false)} className="btn-chip">
-                  Voltar
-                </button>
-                <button onClick={handleDelete} disabled={busy} className="btn-chip btn-chip-perigo">
-                  Sim, excluir
-                </button>
-              </div>
-            </div>
           ) : (
-            <button
-              onClick={() => setConfirmDelete(true)}
-              className="flex items-center gap-1.5 text-xs font-medium text-danger"
-            >
-              <Trash2 size={14} />
-              Excluir agendamento
-            </button>
+            <LinhaDeExcluir
+              rotulo="Excluir agendamento"
+              aviso="Excluir de vez? Não dá para desfazer."
+              confirmando={confirmDelete}
+              ocupado={busy}
+              aoPedirConfirmacao={() => setConfirmDelete(true)}
+              aoVoltar={() => setConfirmDelete(false)}
+              aoConfirmar={handleDelete}
+            />
           )}
         </div>
     </Modal>

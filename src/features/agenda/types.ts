@@ -36,6 +36,14 @@ export type Appointment = {
    * concluir, e porque a política de atraso vai precisar saber *quanto*
    * atrasou, não só que atrasou.
    */
+  /**
+   * Só em `status='bloqueio'`: "Almoço", "Médico", "Folga" (migration 0182).
+   *
+   * Uma semana com seis retângulos cinza escritos "Bloqueio" não diz nada. O
+   * cliente nunca vê isto — bloqueio não aparece na agenda pública nem na
+   * conversa do agente, o horário apenas não é oferecido a ele.
+   */
+  motivo_do_bloqueio?: string | null
   chegou_em?: string | null
   /**
    * Quando o atendimento começou de fato — o cliente sentou na cadeira.

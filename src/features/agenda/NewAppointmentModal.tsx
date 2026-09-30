@@ -8,6 +8,14 @@ import { traduzirErroDoBanco } from '../../lib/erroDoBanco'
 import { classificarTelefone, AVISO_TELEFONE_INVALIDO } from '../../lib/telefone'
 import type { Professional, Service } from './types'
 import { ErroInline } from '../../components/ErroInline'
+import {
+  DIA_INTEIRO,
+  MOTIVO_MAX,
+  erroDaJanela,
+  fimDeslocado,
+  horaDe,
+  minutosDe,
+} from './janelaDeBloqueio'
 
 type Props = {
   salonId: string
@@ -51,6 +59,27 @@ export function NewAppointmentModal({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // BLOQUEAR HORÁRIO (0182). O status `bloqueio` existia no banco e no CRM
+  // desde sempre, mas nada o criava -- o barbeiro marcava o almoço como
+  // reserva no nome de um cliente inventado. Mora nesta mesma tela porque três
+  // dos quatro campos já estavam aqui: dia, cadeira e hora.
+  const [modo, setModo] = useState<'reserva' | 'bloqueio'>('reserva')
+  const [horaFim, setHoraFim] = useState(() => horaDe(minutosDe(defaultTime ?? '09:00') + 60))
+  const [motivo, setMotivo] = useState('')
+  const [diaInteiro, setDiaInteiro] = useState(false)
+
+  // Com "dia inteiro" marcado os campos ficam desabilitados mostrando
+  // 00:00–23:59, e `time`/`horaFim` seguem intocados embaixo: desmarcar
+  // devolve a janela que ele tinha escolhido, em vez de um horário inventado.
+  const janela = diaInteiro ? DIA_INTEIRO : { inicio: time, fim: horaFim }
+
+  function mudarInicio(novo: string) {
+    // O fim anda junto, preservando a duração -- quem já ajustou "até as 14h"
+    // não quer o fim recalculado do zero ao adiantar o começo em dez minutos.
+    setHoraFim((fim) => fimDeslocado(time, novo, fim))
+    setTime(novo)
+  }
+
   // Já adicionado não aparece de novo no seletor — evita duplicar o mesmo
   // serviço na lista.
   const servicosDisponiveis = services.filter(
@@ -84,9 +113,68 @@ export function NewAppointmentModal({
     return `${h}h${String(m).padStart(2, '0')}`
   }
 
+  /**
+   * O bloqueio é uma linha sem cliente e sem serviço — e por isso não passa por
+   * nada do fluxo de reserva: não procura cliente, não cria cliente, não tem o
+   * que desfazer se falhar.
+   *
+   * Quem recusa sobreposição é a trava do banco (`appointments_sem_sobreposicao`),
+   * a mesma que já vale para o link público e para o agente do WhatsApp. Não há
+   * régua repetida aqui.
+   */
+  async function salvarBloqueio() {
+    if (!professionalId) {
+      setError('Selecione o profissional.')
+      return
+    }
+    const problema = erroDaJanela(janela.inicio, janela.fim)
+    if (problema) {
+      setError(problema)
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const inicio = toDateTimeLocal(date, janela.inicio)
+      const fim = toDateTimeLocal(date, janela.fim)
+      const { error: bloqueioError } = await supabase.from('appointments').insert({
+        salon_id: salonId,
+        professional_id: professionalId,
+        data_hora_inicio: inicio.toISOString(),
+        data_hora_fim: fim.toISOString(),
+        status: 'bloqueio',
+        // Motivo em branco não vira string vazia: a coluna é nula por natureza
+        // e a Agenda cai no rótulo "Bloqueio" sozinha.
+        motivo_do_bloqueio: motivo.trim() || null,
+      })
+      if (bloqueioError) throw bloqueioError
+      onCreated()
+      onClose()
+    } catch (err) {
+      console.error('Erro ao bloquear horário:', err)
+      setError(
+        traduzirErroDoBanco(
+          err as { code?: string; message?: string } | null,
+          {
+            '23P01':
+              'Esse intervalo já tem horário marcado para este profissional. Cancele ou remarque antes de bloquear.',
+          },
+          'Não foi possível bloquear o horário. Tente novamente.',
+        ),
+      )
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+
+    if (modo === 'bloqueio') {
+      await salvarBloqueio()
+      return
+    }
 
     if (!clientName.trim()) {
       setError('Informe o nome do cliente.')
@@ -269,12 +357,38 @@ export function NewAppointmentModal({
   return (
     <Modal
       onClose={onClose}
-      titulo="Nova reserva"
+      titulo={modo === 'bloqueio' ? 'Bloquear horário' : 'Nova reserva'}
       tamanho="md"
       bloquearFechamento={submitting}
-      confirmarFechamento={clientName.trim() !== '' || clientPhone.trim() !== '' || selectedServices.length > 0}
+      confirmarFechamento={
+        modo === 'bloqueio'
+          ? motivo.trim() !== ''
+          : clientName.trim() !== '' || clientPhone.trim() !== '' || selectedServices.length > 0
+      }
     >
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Mesmo padrão de abas do Catálogo: pílula com borda, ativa em
+              `btn-primary`. Reservar é o que ele faz o dia todo e fica em
+              primeiro; bloquear é ocasional e não merecia botão próprio na
+              Agenda, que já tem seis. */}
+          <div className="flex rounded-lg border border-border-strong overflow-hidden text-sm">
+            <button
+              type="button"
+              onClick={() => setModo('reserva')}
+              className={`flex-1 px-4 py-2 font-medium ${modo === 'reserva' ? 'btn-primary' : 'bg-surface text-foreground hover:bg-surface-2'}`}
+            >
+              Reserva
+            </button>
+            <button
+              type="button"
+              onClick={() => setModo('bloqueio')}
+              className={`flex-1 px-4 py-2 font-medium border-l border-border-strong ${modo === 'bloqueio' ? 'btn-primary' : 'bg-surface text-foreground hover:bg-surface-2'}`}
+            >
+              Bloquear horário
+            </button>
+          </div>
+
+          {modo === 'reserva' && (
           <Campo rotulo="Cliente" htmlFor="clientName">
             <Input
               id="clientName"
@@ -284,7 +398,9 @@ export function NewAppointmentModal({
               placeholder="Nome do cliente"
             />
           </Campo>
+          )}
 
+          {modo === 'reserva' && (
           <Campo rotulo="Telefone (opcional)" htmlFor="clientPhone">
             <Input
               id="clientPhone"
@@ -293,6 +409,7 @@ export function NewAppointmentModal({
               placeholder="(11) 90000-0000"
             />
           </Campo>
+          )}
 
           <Campo rotulo="Profissional" htmlFor="professional">
             <Select
@@ -309,6 +426,7 @@ export function NewAppointmentModal({
 
           {/* Adição de serviços: mesma mecânica da comanda (NewSaleModal) —
               nada sugerido, o barbeiro escolhe e adiciona um de cada vez. */}
+          {modo === 'reserva' && (
           <div className="border border-border rounded-lg p-3 space-y-2">
             <span className="text-xs font-medium text-muted-foreground">Adicionar serviço</span>
             <div className="flex flex-wrap gap-2">
@@ -336,10 +454,11 @@ export function NewAppointmentModal({
               </button>
             </div>
           </div>
+          )}
 
           {/* Lista dos serviços escolhidos, na ordem em que entraram. O
               primeiro é o principal (vira `service_id`). */}
-          {selectedServices.length > 0 && (
+          {modo === 'reserva' && selectedServices.length > 0 && (
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-muted-foreground">Serviços da reserva</span>
@@ -375,15 +494,74 @@ export function NewAppointmentModal({
             </div>
           )}
 
-          <Campo rotulo="Horário" htmlFor="time">
-            <Input
-              id="time"
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              required
-            />
-          </Campo>
+          {modo === 'reserva' ? (
+            <Campo rotulo="Horário" htmlFor="time">
+              <Input
+                id="time"
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                required
+              />
+            </Campo>
+          ) : (
+            <>
+              {/* A reserva tem UM horário (o fim vem da soma dos serviços); o
+                  bloqueio tem dois, porque nada calcula a duração de um almoço. */}
+              <div className="grid grid-cols-2 gap-3">
+                <Campo rotulo="Início" htmlFor="time">
+                  <Input
+                    id="time"
+                    type="time"
+                    value={janela.inicio}
+                    onChange={(e) => mudarInicio(e.target.value)}
+                    disabled={diaInteiro}
+                    required
+                  />
+                </Campo>
+                <Campo rotulo="Fim" htmlFor="horaFim">
+                  <Input
+                    id="horaFim"
+                    type="time"
+                    value={janela.fim}
+                    onChange={(e) => setHoraFim(e.target.value)}
+                    disabled={diaInteiro}
+                    required
+                  />
+                </Campo>
+              </div>
+
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={diaInteiro}
+                  onChange={(e) => setDiaInteiro(e.target.checked)}
+                  className="accent-primary"
+                />
+                Dia inteiro
+              </label>
+
+              <Campo
+                rotulo="Motivo (opcional)"
+                htmlFor="motivo"
+                apoio="Só a barbearia vê. O cliente não recebe explicação — o horário apenas não aparece para ele."
+              >
+                <Input
+                  id="motivo"
+                  value={motivo}
+                  onChange={(e) => setMotivo(e.target.value)}
+                  maxLength={MOTIVO_MAX}
+                  placeholder="Almoço, médico, folga..."
+                />
+              </Campo>
+
+              <p className="text-xs text-muted-foreground bg-surface-2 rounded-lg px-3 py-2">
+                O horário sai da agenda pública e o atendente do WhatsApp deixa de
+                oferecê-lo. Quem já tem reserva nesse intervalo <strong>não</strong> é
+                avisado — cancele ou remarque antes.
+              </p>
+            </>
+          )}
 
           {/* O barbeiro precisa saber ANTES de salvar que este lançamento é
               retroativo — senão ele procura a reserva na agenda de hoje e não
@@ -407,10 +585,20 @@ export function NewAppointmentModal({
             </button>
             <button
               type="submit"
-              disabled={submitting || professionals.length === 0 || services.length === 0 || selectedServices.length === 0}
+              disabled={
+                submitting ||
+                professionals.length === 0 ||
+                // Serviço só é exigido na reserva: uma barbearia recém-criada,
+                // com o catálogo ainda vazio, continua podendo fechar a agenda.
+                (modo === 'reserva' && (services.length === 0 || selectedServices.length === 0))
+              }
               className="flex-1 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
-              {submitting ? 'Salvando...' : 'Salvar reserva'}
+              {submitting
+                ? 'Salvando...'
+                : modo === 'bloqueio'
+                  ? 'Bloquear horário'
+                  : 'Salvar reserva'}
             </button>
           </div>
         </form>

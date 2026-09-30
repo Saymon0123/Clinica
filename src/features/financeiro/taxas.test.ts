@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  COMPOSICAO_VAZIA,
   DESEMPENHO_VAZIO,
   direcao,
   formatHoras,
@@ -8,6 +9,12 @@ import {
   ocupacao,
   servicosPorAtendimento,
   taxaDeRetorno,
+  ticketMedio,
+  melhorDiaDaSemana,
+  nomeDoDia,
+  participacao,
+  formatReal,
+  type Composicao,
   type Desempenho,
 } from './taxas'
 
@@ -83,5 +90,76 @@ describe('as taxas do barbeiro', () => {
     expect(direcao(12, null)).toBeNull()
     expect(direcao(null, 12)).toBeNull()
     expect(direcao(null, null)).toBeNull()
+  })
+})
+
+describe('de onde vem o dinheiro (parte 2)', () => {
+  const comp = (p: Partial<Composicao>): Composicao => ({ ...COMPOSICAO_VAZIA, ...p })
+
+  it('ticket medio sai do FATURAMENTO, nao da soma dos itens', () => {
+    // As duas bases divergem quando há desconto, pacote cobrindo item ou
+    // pagamento parcial. O ticket usa a mesma do cartão "Faturamento" para o
+    // dono poder dividir o que vê na tela e chegar no mesmo número.
+    expect(ticketMedio(comp({ faturamento: 450, comandas: 4, vendidoTotal: 480 }))).toBe(112.5)
+  })
+
+  it('sem comanda fechada, ticket e nulo e nao zero', () => {
+    expect(ticketMedio(comp({ faturamento: 0, comandas: 0 }))).toBeNull()
+  })
+
+  it('a participacao tem o VENDIDO no denominador, nao o faturamento', () => {
+    // Com desconto, faturamento (450) e vendido (480) divergem. Usar 450 aqui
+    // faria as três fatias somarem mais de 100%.
+    const c = comp({
+      faturamento: 450,
+      vendidoTotal: 480,
+      vendidoServico: 200,
+      vendidoProduto: 80,
+      vendidoPacote: 200,
+    })
+    const fatias = [
+      participacao(c.vendidoServico, c.vendidoTotal),
+      participacao(c.vendidoProduto, c.vendidoTotal),
+      participacao(c.vendidoPacote, c.vendidoTotal),
+    ]
+    // `reduce<number>`: sem o genérico, o TS infere o acumulador do tipo do
+    // array (`number | null`) e reclama que `s` pode ser nulo.
+    expect(fatias.reduce<number>((s, f) => s + (f ?? 0), 0)).toBeCloseTo(100, 6)
+    expect(participacao(80, 480)).toBeCloseTo(16.667, 2)
+  })
+
+  it('sem nada vendido, a participacao e nula', () => {
+    expect(participacao(0, 0)).toBeNull()
+  })
+
+  it('o melhor dia cala quando ha venda de menos para falar', () => {
+    // Sete dias repartindo seis vendas dão um "vencedor" com duas, e "terça é
+    // o seu melhor dia" aí não é relatório: é ruído com cara de conselho.
+    expect(melhorDiaDaSemana(comp({ comandas: 6, melhorDia: 2, melhorDiaComandas: 2 }))).toBeNull()
+    // Período grande, mas o dia vencedor com pouca coisa: também cala.
+    expect(melhorDiaDaSemana(comp({ comandas: 20, melhorDia: 2, melhorDiaComandas: 2 }))).toBeNull()
+  })
+
+  it('com amostra suficiente, o melhor dia aparece por extenso', () => {
+    const d = melhorDiaDaSemana(
+      comp({ comandas: 20, melhorDia: 4, melhorDiaFaturamento: 900, melhorDiaComandas: 7 }),
+    )
+    expect(d).toEqual({ nome: 'quinta', faturamento: 900, comandas: 7 })
+  })
+
+  it('sem venda nenhuma nao ha dia para apontar', () => {
+    expect(melhorDiaDaSemana(COMPOSICAO_VAZIA)).toBeNull()
+  })
+
+  it('os dias da semana batem com o dow do Postgres (0=domingo)', () => {
+    // `extract(dow ...)` devolve 0 para domingo. Trocar a ordem aqui faria o
+    // relatório apontar o dia errado sem nada quebrar.
+    expect(nomeDoDia(0)).toBe('domingo')
+    expect(nomeDoDia(6)).toBe('sábado')
+    expect(nomeDoDia(4)).toBe('quinta')
+  })
+
+  it('reais em portugues', () => {
+    expect(formatReal(112.5).replace(/ /g, ' ')).toBe('R$ 112,50')
   })
 })

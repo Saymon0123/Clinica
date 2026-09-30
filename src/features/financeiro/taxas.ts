@@ -105,3 +105,92 @@ export function direcao(atual: number | null, anterior: number | null): 'subiu' 
   if (Math.abs(delta) < 0.5) return 'igual'
   return delta > 0 ? 'subiu' : 'desceu'
 }
+
+// ---------------------------------------------------------------------------
+// Parte 2 do item 14: de onde vem o dinheiro. Tudo daqui para baixo é DE
+// GESTÃO — sai de faturamento, e faturamento é do dono (decisão de 21/09).
+// ---------------------------------------------------------------------------
+
+/** O que a RPC `composicao_do_periodo` (migration 0184) devolve. */
+export type Composicao = {
+  /** Soma dos `payments` — a MESMA base do cartão "Faturamento" da tela. */
+  faturamento: number
+  comandas: number
+  /** Soma dos itens. Pode divergir do faturamento: desconto, pacote cobrindo
+   *  item, pagamento parcial. É a base honesta da composição, porque
+   *  `payments` não sabe O QUE foi comprado. */
+  vendidoTotal: number
+  vendidoServico: number
+  vendidoProduto: number
+  vendidoPacote: number
+  /** 0=domingo … 6=sábado, ou `null` quando não houve venda no período. */
+  melhorDia: number | null
+  melhorDiaFaturamento: number
+  melhorDiaComandas: number
+}
+
+export const COMPOSICAO_VAZIA: Composicao = {
+  faturamento: 0,
+  comandas: 0,
+  vendidoTotal: 0,
+  vendidoServico: 0,
+  vendidoProduto: 0,
+  vendidoPacote: 0,
+  melhorDia: null,
+  melhorDiaFaturamento: 0,
+  melhorDiaComandas: 0,
+}
+
+/** Faturamento dividido pelas comandas fechadas. `null` sem comanda. */
+export function ticketMedio(c: Composicao): number | null {
+  if (c.comandas <= 0) return null
+  return c.faturamento / c.comandas
+}
+
+/**
+ * Participação de uma parte no que foi vendido, de 0 a 100.
+ *
+ * O denominador é `vendidoTotal`, e não o faturamento: são bases diferentes, e
+ * misturar as duas produziria um percentual que não fecha em 100.
+ */
+export function participacao(parte: number, total: number): number | null {
+  if (total <= 0) return null
+  return (parte / total) * 100
+}
+
+const DIAS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
+
+export function nomeDoDia(dow: number): string {
+  return DIAS[dow] ?? '—'
+}
+
+/**
+ * Quantas comandas o período precisa ter para que apontar um dia signifique
+ * alguma coisa, e quantas o dia vencedor precisa ter.
+ *
+ * Não é estatística: é um piso contra dizer bobagem. Sete dias da semana
+ * repartindo seis vendas dão um "vencedor" com duas, e "terça é o seu melhor
+ * dia" nesse caso não é um relatório — é ruído com cara de conselho, do tipo
+ * que faz alguém remarcar a escala da equipe por nada.
+ */
+export const MINIMO_DE_COMANDAS = 10
+export const MINIMO_NO_DIA = 3
+
+export type MelhorDia = { nome: string; faturamento: number; comandas: number }
+
+/** `null` quando não houve venda, ou quando houve pouca demais para falar. */
+export function melhorDiaDaSemana(c: Composicao): MelhorDia | null {
+  if (c.melhorDia === null) return null
+  if (c.comandas < MINIMO_DE_COMANDAS) return null
+  if (c.melhorDiaComandas < MINIMO_NO_DIA) return null
+  return {
+    nome: nomeDoDia(c.melhorDia),
+    faturamento: c.melhorDiaFaturamento,
+    comandas: c.melhorDiaComandas,
+  }
+}
+
+/** Reais no formato brasileiro, sem centavos quando são zero. */
+export function formatReal(n: number): string {
+  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}

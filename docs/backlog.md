@@ -5468,6 +5468,67 @@ juntar as taxas ali faria uma falha delas derrubar o faturamento junto.
 Parte 2 do item 14: ticket médio, % de produto na venda e melhores dias. E a
 conferência visual, que é do dono — entrar como barbeiro exigiria criar conta.
 
+## Item 14, parte 2 de 2 — de onde vem o dinheiro (2026-09-30, migration 0184)
+
+Fecha o item 14 com as três de **gestão**: ticket médio, quanto da venda é
+produto e qual o melhor dia da semana. O barbeiro não vê nenhuma — todas saem
+de faturamento, e faturamento é do dono (decisão de 21/09). A RPC recusa com
+42501, e o hook nem dispara a chamada: erro no console dele seria erro que não
+é problema dele.
+
+### A armadilha: existem DUAS bases de faturamento nesta tela
+
+O cartão "Faturamento" **não soma os itens da comanda — ele soma
+`payments.valor`.** As duas contas divergem sempre que houver desconto, pacote
+cobrindo item ou pagamento parcial. Hoje, com 6 comandas fechadas, elas batem
+por sorte (R$ 685 nas duas), e foi por pouco que isso não passou batido.
+
+A régua que ficou:
+
+- **Ticket médio sai de `payments`** — mesma base do cartão, para o dono poder
+  dividir o que vê na tela e chegar no mesmo número. Se saísse dos itens, a
+  tela mostraria dois números que se contradizem e ninguém saberia em qual crer.
+- **A composição sai dos itens**, porque `payments` não sabe *o que* foi
+  comprado, só quanto entrou. Por isso cada linha escreve "em N comandas" ou
+  "de R$ X vendidos", e nunca um "do faturamento" genérico que seria mentira em
+  metade dos casos.
+
+A fixture do pgTAP tem um **desconto de propósito** (comanda de R$ 100 paga com
+R$ 70) justamente para os dois números saírem diferentes: 450 de faturamento
+contra 480 de vendido. Se um dia alguém "simplificar" a função para uma base
+só, é ali que aparece.
+
+### E são três tipos, não dois
+
+`order_items.tipo` aceita `servico`, `produto` e **`pacote`**. "Quanto é
+produto" sem o pacote no denominador daria número inflado — hoje o pacote é
+R$ 180 de R$ 685, mais de um quarto do que foi vendido.
+
+### O melhor dia cala quando não tem o que dizer
+
+Sete dias da semana repartindo seis vendas dão um "vencedor" com duas, e
+"terça é o seu melhor dia" nesse caso não é relatório: é ruído com cara de
+conselho, do tipo que faz alguém remarcar a escala da equipe por nada. O cartão
+exige **10 comandas no período e 3 no dia vencedor**; abaixo disso diz "poucas
+vendas no período para apontar um dia". Não é estatística — é um piso contra
+dizer bobagem.
+
+O melhor dia também é medido **pelo dinheiro, não pela contagem**: três barbas
+não fazem um sábado melhor que uma quinta com dois pacotes.
+
+### Peças
+
+CRM (RPC + hook + seção no Financeiro) e Supabase (0184). Vercel, n8n e edges:
+nada.
+
+Sob erro a seção some, e o gate entrou no tripwire de `ErroDeCarga.test.ts` —
+provado por reversão, como o da parte 1.
+
+### O item 14 está fechado
+
+Faltam a conferência visual (do dono) e, se ele quiser, um seletor de cadeira
+no Financeiro para o gestor medir um barbeiro específico — hoje ele vê o salão
+inteiro, e o barbeiro vê só a própria cadeira.
 ## Parecer: o projeto avisa de erro? (2026-09-30)
 
 Pedido antes de começar a prospectar: "de todo ângulo, eu fico sabendo do erro

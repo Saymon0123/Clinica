@@ -5529,3 +5529,80 @@ provado por reversão, como o da parte 1.
 Faltam a conferência visual (do dono) e, se ele quiser, um seletor de cadeira
 no Financeiro para o gestor medir um barbeiro específico — hoje ele vê o salão
 inteiro, e o barbeiro vê só a própria cadeira.
+## Parecer: o projeto avisa de erro? (2026-09-30)
+
+Pedido antes de começar a prospectar: "de todo ângulo, eu fico sabendo do erro
+antes ou ao mesmo tempo que o barbeiro?". Percorrido ângulo por ângulo.
+
+**O que está de pé, conferido:** Sentry no CRM (`@sentry/react` com
+`VITE_SENTRY_DSN` presente na Vercel em produção); `comSentry` nas **12** edge
+functions, sem exceção; 7 crons do banco rodando no prazo, com
+`crons_atrasados()` vigiando os vigias; 12 views de auditoria + fila
+`auditoria_pendente` + dedup em `auditoria_avisos`; 16 workflows n8n **todos
+ativos**, incluindo a sentinela que confere o webhook da Evolution de 30 em 30
+minutos; e o CI completo.
+
+### O buraco: todo alarme sai pelo mesmo cano
+
+**`canal_de_alertas.provedor = 'email'`, e o "Alerta de Falha (Error Workflow)"
+usa a MESMA credencial SMTP dos fluxos que ele vigia** (`SMTP Hostinger`,
+`Ozsdd8R9j8L9vUJO`).
+
+Não é hipótese. Entre 20 e 24/09 houve **332 execuções com erro** no n8n, todas
+com `535 authentication failed`. A cada 30 minutos a "Auditoria do Agente"
+detectava problema, tentava avisar, falhava — e o Error Workflow falhava atrás
+dela, pelo mesmo motivo.
+
+**O Error Workflow tem 166 execuções e ZERO sucessos.** Ele só é chamado quando
+algo quebra, então toda vez que foi necessário estava quebrado pela mesma causa
+que deveria denunciar. Foi assim que o cadastro ficou quatro dias fora sem
+ninguém saber: o dono descobriu porque foi tentar criar uma conta.
+
+**A resposta à pergunta:** erro de tela, de edge, cron parado, webhook torto e
+agente mudo — o dono sabe antes. **Qualquer coisa que quebre o envio de e-mail
+— ele não sabe nunca**, e o cliente descobre na hora.
+
+**Saída proposta e RECUSADA pelo dono (30/09):** mandar o alarme de último
+recurso por WhatsApp, deixando os dois canais independentes. Ele não quer
+receber por WhatsApp. **Segue aberto** — precisa de um segundo canal que não
+seja e-mail nem WhatsApp, ou de um dead-man's switch externo.
+
+**Não verificado:** se o Sentry tem *regra de alerta* configurada. Sem regra ele
+coleta e fica quieto, e o painel vira arquivo morto. O MCP do Sentry pede
+autorização que não havia. **Conferir antes de prospectar.**
+
+## O aviso de cliente novo (2026-09-30, migration 0185)
+
+Até aqui uma barbearia podia se cadastrar e **ninguém ficava sabendo**: a edge
+`criar-minha-barbearia` cria tudo e não conta para lugar nenhum. O dado existia
+na `metricas_do_produto` (painel administrativo), mas painel é coisa que se
+abre, e quem prospecta precisa ser procurado.
+
+Duas chaves novas entram na `auditoria_pendente`, que o n8n já drena de 30 em 30
+minutos por e-mail — sem workflow novo, sem canal novo:
+
+- **`barbearia-nova`** — nome, telefone e o nome do **dono** (via
+  `user_salons.role='owner'`; o `limit 1` cru trazia o primeiro profissional da
+  lista, que num salão de três cadeiras é outra pessoa).
+- **`conta-sem-barbearia`** — conta criada há mais de **3 horas** que não virou
+  barbearia. Uma hora pegaria quem só foi jantar; 24 avisariam quando a pessoa
+  já esqueceu. Os dois casos reais de setembro desistiram em 3 minutos.
+
+Barbeiro com convite aberto fica de fora: sem essa exceção, todo convite
+pendente viraria alarme falso.
+
+### O defeito que o ensaio pegou, e que teria sido grave
+
+A primeira versão lia `auth.users` direto na view. As views de auditoria são
+`security_invoker`, e **o `service_role` — que é quem drena a fila pelo n8n —
+não tem leitura em `auth.users`**. Em produção isso levantaria "permission
+denied" *dentro* da `auditoria_pendente` e, como ela é um `UNION ALL`,
+**derrubaria os outros dez alarmes junto**: ficaria pior do que antes de existir.
+
+A saída é a que a `auditoria_crons` já usa para chegar em `cron.job`: função
+`security definer` em `private`, com `execute` só para `service_role`.
+
+**Ressalva:** estes avisos saem pelo mesmo SMTP de todo o resto. Não resolvem a
+cegueira acima — resolvem só "tenho cliente novo?".
+
+**Peças:** Supabase (0185). CRM, Vercel, n8n e edges: nada.

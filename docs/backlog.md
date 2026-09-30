@@ -5399,3 +5399,71 @@ portas do cliente sem uma linha nova.
 digitar senha. Provado no banco (11 asserções pgTAP, ensaiadas contra o schema
 real com rollback antes de aplicar) e em teste de unidade (10 asserções no
 módulo puro da janela). A conferência visual é do dono.
+
+## Item 14, parte 1 de 2 — as três taxas do barbeiro (2026-09-30, migration 0183)
+
+O Financeiro tinha quatro cartões: Faturamento, Clientes atendidos,
+Agendamentos, Cancelamentos e faltas. **Os quatro são contagem ou soma.**
+Nenhum era taxa — o CRM contava *quanto* aconteceu e nunca dizia *se foi bom*.
+
+Entraram as três que são do barbeiro: **ocupação da cadeira**, **clientes que
+voltam** e **serviços por atendimento**. As três de gestão (ticket médio, % de
+produto, melhores dias) ficam para a parte 2: saem de `orders`, que é outra
+árvore de consultas.
+
+### A decisão que veio de uma pergunta ao dono
+
+O primeiro cálculo contra os dados reais deu **0,93% de ocupação** em setembro.
+O número estava certo: 460 minutos atendidos contra 49.680 de jornada — porque
+os três profissionais estão cadastrados com **7 dias por semana, 64 horas**.
+
+Eu ia escrever um aviso dizendo que sete dias "provavelmente é engano". O dono
+corrigiu: **há barbearia que abre domingo de verdade**, e o sistema não tem como
+saber se aquilo é erro de cadastro ou é o negócio da pessoa.
+
+Daí a forma de tudo: a RPC devolve **ingredientes, não percentuais**, e a tela
+mostra o denominador — `0,9% · 7h40 atendendo de 828h de jornada`. Quem abre
+domingo lê 828h e confirma; quem cadastrou errado lê 828h e vê o próprio erro.
+O sistema afirma os fatos que usou e deixa o julgamento com quem conhece a
+barbearia. Aviso fica só para **ausência** de fato: sem jornada cadastrada a
+taxa é `—`, nunca `0%` — "0%" acusaria o barbeiro de uma preguiça que é, na
+verdade, um campo em branco em Equipe.
+
+### As réguas que ficaram dentro do cálculo
+
+- **Bloqueio sai do denominador.** Não é hora vaga que ele deixou de vender, é
+  hora em que não estava disponível. Somá-la puniria justamente quem usa o
+  bloqueio (0182) para avisar que sai.
+- **A janela é cortada em `now()`.** Sem isso, a ocupação do mês em curso é uma
+  mentira que assusta: no dia 5 de 30, dividir pelo mês inteiro dá 17%.
+- **Cancelado e falta ficam fora do numerador** — a cadeira esteve vazia, e é
+  essa perda que a ocupação existe para mostrar.
+- **Cancelado não é "voltou"** na taxa de retorno.
+- **A ocupação não é cortada em 100%.** Encaixe fora do expediente é permitido
+  de propósito no projeto; "110%" não é defeito, é a notícia de que ele atende
+  fora da jornada que cadastrou.
+- **O barbeiro mede a própria cadeira**, mesmo passando outra no parâmetro. O
+  parâmetro é ignorado, não recusado: devolver erro contaria a ele que a outra
+  cadeira existe e que o pedido chegou perto.
+- **A comparação com o período anterior mostra direção, nunca tamanho.** A
+  diferença entre dois percentuais se mede em pontos, e escrever "+20%" ao sair
+  de 10% para 12% seria mentira; como "ponto percentual" é jargão que ninguém
+  usa cortando cabelo, a tela mostra a seta e o valor anterior por extenso
+  ("antes 10,0%"). Meio ponto de zona morta impede seta verde por 12,01%
+  contra 12,00%.
+
+### Peças
+
+CRM (RPC nova consumida por hook próprio + seção no Financeiro) e Supabase
+(0183). Vercel, n8n e edges: nada.
+
+**Hook separado de propósito:** `useFinanceiroData` faz oito consultas soltas;
+juntar as taxas ali faria uma falha delas derrubar o faturamento junto.
+
+**Sob erro a seção some inteira**, e o gate entrou no tripwire de
+`ErroDeCarga.test.ts` — provado por reversão: tirando o gate, o teste quebra.
+
+### O que falta
+
+Parte 2 do item 14: ticket médio, % de produto na venda e melhores dias. E a
+conferência visual, que é do dono — entrar como barbeiro exigiria criar conta.

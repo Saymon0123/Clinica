@@ -38,6 +38,8 @@ import {
   type VendaPendente,
 } from '../../lib/vendaPendente'
 import { rotuloDasPerdas } from './perdas'
+import { TaxasSection } from './TaxasSection'
+import { useDesempenho } from './useDesempenho'
 import { EditGoalModal } from './EditGoalModal'
 import { ExportReportModal } from './ExportReportModal'
 import { GoalReachedModal } from './GoalReachedModal'
@@ -110,6 +112,14 @@ export function FinanceiroPage() {
   const rotuloPeriodo =
     filter === 'dia' ? (ehHoje ? 'Hoje' : labelDoDia(refDia)) : ehMesCorrente ? 'Este mês' : labelDoMes(refMonth)
   const { data, loading, error, reload } = useFinanceiroData(salonId, filter, refMonth, refDia)
+  // Hook próprio, e não mais um campo em `useFinanceiroData`: as taxas vêm de
+  // uma RPC só (0183), enquanto aquele faz oito consultas soltas. Juntando,
+  // uma falha nas taxas derrubaria o faturamento junto.
+  const {
+    atual: desempenho,
+    anterior: desempenhoAnterior,
+    loading: loadingDesempenho,
+  } = useDesempenho(salonId, filter, refMonth, refDia)
 
   /**
    * Entrar no lado "Dia" respeita o mês que o dono está olhando: navegou para
@@ -495,6 +505,15 @@ export function FinanceiroPage() {
           )
         })}
       </div>
+
+      {/* AS TAXAS (item 14). Vêm logo abaixo das contagens de propósito: os
+          quatro cartões de cima dizem QUANTO aconteceu, estes três dizem SE
+          FOI BOM, e a pergunta só faz sentido depois do número bruto.
+
+          Sob erro, somem inteiras. Uma ocupação de "0,0%" com a rede caída é
+          a mesma mentira que o "R$ 0,00" do achado 31 -- pior, até, porque
+          acusa o barbeiro de ter passado o dia parado. */}
+      {error ? null : <TaxasSection atual={desempenho} anterior={desempenhoAnterior} loading={loadingDesempenho} />}
 
       {/* Gráfico de clientes + donut da meta */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

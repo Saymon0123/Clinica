@@ -91,6 +91,10 @@ const GATES: Record<string, string[]> = {
     "error ? '—' : formatCurrency(data.revenueCurrent)",
     'error ? null : data.topServices.length === 0',
     'error ? null : data.commissions.length === 0',
+    // As taxas (0183) somem inteiras sob erro. "Ocupação: 0,0%" com a rede
+    // caída é a mesma mentira do "R$ 0,00" -- pior, porque acusa o barbeiro
+    // de ter passado o dia parado.
+    'error ? null : <TaxasSection',
   ],
   '../features/rede/RedePage.tsx': ["erro ? '—' : moeda(totalFaturamento)", 'erroProducao ? ('],
   '../features/assinatura/CobrancaDaRede.tsx': ['erroDeCarga ? ('],

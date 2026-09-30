@@ -64,10 +64,15 @@ insert into professionals (id, salon_id, nome, ativo) values
 
 -- A jornada é o denominador de `horarios_livres`: sem ela a função não devolve
 -- linha nenhuma, e as asserções de vaga passariam por vazio.
+-- `values`, e não `insert ... select`: em `values` o literal que o psql expande
+-- de `:'prof_a'` chega como `unknown` e o Postgres o converte pela coluna de
+-- destino; dentro de um `select ... union all` ele é resolvido como `text`
+-- antes disso, e o insert morre com "is of type uuid but expression is of type
+-- text" -- derrubando o arquivo inteiro antes da primeira asserção.
 insert into professional_schedules (professional_id, dia_semana, hora_inicio, hora_fim, ativo)
-select :'prof_a', extract(dow from pg_temp.dia())::smallint, '09:00'::time, '18:00'::time, true
-union all
-select :'prof_b', extract(dow from pg_temp.dia())::smallint, '09:00'::time, '18:00'::time, true;
+values
+  (:'prof_a', extract(dow from pg_temp.dia())::smallint, '09:00', '18:00', true),
+  (:'prof_b', extract(dow from pg_temp.dia())::smallint, '09:00', '18:00', true);
 
 insert into services (id, salon_id, nome, duracao_minutos, preco, ativo)
 values (:'servico', :'salao', 'Corte', 30, 50, true);

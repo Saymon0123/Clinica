@@ -38,8 +38,9 @@ import {
   type VendaPendente,
 } from '../../lib/vendaPendente'
 import { rotuloDasPerdas } from './perdas'
-import { TaxasSection } from './TaxasSection'
+import { ComposicaoSection, TaxasSection } from './TaxasSection'
 import { useDesempenho } from './useDesempenho'
+import { useComposicao } from './useComposicao'
 import { EditGoalModal } from './EditGoalModal'
 import { ExportReportModal } from './ExportReportModal'
 import { GoalReachedModal } from './GoalReachedModal'
@@ -120,6 +121,17 @@ export function FinanceiroPage() {
     anterior: desempenhoAnterior,
     loading: loadingDesempenho,
   } = useDesempenho(salonId, filter, refMonth, refDia)
+  // `isManager` chega como último argumento e não como um `if` aqui em cima
+  // porque hook não se chama condicionalmente. Ele desliga a busca por dentro:
+  // a RPC recusa o barbeiro com 42501, e disparar a chamada assim mesmo sujaria
+  // o console dele com um erro que não é problema dele.
+  const { dados: composicao, loading: loadingComposicao } = useComposicao(
+    salonId,
+    filter,
+    refMonth,
+    refDia,
+    isManager,
+  )
 
   /**
    * Entrar no lado "Dia" respeita o mês que o dono está olhando: navegou para
@@ -514,6 +526,11 @@ export function FinanceiroPage() {
           a mesma mentira que o "R$ 0,00" do achado 31 -- pior, até, porque
           acusa o barbeiro de ter passado o dia parado. */}
       {error ? null : <TaxasSection atual={desempenho} anterior={desempenhoAnterior} loading={loadingDesempenho} />}
+
+      {/* DE ONDE VEM O DINHEIRO (parte 2). Só de gestão: as três saem de
+          faturamento. Vem depois das taxas do barbeiro de proposito -- aquelas
+          falam do trabalho, estas falam do caixa. */}
+      {!isManager || error ? null : <ComposicaoSection dados={composicao} loading={loadingComposicao} />}
 
       {/* Gráfico de clientes + donut da meta */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

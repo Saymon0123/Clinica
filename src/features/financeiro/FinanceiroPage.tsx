@@ -696,7 +696,15 @@ export function FinanceiroPage() {
           <EstadoVazio
             icone={HandCoins}
             titulo="Nenhuma comissão no período"
-            descricao="Defina o percentual de comissão do profissional para calcular."
+            /* Quem define percentual e o gestor, em /equipe -- tela que o
+               barbeiro nem enxerga no menu. Mandar ele "definir o percentual"
+               era instrucao impossivel: ele procura, nao acha, e conclui que o
+               sistema esta quebrado. */
+            descricao={
+              isManager
+                ? 'Defina o percentual de comissão do profissional para calcular.'
+                : 'Ou você ainda não fechou vendas neste período, ou seu percentual de comissão não foi definido — nesse caso, fale com a gestão.'
+            }
           />
         ) : (
           <div className="space-y-2">
@@ -718,9 +726,14 @@ export function FinanceiroPage() {
         )}
       </div>
 
+      {/* O rodape explicava "Faturamento" para o barbeiro, que desde 21/09
+          nao ve card de faturamento nenhum: a frase mandava procurar um numero
+          que nao esta na tela. Cada papel le a conta que a tela dele faz. */}
       <p className="text-xs text-muted-foreground">
-        Faturamento considera comandas fechadas; clientes atendidos considera agendamentos concluídos. As
-        variações comparam com {filter === 'dia' ? 'ontem' : 'o mês anterior ao exibido'}.
+        {isManager
+          ? 'Faturamento considera comandas fechadas; clientes atendidos considera agendamentos concluídos.'
+          : 'Sua comissão considera os serviços das comandas fechadas por você; clientes atendidos considera agendamentos concluídos.'}{' '}
+        As variações comparam com {filter === 'dia' ? 'ontem' : 'o mês anterior ao exibido'}.
       </p>
         </>
       )}

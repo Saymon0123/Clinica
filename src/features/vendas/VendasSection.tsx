@@ -7,6 +7,7 @@ import { PAYMENT_LABELS } from './types'
 import { Tabela, Th, Linha, Td } from '../../components/Tabela'
 import { EstadoVazio } from '../../components/EstadoVazio'
 import { ErroDeCarga } from '../../components/ErroDeCarga'
+import { useSalon } from '../auth/useSalon'
 
 function formatCurrency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -46,6 +47,7 @@ export function VendasSection({
   onVendaSalva?: (appointmentId: string | null) => void
 }) {
   const { sales, loading, error, reload } = useVendasData(salonId, period, refMonth, refDia)
+  const { isManager } = useSalon()
   const [modalOpen, setModalOpen] = useState(false)
   const [activePrefill, setActivePrefill] = useState<SalePrefill | null>(null)
   // Comanda aberta para detalhe/estorno (achado 8).
@@ -74,8 +76,18 @@ export function VendasSection({
             '—'
           ) : (
             <>
-              {sales.length} venda{sales.length === 1 ? '' : 's'} ·{' '}
-              <span className="font-medium text-foreground">{formatCurrency(totalPeriod)}</span>
+              {sales.length} venda{sales.length === 1 ? '' : 's'}
+              {/* A SOMA DO PERIODO e faturamento, e o barbeiro nao ve
+                  faturamento (decisao do dono, 21/09). Escondemos o card la em
+                  cima e esquecemos daqui: o total do periodo continuava escrito
+                  nesta linha. O valor de CADA venda continua, e tem de
+                  continuar -- foi ele quem cobrou, e precisa conferir. */}
+              {isManager && (
+                <>
+                  {' · '}
+                  <span className="font-medium text-foreground">{formatCurrency(totalPeriod)}</span>
+                </>
+              )}
             </>
           )}
         </p>

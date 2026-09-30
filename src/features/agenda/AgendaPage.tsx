@@ -101,6 +101,15 @@ function AppointmentBlock({
     appt.status === 'confirmado' ? 'confirmado' :
     appt.status === 'bloqueio' ? 'bloqueio' : 'agendado'
 
+  // Bloqueio não tem cliente, e o `?? 'Cliente'` de baixo escrevia
+  // "12:00 · Cliente" no almoço do barbeiro -- com o leitor de tela dizendo
+  // "12:00, cliente" para uma hora em que não há ninguém. O motivo (0182) ocupa
+  // esse lugar, e sem motivo escrito sobra a palavra honesta.
+  const rotuloPrincipal =
+    appt.status === 'bloqueio'
+      ? appt.motivo_do_bloqueio || 'Bloqueio'
+      : appt.client_nome ?? 'Cliente'
+
   // `<button>`, e não `<div onClick>`: leitor de tela e teclado passam a
   // alcançar o bloco, e o rótulo diz o que ele é sem precisar ler a grade.
   // Continua arrastável — botão aceita `draggable` como qualquer elemento.
@@ -116,7 +125,7 @@ function AppointmentBlock({
       }}
       onDragEnd={onDragEnd}
       onClick={onClick}
-      aria-label={`${formatTime(appt.data_hora_inicio)}, ${appt.client_nome ?? 'cliente'}${
+      aria-label={`${formatTime(appt.data_hora_inicio)}, ${rotuloPrincipal}${
         appt.service_nome ? `, ${appt.service_nome}` : ''
       }, ${rotuloStatus}${
         // O recado entra no rótulo, e não só no ícone: quem usa leitor de tela
@@ -129,7 +138,7 @@ function AppointmentBlock({
       style={{ top, height, zIndex: finalizado ? 1 : 2 }}
     >
       <div className={`text-xs font-medium truncate ${style.text}`}>
-        {formatTime(appt.data_hora_inicio)} · {appt.client_nome ?? 'Cliente'}
+        {formatTime(appt.data_hora_inicio)} · {rotuloPrincipal}
         {/* O ponto do recado (0178): o barbeiro precisa saber que TEM pedido
             sem abrir cada horário da grade. O texto mora no detalhe — aqui
             cabe um sinal, e o cartão é estreito. */}

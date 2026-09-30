@@ -5280,3 +5280,114 @@ agente ANOTA; o barbeiro lê e lança no balcão.
 Verificado ponta a ponta: a RPC pelo caminho REST que o n8n usa (HTTP 200,
 ok:true), o recado aparecendo na tela pública com o texto gravado, e a
 query exata da agenda devolvendo o campo para o barbeiro.
+
+## O bloco de funcionalidades: o que entra e o que não (2026-09-30)
+
+Depois das doze correções da visão do barbeiro (PRs #188 e #189), o dono
+decidiu item a item o que vira funcionalidade. Registrado aqui porque decisão
+que não é escrita volta como pergunta.
+
+**Entram, nesta ordem:** 13 (bloquear horário), 14 (os números que faltam),
+16 (fila de espera), 18 (pedido de folga), 19 (depósito contra falta),
+20 (onboarding do barbeiro).
+
+**Não entra: 15 — ficha técnica do corte.** Decisão do dono, sem prazo para
+revisão.
+
+**Em espera: 17 — logo e cor por barbearia.** O dono quer testar algumas coisas
+antes. O levantamento já está feito e fica aqui para não ser refeito:
+
+- A agenda pública **já** mostra as iniciais e o nome da barbearia, não a marca
+  do produto. O que não é personalizado é o verde (`--primary`), a ausência de
+  logo, e o cartaz do balcão, que sai com as cores e as listras do Club Cut
+  fixas no código.
+- **Não existe nenhum bucket de storage no projeto** — zero buckets, zero
+  arquivos, conferido no painel. Subir uma logo significa construir a camada
+  inteira: bucket, policy em `storage.objects` por pasta de salão, validação de
+  tipo e tamanho nos dois lados, o "ainda não tem logo", trocar e remover. E o
+  cartaz tem 11 KB justamente porque não embute nada.
+- **A cor não é um valor, são dez**: `primary`, `hover`, `foreground`, `soft` e
+  `soft-foreground`, em dois temas — e no escuro o primário é mais claro e o
+  texto em cima dele vira preto. Seletor de cor livre publicaria botão ilegível
+  com a cara de defeito da barbearia. O desenho que funciona é uma **paleta de
+  6 a 8 cores prontas**, cada uma com os dez valores já conferidos.
+- Decisão de produto embutida: o rodapé `Agenda por Club Cut` é a distribuição.
+  Quanto mais a barbearia assume a página, mais essa linha é a única coisa que
+  diz que o produto existe.
+
+**Fechadas sem trabalho** (o comportamento de hoje, agora confirmado):
+o barbeiro **pode** cancelar e excluir agendamento sem trava; e o **Catálogo
+fica** no menu dele, como consulta de preço e estoque.
+
+## O `npm audit` vermelho: descartado com o motivo escrito (2026-09-30)
+
+`undici` e `brace-expansion`, ambos por baixo do `jsdom`. Decisão do dono:
+descartar o `npm audit fix`.
+
+A prova de que não prejudica: `npm audit --omit=dev` acusa **zero
+vulnerabilidades**. Nada disso chega no navegador do cliente — é dependência de
+teste.
+
+**O que a decisão custa, e continua aberto:** o comentário do próprio
+`ci.yml` diz *"a árvore está limpa hoje, então qualquer vermelho aqui é notícia
+de verdade"*. Essa premissa morreu. O job fica vermelho para sempre, e alarme
+que nunca apaga para de ser alarme — a próxima vulnerabilidade **de produção**
+vai aparecer no mesmo vermelho que já se aprendeu a ignorar. A saída de uma
+linha é trocar o comando por `npm audit --omit=dev`, que fica verde hoje e
+vermelho só quando algo alcançar o cliente. **Oferecido ao dono, ainda sem
+resposta.**
+
+## Item 13 — o barbeiro fecha a própria agenda (2026-09-30, migration 0182)
+
+O status `bloqueio` existia no CHECK de `appointments` desde sempre, o tipo do
+CRM o conhecia, o modal de detalhe já o desenhava em cinza e a contagem de
+reservas vivas já o ignorava. Faltava **criar** um: o `NewAppointmentModal`
+gravava `agendado` ou `concluido`, e por isso havia **zero** linhas com esse
+status no banco. Uma porta inteira construída e nunca aberta — o barbeiro
+marcava o almoço como reserva no nome de um cliente inventado.
+
+**Abrir a porta não precisaria de migration.** A trava de exclusão
+`appointments_sem_sobreposicao` não isenta `bloqueio`, então no instante em que
+a linha existe o banco recusa agendamento em cima dela nas três portas (CRM,
+link público, agente). `client_id` e `service_id` já aceitavam nulo, e a RLS já
+limitava o barbeiro à própria cadeira.
+
+**O que exigiu migration foi a folga.** `folga_entre_atendimentos_minutos`
+existe para o barbeiro respirar entre dois clientes, e o bloqueio *é* a
+respiração. Sem correção, a primeira tentativa já falhava: com folga de 10 (o
+valor do salão de teste), bloquear o almoço das 12h com um corte terminando às
+12h era recusado com "fica a menos de 10 minutos de outro atendimento" — frase
+que o barbeiro leria como defeito.
+
+A régua vale nos dois lados, e por isso **duas funções mudaram juntas**: o
+gatilho `respeita_folga_entre_atendimentos` (decide se a linha entra) e
+`horarios_livres` (decide o que o cliente enxerga). Mexer só no gatilho deixaria
+o CRM aceitando 13:00 enquanto o link público escondia até 13:10.
+
+Em `horarios_livres` a folga **mudou de lado**: antes alargava o candidato e
+media contra o vizinho; como agora depende de *quem* é o vizinho, passou para o
+lado dele. É equivalente — alargar A em f e medir contra B é a mesma pergunta
+que alargar B em f e medir contra A.
+
+**De quebra, dois defeitos que só apareceram andando pelos lados:**
+
+- A Agenda desenhava `{client_nome ?? 'Cliente'}`: um bloqueio apareceria como
+  "12:00 · Cliente", e o leitor de tela diria "12:00, cliente" para uma hora em
+  que não há ninguém.
+- O detalhe abriria um almoço com "Confirmar", "Cliente chegou", "Concluir" e
+  "Cobrar" — o mesmo defeito que a lista de Vendas acabou de perder no item 10,
+  repetido noutra tela. Ganhou saída própria, com uma ação só.
+
+**O "dia inteiro"** entrou junto, por um checkbox: ele cobre a maior parte do
+item 18 (pedido de folga) para uma equipe de três. O que sobraria do 18 é o
+fluxo de *pedir e o dono aprovar*, que é gestão de gente e não agenda — vale
+reavaliar se ainda se justifica.
+
+**Peças:** CRM (modal, agenda, detalhe) e Supabase (0182). Vercel, n8n e as
+edges: **nada** — a trava do banco e a `horarios_livres` já atendem as duas
+portas do cliente sem uma linha nova.
+
+**Não verificado em tela logada:** entrar como barbeiro exigiria criar conta ou
+digitar senha. Provado no banco (11 asserções pgTAP, ensaiadas contra o schema
+real com rollback antes de aplicar) e em teste de unidade (10 asserções no
+módulo puro da janela). A conferência visual é do dono.

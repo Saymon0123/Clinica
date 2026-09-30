@@ -198,7 +198,18 @@ function App() {
               <Route path="/clientes" element={<ClientesPage />} />
               <Route path="/financeiro" element={<FinanceiroPage />} />
               <Route path="/catalogo" element={<CatalogoPage />} />
-              <Route path="/equipe" element={<EquipePage />} />
+              {/* /equipe estava na lista das rotas livres, embora o menu a
+                  marque como `somenteGestor`: quem digitasse o endereco abria a
+                  tela (vazia, porque a RLS segura os dados -- mas abria). E a
+                  mesma incoerencia que ja foi fechada em /clientes. */}
+              <Route
+                path="/equipe"
+                element={
+                  <RequireManager>
+                    <EquipePage />
+                  </RequireManager>
+                }
+              />
               <Route path="/ajuda" element={<AjudaPage />} />
               <Route
                 path="/rede"

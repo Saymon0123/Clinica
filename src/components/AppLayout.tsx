@@ -44,6 +44,14 @@ type NavItem = {
   somenteDono?: boolean
   /** Continua acessível mesmo sem barbearia escolhida. */
   semUnidade?: boolean
+  /**
+   * Como o item se chama para quem NÃO é gestor.
+   *
+   * "Financeiro" é palavra de dono. O barbeiro abre essa tela e vê a comissão
+   * dele — não o caixa da barbearia —, e o rótulo antigo fazia parecer que ele
+   * tinha entrado onde não devia.
+   */
+  labelBarbeiro?: string
 }
 
 const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
@@ -51,7 +59,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     title: 'Principal',
     items: [
       { to: '/', label: 'Agenda', icon: Calendar },
-      { to: '/financeiro', label: 'Financeiro', icon: Wallet },
+      { to: '/financeiro', label: 'Financeiro', labelBarbeiro: 'Meus ganhos', icon: Wallet },
     ],
   },
   {
@@ -163,6 +171,9 @@ export function AppLayout() {
   })).filter((g) => g.items.length > 0)
   const itensVisiveis = gruposVisiveis.flatMap((g) => g.items)
 
+  /** O nome do item para QUEM ESTÁ OLHANDO. Ver `labelBarbeiro` no tipo. */
+  const rotuloDe = (item: NavItem) => (!isManager && item.labelBarbeiro) || item.label
+
   /**
    * A barra inferior do celular só comporta cinco itens.
    *
@@ -170,8 +181,10 @@ export function AppLayout() {
    * dez sobram ~37px por item — menos que a palavra "Configurações" ocupa, e
    * era isso que embolava a barra. O resto vai para uma folha "Mais".
    *
-   * Com cinco ou menos, todos cabem e o "Mais" não aparece: é o caso do
-   * barbeiro, que vê três telas.
+   * Com cinco ou menos, todos cabem e o "Mais" não aparece. É exatamente o
+   * caso do barbeiro, que vê CINCO (Agenda, Financeiro, Clientes, Catálogo e
+   * Central de Ajuda) — ou seja, ele está no limite: um item novo sem
+   * `somenteGestor` faz nascer o "Mais" na barra dele.
    */
   const [maisAberto, setMaisAberto] = useState(false)
 
@@ -285,7 +298,7 @@ export function AppLayout() {
                 {group.items.map((item) => (
                   <NavLink key={item.to} to={item.to} end={item.to === '/'} className={navLinkClass}>
                     <item.icon size={18} />
-                    {item.label}
+                    {rotuloDe(item)}
                   </NavLink>
                 ))}
               </div>
@@ -338,7 +351,7 @@ export function AppLayout() {
             {/* `truncate` como rede de segurança: rótulo longo encolhe com
                 reticências em vez de quebrar a linha e desalinhar a barra. */}
             <span className="text-[11px] leading-tight max-w-full truncate px-0.5">
-              {item.label}
+              {rotuloDe(item)}
             </span>
           </NavLink>
         ))}
@@ -383,7 +396,7 @@ export function AppLayout() {
                 }
               >
                 <item.icon size={18} className="shrink-0" />
-                {item.label}
+                {rotuloDe(item)}
               </NavLink>
             ))}
           </div>

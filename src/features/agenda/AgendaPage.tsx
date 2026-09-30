@@ -182,7 +182,7 @@ function LinhaDeAgora({ selectedDate }: { selectedDate: Date }) {
 }
 
 export function AgendaPage() {
-  const { salonId, loading: salonLoading } = useSalon()
+  const { salonId, isManager, loading: salonLoading } = useSalon()
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [visibleMonth, setVisibleMonth] = useState(new Date())
   const { professionals, services, appointments, jornadas, loading, error, reload } = useAgendaData(salonId, selectedDate)
@@ -422,11 +422,20 @@ export function AgendaPage() {
           <EstadoVazio
             icone={Users}
             titulo="Nenhum profissional cadastrado ainda"
-            descricao="Cadastre um profissional para começar a usar a agenda."
+            descricao={
+              isManager
+                ? 'Cadastre um profissional para começar a usar a agenda.'
+                : 'A agenda começa quando a gestão cadastrar os profissionais.'
+            }
+            /* O CTA leva a /equipe, que o barbeiro nao ve no menu e nao pode
+               gerenciar: para ele era um botao que termina em porta fechada.
+               Sem acao possivel, a saida e dizer de quem e a acao. */
             acao={
-              <Link to="/equipe" className="btn-primary rounded-full px-5 py-2 text-sm font-medium inline-block">
-                Ir para Equipe
-              </Link>
+              isManager ? (
+                <Link to="/equipe" className="btn-primary rounded-full px-5 py-2 text-sm font-medium inline-block">
+                  Ir para Equipe
+                </Link>
+              ) : undefined
             }
           />
         ) : (

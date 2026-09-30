@@ -95,6 +95,7 @@ const GATES: Record<string, string[]> = {
     // caída é a mesma mentira do "R$ 0,00" -- pior, porque acusa o barbeiro
     // de ter passado o dia parado.
     'error ? null : <TaxasSection',
+    '!isManager || error ? null : <ComposicaoSection',
   ],
   '../features/rede/RedePage.tsx': ["erro ? '—' : moeda(totalFaturamento)", 'erroProducao ? ('],
   '../features/assinatura/CobrancaDaRede.tsx': ['erroDeCarga ? ('],

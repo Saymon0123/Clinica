@@ -1,4 +1,4 @@
-import { Clock, Repeat, Scissors, TrendingDown, TrendingUp } from 'lucide-react'
+import { CalendarDays, Clock, Package, Receipt, Repeat, Scissors, TrendingDown, TrendingUp } from 'lucide-react'
 import { Skeleton } from '../../components/Skeleton'
 import {
   direcao,
@@ -8,6 +8,11 @@ import {
   ocupacao,
   servicosPorAtendimento,
   taxaDeRetorno,
+  ticketMedio,
+  melhorDiaDaSemana,
+  participacao,
+  formatReal,
+  type Composicao,
   type Desempenho,
 } from './taxas'
 
@@ -156,6 +161,89 @@ export function TaxasSection({
               antes {formatMedia(servicosPorAtendimento(anterior) as number)}
             </span>
           ) : null
+        }
+      />
+    </div>
+  )
+}
+
+/**
+ * De onde vem o dinheiro (item 14, parte 2 — migration 0184).
+ *
+ * **Só de gestão**: as três saem de faturamento, e faturamento é do dono.
+ * Mesma forma das outras: o número grande e, embaixo, as duas grandezas que o
+ * produziram — aqui isso importa ainda mais, porque a tela mistura DUAS bases
+ * de propósito e precisa dizer qual usou em cada linha.
+ *
+ * O ticket médio sai do FATURAMENTO (soma dos `payments`, igual ao cartão lá
+ * em cima, para o dono poder dividir o que vê e chegar no mesmo número). A
+ * composição sai do VENDIDO (soma dos itens), porque `payments` não sabe o que
+ * foi comprado. Com desconto as duas divergem, e é por isso que cada linha
+ * escreve "em N comandas" ou "de R$ X vendidos" em vez de um "do faturamento"
+ * genérico que seria mentira em metade dos casos.
+ */
+export function ComposicaoSection({
+  dados,
+  loading,
+}: {
+  dados: Composicao
+  loading: boolean
+}) {
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="bg-surface border border-border rounded-2xl shadow-sm p-4 space-y-2">
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-8 w-20" />
+            <Skeleton className="h-3 w-40" />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  const ticket = ticketMedio(dados)
+  const produto = participacao(dados.vendidoProduto, dados.vendidoTotal)
+  const dia = melhorDiaDaSemana(dados)
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <Taxa
+        icone={<Receipt size={15} />}
+        rotulo="Ticket médio"
+        valor={ticket === null ? null : formatReal(ticket)}
+        base={
+          ticket === null
+            ? 'Nenhuma comanda fechada no período.'
+            : `${formatReal(dados.faturamento)} em ${dados.comandas} comanda${dados.comandas === 1 ? '' : 's'}`
+        }
+      />
+
+      <Taxa
+        icone={<Package size={15} />}
+        rotulo="Produto na venda"
+        valor={produto === null ? null : formatPercentual(produto)}
+        base={
+          produto === null
+            ? 'Nada vendido no período.'
+            : // "de R$ X vendidos", e não "do faturamento": o denominador aqui
+              // é a soma dos itens, que com desconto não é o mesmo número.
+              `${formatReal(dados.vendidoProduto)} de ${formatReal(dados.vendidoTotal)} vendidos`
+        }
+      />
+
+      <Taxa
+        icone={<CalendarDays size={15} />}
+        rotulo="Melhor dia"
+        valor={dia?.nome ?? null}
+        base={
+          dia === null
+            ? // Sete dias repartindo poucas vendas dão um "vencedor" que é
+              // ruído com cara de conselho -- e alguém remarcaria a escala da
+              // equipe por causa dele.
+              'Poucas vendas no período para apontar um dia.'
+            : `${formatReal(dia.faturamento)} em ${dia.comandas} comanda${dia.comandas === 1 ? '' : 's'}`
         }
       />
     </div>

@@ -16,9 +16,12 @@ import { SkeletonPagina } from '../../components/Skeleton'
 import { EstadoVazio } from '../../components/EstadoVazio'
 import { ErroInline } from '../../components/ErroInline'
 import { ErroDeCarga } from '../../components/ErroDeCarga'
+import { janelaDaGrade } from './janelaDaGrade'
 
-const HOUR_START = 6
-const HOUR_END = 22
+// A janela da grade nao mora mais aqui: ela sai do expediente do dia, em
+// `janelaDaGrade`. A grade desenhava das 6h as 22h para toda barbearia, e numa
+// que abre 09:00-19:00 isso era mais de um TERCO da altura em horas que ela
+// nunca usa -- nao era pequena, era desperdicada.
 const ROW_HEIGHT = 60
 const SNAP_MINUTES = 15
 
@@ -31,9 +34,9 @@ function addDays(date: Date, days: number) {
   return d
 }
 
-function minutesSinceStart(iso: string) {
+function minutesSinceStart(iso: string, horaInicio: number) {
   const d = new Date(iso)
-  return (d.getHours() - HOUR_START) * 60 + d.getMinutes()
+  return (d.getHours() - horaInicio) * 60 + d.getMinutes()
 }
 
 function formatTime(iso: string) {
@@ -70,18 +73,21 @@ const BLOCK_STYLES: Record<string, { container: string; text: string; subtext: s
 
 function AppointmentBlock({
   appt,
+  horaInicio,
   dragging,
   onDragStart,
   onDragEnd,
   onClick,
 }: {
   appt: Appointment
+  /** Hora em que a grade comeca, para o bloco saber onde se pendurar. */
+  horaInicio: number
   dragging: boolean
   onDragStart: () => void
   onDragEnd: () => void
   onClick: () => void
 }) {
-  const top = (minutesSinceStart(appt.data_hora_inicio) / 60) * ROW_HEIGHT
+  const top = (minutesSinceStart(appt.data_hora_inicio, horaInicio) / 60) * ROW_HEIGHT
   const durationMin =
     (new Date(appt.data_hora_fim).getTime() - new Date(appt.data_hora_inicio).getTime()) / 60000
   // Piso de 32px (achado 36 da revisão de 01/09): um bloco de 15 minutos tinha
@@ -161,7 +167,16 @@ function AppointmentBlock({
  * responde "onde estamos no dia" sem a pessoa ler a régua de horas.
  * Reposiciona a cada minuto — mesma granularidade da régua.
  */
-function LinhaDeAgora({ selectedDate }: { selectedDate: Date }) {
+function LinhaDeAgora({
+  selectedDate,
+  horaInicio,
+  horaFim,
+}: {
+  selectedDate: Date
+  /** A janela da grade; sem ela a linha se pendura no lugar errado. */
+  horaInicio: number
+  horaFim: number
+}) {
   const [agora, setAgora] = useState(() => new Date())
   useEffect(() => {
     const id = setInterval(() => setAgora(new Date()), 60_000)
@@ -172,8 +187,8 @@ function LinhaDeAgora({ selectedDate }: { selectedDate: Date }) {
     agora.getFullYear() === selectedDate.getFullYear() &&
     agora.getMonth() === selectedDate.getMonth() &&
     agora.getDate() === selectedDate.getDate()
-  const minutos = (agora.getHours() - HOUR_START) * 60 + agora.getMinutes()
-  if (!hoje || minutos < 0 || minutos > (HOUR_END - HOUR_START) * 60) return null
+  const minutos = (agora.getHours() - horaInicio) * 60 + agora.getMinutes()
+  if (!hoje || minutos < 0 || minutos > (horaFim - horaInicio) * 60) return null
 
   return (
     <div
@@ -202,11 +217,29 @@ export function AgendaPage() {
   const [rescheduling, setRescheduling] = useState(false)
   const [rescheduleError, setRescheduleError] = useState<string | null>(null)
 
+  /**
+   * A janela do dia: da jornada mais cedo a mais tarde, com uma hora de
+   * folga de cada lado.
+   *
+   * Os AGENDAMENTOS entram na conta junto com a jornada, e nao so ela: o
+   * projeto permite encaixe fora do expediente de proposito, e um horario
+   * das 20h numa barbearia que fecha as 19h ficaria desenhado fora da
+   * grade -- invisivel, sem nada avisando que existe.
+   */
+  // A conta mora em `janelaDaGrade` (modulo puro, com teste): ela decide
+  // de que hora a que hora a grade e desenhada, a partir da jornada do dia
+  // E dos horarios -- porque encaixe fora do expediente e permitido, e um
+  // horario invisivel na tela seria pior que a grade desperdicada.
+  const { horaInicio, horaFim } = useMemo(
+    () => janelaDaGrade(jornadas, appointments),
+    [jornadas, appointments],
+  )
+
   const hours = useMemo(
-    () => Array.from({ length: HOUR_END - HOUR_START + 1 }, (_, i) => HOUR_START + i),
+    () => Array.from({ length: horaFim - horaInicio + 1 }, (_, i) => horaInicio + i),
     [],
   )
-  const gridHeight = (HOUR_END - HOUR_START) * ROW_HEIGHT
+  const gridHeight = (horaFim - horaInicio) * ROW_HEIGHT
 
   // Abre a grade já rolada no que interessa, e não no topo.
   //
@@ -233,7 +266,7 @@ export function AgendaPage() {
     let minutos: number
     let contexto: number
     if (ehHoje) {
-      minutos = (agora.getHours() - HOUR_START) * 60 + agora.getMinutes()
+      minutos = (agora.getHours() - horaInicio) * 60 + agora.getMinutes()
       contexto = 90
     } else {
       // `null` na jornada é folga, e não conta como abertura. Sem nenhuma
@@ -243,7 +276,7 @@ export function AgendaPage() {
         .filter((j): j is NonNullable<typeof j> => j !== null)
         .map((j) => j.inicioMin)
       if (aberturas.length === 0) return
-      minutos = Math.min(...aberturas) - HOUR_START * 60
+      minutos = Math.min(...aberturas) - horaInicio * 60
       contexto = 30
     }
 
@@ -264,7 +297,7 @@ export function AgendaPage() {
     const j = jornadas[professionalId]
     if (j === null) return [[0, gridHeight]]
     const paraPx = (min: number) =>
-      Math.min(Math.max(((min - HOUR_START * 60) / 60) * ROW_HEIGHT, 0), gridHeight)
+      Math.min(Math.max(((min - horaInicio * 60) / 60) * ROW_HEIGHT, 0), gridHeight)
     const inicio = paraPx(j.inicioMin)
     const fim = paraPx(j.fimMin)
     const sombras: [number, number][] = []
@@ -297,14 +330,14 @@ export function AgendaPage() {
 
     const rect = e.currentTarget.getBoundingClientRect()
     const offsetY = e.clientY - rect.top
-    const totalGridMinutes = (HOUR_END - HOUR_START) * 60
+    const totalGridMinutes = (horaFim - horaInicio) * 60
     const rawMinutes = (offsetY / gridHeight) * totalGridMinutes
     const snapped = Math.round(rawMinutes / SNAP_MINUTES) * SNAP_MINUTES
     const clamped = Math.min(Math.max(snapped, 0), totalGridMinutes)
 
     const durationMs = new Date(appt.data_hora_fim).getTime() - new Date(appt.data_hora_inicio).getTime()
     const newStart = new Date(selectedDate)
-    newStart.setHours(HOUR_START, 0, 0, 0)
+    newStart.setHours(horaInicio, 0, 0, 0)
     newStart.setMinutes(newStart.getMinutes() + clamped)
     const newEnd = new Date(newStart.getTime() + durationMs)
 
@@ -515,7 +548,7 @@ export function AgendaPage() {
 
             {/* Grade */}
             <div className="flex min-w-fit pt-3 pb-3 relative">
-              <LinhaDeAgora selectedDate={selectedDate} />
+              <LinhaDeAgora selectedDate={selectedDate} horaInicio={horaInicio} horaFim={horaFim} />
               {/* A régua de horas gruda à esquerda com fundo (achado 36 da
                   revisão): com dois barbeiros a grade rola para o lado no
                   celular, e as horas sumiam junto — o barbeiro rolava até o
@@ -525,7 +558,7 @@ export function AgendaPage() {
                   <div
                     key={h}
                     className="absolute right-2 -translate-y-1/2 text-[11px] text-muted-foreground tabular-nums"
-                    style={{ top: (h - HOUR_START) * ROW_HEIGHT }}
+                    style={{ top: (h - horaInicio) * ROW_HEIGHT }}
                   >
                     {String(h).padStart(2, '0')}:00
                   </div>
@@ -559,7 +592,7 @@ export function AgendaPage() {
                       key={h}
                       onClick={() => handleSlotClick(p.id, h)}
                       className="group absolute inset-x-0 border-t border-border hover:bg-surface-2/80 text-left"
-                      style={{ top: (h - HOUR_START) * ROW_HEIGHT, height: ROW_HEIGHT }}
+                      style={{ top: (h - horaInicio) * ROW_HEIGHT, height: ROW_HEIGHT }}
                       aria-label={`Adicionar horário às ${h}:00 com ${p.nome}`}
                     >
                       {/* Meia hora tracejada: o arrasto encaixa de 15 em 15,
@@ -578,6 +611,7 @@ export function AgendaPage() {
 
                   {appointmentsFor(p.id).map((appt) => (
                     <AppointmentBlock
+                      horaInicio={horaInicio}
                       key={appt.id}
                       appt={appt}
                       dragging={draggingId === appt.id}

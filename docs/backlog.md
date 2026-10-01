@@ -6068,3 +6068,557 @@ EXATA: só o caso `Telefone 1` a exercitava.
 Trocado por comparação de string, que não tem escape para errar. É a terceira vez
 que escape duplo em regex dentro de heredoc/template me custa tempo neste
 projeto.
+
+
+---
+
+## Os tres templates da fila de espera, submetidos a Meta (2026-10-01, migrations 0193/0194/0195)
+
+O dono perguntou se dava para montar o aviso da fila como `utility` em vez de
+`marketing`, "ja que o cliente solicita que avisemos". Resposta: **o pedido do
+cliente nao decide**. A regra de 12/09 ja dizia que a Meta classifica por
+intencao, e a submissao de hoje provou de forma incomoda quanto isso e verdade.
+
+### Uma entrada na fila tem tres fins, e cada um ganhou template
+
+| chave | nome_meta | o que diz | a Meta deu |
+|---|---|---|---|
+| `fila_vaga_abriu` | `vaga_que_voce_pediu` | abriu o horario pedido, reservado por X min, confirma? | **utility** |
+| `fila_vaga_perdida` | `vaga_ja_preenchida` | o horario avisado foi preenchido; voce segue na espera | **marketing** |
+| `fila_espera_encerrada` | `espera_encerrada` | o periodo pedido passou sem vaga; espera encerrada | **marketing** |
+
+Ids na Meta: `1401421392139416`, `2213231590076636`, `1754010445665149`. Todos
+`PENDING` na analise, e `ativo = false` no banco — nada envia.
+
+### A armadilha que quase passou: a resposta da CRIACAO mente
+
+O `POST` de criacao devolveu `category: UTILITY` **nos tres**. Minutos depois, o
+`GET` da lista da WABA mostrou dois como `MARKETING`. A resposta da criacao ecoa
+a categoria **pedida**; a real vem depois.
+
+Eu ia relatar "os tres saíram utility" com base nela. So nao relatei porque fui
+ler de volta. Virou regra em `docs/templates-para-a-meta.md`, com o curl.
+
+### O que separou um do outro, e e util para os proximos
+
+`utility` exige **transacao em curso**. O aprovado fala de uma vaga concreta,
+reservada, e pede confirmacao — ha algo acontecendo. Os dois recategorizados
+avisam que **nada** aconteceu: vaga perdida, espera encerrada. Aviso sem
+transacao viva a Meta le como reengajamento, **mesmo com o cliente tendo pedido e
+mesmo sem uma palavra de oferta no texto**. O botao "Quero esperar de novo"
+provavelmente nao ajudou.
+
+Vale notar que a familia `retorno_pedido*` (seis rascunhos) usa exatamente o
+argumento "voce pediu para que te avisassemos" e pede `utility` — e **nunca foi
+submetida**. Pelo que se viu hoje, a chance de ela voltar como `marketing` e alta,
+porque nenhuma delas tem transacao viva. Submeter uma antes das seis.
+
+### O que fica para o dono decidir
+
+Os dois `marketing` **nao estao perdidos, estao caros** (~9x). Tres saidas, e a
+escolha e dele:
+
+1. **Deixar como esta e nao usar.** O caso da vaga perdida se resolve de graca:
+   quando o cliente responde "quero" atrasado, a resposta dele abre a janela de
+   24h e a recusa sai como texto livre **pelo numero CENTRAL, na Cloud API** —
+   nao pela Evolution. Perde-se so o aviso proativo.
+
+   **Correcao de 01/10, apontada pelo dono.** Eu havia escrito "pela Evolution",
+   e estava errado: o cliente responde ao template, entao a resposta dele chega
+   no numero CENTRAL. A Evolution e outro numero e nao tem como responder aquela
+   conversa. O caminho certo e o que o projeto ja faz em `responder_lembrete`:
+   resposta livre pelo proprio numero central, dentro da janela de 24h que a
+   mensagem dele abriu. **Mas de graca nao e mais** -- ver a secao do 01/10
+   abaixo: mensagem de servico passou a ser cobrada hoje.
+
+   E se a conversa precisar do agente, o padrao tambem ja existe:
+   `reagendar_central`. O comentario do `whatsapp-webhook` diz com estas
+   palavras -- "Reagendar no numero central NAO vai ao agente: o agente mora no
+   numero da barbearia (Evolution)" -- e a saida e o central responder com o
+   `wa.me` da barbearia, mudando a conversa para onde o agente esta.
+2. **Reescrever e resubmeter** amarrando a uma transacao viva — por exemplo, a
+   vaga perdida citando a reserva que venceu. Palpite, e resubmissao errada gasta
+   reputacao da WABA.
+3. **Pagar marketing** nesses dois, que sao de baixo volume por natureza.
+
+**Nao apaguei nenhum dos dois da WABA**: apagar e acao irreversivel no ativo dele,
+e os dois estao inertes (`ativo = false`, e as views de envio filtram por
+`aprovado`).
+
+### A lacuna de estado que apareceu no caminho (0195)
+
+`whatsapp_templates.status` so conhecia `rascunho` e `aprovado`. Entre os dois ha
+um terceiro que dura dias: **submetido, esperando analise**. Sem ele, template
+enviado para aprovacao era indistinguivel de template que ninguem tocou — e foi
+sobre essa ambiguidade que a auditoria apurou "nenhum dos 25 foi submetido".
+Entrou `em_analise` e a coluna `meta_template_id`, para perguntar o estado de um
+template direto em vez de casar por nome.
+
+### Um falso alarme meu, verificado antes de virar alarme
+
+`whatsapp_templates` da INSERT e UPDATE **de tabela** para `anon`, o que parece
+grave. Nao e: a RLS esta ligada e **sem nenhuma policy**, o estado mais fechado
+possivel. Medido como `anon`: select devolve 0 linhas, update afeta **0**, insert
+e recusado com 42501, e o corpo do `lembrete_hoje` ficou intacto. Segundo falso
+alarme desta sessao evitado por medir linhas afetadas em vez de concluir de
+"nao deu erro".
+
+
+---
+
+## As mudancas da Meta de 01/10/2026, conferidas na fonte primaria (2026-10-01)
+
+O dono pediu para revisar o que muda em outubro na regra da janela de 24h. Lido
+na pagina oficial de precos (`developers.facebook.com/docs/whatsapp/pricing`,
+**atualizada em 28/09/2026**), nao em BSP nem em blog.
+
+**Isto FECHA a lacuna L17 do `relatorio-tecnico.md`** ("Tarifas Meta
+pos-01/10/2026 no Brasil -- doc baseado em fontes secundarias"). O que estava
+registrado estava certo; agora esta confirmado e completo.
+
+### A regra da janela NAO mudou. O preco mudou.
+
+Palavras da Meta: *"Nao ha alteracao no momento em que a mensagem de servico pode
+ser enviada. Ela ainda pode ser enviada apenas em uma janela de atendimento ao
+cliente de 24 horas que e aberta e redefinida a cada mensagem do usuario."*
+
+O que mudou a partir de **01/10/2026**:
+
+| Mudanca | Antes | Agora |
+|---|---|---|
+| **Mensagem de servico** (texto livre dentro da janela) | gratuita desde 01/11/2024 | **cobrada**, a mesma taxa de utility/auth, por mercado |
+| **Template utility em resposta ao usuario** (dentro da janela) | gratuito desde 01/07/2025 | **cobrado** |
+| **Franquia** | nao existia para servico | **1.000 mensagens de servico entregues/mes, POR NUMERO** |
+
+Detalhes que importam:
+
+- A franquia **nao acumula**: 1.000 em outubro, 1.000 em novembro, o que sobrar
+  morre.
+- Entrega individual consome 1 unidade; envio em grupo consome **1 por
+  destinatario**.
+- O unico tipo de servico que segue gratuito para todos e **mensagem de reacao**,
+  e ela nao conta na franquia.
+- **O Brasil NAO esta nas listas de aumento nem de reducao.** A taxa BRL de
+  utility/auth nao mudou; o que e novo no Brasil e servico passar a custar o mesmo
+  que utility.
+- Os niveis de volume agregam no nivel do **portfolio empresarial**, por par
+  mercado-categoria (Brasil-utility, Brasil-auth...), nao por numero.
+
+### A armadilha que ninguem tinha registrado
+
+> *"Caso voce nao tenha uma forma de pagamento para sua conta do WhatsApp
+> Business, a Meta entregara mensagens de servico dentro do nivel gratuito
+> compartilhado, mas **nao as entregara depois que o nivel gratuito for usado**."*
+
+Isso nao e custo, e **queda de servico**. Passadas as 1.000, as respostas ao
+cliente simplesmente param de ser entregues. Combinado com o Error Workflow que
+nunca funcionou e o SMTP quebrado, para em silencio.
+
+### O que isso faz com o modelo hibrido deste projeto
+
+**A franquia e POR NUMERO, e o projeto usa UM numero central para todas as
+barbearias.** Entao 1.000 mensagens de servico por mes para a plataforma inteira,
+nao por barbearia. O backlog ja previa; a fonte primaria confirma.
+
+E corrige, pela segunda vez, a frase da saida 1 do template `vaga_ja_preenchida`:
+a resposta livre pelo central dentro da janela **nao e mais gratuita**. Primeira
+correcao foi o canal (Evolution -> central); esta e o preco.
+
+O lembrete (`lembrete_hoje`), que e o maior volume, e template utility enviado
+FORA da janela -- ja era cobrado, nao muda nada. Quem muda de lado e o
+`responder_lembrete`: a resposta livre que ele devolve era gratuita e agora conta
+na franquia.
+
+---
+
+## FALSO ALARME: o canal oficial NAO esta bloqueado (2026-10-01)
+
+**A secao abaixo nasceu errada e fica aqui corrigida, nao apagada** -- o erro de
+leitura vale mais guardado que escondido.
+
+Eu li `GET /{waba}?fields=health_status` e reportei o canal como bloqueado. O
+dono respondeu que em teste ele RECEBEU lembrete no numero dele pelo central. Ele
+estava certo.
+
+**O que eu li errado:** o `health_status` e relativo ao **App do token que faz a
+chamada**. O token de `~/.clubcut/meta.env` e SYSTEM_USER do App Club Cut com
+escopos `whatsapp_business_management` e `public_profile` -- **sem**
+`whatsapp_business_messaging`. Conferido em `/debug_token`. Ou seja: o 141011
+descrevia com precisao **o meu token**, que gerencia template e nao envia. Era a
+resposta certa para a pergunta errada. E e provavelmente proposito de quem o
+criou: menor privilegio para um token de catalogo.
+
+**A prova de que envia:** `analytics` da propria WABA, de 01/06 a 01/10 --
+14 mensagens, **100% entregues**, nenhuma falha:
+
+| dia | enviadas | entregues |
+|---|---|---|
+| 22/08 | 2 | 2 |
+| 23/08 | 8 | 8 |
+| 10, 11, 13/09 | 1 cada | 1 cada |
+| **16/09** | 1 | 1 |
+
+**Por que silencio desde 17/09:** o fluxo `CRM Salao - Lembretes de Agendamento`
+esta ATIVO, roda a cada 10 min, 1.318 execucoes todas `success` e cada uma dura
+~80ms -- o tempo de consultar, nao achar nada e sair. Nao ha o que enviar.
+
+**E nao vai achar: isso fui eu.** Os 130 agendamentos futuros da amostra estao
+todos com `lembrete_enviado = true`, porque foi assim que eu os gerei.
+
+**E o flag deve FICAR.** Os 120 clientes da amostra tem DDD **(39)**, que nao
+existe no Brasil -- foi a garantia estrutural pedida pelo dono para nenhuma
+mensagem escapar para numero de verdade. Limpar o flag faria o sistema tentar 130
+envios para numero invalido, e envio para numero invalido derruba a nota de
+qualidade do numero, que hoje esta **GREEN**. Para ver lembrete disparar numa
+demonstracao, o caminho e **um** agendamento com o numero real dele na hora.
+
+**Fica em aberto, sem conclusao:** `code_verification_status: EXPIRED` no numero
+central. Nao sei quando expirou nem se atrapalha algo -- em 16/09 o envio
+funcionava. Nao e para tratar como falha ate alguem tentar enviar e falhar.
+
+**O que o episodio deixa de verdade:** nada no sistema olha o `health_status`, e
+quando eu olhei, interpretei pelo token errado. Uma checagem na auditoria diaria
+precisa usar um token COM escopo de envio, senao ela vai gritar bloqueio todo dia
+pelo mesmo motivo que eu gritei.
+
+<details><summary>O alarme original, preservado</summary>
+
+## ~~O canal oficial esta BLOQUEADO para enviar~~ (lido errado)
+
+Achado ao conferir a conta por causa da mudanca de tarifa, e vale mais que ela.
+`GET /{waba}?fields=health_status` devolve:
+
+```
+can_send_message: BLOCKED
+  WABA     975811062135581 -> AVAILABLE
+  BUSINESS 334664782986386 -> AVAILABLE
+  APP      1054189290929803 -> BLOCKED
+     141011 The App does not have the required permissions to send/receive messages
+     solucao da propria Meta: "Add the WhatsApp Business Messaging to your app."
+```
+
+E o numero central (`+55 41 8475-4172`, "Club Cut", CLOUD_API, qualidade **GREEN**,
+throughput STANDARD) esta com **`code_verification_status: EXPIRED`**.
+
+**Consequencia:** os tres templates da fila, mesmo aprovados, nao enviam. Nem o
+lembrete, nem a avaliacao, nem o aviso de fim de teste. A WABA esta `ACTIVE` e
+`APPROVED` e a qualidade esta verde -- isto nao e punicao, e **configuracao que
+falta no App**.
+
+**Para o dono fazer:** adicionar o produto *WhatsApp Business Messaging* ao App
+1054189290929803 no painel de desenvolvedores, e reverificar o codigo do numero.
+Nao mexi: e configuracao de app e de numero dele, fora do alcance do que foi
+autorizado.
+
+**Por que isso nao apareceu antes:** criar template e operacao de WABA e passou
+sem erro -- os tres foram aceitos. Enviar e operacao de App. Ninguem tentou
+enviar desde que o App perdeu a permissao, e nada no sistema olha o
+`health_status`. O monitor cego que o relatorio tecnico ja apontava.
+
+</details>
+
+
+---
+
+## Por que as mensagens saiam sem cartao, e o teste de entrega (2026-10-01)
+
+O dono informou que **nao tem forma de pagamento na Meta** e mesmo assim recebeu
+lembrete. Resposta tirada do `pricing_analytics` da propria WABA -- nao do
+`conversation_analytics`, que nao devolve mais nada desde que o modelo por
+conversa foi aposentado em julho/2025:
+
+| Mes | pricing_type | categoria | volume | custo |
+|---|---|---|---|---|
+| agosto | FREE_CUSTOMER_SERVICE | SERVICE | 10 | R$ 0 |
+| setembro | FREE_CUSTOMER_SERVICE | UTILITY | 3 | R$ 0 |
+| setembro | REGULAR | UTILITY | 1 | **R$ 0,035** |
+
+**Treze das catorze eram gratuitas**, e as duas gratuidades usadas **acabaram em
+01/10**: servico dentro da janela e utility em resposta dentro da janela. A
+decima quarta custou tres centavos e meio -- valor que a Meta entrega e acumula
+sem exigir cartao adiantado.
+
+Ou seja: nao e que nao haja cobranca. E que a conta era de R$ 0,035.
+
+### O teste de entrega, autorizado pelo dono para o numero DELE
+
+Fixtures com id `fade...` para apagar sem duvida: cliente, conversa e um
+agendamento 90 min a frente. A execucao das 07:00:59 UTC durou **2,07s** contra
+os ~80ms das rodadas vazias, e gravou:
+
+- `lembrete_enviado = true`
+- `lembrete_message_id = wamid.HBgMNTU0MTg0NzI5NzU0...`
+- texto: "Oi, Saymon! Seu horario na *El Corte* e hoje as 05:27, com Diego Matos. Voce vem?"
+
+O wamid decodifica para **554184729754** -- a Meta resolveu o numero e tirou o
+nono digito, normalizacao brasileira padrao. **O canal oficial envia.** Confirma
+em definitivo que o alarme de bloqueio era erro de leitura meu.
+
+### O SEGUNDO motivo do silencio, achado montando o teste
+
+O fluxo de lembrete exige uma linha em `whatsapp_conversations` -- o numero de
+destino sai **dela**, nao da ficha do cliente -- e pula quem nunca escreveu
+(decisao de 14/08). A tabela esta **vazia**. Entao, alem dos 130 futuros com
+`lembrete_enviado = true`, **nenhum cliente da amostra receberia lembrete de
+qualquer forma**. Dois motivos independentes, e o teste precisou vencer os dois.
+
+Para demonstrar, o caminho e o mesmo do teste: um agendamento com o numero real
+mais uma conversa para aquele numero.
+
+### Ainda nao medido
+
+O custo e a categoria da mensagem do teste -- que e a **primeira sob a tarifa
+nova**. O `pricing_analytics` de hoje ainda vem vazio; a Meta atrasa horas.
+Conferir depois: ela deve aparecer como REGULAR/UTILITY, porque saiu fora de
+janela.
+
+---
+
+## A checagem de saude do canal, ligada (2026-10-01, migration 0196)
+
+Pedido do dono depois do meu falso alarme. Tres casos na view
+`auditoria_canal_oficial`, membro novo da `auditoria_pendente`:
+
+| caso | gravidade |
+|---|---|
+| token que envia leu `pode_enviar <> AVAILABLE` | **grave** |
+| leitura veio de token SEM escopo de envio | **aviso** -- o defeito e da CHECAGEM |
+| nenhuma leitura em 26h, ou nunca | **grave** |
+
+O segundo caso e o meu erro virando teste: sem ele a checagem gritaria bloqueio
+todo dia, para sempre, pelo motivo errado -- e esconderia o bloqueio de verdade.
+
+### Dois defeitos que o ensaio pegou antes de aplicar
+
+1. **`distinct on` nao deterministico.** Duas leituras no mesmo instante
+   (`now()` nao anda dentro de uma transacao) deixavam a view escolher
+   arbitrariamente, e ela podia reportar a leitura ANTIGA como atual. Chave
+   trocada por sequencial, com `id desc` no desempate.
+2. **O pior:** recriar `auditoria_pendente` perdia o `security_invoker` (que eu
+   esqueci de redigitar) **e** devolvia todos os privilegios para `anon` e
+   `authenticated` pelo padrao do schema. Essa view cruza os achados de TODAS as
+   barbearias: seria view de DONO, sem RLS, legivel anonimamente. As duas metades
+   da armadilha do CLAUDE.md na mesma migration, e o assert de grants acusou.
+
+pgTAP 11/11 contra producao. O alarme `canal-sem-checagem` esta ativo agora,
+cobrando a primeira leitura -- a checagem funcionando antes de existir quem a
+alimente.
+
+### O que falta, e o desenho decidido
+
+O no no n8n. Ele tem de usar **a mesma credencial que envia**, e a prova de que
+usa sai sem nenhuma chamada extra e sem expor token: o `health_status` de um
+token sem escopo de envio traz o App bloqueado **com erro 141011**
+especificamente. Entao a regra do no e:
+
+- APP bloqueado com **141011** -> `token_envia = false` (checagem cega)
+- bloqueado por **qualquer outro motivo** -> `token_envia = true` (bloqueio real)
+- tudo AVAILABLE -> `token_envia = true`
+
+Os nos entram pendurados no gatilho da auditoria existente, em ramo PARALELO: a
+checagem so ESCREVE a leitura, e quem avisa o dono continua sendo o caminho que
+le `auditoria_pendente`. Desacoplados pelo banco, como todo o resto deste
+projeto.
+
+
+---
+
+## O n8n nao alcanca `private` (2026-10-01, migration 0197)
+
+As duas RPCs que eu criei PARA o n8n chamar nasceram em `private`:
+`expirar_reservas` (0192) e `registrar_saude_do_canal` (0196). **Nenhuma das duas
+era alcancavel por ele.**
+
+O PostgREST so procura funcao no schema exposto. Pelo REST:
+
+    PGRST202 -- Searched for the function public.registrar_saude_do_canal
+                ... but no matches were found in the schema cache.
+
+Enquanto `responder_lembrete`, que o n8n chama todo dia, esta em `public` e
+responde 200. Conferido nas duas pontas.
+
+**Por que nenhum ensaio acusou:** eles chamam pelo banco, onde `private` e
+alcancavel. O pgTAP tambem. **So a chamada pelo caminho REAL revela** -- a mesma
+licao do webhook do n8n em 11/09, quando a URL do `triggerInfo` nao era a URL de
+verdade. Virou regra no CLAUDE.md, com o `notify pgrst, 'reload schema'`.
+
+Corrigido por fachada em `public` (migration aplicada nao se reescreve), e a
+fachada tem merito proprio: a implementacao segue em `private`, fora do alcance de
+quem nao deve chamar, e o exposto e exatamente a assinatura do n8n. Provado pelo
+caminho do n8n: 200 na varredura, 204 no registro, e **42501 para `anon`**.
+
+---
+
+## A checagem no n8n: ramo que so ESCREVE (2026-10-01)
+
+Quatro nos pendurados no gatilho de 30 min da `CRM Salao - Auditoria do Agente`,
+em ramo PARALELO ao do e-mail:
+
+    Buscar Remetentes Oficiais -> Ler Saude da WABA -> Derivar Leitura -> Registrar
+
+A checagem **nao avisa ninguem**: quem avisa e o ramo que le `auditoria_pendente`,
+onde `auditoria_canal_oficial` ja e membro. Desacoplados pelo banco.
+
+**A credencial e a MESMA dos nos de envio** (`WhatsApp account`,
+`ZyNCe33Xa40SCApz`), e e esse o ponto inteiro: `health_status` e relativo ao App
+do token que chama.
+
+**Como o no sabe se o token enxerga envio, sem chamada extra e sem expor token:**
+um token sem `whatsapp_business_messaging` devolve o App BLOCKED com o erro
+**141011** especificamente. Entao:
+
+- APP bloqueado com 141011 -> `token_envia = false` (checagem cega)
+- bloqueado por outro motivo -> `token_envia = true` (bloqueio real)
+- tudo AVAILABLE -> `token_envia = true`
+
+**Dois cuidados de falha:** `onError: continueRegularOutput` nos dois HTTP, porque
+queda da Meta ou do Supabase nao pode derrubar o e-mail da auditoria que corre em
+paralelo. E o no de codigo devolve `null` quando a leitura nao serve -- sem linha
+nova, a view alarma "sem checagem ha 26h". **Falha vira ausencia, e ausencia vira
+alarme**, em vez de verde falso.
+
+### Duas coisas que quase passaram
+
+1. **O update ficou como RASCUNHO.** O `activeVersionId` continuava o antigo: o
+   fluxo no ar era o de antes. Precisou `publish_workflow`. Editar fluxo pelo MCP
+   e publicar sao passos separados, e nada avisa.
+2. **A credencial dos nos HTTP nao entrou** pelo `addNode` -- o proprio MCP
+   avisou ("skipped during credential auto-assignment"). Precisou de
+   `setNodeCredential` numa chamada propria.
+
+### Ainda nao verificado
+
+A primeira execucao do ramo. A proxima rodada natural e dentro de 30 min; esta
+rodando um observador na `auditoria_canal_oficial` para ver o alarme
+`canal-sem-checagem` dar lugar ao que a leitura disser. **Nao executei o fluxo a
+mao de proposito:** isso dispararia o e-mail da auditoria, e o SMTP esta quebrado
+desde agosto -- eu trocaria uma verificacao por uma execucao com erro no historico.
+
+
+---
+
+## O WhatsApp pessoal do dono virou respondedor automatico (2026-10-01)
+
+O dono conectou o WhatsApp PESSOAL dele na Evolution para testarmos a conversa do
+agente, com a instrucao "nao envie mensagem para ninguem". Antes de testar,
+verifiquei a corrente -- e ela estava fechada e armada:
+
+- instancia Evolution `open`, perfil **"Saymon"**
+- webhook `enabled` para `/webhook/salao-atendimento`, evento `MESSAGES_UPSERT`
+- fluxo do agente **ativo**
+
+**Nao existe porta filtrando o remetente.** Li as treze portas do caminho de
+entrada, uma a uma: mensagem propria, provedor, tipo, instancia configurada,
+conversa existe (ela CRIA para remetente novo), debounce, agente pausado, tipo
+suportado, barbearia atendendo, roteamento -> envio. Nenhuma pergunta quem
+mandou, e isso e por desenho: o agente existe para atender desconhecido, que e
+cliente novo.
+
+Consequencia: **qualquer contato pessoal dele que escrevesse recebia resposta de
+barbearia.** Exatamente o que a instrucao proibia -- so que nao por mim, e sim
+pelo sistema, ja ligado.
+
+**O teste era impossivel sem violar a instrucao.** Toda mensagem que chega gera
+uma saindo, e a porta `Ignorar Mensagem Propria?` fecha ate o atalho de ele ser os
+dois lados: mensagem dele para ele mesmo e descartada.
+
+**Decisao do dono, perguntado:** desligar o agente. Feito -- `active: false`,
+conferido. Reversivel num clique.
+
+### A varredura dos outros 15 fluxos ativos
+
+Nenhum outro fala pela Evolution. Lembrete, avaliacao, reativacao e aviso de fim
+de teste saem todos pelo numero CENTRAL, por desenho (a descricao do fluxo de
+avaliacao diz com todas as letras: "NAO usa Evolution: conversa iniciada por nos
+sai sempre pelo oficial"). O resto e e-mail.
+
+E as quatro filas de envio estao **vazias**: `avaliacoes_a_pedir`,
+`vencimentos_a_avisar`, `mensagens_a_entregar`, `reativacoes_a_enviar`.
+
+### As quatro travas da amostra, todas conferidas
+
+1. os 120 clientes tem DDD **(39)**, que nao existe no Brasil
+2. os 120 tem **`recusou_contato = true`**
+3. os 130 agendamentos futuros tem `lembrete_enviado = true`
+4. `whatsapp_conversations` esta **vazia**, e e ela que da o numero de destino do
+   lembrete
+
+Qualquer uma sozinha ja impediria; sao quatro.
+
+### Para o teste acontecer
+
+O dono precisa de um **segundo numero** escrevendo para o numero conectado. A
+trava de allowlist (filtro de remetente logo depois do webhook) esta desenhada e
+pronta para aplicar quando ele disser qual numero liberar: todos os outros ficam
+sem resposta automatica, e a conversa normal dele nao muda -- a Evolution copia a
+mensagem, nao a consome.
+
+
+---
+
+## O teste da conversa do agente, sem mandar mensagem para ninguem (2026-10-01)
+
+Ideia do dono, e ela resolve o impasse: simular a entrada pelo webhook e
+DESABILITAR os nos de saida. O fluxo roda inteiro -- contexto, agente,
+ferramentas, escrita no banco -- e nada sai.
+
+Quatro nos desabilitados: `Responder pela Cloud API`, `Responder Padrao pela
+Cloud API`, `Responder pela Evolution (Agente)` e `(Padrao)`. Nesse estado o
+agente fica MAIS seguro que ligado normalmente: mensagem real de um contato e
+lida e registrada, e ninguem recebe resposta.
+
+**Simulei o formato REAL da Evolution**, nao o conveniente. Antes de disparar
+conferi uma suspeita que teria invalidado o teste: o webhook espera payload plano
+(`body.contact_phone`) e a Evolution manda `remoteJid`. Existe um no
+`Adaptar Payload (Provedor)` entre os dois que reconhece as duas formas -- a
+suspeita era infundada, e so olhando deu para saber.
+
+### Turno 1: funcionou
+
+> CLIENTE: Oi! Voces atendem sabado de manha? Queria cortar o cabelo.
+>
+> AGENTE: Oi! Atendemos sim. Me diz teu nome e se prefere so o *Corte masculino*
+> ou algum outro do nosso catalogo. Ai ja te passo os horarios de sabado.
+
+Consultou o catalogo (citou servico real), pediu o nome porque era cliente novo,
+e nao despejou horario antes de saber o servico. 21 segundos.
+
+### Turno 2: caiu, e NAO foi o corte de envio
+
+    OpenAI: Rate limit reached for gpt-4o
+    TPM: Limit 30000, Used 24656, Requested 12681. Try again in 14.674s.
+
+**Esse e o achado que importa, e ele e de capacidade.** Cada turno do agente pede
+~12,7 mil tokens, porque o contexto que o fluxo monta e grande -- da para ver na
+lista de nos: cliente cadastrado, catalogo, barbeiros, horarios do cliente, saldo
+de pacotes, produtos, historico da conversa.
+
+Com teto de 30 mil TPM na organizacao, isso da **cerca de DUAS mensagens por
+minuto para a plataforma inteira** -- nao por barbearia. Duas conversas
+simultaneas ja raspam o teto.
+
+### E o modo de falha e silencio
+
+- o cliente escreveu e **nao recebe resposta nenhuma**
+- `mensagens_a_entregar` ficou em **0**: a fila de reentrega NAO recupera este
+  caso (ela cobre mensagem que nao chegou ao agente; aqui ela chegou e o agente
+  falhou)
+- e quem avisaria e o Error Workflow, que nunca funcionou
+
+**Isso e bloqueador de prospeccao.** Nao e um defeito de codigo: e teto de conta
+na OpenAI mais um contexto caro. As saidas, em ordem de esforco: subir o tier da
+conta OpenAI; encolher o contexto (produtos e saldo de pacotes entram em TODO
+turno, inclusive quando a conversa nao fala de produto); ou modelo mais barato
+para os turnos simples.
+
+### O que o agente escreveu antes de cair
+
+Ele chamou a ferramenta `Criar Cliente` e criou "Pedro" -- entao a ferramenta de
+escrita funciona. Zero agendamento (nao chegou la). Tudo apagado depois: 120
+clientes, todos DDD (39), zero conversa, zero mensagem.
+
+### Estado em que ficou
+
+Agente **desligado** (como o dono escolheu) e os quatro nos de envio **devolvidos
+ao normal** no rascunho. A ordem importou: desliguei ANTES de reabilitar os
+envios, para nao existir nenhum instante com o agente ativo e a saida aberta.

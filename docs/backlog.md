@@ -5654,3 +5654,86 @@ Registrados porque custaram investigação:
   fictícias não têm conta. Some em SILÊNCIO, que é o mesmo defeito dos itens 8
   e 10: deveria aparecer desabilitado dizendo "só depois que ele aceitar o
   convite". **Em aberto.**
+
+## Item 3 — o dia de fechar a comissão (2026-09-30, migration 0186)
+
+Pedido do dono: poder definir um dia de fechamento da comissão, e o Financeiro
+avisar que chegou a hora de pagar.
+
+O modal de fechamento (`FechamentoComissaoModal`) **já existia e funcionava** —
+faltava alguém avisar. O ciclo dependia de o dono lembrar sozinho, e barbeiro
+cobrando comissão atrasada é a conversa mais azeda que existe numa barbearia.
+
+### A régua que precisava estar certa porque é dinheiro
+
+Com fechamento no dia 5 e hoje dia 20, a comissão do atendimento do dia 10
+**não está atrasada** — ela pertence ao próximo fechamento. Somá-la no aviso
+faria o dono pagar adiantado ou, pior, desconfiar do número e parar de confiar
+na tela.
+
+Então a view `comissoes_a_pagar` conta apenas trabalho feito **até o fechamento
+vigente** — a ocorrência mais recente do dia escolhido, deste mês se o dia já
+passou, do anterior se ainda não chegou. Provado com os dados da amostra: de
+R$ 14.246,75 não pagos, a faixa mostra **R$ 4.798,75**; os R$ 9.448 restantes
+são trabalho posterior a 05/09 e ficam para o próximo ciclo.
+
+### Por que a data é parâmetro, e não `now()` dentro da view
+
+`private.fechamento_vigente(dia, hoje)` existe para o pgTAP **testar fevereiro
+e a virada de ano sem viajar no tempo**. Expressão enterrada numa view que lê
+`now()` só se testa no dia em que o calendário colabora. São 7 das 12 asserções.
+
+O dia aceita 1 a 31 e é **aparado pelo último dia do mês**: quem escolhe 31
+fecha dia 28 em fevereiro. Travar o campo em 28 seria mais simples e mentiria
+para quem fecha no último dia do mês.
+
+### A faixa
+
+Mostra **quanto e para quem** — "Comissão fechada em 05/09: R$ 4.798,75 a pagar"
+e, embaixo, nome e valor de cada barbeiro. Ponto vermelho sem número obrigaria
+a abrir o modal só para descobrir se é urgente.
+
+Fica **acima das abas**: é dinheiro com data, e a pessoa não deve ter de escolher
+uma aba para descobrir que está devendo. **Só gestor** — o barbeiro já vê a
+comissão dele nos cartões, e dizer a ele "você tem R$ X para receber" numa faixa
+de alerta é decisão de negócio do dono, não efeito colateral desta tela. **Sob
+erro de carga some**, com o gate no tripwire do `ErroDeCarga` e provado por
+reversão.
+
+**Peças:** CRM (campo em Configurações + faixa no Financeiro) e Supabase (0186).
+Vercel e n8n: nada.
+
+### O ciclo semanal, que eu tinha deixado de fora (0187 e 0188)
+
+A 0186 entregou **só o mensal** (dia do mês). Foi suposição minha, não
+conferida: o dono perguntou em seguida se dava para definir o dia da semana, e
+**barbearia pagando o barbeiro toda semana é mais comum que por mês** — quem
+trabalha de cadeira costuma receber na segunda ou na quarta, não no dia 5.
+
+A 0187 acrescentou `ciclo_comissao` ('semanal' | 'mensal'), com o significado do
+dia vindo dele: 0 a 6 no semanal (domingo a sábado, a mesma régua do
+`extract(dow)` e de `professional_schedules`), 1 a 31 no mensal.
+
+**Duas colunas e não uma** porque `dia_fechamento_comissao` sozinho ficaria com
+dois significados e nada no banco diria qual vale. Com o ciclo ao lado, um CHECK
+só garante que o par faz sentido.
+
+### O CHECK que passava em nulo (0188)
+
+A trava que a 0187 escreveu **deixava entrar ciclo sem dia** — e dia sem ciclo.
+Lógica de três valores:
+
+    (ciclo is null and dia is null)         -> false
+    (ciclo = 'mensal'  and dia between ...) -> false
+    (ciclo = 'semanal' and dia between ...) -> true and NULL  =  NULL
+    false or false or NULL                  =  NULL
+
+E **CHECK só recusa em FALSE**: NULL deixa a linha entrar. Era preciso exigir
+`is not null` nos dois campos de forma explícita, em vez de confiar que uma
+comparação com nulo devolvesse falso. Pego pelo ensaio, antes de a tela existir.
+
+De quebra, a regra da 0188 também recusa ciclo inventado ('xpto'), que a
+anterior aceitava pelo mesmo caminho — a validação do enum saiu de graça.
+
+**Três migrations para um pedido** porque 0186 e 0187 já estavam aplicadas em
+produção quando os defeitos apareceram, e migration aplicada não se reescreve.

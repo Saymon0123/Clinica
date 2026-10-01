@@ -5995,3 +5995,76 @@ senha, e isso eu não faço. O que ficou provado:
 **Falta a prova humana:** criar um convite ligado a um dos quatro barbeiros,
 aceitar, e conferir que a Equipe segue com quatro pessoas e que a cadeira passou a
 ter função. É o teste de dois minutos que só o dono pode fazer.
+
+
+---
+
+## Item 4 — importar planilha com colunas a mais (2026-10-01)
+
+A régua acordada era "lê o que entende e **ignora o resto dizendo na cara o que
+ignorou**". O que existia era a primeira metade: a importação achava quatro
+colunas e descartava todas as outras **sem uma palavra**.
+
+> O dono exporta do sistema antigo com Nome, Telefone, Email, CPF, Endereço,
+> Última visita e Total gasto. Importa, lê "197 clientes importados" e acredita
+> que veio tudo. Descobre meses depois, quando precisa do e-mail de alguém.
+
+Agora a prévia mostra **O que o sistema leu** — campo por campo, dizendo de qual
+coluna saiu — e, abaixo, o que fica de fora, **pelo nome**.
+
+### O segundo defeito, do mesmo tronco
+
+O casamento de títulos era **exato**. Uma planilha com `Nome Completo` levava
+*"O arquivo precisa ter uma coluna Nome"* — tendo a coluna na cara. `Nome do
+Cliente`, `Telefone 1` e `Data Nascimento` caíam igual, e são justamente os
+títulos que um export de sistema de barbearia traz.
+
+**A chave é que um conserta o outro.** Casar de forma generosa sozinho é
+arriscado: `Nome do barbeiro` viraria nome de cliente sem ninguém ver. O que
+torna a generosidade segura é **a tela mostrar o que foi usado para quê** — com o
+mapeamento à vista, palpite errado é coisa que o dono corrige antes de clicar.
+Por isso as duas coisas moram no mesmo módulo: quem casar sem mostrar
+reintroduz o risco.
+
+E o erro de "não achei o nome" deixou de ser beco sem saída: ele agora **lista os
+títulos que vieram no arquivo**, então o dono vê qual renomear.
+
+### Ignorar Email e CPF é correto, e isso foi conferido
+
+`clients` tem exatamente quatro campos importáveis: `nome`, `telefone`,
+`aniversario`, `observacao`. Todo o resto da tabela é estado do sistema
+(reativação, opt-out, carimbos). Então não há onde guardar e-mail, CPF ou
+endereço — a frase da tela ("o cadastro do cliente não tem onde guardar esses
+dados") é verdade verificada, não desculpa.
+
+**Deliberadamente NÃO foi feito:** jogar as colunas ignoradas dentro da
+`observacao`. Seria dado de verdade preservado, mas CPF e endereço num campo de
+texto livre que o barbeiro lê é pior que a perda.
+
+### Os caminhos cobertos
+
+| Caminho | O que acontece |
+|---|---|
+| colunas a mais | ditas pelo nome, até 4 e "e mais N" |
+| `Nome Completo`, `Telefone 1` | reconhecidos |
+| `Sobrenome`, `Nomeado` | **não** casam com `nome` — o palpite exige o título começar no candidato e terminar ali |
+| `Telefone` e `Celular` juntos | vale `Telefone`; `Celular` entra nas ignoradas, onde é visto |
+| dois títulos iguais | o segundo vai para as ignoradas |
+| coluna sem título (`;` sobrando) | contada, não nomeada — "ignorei a coluna ''" não ajuda |
+| nenhuma coluna de nome | erro **lista os títulos do arquivo** |
+| só as quatro conhecidas | mostra as quatro, e nada em "fica de fora" |
+
+**Fora:** nada foi feito para preservar os dados ignorados, por decisão acima.
+
+### O bug que o teste pegou, e que vale mais que a feature
+
+A segunda passada do casamento usava
+`new RegExp(` + "`" + `^${candidato}` + "`" + `)` dentro de template literal. O limite de palavra
+precisava de escape DUPLO e ficou com um só, virando o caractere **backspace** —
+**a passada inteira nunca casou nada**. E treze dos catorze testes passaram
+verdes em cima desse código morto, porque `Nome Completo` já casava na passada
+EXATA: só o caso `Telefone 1` a exercitava.
+
+Trocado por comparação de string, que não tem escape para errar. É a terceira vez
+que escape duplo em regex dentro de heredoc/template me custa tempo neste
+projeto.

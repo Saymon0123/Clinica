@@ -6,6 +6,7 @@ import { buildCsv, downloadCsv, parseCsv } from '../../lib/csv'
 import { parseDataBr } from '../../lib/dataBr'
 import { classificarTelefone, somenteDigitos } from '../../lib/telefone'
 import { ErroInline } from '../../components/ErroInline'
+import { mapearColunas, ROTULO_DO_CAMPO, type Mapeamento } from './colunasDoArquivo'
 
 /**
  * O que vai para o banco — e só isto. O número da linha e a linha original do
@@ -51,27 +52,8 @@ type Previa = {
 
 type Arquivo = { headers: string[]; rows: string[][]; linhas: number[] }
 
-type Colunas = { nome: number; telefone: number; aniversario: number; observacao: number }
-
-function findColumn(headers: string[], candidates: string[]): number {
-  const normalized = headers.map((h) =>
-    h.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim(),
-  )
-  for (const candidate of candidates) {
-    const idx = normalized.indexOf(candidate)
-    if (idx !== -1) return idx
-  }
-  return -1
-}
-
-function mapearColunas(headers: string[]): Colunas {
-  return {
-    nome: findColumn(headers, ['nome', 'cliente', 'name']),
-    telefone: findColumn(headers, ['telefone', 'celular', 'whatsapp', 'fone']),
-    aniversario: findColumn(headers, ['aniversario', 'nascimento', 'data de nascimento']),
-    observacao: findColumn(headers, ['observacao', 'observacoes', 'obs', 'notas']),
-  }
-}
+/** Quantas colunas ignoradas cabem na tela antes de virar parede de texto. */
+const MAX_IGNORADAS_NA_TELA = 4
 
 /**
  * O banco deduplica cliente pelos últimos 8 dígitos (`telefone_norm`). O
@@ -96,7 +78,7 @@ function contagem(n: number, singular: string, plural: string) {
  * prometer 200 e o banco receber 197 sem ninguém explicar os 3.
  */
 function separarEmBaldes(arquivo: Arquivo): Previa {
-  const col = mapearColunas(arquivo.headers)
+  const col = mapearColunas(arquivo.headers).indices
   const previa: Previa = {
     prontos: [],
     semNome: [],
@@ -172,6 +154,51 @@ function separarEmBaldes(arquivo: Arquivo): Previa {
 }
 
 /**
+ * O que o sistema leu de cada coluna, e o que ele JOGOU FORA.
+ *
+ * Existe porque a importação lia quatro colunas e descartava todas as outras
+ * sem uma palavra. O dono exporta do sistema antigo com Email, CPF, Endereço e
+ * Última visita, vê "197 clientes importados" e acredita que veio tudo —
+ * descobre meses depois, quando precisa do e-mail de alguém.
+ *
+ * E é este bloco que torna seguro o palpite de título: `Nome Completo` passou a
+ * ser reconhecido, e com o mapeamento à vista um palpite errado é coisa que o
+ * dono corrige antes de clicar, não dado errado gravado para sempre.
+ */
+function ColunasLidas({ mapa }: { mapa: Mapeamento }) {
+  const fora = [
+    ...mapa.ignoradas,
+    // Sem título não tem nome para dizer: a vírgula sobrando no fim de cada
+    // linha do export viraria "ignorei a coluna ''", que não ajuda ninguém.
+    ...(mapa.semTitulo > 0
+      ? [contagem(mapa.semTitulo, 'coluna sem título', 'colunas sem título')]
+      : []),
+  ]
+  const mostradas = fora.slice(0, MAX_IGNORADAS_NA_TELA)
+  const restantes = fora.length - mostradas.length
+
+  return (
+    <div className="rounded-lg border border-border bg-surface-2 px-3 py-2.5 space-y-1.5">
+      <p className="text-xs font-medium text-foreground">O que o sistema leu</p>
+      <ul className="text-xs text-muted-foreground space-y-0.5">
+        {mapa.usadas.map((u) => (
+          <li key={u.campo}>
+            {ROTULO_DO_CAMPO[u.campo]} — da coluna <strong>{u.cabecalho}</strong>
+          </li>
+        ))}
+      </ul>
+      {fora.length > 0 && (
+        <p className="text-xs text-warning border-t border-border pt-1.5">
+          Fica de fora: {mostradas.join(', ')}
+          {restantes > 0 ? ` e mais ${restantes}` : ''}. O cadastro do cliente não
+          tem onde guardar esses dados, então eles não entram.
+        </p>
+      )}
+    </div>
+  )
+}
+
+/**
  * A quebra do que ficou de fora, um balde por linha.
  *
  * Aparece igual na prévia e no resultado de propósito: quem acabou de importar
@@ -223,6 +250,9 @@ export function ImportClientsModal({
   } | null>(null)
 
   const previa = useMemo(() => (arquivo ? separarEmBaldes(arquivo) : null), [arquivo])
+  // Mesmo arquivo, mesmo mapeamento que `separarEmBaldes` usou: o bloco da tela
+  // não pode mostrar um mapa e a gravação usar outro.
+  const mapa = useMemo(() => (arquivo ? mapearColunas(arquivo.headers) : null), [arquivo])
 
   async function handleFile(e: ChangeEvent<HTMLInputElement>) {
     const input = e.target
@@ -236,8 +266,19 @@ export function ImportClientsModal({
       const text = await file.text()
       const { headers, rows, linhas } = parseCsv(text)
 
-      if (mapearColunas(headers).nome === -1) {
-        setError('O arquivo precisa ter uma coluna "Nome".')
+      // Beco sem saída até aqui: o arquivo PODE ter o nome num título que o
+      // sistema não reconhece, e "precisa ter uma coluna Nome" não dizia o que
+      // ele tem nem o que fazer. Dizer os títulos encontrados transforma o erro
+      // em instrução: o dono olha a lista e vê qual renomear.
+      if (mapearColunas(headers).indices.nome === -1) {
+        const achados = headers.filter((h) => h.trim() !== '')
+        setError(
+          achados.length > 0
+            ? `Não encontrei a coluna do nome do cliente. No arquivo vieram: ${achados
+                .slice(0, 8)
+                .join(', ')}${achados.length > 8 ? ' e outras' : ''}. Renomeie a do nome para "Nome" e envie de novo.`
+            : 'O arquivo precisa ter uma coluna "Nome".',
+        )
         setArquivo(null)
         return
       }
@@ -380,10 +421,11 @@ export function ImportClientsModal({
           <>
             <p className="text-xs text-muted-foreground">
               Envie um arquivo CSV com uma coluna <strong>Nome</strong> (obrigatória) e, se quiser,
-              Telefone, Aniversário e Observação. Linha sem nome, com telefone fora do padrão (DDD e
-              número, 10 a 13 dígitos), com aniversário que não existe no calendário ou
-              repetida no próprio arquivo fica de fora — as boas entram
-              do mesmo jeito.
+              Telefone, Aniversário e Observação. <strong>Coluna a mais não é problema</strong>: o
+              sistema lê o que entende e diz na tela o que deixou de fora. Linha sem nome, com
+              telefone fora do padrão (DDD e número, 10 a 13 dígitos), com aniversário que não
+              existe no calendário ou repetida no próprio arquivo fica de fora — as boas entram do
+              mesmo jeito.
             </p>
 
             <label className="block">
@@ -396,8 +438,12 @@ export function ImportClientsModal({
               />
             </label>
 
-            {previa && (
+            {previa && mapa && (
               <div className="space-y-2">
+                {/* O mapeamento vem ANTES da contagem: o número só vale depois
+                    que o dono confere de que coluna cada campo saiu. Mostrar
+                    "197 clientes prontos" primeiro convida a clicar sem ler. */}
+                <ColunasLidas mapa={mapa} />
                 <p className="text-sm text-foreground">
                   <span className="font-medium">{previa.prontos.length}</span>{' '}
                   {previa.prontos.length === 1 ? 'cliente pronto' : 'clientes prontos'} em{' '}

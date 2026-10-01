@@ -6120,8 +6120,21 @@ escolha e dele:
 
 1. **Deixar como esta e nao usar.** O caso da vaga perdida se resolve de graca:
    quando o cliente responde "quero" atrasado, a resposta dele abre a janela de
-   24h e a recusa sai como texto livre pela Evolution. Perde-se so o aviso
-   proativo.
+   24h e a recusa sai como texto livre **pelo numero CENTRAL, na Cloud API** —
+   nao pela Evolution. Perde-se so o aviso proativo.
+
+   **Correcao de 01/10, apontada pelo dono.** Eu havia escrito "pela Evolution",
+   e estava errado: o cliente responde ao template, entao a resposta dele chega
+   no numero CENTRAL. A Evolution e outro numero e nao tem como responder aquela
+   conversa. O caminho certo e o que o projeto ja faz em `responder_lembrete`:
+   resposta livre pelo proprio numero central, dentro da janela de 24h que a
+   mensagem dele abriu, sem template e sem tarifa de template.
+
+   E se a conversa precisar do agente, o padrao tambem ja existe:
+   `reagendar_central`. O comentario do `whatsapp-webhook` diz com estas
+   palavras -- "Reagendar no numero central NAO vai ao agente: o agente mora no
+   numero da barbearia (Evolution)" -- e a saida e o central responder com o
+   `wa.me` da barbearia, mudando a conversa para onde o agente esta.
 2. **Reescrever e resubmeter** amarrando a uma transacao viva — por exemplo, a
    vaga perdida citando a reserva que venceu. Palpite, e resubmissao errada gasta
    reputacao da WABA.

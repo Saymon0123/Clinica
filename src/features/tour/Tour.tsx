@@ -136,13 +136,17 @@ export function Tour({ chave, passos }: { chave: string; passos: PassoDoTour[] }
   return (
     <>
       {/* Reabrir sempre possível tira o peso de "preciso prestar atenção
-          agora" — quem pula não fica sem o conteúdo. */}
+          agora" — quem pula não fica sem o conteúdo.
+          No desktop, `left-[16rem]` tira o botão de cima da barra lateral:
+          ela é 15rem e agora fica presa na altura da janela, com o rodapé do
+          perfil SEMPRE no pé da tela. Em `left-4` o botão pousava justo ali.
+          No celular não há lateral, e `left-4` continua valendo. */}
       {!ativo && (
         <button
           onClick={() => setIndice(0)}
           aria-label="Ver o tour desta tela"
           title="Ver o tour desta tela"
-          className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] md:bottom-6 left-4 z-30 w-9 h-9 rounded-full bg-surface border border-border text-muted-foreground hover:text-foreground hover:border-border-strong flex items-center justify-center shadow-sm transition-colors"
+          className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] md:bottom-6 left-4 md:left-[16rem] z-30 w-9 h-9 rounded-full bg-surface border border-border text-muted-foreground hover:text-foreground hover:border-border-strong flex items-center justify-center shadow-sm transition-colors"
         >
           <HelpCircle size={18} />
         </button>

@@ -123,7 +123,7 @@ export function AssinaturaPage() {
             <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary-soft text-primary-soft-foreground shrink-0">
               <CreditCard size={18} />
             </span>
-            Assinatura
+            Uso e cobrança
           </span>
         }
         subtitulo={salonName ?? 'Sua barbearia'}

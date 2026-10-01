@@ -76,7 +76,7 @@ sempre o mesmo.
 3. **Escrever o pgTAP** em `supabase/tests/`: é a catraca que impede a regra de
    ser desfeita sem ninguém notar.
 
-Três armadilhas que já custaram tempo aqui:
+Quatro armadilhas que já custaram tempo aqui:
 
 - **Função nova nasce com `execute` para `public`.** Todo `create function`
   termina com `revoke ... from public, anon, authenticated` e o `grant` para
@@ -87,6 +87,16 @@ Três armadilhas que já custaram tempo aqui:
 - **Fixture de teste usa o relógio de São Paulo**
   (`(now() at time zone 'America/Sao_Paulo')::date`), nunca `current_date`: o
   runner do CI vive em UTC, e o teste passava de dia e quebrava de madrugada.
+- **Coluna nova em `salons` não herda o `UPDATE`.** A tabela não dá UPDATE de
+  tabela para `authenticated`: dá **por coluna**, numa lista branca — é o que
+  impede o dono de mexer em `ativo`, `cobravel` e `organization_id`. E
+  `add column` não estende grant por coluna. Como Configurações manda **um
+  `update` só** com todos os campos, uma coluna sem privilégio derruba a tela
+  inteira: em 30/09 o dono não conseguia salvar o horário de funcionamento por
+  causa de um campo de comissão que ele nem tinha tocado. Toda coluna nova que
+  a tela escreva precisa do `grant update (...)` na mesma migration — e o
+  `o_dono_salva_as_configuracoes.test.sql` guarda isso escrevendo o payload
+  inteiro de uma vez.
 
 E no CRM: `new Date('YYYY-MM-DD')` é UTC e volta um dia no Brasil — data sem
 hora se parseia **por partes**.

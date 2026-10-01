@@ -27,18 +27,29 @@ type Linha = {
   profissional: string
   valor: number | string
   fecha_em: string
-  dia_de_fechamento: number
+  ciclo_comissao: 'semanal' | 'mensal'
 }
 
 function moeda(n: number) {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-/** '2026-09-05' → '05/09'. Por partes: `new Date('YYYY-MM-DD')` é UTC e volta
- *  um dia no Brasil. */
-function diaMes(iso: string) {
-  const [, mes, dia] = iso.split('-')
-  return `${dia}/${mes}`
+const DIAS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
+
+/**
+ * 'fechada na segunda, 28/09' no ciclo semanal; 'fechada em 05/09' no mensal.
+ *
+ * O nome do dia só entra no semanal porque ali ele É a regra ("toda segunda");
+ * no mensal a regra é o número, e dizer "fechada na terça, 05/09" daria a
+ * entender que a terça importa.
+ *
+ * Data por partes: `new Date('YYYY-MM-DD')` é UTC e volta um dia no Brasil.
+ */
+function quandoFechou(iso: string, ciclo: 'semanal' | 'mensal') {
+  const [ano, mes, dia] = iso.split('-').map(Number)
+  const curto = `${String(dia).padStart(2, '0')}/${String(mes).padStart(2, '0')}`
+  if (ciclo !== 'semanal') return `em ${curto}`
+  return `na ${DIAS[new Date(ano, mes - 1, dia).getDay()]}, ${curto}`
 }
 
 export function AvisoDeComissao({
@@ -54,7 +65,7 @@ export function AvisoDeComissao({
   const carregar = useCallback(async () => {
     const { data, error } = await supabase
       .from('comissoes_a_pagar')
-      .select('profissional, valor, fecha_em, dia_de_fechamento')
+      .select('profissional, valor, fecha_em, ciclo_comissao')
       .eq('salon_id', salonId)
       .order('valor', { ascending: false })
     if (error) {
@@ -84,7 +95,7 @@ export function AvisoDeComissao({
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-foreground">
-          Comissão fechada em {diaMes(fechaEm)}: {moeda(total)} a pagar
+          Comissão fechada {quandoFechou(fechaEm, linhas[0].ciclo_comissao)}: {moeda(total)} a pagar
         </p>
         {/* Nome e valor de cada um, porque "R$ 4.798,75" sozinho não diz a quem
             o dono deve nem quanto a cada. */}

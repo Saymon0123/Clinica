@@ -5702,3 +5702,38 @@ reversão.
 
 **Peças:** CRM (campo em Configurações + faixa no Financeiro) e Supabase (0186).
 Vercel e n8n: nada.
+
+### O ciclo semanal, que eu tinha deixado de fora (0187 e 0188)
+
+A 0186 entregou **só o mensal** (dia do mês). Foi suposição minha, não
+conferida: o dono perguntou em seguida se dava para definir o dia da semana, e
+**barbearia pagando o barbeiro toda semana é mais comum que por mês** — quem
+trabalha de cadeira costuma receber na segunda ou na quarta, não no dia 5.
+
+A 0187 acrescentou `ciclo_comissao` ('semanal' | 'mensal'), com o significado do
+dia vindo dele: 0 a 6 no semanal (domingo a sábado, a mesma régua do
+`extract(dow)` e de `professional_schedules`), 1 a 31 no mensal.
+
+**Duas colunas e não uma** porque `dia_fechamento_comissao` sozinho ficaria com
+dois significados e nada no banco diria qual vale. Com o ciclo ao lado, um CHECK
+só garante que o par faz sentido.
+
+### O CHECK que passava em nulo (0188)
+
+A trava que a 0187 escreveu **deixava entrar ciclo sem dia** — e dia sem ciclo.
+Lógica de três valores:
+
+    (ciclo is null and dia is null)         -> false
+    (ciclo = 'mensal'  and dia between ...) -> false
+    (ciclo = 'semanal' and dia between ...) -> true and NULL  =  NULL
+    false or false or NULL                  =  NULL
+
+E **CHECK só recusa em FALSE**: NULL deixa a linha entrar. Era preciso exigir
+`is not null` nos dois campos de forma explícita, em vez de confiar que uma
+comparação com nulo devolvesse falso. Pego pelo ensaio, antes de a tela existir.
+
+De quebra, a regra da 0188 também recusa ciclo inventado ('xpto'), que a
+anterior aceitava pelo mesmo caminho — a validação do enum saiu de graça.
+
+**Três migrations para um pedido** porque 0186 e 0187 já estavam aplicadas em
+produção quando os defeitos apareceram, e migration aplicada não se reescreve.

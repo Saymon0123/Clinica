@@ -7,7 +7,7 @@ import { AVISO_TELEFONE_FORMATO, classificarTelefone, formatarTelefone } from '.
 import { useSalon } from '../auth/useSalon'
 import { QrDoBalcao } from '../agendaPublica/QrDoBalcao'
 import { AvisoDeJornada } from './AvisoDeJornada'
-import { Campo, Input } from '../../components/Campo'
+import { Campo, Input, Select } from '../../components/Campo'
 import { SkeletonPagina } from '../../components/Skeleton'
 import { PageHeader } from '../../components/PageHeader'
 import { NovaUnidadeModal } from '../rede/NovaUnidadeModal'
@@ -49,6 +49,8 @@ export function ConfiguracoesPage() {
   // comportamento antigo, colado.
   const [folga, setFolga] = useState('0')
   // Vazio = o dono não definiu, e a faixa de aviso do Financeiro não aparece.
+  // O par ciclo+dia anda junto: o banco tem um CHECK que recusa um sem o outro.
+  const [cicloComissao, setCicloComissao] = useState<'' | 'semanal' | 'mensal'>('')
   const [diaFechamento, setDiaFechamento] = useState('')
   const [horario, setHorario] = useState<DiaSemana[]>([])
   const [carregando, setCarregando] = useState(true)
@@ -66,7 +68,7 @@ export function ConfiguracoesPage() {
     const { data, error } = await supabase
       .from('salons')
       .select(
-        'nome, endereco, telefone, google_review_url, horario_funcionamento, folga_entre_atendimentos_minutos, dia_fechamento_comissao',
+        'nome, endereco, telefone, google_review_url, horario_funcionamento, folga_entre_atendimentos_minutos, ciclo_comissao, dia_fechamento_comissao',
       )
       .eq('id', salonId)
       .maybeSingle()
@@ -84,6 +86,7 @@ export function ConfiguracoesPage() {
     setTelefone(data.telefone ?? '')
     setGoogleReviewUrl(data.google_review_url ?? '')
     setFolga(String(data.folga_entre_atendimentos_minutos ?? 0))
+    setCicloComissao((data.ciclo_comissao as '' | 'semanal' | 'mensal' | null) ?? '')
     setDiaFechamento(data.dia_fechamento_comissao == null ? '' : String(data.dia_fechamento_comissao))
     setHorario(desserializarHorario(data.horario_funcionamento))
     setCarregando(false)
@@ -151,10 +154,10 @@ export function ConfiguracoesPage() {
         telefone: telefone.trim(),
         google_review_url: googleReviewUrl.trim() || null,
         folga_entre_atendimentos_minutos: Math.min(60, Math.max(0, Number(folga) || 0)),
-        // Campo em branco volta a ser NULO, e não zero: zero não é dia do
-        // mês nenhum, e o CHECK do banco recusaria.
-        dia_fechamento_comissao:
-          diaFechamento.trim() === '' ? null : Math.min(31, Math.max(1, Number(diaFechamento) || 1)),
+        // Os dois juntos ou os dois nulos: é o que o CHECK do banco exige, e
+        // mandar um sem o outro voltaria como erro cru do Postgres.
+        ciclo_comissao: cicloComissao === '' ? null : cicloComissao,
+        dia_fechamento_comissao: cicloComissao === '' ? null : Number(diaFechamento),
         horario_funcionamento: serializarHorario(horario),
       })
       .eq('id', salonId)
@@ -303,31 +306,76 @@ export function ConfiguracoesPage() {
           {/* Dinheiro, não horário — mas mora aqui porque Configurações é onde o
               dono define as réguas da casa. */}
           <div className="border-b border-border pb-4">
-            <label className="block text-sm text-muted-foreground mb-1" htmlFor="diaFechamento">
-              Dia de fechar a comissão
+            <label className="block text-sm text-muted-foreground mb-1" htmlFor="cicloComissao">
+              Fechamento da comissão
             </label>
-            <div className="flex items-center gap-2">
-              <div className="w-24">
-                <Input
-                  id="diaFechamento"
-                  type="number"
-                  min={1}
-                  max={31}
-                  placeholder="—"
-                  value={diaFechamento}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="w-44">
+                <Select
+                  id="cicloComissao"
+                  value={cicloComissao}
                   onChange={(e) => {
-                    setDiaFechamento(e.target.value)
+                    const novo = e.target.value as '' | 'semanal' | 'mensal'
+                    setCicloComissao(novo)
+                    // O dia TEM de voltar para um valor válido do novo ciclo:
+                    // "domingo" é 0, que não existe como dia do mês, e o CHECK
+                    // do banco devolveria um erro cru na cara do dono.
+                    setDiaFechamento(novo === 'semanal' ? '1' : novo === 'mensal' ? '5' : '')
                     setSalvo(false)
                   }}
-                />
+                >
+                  <option value="">Não avisar</option>
+                  <option value="semanal">Toda semana</option>
+                  <option value="mensal">Todo mês</option>
+                </Select>
               </div>
-              <span className="text-sm text-muted-foreground">de cada mês</span>
+
+              {cicloComissao === 'semanal' && (
+                <div className="w-40">
+                  <Select
+                    value={diaFechamento}
+                    aria-label="Dia da semana do fechamento"
+                    onChange={(e) => {
+                      setDiaFechamento(e.target.value)
+                      setSalvo(false)
+                    }}
+                  >
+                    {/* 0 a 6, a mesma régua do banco e da jornada da equipe. */}
+                    <option value="1">na segunda</option>
+                    <option value="2">na terça</option>
+                    <option value="3">na quarta</option>
+                    <option value="4">na quinta</option>
+                    <option value="5">na sexta</option>
+                    <option value="6">no sábado</option>
+                    <option value="0">no domingo</option>
+                  </Select>
+                </div>
+              )}
+
+              {cicloComissao === 'mensal' && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">no dia</span>
+                  <div className="w-20">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={31}
+                      aria-label="Dia do mês do fechamento"
+                      value={diaFechamento}
+                      onChange={(e) => {
+                        setDiaFechamento(e.target.value)
+                        setSalvo(false)
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Chegado o dia, o Financeiro mostra um aviso com quanto cada barbeiro tem para receber
-              — só do trabalho feito <strong>até essa data</strong>, nunca do que ainda vai entrar no
-              próximo fechamento. Quem escolhe <strong>31</strong> fecha no dia 28 em fevereiro.
-              Em branco, nenhum aviso aparece.
+              Chegado o dia, o Financeiro mostra quanto cada barbeiro tem para receber — só do
+              trabalho feito <strong>até essa data</strong>, nunca do que ainda vai entrar no próximo
+              fechamento. Quem fecha <strong>todo mês no dia 31</strong> fecha no dia 28 em
+              fevereiro. Em <strong>Não avisar</strong>, nenhuma faixa aparece.
             </p>
           </div>
 

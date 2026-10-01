@@ -6068,3 +6068,83 @@ EXATA: só o caso `Telefone 1` a exercitava.
 Trocado por comparação de string, que não tem escape para errar. É a terceira vez
 que escape duplo em regex dentro de heredoc/template me custa tempo neste
 projeto.
+
+
+---
+
+## Os tres templates da fila de espera, submetidos a Meta (2026-10-01, migrations 0193/0194/0195)
+
+O dono perguntou se dava para montar o aviso da fila como `utility` em vez de
+`marketing`, "ja que o cliente solicita que avisemos". Resposta: **o pedido do
+cliente nao decide**. A regra de 12/09 ja dizia que a Meta classifica por
+intencao, e a submissao de hoje provou de forma incomoda quanto isso e verdade.
+
+### Uma entrada na fila tem tres fins, e cada um ganhou template
+
+| chave | nome_meta | o que diz | a Meta deu |
+|---|---|---|---|
+| `fila_vaga_abriu` | `vaga_que_voce_pediu` | abriu o horario pedido, reservado por X min, confirma? | **utility** |
+| `fila_vaga_perdida` | `vaga_ja_preenchida` | o horario avisado foi preenchido; voce segue na espera | **marketing** |
+| `fila_espera_encerrada` | `espera_encerrada` | o periodo pedido passou sem vaga; espera encerrada | **marketing** |
+
+Ids na Meta: `1401421392139416`, `2213231590076636`, `1754010445665149`. Todos
+`PENDING` na analise, e `ativo = false` no banco — nada envia.
+
+### A armadilha que quase passou: a resposta da CRIACAO mente
+
+O `POST` de criacao devolveu `category: UTILITY` **nos tres**. Minutos depois, o
+`GET` da lista da WABA mostrou dois como `MARKETING`. A resposta da criacao ecoa
+a categoria **pedida**; a real vem depois.
+
+Eu ia relatar "os tres saíram utility" com base nela. So nao relatei porque fui
+ler de volta. Virou regra em `docs/templates-para-a-meta.md`, com o curl.
+
+### O que separou um do outro, e e util para os proximos
+
+`utility` exige **transacao em curso**. O aprovado fala de uma vaga concreta,
+reservada, e pede confirmacao — ha algo acontecendo. Os dois recategorizados
+avisam que **nada** aconteceu: vaga perdida, espera encerrada. Aviso sem
+transacao viva a Meta le como reengajamento, **mesmo com o cliente tendo pedido e
+mesmo sem uma palavra de oferta no texto**. O botao "Quero esperar de novo"
+provavelmente nao ajudou.
+
+Vale notar que a familia `retorno_pedido*` (seis rascunhos) usa exatamente o
+argumento "voce pediu para que te avisassemos" e pede `utility` — e **nunca foi
+submetida**. Pelo que se viu hoje, a chance de ela voltar como `marketing` e alta,
+porque nenhuma delas tem transacao viva. Submeter uma antes das seis.
+
+### O que fica para o dono decidir
+
+Os dois `marketing` **nao estao perdidos, estao caros** (~9x). Tres saidas, e a
+escolha e dele:
+
+1. **Deixar como esta e nao usar.** O caso da vaga perdida se resolve de graca:
+   quando o cliente responde "quero" atrasado, a resposta dele abre a janela de
+   24h e a recusa sai como texto livre pela Evolution. Perde-se so o aviso
+   proativo.
+2. **Reescrever e resubmeter** amarrando a uma transacao viva — por exemplo, a
+   vaga perdida citando a reserva que venceu. Palpite, e resubmissao errada gasta
+   reputacao da WABA.
+3. **Pagar marketing** nesses dois, que sao de baixo volume por natureza.
+
+**Nao apaguei nenhum dos dois da WABA**: apagar e acao irreversivel no ativo dele,
+e os dois estao inertes (`ativo = false`, e as views de envio filtram por
+`aprovado`).
+
+### A lacuna de estado que apareceu no caminho (0195)
+
+`whatsapp_templates.status` so conhecia `rascunho` e `aprovado`. Entre os dois ha
+um terceiro que dura dias: **submetido, esperando analise**. Sem ele, template
+enviado para aprovacao era indistinguivel de template que ninguem tocou — e foi
+sobre essa ambiguidade que a auditoria apurou "nenhum dos 25 foi submetido".
+Entrou `em_analise` e a coluna `meta_template_id`, para perguntar o estado de um
+template direto em vez de casar por nome.
+
+### Um falso alarme meu, verificado antes de virar alarme
+
+`whatsapp_templates` da INSERT e UPDATE **de tabela** para `anon`, o que parece
+grave. Nao e: a RLS esta ligada e **sem nenhuma policy**, o estado mais fechado
+possivel. Medido como `anon`: select devolve 0 linhas, update afeta **0**, insert
+e recusado com 42501, e o corpo do `lembrete_hoje` ficou intacto. Segundo falso
+alarme desta sessao evitado por medir linhas afetadas em vez de concluir de
+"nao deu erro".

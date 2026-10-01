@@ -26,25 +26,25 @@ categoria a Meta aplicou antes de mandar o resto. Se ele voltar como
 *marketing*, alguma palavra contaminou — e é muito mais barato descobrir isso
 num template do que em vinte e três.
 
-**A resposta da CRIAÇÃO não é o veredito da Meta — leia de volta.**
-
-Em 01/10/2026 os três templates da fila foram criados por API e a resposta do
-`POST` devolveu `category: UTILITY` nos três. Minutos depois, um `GET` da lista
-da WABA mostrou **dois deles como `MARKETING`**. A resposta da criação ecoa a
-categoria que você PEDIU; a classificação real aparece depois. Sempre conferir:
-
-```bash
-curl -s "https://graph.facebook.com/v21.0/$WABA_ID/message_templates\
-?fields=name,status,category,rejected_reason&access_token=$META_TOKEN"
-```
-
-**E o que separou um do outro:** `utility` exige **transação em curso**. O que
-ficou `utility` falava de uma vaga concreta, reservada, com pedido de
-confirmação. Os dois que viraram `marketing` eram avisos de que **nada**
-aconteceu — vaga perdida, espera encerrada —, e aviso sem transação viva a Meta
-lê como reengajamento, mesmo quando o cliente pediu para ser avisado e mesmo sem
-uma palavra de oferta no texto.
-
+**A resposta da CRIAÇÃO não é o veredito da Meta — leia de volta.**
+
+Em 01/10/2026 os três templates da fila foram criados por API e a resposta do
+`POST` devolveu `category: UTILITY` nos três. Minutos depois, um `GET` da lista
+da WABA mostrou **dois deles como `MARKETING`**. A resposta da criação ecoa a
+categoria que você PEDIU; a classificação real aparece depois. Sempre conferir:
+
+```bash
+curl -s "https://graph.facebook.com/v21.0/$WABA_ID/message_templates\
+?fields=name,status,category,rejected_reason&access_token=$META_TOKEN"
+```
+
+**E o que separou um do outro:** `utility` exige **transação em curso**. O que
+ficou `utility` falava de uma vaga concreta, reservada, com pedido de
+confirmação. Os dois que viraram `marketing` eram avisos de que **nada**
+aconteceu — vaga perdida, espera encerrada —, e aviso sem transação viva a Meta
+lê como reengajamento, mesmo quando o cliente pediu para ser avisado e mesmo sem
+uma palavra de oferta no texto.
+
 **Depois de aprovado, anote no banco a categoria que a Meta deu:**
 
 ```sql

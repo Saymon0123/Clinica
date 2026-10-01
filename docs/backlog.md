@@ -6552,3 +6552,73 @@ trava de allowlist (filtro de remetente logo depois do webhook) esta desenhada e
 pronta para aplicar quando ele disser qual numero liberar: todos os outros ficam
 sem resposta automatica, e a conversa normal dele nao muda -- a Evolution copia a
 mensagem, nao a consome.
+
+
+---
+
+## O teste da conversa do agente, sem mandar mensagem para ninguem (2026-10-01)
+
+Ideia do dono, e ela resolve o impasse: simular a entrada pelo webhook e
+DESABILITAR os nos de saida. O fluxo roda inteiro -- contexto, agente,
+ferramentas, escrita no banco -- e nada sai.
+
+Quatro nos desabilitados: `Responder pela Cloud API`, `Responder Padrao pela
+Cloud API`, `Responder pela Evolution (Agente)` e `(Padrao)`. Nesse estado o
+agente fica MAIS seguro que ligado normalmente: mensagem real de um contato e
+lida e registrada, e ninguem recebe resposta.
+
+**Simulei o formato REAL da Evolution**, nao o conveniente. Antes de disparar
+conferi uma suspeita que teria invalidado o teste: o webhook espera payload plano
+(`body.contact_phone`) e a Evolution manda `remoteJid`. Existe um no
+`Adaptar Payload (Provedor)` entre os dois que reconhece as duas formas -- a
+suspeita era infundada, e so olhando deu para saber.
+
+### Turno 1: funcionou
+
+> CLIENTE: Oi! Voces atendem sabado de manha? Queria cortar o cabelo.
+>
+> AGENTE: Oi! Atendemos sim. Me diz teu nome e se prefere so o *Corte masculino*
+> ou algum outro do nosso catalogo. Ai ja te passo os horarios de sabado.
+
+Consultou o catalogo (citou servico real), pediu o nome porque era cliente novo,
+e nao despejou horario antes de saber o servico. 21 segundos.
+
+### Turno 2: caiu, e NAO foi o corte de envio
+
+    OpenAI: Rate limit reached for gpt-4o
+    TPM: Limit 30000, Used 24656, Requested 12681. Try again in 14.674s.
+
+**Esse e o achado que importa, e ele e de capacidade.** Cada turno do agente pede
+~12,7 mil tokens, porque o contexto que o fluxo monta e grande -- da para ver na
+lista de nos: cliente cadastrado, catalogo, barbeiros, horarios do cliente, saldo
+de pacotes, produtos, historico da conversa.
+
+Com teto de 30 mil TPM na organizacao, isso da **cerca de DUAS mensagens por
+minuto para a plataforma inteira** -- nao por barbearia. Duas conversas
+simultaneas ja raspam o teto.
+
+### E o modo de falha e silencio
+
+- o cliente escreveu e **nao recebe resposta nenhuma**
+- `mensagens_a_entregar` ficou em **0**: a fila de reentrega NAO recupera este
+  caso (ela cobre mensagem que nao chegou ao agente; aqui ela chegou e o agente
+  falhou)
+- e quem avisaria e o Error Workflow, que nunca funcionou
+
+**Isso e bloqueador de prospeccao.** Nao e um defeito de codigo: e teto de conta
+na OpenAI mais um contexto caro. As saidas, em ordem de esforco: subir o tier da
+conta OpenAI; encolher o contexto (produtos e saldo de pacotes entram em TODO
+turno, inclusive quando a conversa nao fala de produto); ou modelo mais barato
+para os turnos simples.
+
+### O que o agente escreveu antes de cair
+
+Ele chamou a ferramenta `Criar Cliente` e criou "Pedro" -- entao a ferramenta de
+escrita funciona. Zero agendamento (nao chegou la). Tudo apagado depois: 120
+clientes, todos DDD (39), zero conversa, zero mensagem.
+
+### Estado em que ficou
+
+Agente **desligado** (como o dono escolheu) e os quatro nos de envio **devolvidos
+ao normal** no rascunho. A ordem importou: desliguei ANTES de reabilitar os
+envios, para nao existir nenhum instante com o agente ativo e a saida aberta.

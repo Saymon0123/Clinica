@@ -95,7 +95,7 @@ export function AgentDashboard({ salonId }: { salonId: string }) {
           icon={<CalendarCheck size={16} />}
           label="Agendamentos"
           value={loading ? '—' : stats.agendamentos}
-          hint="cobráveis — o mesmo número da aba Assinatura"
+          hint="cobráveis — o mesmo número da aba Uso e cobrança"
         />
         <StatCard
           icon={<CalendarX size={16} />}

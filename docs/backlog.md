@@ -5737,3 +5737,100 @@ anterior aceitava pelo mesmo caminho — a validação do enum saiu de graça.
 
 **Três migrations para um pedido** porque 0186 e 0187 já estavam aplicadas em
 produção quando os defeitos apareceram, e migration aplicada não se reescreve.
+
+
+---
+
+## A lateral que fugia, e o botão que ela passou a esconder (2026-09-30)
+
+O dono rolava a página e o rodapé da barra lateral — nome, papel, sino, tema —
+ia embora. A causa não era o rodapé: era a **coluna inteira**. O `<aside>` é um
+flex item de uma linha e esticava até o fim do **documento**, não da tela. O
+rodapé estava sempre no pé da página; só parecia fixo quando a página era curta.
+
+Corrigido com `md:sticky md:top-0 md:h-[100dvh] md:self-start`, o mesmo desenho
+que a coluna da agenda pública já usava — o `<nav class="flex-1 overflow-y-auto">`
+que já existia passou a rolar por dentro.
+
+**O que a correção quebraria, e que foi corrigido junto:** `position: sticky`
+cria contexto de empilhamento. Sem `z-index`, a coluna passaria a pintar antes
+do `<main>` por ordem de DOM, e a folha do perfil (`z-40`, dentro dela) perderia
+para o botão de reabrir o tour (`z-30`, fora). É a mesma lição que o header do
+celular já carregava escrita. Daí o `md:z-40` — e Modal (z-50), Toast (z-60) e
+Tour (z-62) continuam por cima, como devem.
+
+**E a colisão que a correção tornaria permanente:** o botão do tour é
+`fixed md:bottom-6 left-4` — ele pousa em cima do rodapé da lateral. Antes isso
+só acontecia com a página rolada até o fim; com a coluna presa na janela,
+passaria a acontecer sempre. O botão foi para `md:left-[16rem]` (15rem da coluna
++ 1rem de folga). No celular não há lateral, e `left-4` continua valendo.
+
+Provado com as seis classes conferidas no CSS compilado, porque o Tailwind não
+reclama de classe que não sabe gerar — ele simplesmente não gera nada, igual à
+lição dos tokens `-soft`.
+
+---
+
+## Item 5 — "Uso e cobrança", e quanto o sistema custou do que entrou (2026-09-30, migration 0190)
+
+**Duas decisões que o dono não tomou, declaradas aqui:**
+
+1. A aba **"Assinatura" virou "Uso e cobrança"**. Não existe mensalidade neste
+   produto desde 24/08 — o dono paga por agendamento que o agente marcou. O nome
+   antigo fazia a aba parecer um contrato a vencer em vez de um medidor. **A rota
+   segue `/assinatura`**: ela é o destino do desvio de acesso bloqueado e do link
+   que o dono recebe quando vence, e trocar a URL quebraria os dois.
+2. A comparação é contra o **faturamento real** da barbearia (`sum(payments)` das
+   comandas fechadas), não contra o "gerado pra você" que já estava na tela. São
+   perguntas diferentes: "gerado" é a contribuição do agente; "% do faturamento"
+   é a resposta para *isto é caro?*, que é a que o dono tem.
+
+O rename foi atrás de **cinco textos da Ajuda**, do `hint` do painel do agente e
+do cartão de ativação, todos mandando o dono "na aba **Assinatura**". Ajuda que
+manda procurar o que não existe mais é pior que Ajuda nenhuma.
+
+### O que a migration 0190 faz
+
+`faturamento` na view `uso_do_sistema_no_mes`, na **mesma janela** do custo
+(`date_trunc('month')` no relógio de São Paulo, cortada em hoje). No banco, e não
+numa segunda consulta da tela, porque o percentual só é honesto se as duas pontas
+vierem da mesma janela — e `new Date('YYYY-MM-DD')` em JavaScript é UTC, que no
+Brasil volta um dia. Na virada do mês o numerador e o denominador falariam de
+meses diferentes sem nada acusar.
+
+### Dois achados do ensaio
+
+- **View nova nasce com `select` para `anon`.** O `drop` + `create` devolve o
+  privilégio pelo padrão do schema, e a view que estava no ar **não o tinha**. É
+  inerte (como `anon`, `private.salon_ids()` volta vazio e a RLS não devolve
+  linha), mas o estado mudaria calado. É a mesma armadilha do `create function`,
+  agora documentada para view: o ensaio compara os grants antes e depois, um a
+  um, e o `revoke all ... from anon` está no fim da migration. **Vale como
+  regra:** toda recriação de view confere os grants contra os de antes.
+- **O relógio de São Paulo já estava no dia seguinte.** O ensaio devolveu
+  faturamento ZERO e um assert exigindo "maior que zero" denunciou: em São Paulo
+  já era 01/10 às 00h49, enquanto a máquina de quem escrevia marcava 30/09. A
+  view estava certa; o ensaio é que não provava nada. Sem esse assert eu teria
+  dito "aplicado e conferido" sobre uma janela vazia.
+
+### O que fica em aberto (decisão do dono)
+
+- **No dia 1º o medidor mostra o mês vazio.** É o comportamento correto de um
+  medidor mensal — e é o que a El Corte mostra agora mesmo: R$ 0, enquanto
+  setembro fechou com R$ 35.341. A linha da proporção simplesmente não aparece
+  (custo zero cala, por desenho). **Pergunta aberta:** quer que, quando o mês
+  corrente ainda estiver vazio, a tela mostre a proporção do **mês fechado
+  anterior**, rotulada como tal? Daria trabalho de verdade: `faturas_de_uso`
+  congela `valor` e `valor_gerado`, mas não o faturamento da barbearia.
+- **`PrivacidadePage` ainda diz "cobrança da assinatura por Pix".** Não mexi: é
+  texto legal, e redação de documento legal é decisão dele, não minha.
+
+### A catraca
+
+`contaDoMes.ts` (módulo puro, 11 asserts) com a régua do arredondamento: nunca
+"0%" quando o mês custou algo — o piso é "menos de 0,1%" —, vírgula e não ponto,
+e a casa decimal só quando ela diz algo. E custo **acima** do faturamento é dito
+na cara, sem verde: pintar 12% de boa notícia seria agrado na tela do preço.
+`o_que_o_sistema_custou_do_que_entrou.test.sql` (7 asserts, rodado contra
+produção) guarda a **janela**: comanda do mês passado fora, comanda aberta fora,
+comanda sem pagamento fora, e cada barbearia somando a própria.

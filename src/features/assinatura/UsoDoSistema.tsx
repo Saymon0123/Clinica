@@ -5,6 +5,7 @@ import { useSalon } from '../auth/useSalon'
 import { Badge } from '../../components/Badge'
 import { SkeletonLinhas } from '../../components/Skeleton'
 import { ErroInline } from '../../components/ErroInline'
+import { contaDoMes } from './contaDoMes'
 
 function moeda(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -12,6 +13,23 @@ function moeda(v: number) {
 
 function dataBr(iso: string) {
   return iso.split('-').reverse().join('/')
+}
+
+const MESES = [
+  'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
+]
+
+/**
+ * O mês por extenso, a partir de uma data sem hora.
+ *
+ * Por PARTES, sem `new Date`: `new Date('2026-10-01')` é meia-noite em UTC, que
+ * no Brasil é 30 de setembro — a frase diria "setembro" no primeiro dia de
+ * outubro, justamente quando o período virou.
+ */
+function mesDe(iso: string) {
+  const mes = Number(iso.split('-')[1])
+  return MESES[mes - 1] ?? ''
 }
 
 type Uso = {
@@ -25,6 +43,8 @@ type Uso = {
   reativacoes: number
   /** Falso = barbearia interna (0160): mede o uso, mas nada disso vira fatura. */
   cobravel: boolean
+  /** A receita real do MESMO período, para a conta do custo (0190). */
+  faturamento: number
 }
 
 type Fatura = {
@@ -155,6 +175,9 @@ export function UsoDoSistema() {
   if (!isManager) return null
 
   const valorEstimado = uso ? uso.agendamentos * Number(uso.preco_unitario) : 0
+  // Barbearia fora da cobrança não paga nada, então não há proporção a dizer:
+  // `contaDoMes` devolve silêncio com custo zero, e é isso que se quer aqui.
+  const conta = uso ? contaDoMes(uso.cobravel ? valorEstimado : 0, Number(uso.faturamento)) : null
   // A cobrança mais recente ainda não paga: é o que o dono veio procurar
   // quando o assunto é pagamento, então ganha um banner antes do histórico.
   const cobrancaAberta = faturas.find((f) => f.pix_br_code && !f.paga_em) ?? null
@@ -239,6 +262,37 @@ export function UsoDoSistema() {
               <div className="text-[11px] text-muted-foreground">mensagens, sem custo</div>
             </div>
           </div>
+          {/* A conta que ninguém faz de cabeça, e que é a única pergunta que o
+              dono tem de verdade: isto é caro? Os dois cartões acima já traziam
+              os números, e deixar a divisão de tarefa de casa era o mesmo que
+              não responder. As duas pontas saem da MESMA janela porque quem as
+              calcula é a view (0190) — se a tela somasse os pagamentos por
+              conta própria, o numerador e o denominador poderiam falar de meses
+              diferentes na virada, sem nada acusar. */}
+          {conta?.tipo === 'proporcao' && (
+            <div className="rounded-lg bg-surface-2 p-3 text-sm text-foreground">
+              Em {mesDe(uso.periodo_inicio)} entraram{' '}
+              <strong>{moeda(Number(uso.faturamento))}</strong> e o sistema custou{' '}
+              <strong>{moeda(valorEstimado)}</strong> —{' '}
+              {/* Sem verde quando o número é alto: pintar 12% de boa notícia
+                  seria o agrado que esta tela não pode dar, porque é a tela do
+                  preço. */}
+              <strong className={conta.alto ? 'text-foreground' : 'text-success'}>
+                {conta.percentual} do que você faturou
+              </strong>
+              .
+            </div>
+          )}
+          {conta?.tipo === 'sem_faturamento' && (
+            <div className="rounded-lg bg-surface-2 p-3 text-sm text-foreground">
+              O sistema custou <strong>{moeda(valorEstimado)}</strong> em {mesDe(uso.periodo_inicio)}
+              .{' '}
+              <span className="text-muted-foreground">
+                Nenhuma comanda foi fechada neste período, então não há faturamento para comparar.
+              </span>
+            </div>
+          )}
+
           <p className="text-xs text-muted-foreground">
             Período em aberto: {dataBr(uso.periodo_inicio)} até hoje. O fechamento é no fim do mês,
             e a cobrança Pix chega depois disso.

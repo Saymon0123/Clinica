@@ -78,7 +78,7 @@ export function useAtivacao(salonId: string | null) {
         : [
             {
               id: 'assinatura' as const,
-              titulo: 'Assinatura não registrada',
+              titulo: 'Cobrança não registrada',
               porque: 'Sem isso os lembretes automáticos não são enviados. Fale com o suporte.',
               rota: '/assinatura',
               feito: false,

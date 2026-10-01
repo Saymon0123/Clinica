@@ -406,7 +406,7 @@ const SECOES: Secao[] = [
       {
         p: 'Quanto eu pago pelo Club Cut?',
         intro:
-          'Você paga **por agendamento feito pelo atendimento automático do WhatsApp** — o valor unitário está na aba **Assinatura**. Sem mensalidade fixa, sem mínimo: mês sem agendamento pelo WhatsApp é mês sem cobrança. Agendamentos que você marca na agenda ou que chegam pelo QR do balcão **não são cobrados**. As **mensagens** de lembrete e de reativação também não custam nada — o que se cobra é o horário, não o recado.',
+          'Você paga **por agendamento feito pelo atendimento automático do WhatsApp** — o valor unitário está na aba **Uso e cobrança**. Sem mensalidade fixa, sem mínimo: mês sem agendamento pelo WhatsApp é mês sem cobrança. Agendamentos que você marca na agenda ou que chegam pelo QR do balcão **não são cobrados**. As **mensagens** de lembrete e de reativação também não custam nada — o que se cobra é o horário, não o recado.',
         dicas: [
           {
             t: 'Cliente que voltou pela reativação: se ele **confirmou** o horário, esse horário é cobrado como qualquer outro do atendimento automático. Se ele não respondeu, o sistema cancela sozinho e **nada é cobrado** — você só paga por quem de fato voltou.',
@@ -416,17 +416,17 @@ const SECOES: Secao[] = [
       {
         p: 'Como funciona o período de teste?',
         intro:
-          'Ao criar a barbearia você tem **7 dias com tudo liberado**, e nada é cobrado nesses dias — nem os agendamentos que o atendimento automático fizer neles. A aba **Assinatura** mostra quantos dias faltam e a data exata em que acaba.',
+          'Ao criar a barbearia você tem **7 dias com tudo liberado**, e nada é cobrado nesses dias — nem os agendamentos que o atendimento automático fizer neles. A aba **Uso e cobrança** mostra quantos dias faltam e a data exata em que acaba.',
         dicas: [
           { t: 'Nos 3 últimos dias do teste, uma faixa no topo do sistema avisa quanto falta.' },
-          { t: 'Para continuar depois do teste, cadastre em Assinatura o CPF ou CNPJ de quem vai pagar. Sem ele, o acesso bloqueia quando o teste acaba — e volta na hora em que você cadastrar.' },
+          { t: 'Para continuar depois do teste, cadastre em Uso e cobrança o CPF ou CNPJ de quem vai pagar. Sem ele, o acesso bloqueia quando o teste acaba — e volta na hora em que você cadastrar.' },
           { t: 'Terminado o teste, você passa a pagar só pelo que usar. Mês sem agendamento pelo WhatsApp continua sendo mês sem cobrança.' },
         ],
       },
       {
         p: 'Como pago a minha fatura?',
         intro:
-          'O mês fecha no último dia e a cobrança chega **por e-mail** e fica visível na aba **Assinatura**, no aviso amarelo — toque em **Pagar com Pix** e leia o QR Code, ou copie o código e cole no app do banco (Pix › Pix Copia e Cola). Pagou? O acesso renova sozinho em minutos.',
+          'O mês fecha no último dia e a cobrança chega **por e-mail** e fica visível na aba **Uso e cobrança**, no aviso amarelo — toque em **Pagar com Pix** e leia o QR Code, ou copie o código e cole no app do banco (Pix › Pix Copia e Cola). Pagou? O acesso renova sozinho em minutos.',
         dicas: [
           { t: 'O CPF ou CNPJ de quem paga fica na mesma aba — é com ele que a cobrança é gerada.' },
           { t: 'O QR vale 7 dias. Depois disso ele para de funcionar e é preciso gerar outro.' },
@@ -435,7 +435,7 @@ const SECOES: Secao[] = [
       {
         p: 'Tenho mais de uma unidade. Posso pagar tudo de uma vez?',
         intro:
-          'Pode. Em **Assinatura → Cobrança da rede**, toque em **Receber uma cobrança única da rede** e informe o CPF/CNPJ do pagante. Sai um Pix só, com o uso de todas as unidades somado. Para voltar a uma cobrança por unidade, é só um clique no mesmo lugar.',
+          'Pode. Em **Uso e cobrança → Cobrança da rede**, toque em **Receber uma cobrança única da rede** e informe o CPF/CNPJ do pagante. Sai um Pix só, com o uso de todas as unidades somado. Para voltar a uma cobrança por unidade, é só um clique no mesmo lugar.',
       },
     ],
   },

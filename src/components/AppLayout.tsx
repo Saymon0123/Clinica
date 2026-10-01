@@ -74,7 +74,12 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { to: '/equipe', label: 'Equipe', icon: UsersRound, somenteGestor: true },
       { to: '/rede', label: 'Rede', icon: Building2, somenteDono: true, semUnidade: true },
       { to: '/configuracoes', label: 'Configurações', icon: Settings, somenteGestor: true },
-      { to: '/assinatura', label: 'Assinatura', icon: CreditCard, somenteGestor: true },
+      // "Uso e cobrança", e não "Assinatura": não existe mensalidade aqui
+      // desde 2026-08-24 -- o dono paga por agendamento que o agente marcou. O
+      // nome antigo fazia a aba parecer um contrato a vencer em vez de um
+      // medidor. A ROTA segue `/assinatura`: ela é o destino do desvio de
+      // acesso bloqueado e do link que o dono recebe quando vence.
+      { to: '/assinatura', label: 'Uso e cobrança', icon: CreditCard, somenteGestor: true },
     ],
   },
   {
@@ -279,8 +284,21 @@ export function AppLayout() {
         </div>
       </header>
 
-      {/* Sidebar (desktop only) */}
-      <aside className="hidden md:flex w-60 border-r border-sidebar-border bg-sidebar flex-col shrink-0">
+      {/* Sidebar (desktop only)
+
+          `sticky top-0 h-[100dvh]`: sem isto a coluna CRESCE com a página —
+          ela é um flex item de uma linha, e esticava até o fim do DOCUMENTO.
+          O rodapé (quem sou eu, sino, tema) ficava no pé da página, não no pé
+          da TELA: rolar para cima o levava embora. Com altura de janela, o
+          `flex-1 overflow-y-auto` do <nav> rola por dentro e o rodapé fica.
+          Mesmo desenho da coluna da agenda pública (AgendaPublicaPage).
+
+          z-40 pelo mesmo motivo do header do celular, logo acima: `sticky`
+          cria contexto de empilhamento, e a folha do perfil (z-40, DENTRO)
+          passa a ser comparada como se fosse a própria coluna — que, sem
+          z-index, pinta antes do <main> por ordem de DOM. Modal (z-50),
+          Toast (z-60) e Tour (z-62) continuam por cima, como devem. */}
+      <aside className="hidden md:flex w-60 border-r border-sidebar-border bg-sidebar flex-col shrink-0 md:sticky md:top-0 md:h-[100dvh] md:self-start md:z-40">
         {/* Marca no topo, como um produto assina (referência CheckinOs). */}
         <div className="px-4 pt-6 pb-5 flex items-center gap-2.5">
           <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-primary-foreground shrink-0">

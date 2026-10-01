@@ -83,7 +83,10 @@ Quatro armadilhas que já custaram tempo aqui:
   quem deve mesmo. O trinco é reposto à mão, sempre.
 - **View se recria por inteiro** (`drop` + `create`), reproduzindo tudo: coluna
   nova no meio da lista levanta 42P16, e `create or replace` perde em silêncio
-  o `security_invoker` e os `revoke`.
+  o `security_invoker` e os `revoke`. O `drop` + `create` também faz o
+  contrário — a view nova **ganha** o `select` de `anon` pelo padrão do schema,
+  mesmo quando a antiga não o tinha. Toda recriação compara os grants com os de
+  antes, um a um, e repõe o trinco à mão.
 - **Fixture de teste usa o relógio de São Paulo**
   (`(now() at time zone 'America/Sao_Paulo')::date`), nunca `current_date`: o
   runner do CI vive em UTC, e o teste passava de dia e quebrava de madrugada.

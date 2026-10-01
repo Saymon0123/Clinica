@@ -93,6 +93,13 @@ Quatro armadilhas que já custaram tempo aqui:
   contrário — a view nova **ganha** o `select` de `anon` pelo padrão do schema,
   mesmo quando a antiga não o tinha. Toda recriação compara os grants com os de
   antes, um a um, e repõe o trinco à mão.
+- **RPC que o n8n chama vive em `public`.** O PostgREST só procura função no
+  schema exposto: `private.minha_funcao` devolve **PGRST202** pelo REST, mesmo
+  existindo no banco. Em 01/10 duas RPCs nasceram em `private` e nenhum ensaio
+  acusou — eles chamam pelo banco, onde `private` é alcançável. **Só a chamada
+  pelo caminho real revela**, e é a mesma lição do webhook do n8n em 11/09.
+  Depois de criar, `notify pgrst, 'reload schema'`, senão ela fica invisível até
+  o cache recarregar sozinho.
 - **Fixture de teste usa o relógio de São Paulo**
   (`(now() at time zone 'America/Sao_Paulo')::date`), nunca `current_date`: o
   runner do CI vive em UTC, e o teste passava de dia e quebrava de madrugada.

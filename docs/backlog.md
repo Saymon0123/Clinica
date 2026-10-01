@@ -6419,3 +6419,77 @@ Os nos entram pendurados no gatilho da auditoria existente, em ramo PARALELO: a
 checagem so ESCREVE a leitura, e quem avisa o dono continua sendo o caminho que
 le `auditoria_pendente`. Desacoplados pelo banco, como todo o resto deste
 projeto.
+
+
+---
+
+## O n8n nao alcanca `private` (2026-10-01, migration 0197)
+
+As duas RPCs que eu criei PARA o n8n chamar nasceram em `private`:
+`expirar_reservas` (0192) e `registrar_saude_do_canal` (0196). **Nenhuma das duas
+era alcancavel por ele.**
+
+O PostgREST so procura funcao no schema exposto. Pelo REST:
+
+    PGRST202 -- Searched for the function public.registrar_saude_do_canal
+                ... but no matches were found in the schema cache.
+
+Enquanto `responder_lembrete`, que o n8n chama todo dia, esta em `public` e
+responde 200. Conferido nas duas pontas.
+
+**Por que nenhum ensaio acusou:** eles chamam pelo banco, onde `private` e
+alcancavel. O pgTAP tambem. **So a chamada pelo caminho REAL revela** -- a mesma
+licao do webhook do n8n em 11/09, quando a URL do `triggerInfo` nao era a URL de
+verdade. Virou regra no CLAUDE.md, com o `notify pgrst, 'reload schema'`.
+
+Corrigido por fachada em `public` (migration aplicada nao se reescreve), e a
+fachada tem merito proprio: a implementacao segue em `private`, fora do alcance de
+quem nao deve chamar, e o exposto e exatamente a assinatura do n8n. Provado pelo
+caminho do n8n: 200 na varredura, 204 no registro, e **42501 para `anon`**.
+
+---
+
+## A checagem no n8n: ramo que so ESCREVE (2026-10-01)
+
+Quatro nos pendurados no gatilho de 30 min da `CRM Salao - Auditoria do Agente`,
+em ramo PARALELO ao do e-mail:
+
+    Buscar Remetentes Oficiais -> Ler Saude da WABA -> Derivar Leitura -> Registrar
+
+A checagem **nao avisa ninguem**: quem avisa e o ramo que le `auditoria_pendente`,
+onde `auditoria_canal_oficial` ja e membro. Desacoplados pelo banco.
+
+**A credencial e a MESMA dos nos de envio** (`WhatsApp account`,
+`ZyNCe33Xa40SCApz`), e e esse o ponto inteiro: `health_status` e relativo ao App
+do token que chama.
+
+**Como o no sabe se o token enxerga envio, sem chamada extra e sem expor token:**
+um token sem `whatsapp_business_messaging` devolve o App BLOCKED com o erro
+**141011** especificamente. Entao:
+
+- APP bloqueado com 141011 -> `token_envia = false` (checagem cega)
+- bloqueado por outro motivo -> `token_envia = true` (bloqueio real)
+- tudo AVAILABLE -> `token_envia = true`
+
+**Dois cuidados de falha:** `onError: continueRegularOutput` nos dois HTTP, porque
+queda da Meta ou do Supabase nao pode derrubar o e-mail da auditoria que corre em
+paralelo. E o no de codigo devolve `null` quando a leitura nao serve -- sem linha
+nova, a view alarma "sem checagem ha 26h". **Falha vira ausencia, e ausencia vira
+alarme**, em vez de verde falso.
+
+### Duas coisas que quase passaram
+
+1. **O update ficou como RASCUNHO.** O `activeVersionId` continuava o antigo: o
+   fluxo no ar era o de antes. Precisou `publish_workflow`. Editar fluxo pelo MCP
+   e publicar sao passos separados, e nada avisa.
+2. **A credencial dos nos HTTP nao entrou** pelo `addNode` -- o proprio MCP
+   avisou ("skipped during credential auto-assignment"). Precisou de
+   `setNodeCredential` numa chamada propria.
+
+### Ainda nao verificado
+
+A primeira execucao do ramo. A proxima rodada natural e dentro de 30 min; esta
+rodando um observador na `auditoria_canal_oficial` para ver o alarme
+`canal-sem-checagem` dar lugar ao que a leitura disser. **Nao executei o fluxo a
+mao de proposito:** isso dispararia o e-mail da auditoria, e o SMTP esta quebrado
+desde agosto -- eu trocaria uma verificacao por uma execucao com erro no historico.

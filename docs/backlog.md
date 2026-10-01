@@ -5834,3 +5834,81 @@ na cara, sem verde: pintar 12% de boa notícia seria agrado na tela do preço.
 `o_que_o_sistema_custou_do_que_entrou.test.sql` (7 asserts, rodado contra
 produção) guarda a **janela**: comanda do mês passado fora, comanda aberta fora,
 comanda sem pagamento fora, e cada barbearia somando a própria.
+
+
+---
+
+## Item 6 — o seletor de promover que sumia em silêncio (2026-09-30)
+
+Na aba Equipe, o seletor de função (Barbeiro / Gerente / Dono) **desaparecia**
+para alguns membros, sem nada explicando. A causa: dois motivos muito diferentes
+caíam no mesmo `return null`.
+
+```
+if (!ehDonoDesta || !vinculo) return null
+```
+
+- `!ehDonoDesta` — quem olha é gerente. **Esconder está certo**: não é da conta
+  dele, e a função já aparece como texto no subtítulo.
+- `!vinculo` — o membro **não tem acesso ao sistema**. O dono *pode* promover,
+  mas não existe quem promover. Sumir aqui é defeito: ele não tem como
+  distinguir um seletor que nunca existiu de um que desapareceu.
+
+Agora o segundo caso aparece **desabilitado, escrito "Sem acesso"** — a coluna
+não dança de linha em linha, e a palavra liga o seletor morto à tarja do nome.
+
+### O defeito que estava escondido atrás dele
+
+A tarja "Sem acesso" olhava `!m.user_id`; o seletor olhava `!vinculo`. **Dois
+critérios diferentes para a mesma pergunta** — e eles divergem num caso real:
+
+`tirar_da_equipe` apaga a linha de `user_salons` e desativa o profissional, mas
+**não limpa `professionals.user_id`**. Quem foi tirado da equipe fica com
+`user_id` gravado e sem vínculo nenhum:
+
+| O que a tela mostrava | O que era verdade |
+|---|---|
+| tarja "Inativo", **nenhuma** tarja "Sem acesso" | sem acesso ao sistema |
+| nenhum seletor de função | sem função nenhuma |
+
+E se o dono o **reativasse** no botão de ligar, a linha voltava com aparência
+**perfeitamente normal**: sem "Inativo", sem "Sem acesso", sem seletor — e com
+cadeira na agenda, sendo oferecido pelo agente no WhatsApp. Agora o critério é
+um só: **tem vínculo ou não tem**, calculado uma vez por linha e usado nos
+quatro lugares (tarja, subtítulo, seletor, botão de tirar).
+
+O subtítulo também deixou de ficar mudo: sem vínculo ele diz **"Só atende na
+agenda, sem login"** em vez de só a comissão, como se o papel fosse óbvio.
+
+### Por que "Sem acesso" NÃO é um erro
+
+Os quatro barbeiros da El Corte estão todos sem login — eles foram criados
+direto no banco na amostra de demonstração. E isso é legítimo: barbeiro que
+ocupa cadeira, aparece na agenda e é oferecido pelo agente, sem usar o CRM, é um
+caso de uso real de barbearia. A tela passou a **dizer o estado** em vez de
+sugerir conserto.
+
+### ACHADO ADJACENTE, decisão do dono: convidar cria um barbeiro DUPLICADO
+
+`accept-invite` faz **`insert`** em `professionals` — ele nunca procura um
+profissional sem login para ligar ao convite. Então, hoje:
+
+> O dono tem "João" na agenda, sem login. Convida João por e-mail para dar
+> acesso a ele. João aceita. **Resultado: dois "João" na Equipe e duas cadeiras
+> na agenda** — a antiga com todo o histórico, comissão e horários, e a nova
+> vazia com o login.
+
+**Foi por isso que o texto do seletor desabilitado não diz "convide a pessoa".**
+Mandar o dono convidar seria mandá-lo direto para a duplicata — conselho pior
+que silêncio. A tela diz o estado e para aí.
+
+**O que falta decidir (não decidi sozinho):** qual é a régua de ligação. Por
+nome é frágil (dois Joões, grafia diferente). Por telefone é mais firme —
+`professionals.telefone` existe —, mas nem todo profissional tem um. E há a
+pergunta de produto: ao ligar, o histórico vai todo para o profissional antigo,
+ou o novo nasce zerado? Exige mexer no `accept-invite` (edge function, deploy
+pela CLI, fora do pipeline da Vercel) e um pgTAP novo.
+
+**Risco de agora:** ele está prestes a mostrar o sistema para clientes com os
+quatro barbeiros sem login. Se tentar dar acesso a um deles durante uma demo,
+vai aparecer um barbeiro repetido na tela.

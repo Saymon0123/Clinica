@@ -719,7 +719,22 @@ export function EquipePage() {
           </div>
         )}
 
-        {membros.map((m) => (
+        {membros.map((m) => {
+          /**
+           * O vínculo em `user_salons` é o que dá ACESSO ao sistema; o
+           * `professionals` é o que dá cadeira na agenda. São coisas separadas,
+           * e uma pessoa pode ter a segunda sem a primeira.
+           *
+           * Calculado UMA vez, de propósito: antes a tarja olhava `!m.user_id`
+           * e o seletor olhava `!vinculo`, dois critérios diferentes para a
+           * mesma pergunta. `tirar_da_equipe` apaga o vínculo e **não** limpa
+           * `professionals.user_id` — então quem foi tirado da equipe ficava
+           * sem tarja nenhuma E sem seletor, e se o dono o reativasse no botão
+           * de ligar a linha voltava com aparência perfeitamente normal. Um
+           * critério só: tem vínculo ou não tem.
+           */
+          const vinculo = m.user_id ? (vinculos.find((v) => v.user_id === m.user_id) ?? null) : null
+          return (
           <div key={m.id} className="flex items-center justify-between gap-3 p-4">
             <div className="flex items-center gap-3 min-w-0">
               <span className="flex items-center justify-center w-9 h-9 rounded-full bg-primary-soft text-primary-soft-foreground font-semibold text-sm shrink-0">
@@ -733,7 +748,9 @@ export function EquipePage() {
                       <Badge variante="neutro">Inativo</Badge>
                     </span>
                   )}
-                  {!m.user_id && (
+                  {/* `!vinculo`, e não `!m.user_id`: quem foi tirado da equipe
+                      continua com `user_id` gravado e não tem acesso nenhum. */}
+                  {!vinculo && (
                     <span className="ml-2 inline-flex align-middle">
                       <Badge variante="atencao">Sem acesso</Badge>
                     </span>
@@ -777,9 +794,10 @@ export function EquipePage() {
                 ) : (
                   <div className="text-xs text-muted-foreground">
                     {(() => {
-                      const vinculo = m.user_id ? vinculos.find((v) => v.user_id === m.user_id) : null
                       const partes = [
-                        vinculo ? LABEL_PAPEL[vinculo.role] : null,
+                        // Sem vínculo a linha não dizia palavra sobre função:
+                        // só a comissão, como se o papel fosse óbvio. Não é.
+                        vinculo ? LABEL_PAPEL[vinculo.role] : 'Só atende na agenda, sem login',
                         m.comissao_percentual
                           ? `Comissão ${Number(m.comissao_percentual).toFixed(0)}%`
                           : 'Sem comissão definida',
@@ -810,10 +828,34 @@ export function EquipePage() {
 
             <div className="flex items-center gap-1 shrink-0">
               {(() => {
-                const vinculo = m.user_id ? vinculos.find((v) => v.user_id === m.user_id) : null
                 // Só o dono promove e rebaixa — gerente vê a função como texto.
                 // Dono DESTA unidade (passo 4.3): é o que definir_papel_do_membro exige.
-                if (!ehDonoDesta || !vinculo) return null
+                if (!ehDonoDesta) return null
+
+                // Sem vínculo, o seletor SUMIA. Dois motivos muito diferentes
+                // caíam no mesmo `return null` — "não é da sua conta" e "não há
+                // quem promover" —, e o dono não tinha como distinguir um
+                // seletor que nunca existiu de um que desapareceu. Agora ele
+                // aparece desabilitado: a coluna não dança de linha em linha, e
+                // a palavra "Sem acesso" liga o seletor morto à tarja do nome.
+                //
+                // Sem convite aqui, de propósito: `accept-invite` INSERE um
+                // profissional novo em vez de ligar ao que já existe, então
+                // "convide a pessoa" criaria um segundo barbeiro com o mesmo
+                // nome. A tela diz o estado, não um conselho que daria errado.
+                if (!vinculo) {
+                  return (
+                    <select
+                      disabled
+                      value="sem"
+                      aria-label={`${m.nome} não tem acesso ao sistema, então não há função a definir`}
+                      className="border border-border bg-surface-2 text-muted-foreground rounded-lg px-2 py-1 text-xs opacity-60"
+                    >
+                      <option value="sem">Sem acesso</option>
+                    </select>
+                  )
+                }
+
                 return (
                   <select
                     value={vinculo.role}
@@ -863,14 +905,9 @@ export function EquipePage() {
               {/* Desativar tira da agenda; TIRAR DA EQUIPE tira o acesso. Eram a
                   mesma coisa na cabeça do dono e não eram no sistema: o
                   desativado continuava entrando e lendo clientes. */}
-              {m.user_id && vinculos.some((v) => v.user_id === m.user_id) && (
+              {vinculo && (
                 <button
-                  onClick={() =>
-                    setTirandoDaEquipe({
-                      vinculo: vinculos.find((v) => v.user_id === m.user_id)!.id,
-                      nome: m.nome,
-                    })
-                  }
+                  onClick={() => setTirandoDaEquipe({ vinculo: vinculo.id, nome: m.nome })}
                   aria-label={`Tirar ${m.nome} da equipe`}
                   className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-md text-danger hover:bg-surface-2"
                 >
@@ -880,7 +917,8 @@ export function EquipePage() {
               )}
             </div>
           </div>
-        ))}
+          )
+        })}
 
         {!loading && membros.length === 0 && (
           <EstadoVazio icone={Users} titulo="Nenhum barbeiro cadastrado ainda." />

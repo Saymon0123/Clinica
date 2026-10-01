@@ -42,7 +42,11 @@ que parece nova já tem vizinha, e vale procurar antes de inventar.
   onboarding, ativacao, feedback, notificacoes, recursos, tour, ajuda, legal,
   site, whatsappWeb, auth, adminTool.
 - **Comandos**: `npm run typecheck`, `npm run lint` (oxlint), `npm test`
-  (vitest), `npm run test:db` (pgTAP).
+  (vitest), `npm run test:db` (pgTAP). **Mexeu em edge function?** O CI roda
+  `deno check --node-modules-dir=none supabase/functions/*/index.ts`, que o
+  `npm run typecheck` **não** cobre — em 01/10 um `string | null` passou verde
+  aqui e reprovou lá. Sem `deno` instalado, essa checagem só existe no CI, e
+  dizer "typecheck limpo" sem ela é dizer metade.
 - **Segredos** ficam em `~/.clubcut/` (fora do repositório). Nunca colar chave,
   token ou senha em arquivo versionado, em comando ou no chat.
 

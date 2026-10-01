@@ -278,7 +278,37 @@ Deno.serve(comSentry('accept-invite', async (req: Request, ctx) => {
        * `(professional_id, salon_id)`, no banco. Aqui resta a parte que FK não
        * expressa: ela ainda tem de estar sem login.
        */
-      let profissionalId: string | null = null
+      /**
+       * A ficha do caminho "pessoa nova", como função que DEVOLVE o id.
+       *
+       * Escrita assim, e não como um `let` preenchido em dois ramos, porque o id
+       * precisa ser `const` daqui para baixo: um `let string | null` perde a
+       * narrowing dentro das closures que vêm a seguir, e o `deno check` do CI
+       * reclamava em `jornadaDoHorario(..., profissionalId)` — com razão, porque
+       * o tipo realmente admitia nulo.
+       */
+      async function inserirProfissional(): Promise<string> {
+        const { data: profissional, error: profissionalError } = await admin
+          .from('professionals')
+          .insert({
+            salon_id: convite.salon_id,
+            user_id: userId,
+            nome: nomeFinal,
+            ativo: true,
+            comissao_percentual: convite.comissao_percentual,
+            // O do dono vai também na ficha dele: é por ela que o aviso de fim
+            // de teste o encontra (`vencimentos_proximos`).
+            ...(convite.role === 'owner' && telefoneInformado ? { telefone: telefoneInformado } : {}),
+          })
+          .select('id')
+          .single()
+        if (profissionalError || !profissional) {
+          throw profissionalError ?? new Error('Falha no profissional.')
+        }
+        return profissional.id
+      }
+
+      let cadeiraLigada: string | null = null
 
       if (convite.professional_id) {
         const { data: alvo, error: alvoError } = await admin
@@ -289,10 +319,11 @@ Deno.serve(comSentry('accept-invite', async (req: Request, ctx) => {
           .maybeSingle()
         if (alvoError) throw alvoError
 
-        // Cadeira que sumiu entre o convite e o aceite: a FK anula a referência
-        // quando o profissional é apagado, mas a linha do convite já estava
-        // carregada. Cai no caminho de pessoa nova em vez de travar quem está no
-        // meio do cadastro — ele não tem culpa de o dono ter apagado a cadeira.
+        // `alvo` nulo = cadeira apagada entre a criação do convite e o aceite.
+        // A FK anula a referência quando o profissional é removido, mas a linha
+        // do convite já estava carregada em memória. Nesse caso tudo abaixo é
+        // pulado e cai no caminho de pessoa nova — travar quem está no meio do
+        // cadastro seria cobrar dele o dono ter apagado a cadeira.
         if (alvo && alvo.user_id) {
           // O índice parcial impede DOIS convites em aberto na mesma cadeira,
           // mas não impede que a cadeira ganhe login por outro caminho entre a
@@ -327,30 +358,13 @@ Deno.serve(comSentry('accept-invite', async (req: Request, ctx) => {
             })
             .eq('id', alvo.id)
           if (ligaError) throw ligaError
-          profissionalId = alvo.id
+          cadeiraLigada = alvo.id
         }
       }
 
-      if (!profissionalId) {
-        const { data: profissional, error: profissionalError } = await admin
-          .from('professionals')
-          .insert({
-            salon_id: convite.salon_id,
-            user_id: userId,
-            nome: nomeFinal,
-            ativo: true,
-            comissao_percentual: convite.comissao_percentual,
-            // O do dono vai também na ficha dele: é por ela que o aviso de fim
-            // de teste o encontra (`vencimentos_proximos`).
-            ...(convite.role === 'owner' && telefoneInformado ? { telefone: telefoneInformado } : {}),
-          })
-          .select('id')
-          .single()
-        if (profissionalError || !profissional) {
-          throw profissionalError ?? new Error('Falha no profissional.')
-        }
-        profissionalId = profissional.id
-      }
+      // Ou ligamos a cadeira que o dono escolheu, ou criamos a ficha. `const`,
+      // e sem nulo: daqui para baixo o id é um só e não muda.
+      const profissionalId: string = cadeiraLigada ?? (await inserirProfissional())
 
       // Sem vínculo com os serviços ele não apareceria como executante na
       // agenda. Entra fazendo tudo; o gestor ajusta depois na aba Equipe.

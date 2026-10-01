@@ -279,36 +279,27 @@ Deno.serve(comSentry('accept-invite', async (req: Request, ctx) => {
        * expressa: ela ainda tem de estar sem login.
        */
       /**
-       * A ficha do caminho "pessoa nova", como função que DEVOLVE o id.
+       * A ficha do profissional: a que o dono escolheu, ou uma nova.
        *
-       * Escrita assim, e não como um `let` preenchido em dois ramos, porque o id
-       * precisa ser `const` daqui para baixo: um `let string | null` perde a
-       * narrowing dentro das closures que vêm a seguir, e o `deno check` do CI
-       * reclamava em `jornadaDoHorario(..., profissionalId)` — com razão, porque
-       * o tipo realmente admitia nulo.
+       * Declarada `string`, com vazio no lugar de `null`, e não por preguiça:
+       * assim **não existe estreitamento a fazer**, e por isso não existe
+       * estreitamento a perder. As três tentativas anteriores estão escritas
+       * aqui porque o `deno check` do CI pegou todas, e a próxima pessoa não
+       * precisa repetir:
+       *
+       * - `let id: string | null` lido direto lá embaixo: o TS abandona o
+       *   estreitamento de variável lida dentro de closure, e os serviços a leem
+       *   num `map`. Ficava `string | null`.
+       * - Extrair o insert para `function inserirProfissional()`: dentro de
+       *   função declarada o TS abandona também o estreitamento de `convite`,
+       *   que voltou a ser possivelmente nulo. Três erros no lugar de um.
+       * - `let id: string | null` com `const` no fim: o `data.id` do PostgREST
+       *   chega como `any` (este projeto não gera os tipos do banco), e atribuir
+       *   `any` não estreita nada — continuava `string | null`.
+       *
+       * Vazio é sentinela segura porque o id é um uuid: ele nunca é ''.
        */
-      async function inserirProfissional(): Promise<string> {
-        const { data: profissional, error: profissionalError } = await admin
-          .from('professionals')
-          .insert({
-            salon_id: convite.salon_id,
-            user_id: userId,
-            nome: nomeFinal,
-            ativo: true,
-            comissao_percentual: convite.comissao_percentual,
-            // O do dono vai também na ficha dele: é por ela que o aviso de fim
-            // de teste o encontra (`vencimentos_proximos`).
-            ...(convite.role === 'owner' && telefoneInformado ? { telefone: telefoneInformado } : {}),
-          })
-          .select('id')
-          .single()
-        if (profissionalError || !profissional) {
-          throw profissionalError ?? new Error('Falha no profissional.')
-        }
-        return profissional.id
-      }
-
-      let cadeiraLigada: string | null = null
+      let fichaDoProfissional = ''
 
       if (convite.professional_id) {
         const { data: alvo, error: alvoError } = await admin
@@ -358,13 +349,34 @@ Deno.serve(comSentry('accept-invite', async (req: Request, ctx) => {
             })
             .eq('id', alvo.id)
           if (ligaError) throw ligaError
-          cadeiraLigada = alvo.id
+          fichaDoProfissional = alvo.id
         }
       }
 
-      // Ou ligamos a cadeira que o dono escolheu, ou criamos a ficha. `const`,
-      // e sem nulo: daqui para baixo o id é um só e não muda.
-      const profissionalId: string = cadeiraLigada ?? (await inserirProfissional())
+      if (!fichaDoProfissional) {
+        const { data: criada, error: erroDaFicha } = await admin
+          .from('professionals')
+          .insert({
+            salon_id: convite.salon_id,
+            user_id: userId,
+            nome: nomeFinal,
+            ativo: true,
+            comissao_percentual: convite.comissao_percentual,
+            // O do dono vai também na ficha dele: é por ela que o aviso de fim
+            // de teste o encontra (`vencimentos_proximos`).
+            ...(convite.role === 'owner' && telefoneInformado ? { telefone: telefoneInformado } : {}),
+          })
+          .select('id')
+          .single()
+        if (erroDaFicha || !criada) {
+          throw erroDaFicha ?? new Error('Falha no profissional.')
+        }
+        fichaDoProfissional = criada.id
+      }
+
+      // Daqui para baixo o id é um só e não muda. É este `const` que sobrevive
+      // às closures de serviços e jornada logo abaixo.
+      const profissionalId = fichaDoProfissional
 
       // Sem vínculo com os serviços ele não apareceria como executante na
       // agenda. Entra fazendo tudo; o gestor ajusta depois na aba Equipe.

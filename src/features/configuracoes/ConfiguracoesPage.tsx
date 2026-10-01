@@ -48,6 +48,8 @@ export function ConfiguracoesPage() {
   // Minutos livres exigidos antes e depois de cada atendimento. Zero mantem o
   // comportamento antigo, colado.
   const [folga, setFolga] = useState('0')
+  // Vazio = o dono não definiu, e a faixa de aviso do Financeiro não aparece.
+  const [diaFechamento, setDiaFechamento] = useState('')
   const [horario, setHorario] = useState<DiaSemana[]>([])
   const [carregando, setCarregando] = useState(true)
   const [salvando, setSalvando] = useState(false)
@@ -64,7 +66,7 @@ export function ConfiguracoesPage() {
     const { data, error } = await supabase
       .from('salons')
       .select(
-        'nome, endereco, telefone, google_review_url, horario_funcionamento, folga_entre_atendimentos_minutos',
+        'nome, endereco, telefone, google_review_url, horario_funcionamento, folga_entre_atendimentos_minutos, dia_fechamento_comissao',
       )
       .eq('id', salonId)
       .maybeSingle()
@@ -82,6 +84,7 @@ export function ConfiguracoesPage() {
     setTelefone(data.telefone ?? '')
     setGoogleReviewUrl(data.google_review_url ?? '')
     setFolga(String(data.folga_entre_atendimentos_minutos ?? 0))
+    setDiaFechamento(data.dia_fechamento_comissao == null ? '' : String(data.dia_fechamento_comissao))
     setHorario(desserializarHorario(data.horario_funcionamento))
     setCarregando(false)
   }, [salonId])
@@ -148,6 +151,10 @@ export function ConfiguracoesPage() {
         telefone: telefone.trim(),
         google_review_url: googleReviewUrl.trim() || null,
         folga_entre_atendimentos_minutos: Math.min(60, Math.max(0, Number(folga) || 0)),
+        // Campo em branco volta a ser NULO, e não zero: zero não é dia do
+        // mês nenhum, e o CHECK do banco recusaria.
+        dia_fechamento_comissao:
+          diaFechamento.trim() === '' ? null : Math.min(31, Math.max(1, Number(diaFechamento) || 1)),
         horario_funcionamento: serializarHorario(horario),
       })
       .eq('id', salonId)
@@ -290,6 +297,37 @@ export function ConfiguracoesPage() {
               Tempo livre exigido antes e depois de cada horário, para limpar a cadeira e receber o
               próximo. Vale para todos os serviços. <strong>Zero</strong> encaixa um cliente colado
               no outro — cabe mais gente no dia, mas qualquer atraso empurra o resto.
+            </p>
+          </div>
+
+          {/* Dinheiro, não horário — mas mora aqui porque Configurações é onde o
+              dono define as réguas da casa. */}
+          <div className="border-b border-border pb-4">
+            <label className="block text-sm text-muted-foreground mb-1" htmlFor="diaFechamento">
+              Dia de fechar a comissão
+            </label>
+            <div className="flex items-center gap-2">
+              <div className="w-24">
+                <Input
+                  id="diaFechamento"
+                  type="number"
+                  min={1}
+                  max={31}
+                  placeholder="—"
+                  value={diaFechamento}
+                  onChange={(e) => {
+                    setDiaFechamento(e.target.value)
+                    setSalvo(false)
+                  }}
+                />
+              </div>
+              <span className="text-sm text-muted-foreground">de cada mês</span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Chegado o dia, o Financeiro mostra um aviso com quanto cada barbeiro tem para receber
+              — só do trabalho feito <strong>até essa data</strong>, nunca do que ainda vai entrar no
+              próximo fechamento. Quem escolhe <strong>31</strong> fecha no dia 28 em fevereiro.
+              Em branco, nenhum aviso aparece.
             </p>
           </div>
 

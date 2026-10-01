@@ -96,6 +96,10 @@ const GATES: Record<string, string[]> = {
     // de ter passado o dia parado.
     'error ? null : <TaxasSection',
     '!isManager || error ? null : <ComposicaoSection',
+    // A faixa de comissao a pagar fala de DINHEIRO com data. Sob erro de carga
+    // ela some: numero de dinheiro com a rede caida e a mentira que este
+    // arquivo inteiro existe para impedir.
+    'isManager && salonId && !error && ('
   ],
   '../features/rede/RedePage.tsx': ["erro ? '—' : moeda(totalFaturamento)", 'erroProducao ? ('],
   '../features/assinatura/CobrancaDaRede.tsx': ['erroDeCarga ? ('],

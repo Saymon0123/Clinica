@@ -28,6 +28,7 @@ import { RadialGoal } from '../../components/RadialGoal'
 import { PageHeader } from '../../components/PageHeader'
 import { VendasSection } from '../vendas/VendasSection'
 import { FechamentoComissaoModal } from './FechamentoComissaoModal'
+import { AvisoDeComissao } from './AvisoDeComissao'
 import { CaixaSection } from './CaixaSection'
 import type { SalePrefill } from '../vendas/NewSaleModal'
 import {
@@ -361,6 +362,21 @@ export function FinanceiroPage() {
         </div>
         </>}
       />
+
+      {/* Chegou o dia de pagar a comissão. ACIMA DAS ABAS de propósito: é
+          dinheiro com data, e a pessoa não deve ter de escolher uma aba para
+          descobrir que está devendo.
+
+          Só gestor: o barbeiro já vê a comissão dele nos cartões, e dizer a ele
+          "você tem R$ X para receber" numa faixa de alerta é decisão de negócio
+          do dono, não efeito colateral desta tela.
+
+          Sob erro de carga não aparece — ela fala de dinheiro, e número de
+          dinheiro com a rede caída é a mentira que o ErroDeCarga existe para
+          impedir. */}
+      {isManager && salonId && !error && (
+        <AvisoDeComissao salonId={salonId} aoAbrirFechamento={() => setFechamentoAberto(true)} />
+      )}
 
       {/* Abas: visão geral e vendas */}
       <div className="flex gap-1 border-b border-border">

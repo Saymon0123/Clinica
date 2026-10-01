@@ -5654,3 +5654,51 @@ Registrados porque custaram investigação:
   fictícias não têm conta. Some em SILÊNCIO, que é o mesmo defeito dos itens 8
   e 10: deveria aparecer desabilitado dizendo "só depois que ele aceitar o
   convite". **Em aberto.**
+
+## Item 3 — o dia de fechar a comissão (2026-09-30, migration 0186)
+
+Pedido do dono: poder definir um dia de fechamento da comissão, e o Financeiro
+avisar que chegou a hora de pagar.
+
+O modal de fechamento (`FechamentoComissaoModal`) **já existia e funcionava** —
+faltava alguém avisar. O ciclo dependia de o dono lembrar sozinho, e barbeiro
+cobrando comissão atrasada é a conversa mais azeda que existe numa barbearia.
+
+### A régua que precisava estar certa porque é dinheiro
+
+Com fechamento no dia 5 e hoje dia 20, a comissão do atendimento do dia 10
+**não está atrasada** — ela pertence ao próximo fechamento. Somá-la no aviso
+faria o dono pagar adiantado ou, pior, desconfiar do número e parar de confiar
+na tela.
+
+Então a view `comissoes_a_pagar` conta apenas trabalho feito **até o fechamento
+vigente** — a ocorrência mais recente do dia escolhido, deste mês se o dia já
+passou, do anterior se ainda não chegou. Provado com os dados da amostra: de
+R$ 14.246,75 não pagos, a faixa mostra **R$ 4.798,75**; os R$ 9.448 restantes
+são trabalho posterior a 05/09 e ficam para o próximo ciclo.
+
+### Por que a data é parâmetro, e não `now()` dentro da view
+
+`private.fechamento_vigente(dia, hoje)` existe para o pgTAP **testar fevereiro
+e a virada de ano sem viajar no tempo**. Expressão enterrada numa view que lê
+`now()` só se testa no dia em que o calendário colabora. São 7 das 12 asserções.
+
+O dia aceita 1 a 31 e é **aparado pelo último dia do mês**: quem escolhe 31
+fecha dia 28 em fevereiro. Travar o campo em 28 seria mais simples e mentiria
+para quem fecha no último dia do mês.
+
+### A faixa
+
+Mostra **quanto e para quem** — "Comissão fechada em 05/09: R$ 4.798,75 a pagar"
+e, embaixo, nome e valor de cada barbeiro. Ponto vermelho sem número obrigaria
+a abrir o modal só para descobrir se é urgente.
+
+Fica **acima das abas**: é dinheiro com data, e a pessoa não deve ter de escolher
+uma aba para descobrir que está devendo. **Só gestor** — o barbeiro já vê a
+comissão dele nos cartões, e dizer a ele "você tem R$ X para receber" numa faixa
+de alerta é decisão de negócio do dono, não efeito colateral desta tela. **Sob
+erro de carga some**, com o gate no tripwire do `ErroDeCarga` e provado por
+reversão.
+
+**Peças:** CRM (campo em Configurações + faixa no Financeiro) e Supabase (0186).
+Vercel e n8n: nada.

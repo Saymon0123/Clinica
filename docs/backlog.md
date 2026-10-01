@@ -5912,3 +5912,86 @@ pela CLI, fora do pipeline da Vercel) e um pgTAP novo.
 **Risco de agora:** ele está prestes a mostrar o sistema para clientes com os
 quatro barbeiros sem login. Se tentar dar acesso a um deles durante uma demo,
 vai aparecer um barbeiro repetido na tela.
+
+
+---
+
+## O barbeiro duplicado: o convite liga à cadeira que já existe (2026-10-01, migration 0191)
+
+Achado ao consertar o item 6. `accept-invite` fazia **`insert`** em
+`professionals`, sempre. Barbeiro que já ocupa cadeira sem login — ele atende,
+aparece na agenda, é oferecido pelo agente no WhatsApp, e nunca abre o CRM — ao
+receber acesso virava um **segundo** profissional:
+
+> O dono tem "João" na agenda. Convida João por e-mail. João aceita. **Dois
+> "João" na Equipe e duas cadeiras na agenda:** a antiga com todo o histórico,
+> comissão e horários; a nova vazia com o login.
+
+### A régua, que era a decisão em aberto
+
+**Escolha explícita do dono no convite**, não casamento automático. Um campo novo
+no modal — *"Essa pessoa já está na agenda?"* — e `salon_invites.professional_id`.
+
+Por que não adivinhar:
+
+- **Por nome** erra com dois Joões e com grafia diferente.
+- **Por telefone** parece firme, mas nem todo profissional tem telefone, e número
+  reaproveitado ligaria a pessoa errada.
+
+E **ligação errada é pior que duplicata**: ela entrega o histórico, a comissão e a
+agenda de alguém para outra pessoa. Duplicata o dono vê e conserta; ligação errada
+ele não vê. Quem sabe se o "João" da agenda é o do `joao@gmail.com` é ele, e ele
+já está olhando a lista quando cria o convite.
+
+### As três travas, todas no banco
+
+| Trava | O que impede |
+|---|---|
+| **FK composta** `(professional_id, salon_id) → (id, salon_id)` | apontar o convite para a cadeira de **outra barbearia** |
+| **Índice único parcial** (`professional_id is not null and usado_em is null`) | dois convites **em aberto** disputando a mesma cadeira. O convite usado sai do índice: a cadeira precisa poder ser religada depois |
+| **`on delete set null (professional_id)`** | o delete falhar. Sem o **recorte de coluna** o Postgres tentaria anular `salon_id`, que é `not null`, e o dono não conseguiria apagar um barbeiro com convite. Recorte existe desde o PG 15; o banco é 17.6, conferido |
+
+### O que quase virou destruição de dados
+
+O `catch` do `accept-invite` faz `delete from professionals`. Isso era seguro
+enquanto o profissional era sempre recém-inserido. Com a ligação, uma falha
+transitória apagaria a cadeira de uma **pessoa real** — e
+`appointments.professional_id` e `commissions.professional_id` são
+**`on delete cascade`**: iria embora o histórico inteiro dela.
+
+O rollback agora **desliga** (`user_id = null`, `ativo` de volta ao que era) em
+vez de apagar, e isso vale também no caminho do `deleteUser`, senão a linha
+ficaria apontando para um login apagado.
+
+Dois cuidados do mesmo tipo: na cadeira ligada, os serviços entram **só os que
+faltam** (`professional_services` tem `UNIQUE (professional_id, service_id)` —
+conferido; reinserir levantaria 23505 e derrubaria o aceite no catch) e a jornada
+só é derivada **se ela não tiver nenhuma**, senão o expediente real de quem já
+trabalha seria sobrescrito pelo horário da barbearia.
+
+### Dois falsos alarmes meus, para registro
+
+- **"anon lê todos os tokens de convite"** — ERRADO, e eu quase reportei. Vi
+  `qual: true` para `{anon,authenticated}` e SELECT de tabela e deduzi. A policy é
+  **RESTRICTIVE**: ela não concede nada, só proíbe `role = 'owner'` na escrita. A
+  única PERMISSIVE exige `is_manager(salon_id)`. Provado com `set role anon`:
+  **zero linha**.
+- **"o grant de SELECT da coluna nova precisa entrar"** — não precisava: nesta
+  tabela o SELECT é de tabela. Só o INSERT é por coluna, e esse sim era
+  obrigatório.
+
+### O que NÃO foi provado
+
+**Não testei o aceite ponta a ponta.** Aceitar um convite cria conta e digita
+senha, e isso eu não faço. O que ficou provado:
+
+- a função no ar responde HTTP 200 lendo o convite com a coluna nova (ação
+  `check`, que não cria nada) — convite de prova criado e apagado;
+- o **efeito no banco** do caminho da ligação, ensaiado em produção com a cadeira
+  real do Diego Matos: **4 profissionais e não 5**, 528 agendamentos, 7 jornadas e
+  8 serviços intactos, e desligar não custou nada;
+- as três travas, por pgTAP 7/7 contra produção.
+
+**Falta a prova humana:** criar um convite ligado a um dos quatro barbeiros,
+aceitar, e conferir que a Equipe segue com quatro pessoas e que a cadeira passou a
+ter função. É o teste de dois minutos que só o dono pode fazer.

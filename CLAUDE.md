@@ -90,16 +90,27 @@ Quatro armadilhas que já custaram tempo aqui:
 - **Fixture de teste usa o relógio de São Paulo**
   (`(now() at time zone 'America/Sao_Paulo')::date`), nunca `current_date`: o
   runner do CI vive em UTC, e o teste passava de dia e quebrava de madrugada.
-- **Coluna nova em `salons` não herda o `UPDATE`.** A tabela não dá UPDATE de
-  tabela para `authenticated`: dá **por coluna**, numa lista branca — é o que
-  impede o dono de mexer em `ativo`, `cobravel` e `organization_id`. E
-  `add column` não estende grant por coluna. Como Configurações manda **um
-  `update` só** com todos os campos, uma coluna sem privilégio derruba a tela
-  inteira: em 30/09 o dono não conseguia salvar o horário de funcionamento por
-  causa de um campo de comissão que ele nem tinha tocado. Toda coluna nova que
-  a tela escreva precisa do `grant update (...)` na mesma migration — e o
-  `o_dono_salva_as_configuracoes.test.sql` guarda isso escrevendo o payload
-  inteiro de uma vez.
+- **Coluna nova não herda grant POR COLUNA.** Antes de acrescentar coluna que a
+  tela escreva, conferir se o privilégio daquela tabela é de tabela ou por
+  coluna — e **qual** privilégio, porque varia na mesma tabela:
+
+  ```sql
+  select privilege_type, string_agg(column_name, ', ' order by column_name)
+    from information_schema.column_privileges
+   where table_schema='public' and table_name='<tabela>' and grantee='authenticated'
+   group by privilege_type;
+  ```
+
+  Duas já morderam: `salons` dá **UPDATE por coluna** (lista branca que impede o
+  dono de mexer em `ativo`, `cobravel`, `organization_id`) e `salon_invites` dá
+  **INSERT por coluna** (`salon_id, nome, email, role, comissao_percentual`),
+  com o SELECT de tabela. Como a tela manda **uma instrução só** com todos os
+  campos, uma coluna sem privilégio derruba a tela inteira: em 30/09 o dono não
+  salvava o horário de funcionamento por causa de um campo de comissão que ele
+  nem tinha tocado. O `grant` vai na **mesma migration** da coluna, e o teste
+  guarda escrevendo o payload inteiro de uma vez
+  (`o_dono_salva_as_configuracoes.test.sql`,
+  `o_convite_liga_ao_barbeiro_que_ja_existe.test.sql`).
 
 E no CRM: `new Date('YYYY-MM-DD')` é UTC e volta um dia no Brasil — data sem
 hora se parseia **por partes**.

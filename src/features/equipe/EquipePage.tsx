@@ -468,6 +468,17 @@ export function EquipePage() {
     )
   }
 
+  /**
+   * Quem já ocupa cadeira na agenda e NÃO tem acesso ao sistema.
+   *
+   * É a lista que o convite oferece para LIGAR, em vez de criar um barbeiro
+   * repetido (0191). Mesmo critério da tarja "Sem acesso" da linha: tem vínculo
+   * em `user_salons` ou não tem.
+   */
+  const semAcesso = membros.filter(
+    (m) => !m.user_id || !vinculos.some((v) => v.user_id === m.user_id),
+  )
+
   if (!isManager) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -839,16 +850,18 @@ export function EquipePage() {
                 // aparece desabilitado: a coluna não dança de linha em linha, e
                 // a palavra "Sem acesso" liga o seletor morto à tarja do nome.
                 //
-                // Sem convite aqui, de propósito: `accept-invite` INSERE um
-                // profissional novo em vez de ligar ao que já existe, então
-                // "convide a pessoa" criaria um segundo barbeiro com o mesmo
-                // nome. A tela diz o estado, não um conselho que daria errado.
+                // Dar acesso a ele é possível desde a 0191: o convite tem o
+                // campo "essa pessoa já está na agenda?", que LIGA o login à
+                // ficha existente em vez de criar um segundo barbeiro de mesmo
+                // nome. A instrução não vem escrita aqui porque o modal faz a
+                // pergunta na hora certa, e repeti-la em toda linha da equipe
+                // seria ruído em cima de quem nunca vai precisar dela.
                 if (!vinculo) {
                   return (
                     <select
                       disabled
                       value="sem"
-                      aria-label={`${m.nome} não tem acesso ao sistema, então não há função a definir`}
+                      aria-label={`${m.nome} não tem acesso ao sistema, então não há função a definir. Para dar acesso, use Convidar e ligue o convite a ele.`}
                       className="border border-border bg-surface-2 text-muted-foreground rounded-lg px-2 py-1 text-xs opacity-60"
                     >
                       <option value="sem">Sem acesso</option>
@@ -949,6 +962,7 @@ export function EquipePage() {
       {modalAberto && salonId && (
         <ConviteModal
           salonId={salonId}
+          semAcesso={semAcesso}
           onClose={() => setModalAberto(false)}
           onCriado={carregar}
         />
@@ -1030,10 +1044,13 @@ export function EquipePage() {
 
 function ConviteModal({
   salonId,
+  semAcesso,
   onClose,
   onCriado,
 }: {
   salonId: string
+  /** Quem já ocupa cadeira na agenda sem acesso: candidatos a LIGAR (0191). */
+  semAcesso: Membro[]
   onClose: () => void
   onCriado: () => void
 }) {
@@ -1041,6 +1058,17 @@ function ConviteModal({
   const [email, setEmail] = useState('')
   const [comissao, setComissao] = useState('50')
   const [papel, setPapel] = useState<'barbeiro' | 'gerente'>('barbeiro')
+  /**
+   * A cadeira que este convite LIGA, ou vazio para pessoa nova.
+   *
+   * Sem isto, dar acesso a um barbeiro que já estava na agenda criava um
+   * SEGUNDO profissional com o mesmo nome: o antigo com todo o histórico,
+   * comissão e horários, e o novo vazio com o login. A escolha é do dono porque
+   * só ele sabe se o "João" da agenda é o do `joao@gmail.com` — casar por nome
+   * ou telefone erraria, e ligação errada entrega o histórico de alguém para
+   * outra pessoa.
+   */
+  const [ligarA, setLigarA] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [link, setLink] = useState<string | null>(null)
@@ -1067,6 +1095,8 @@ function ConviteModal({
         email: email.trim().toLowerCase(),
         role: papel,
         comissao_percentual: comissao ? Number(comissao) : null,
+        // Vazio = pessoa nova, e a edge insere profissional como sempre.
+        professional_id: ligarA || null,
       })
       .select('token')
       .single()
@@ -1079,9 +1109,17 @@ function ConviteModal({
       // migration 0149). É pedido do usuário, não falha do sistema — e "tente
       // novamente" mandaria o dono repetir para sempre o que nunca vai dar
       // certo. O convite aceito não conta: quem saiu pode ser convidado de novo.
+      // 23505 tem DOIS donos nesta tabela agora. O índice do e-mail
+      // (`salon_invites_pendente_unico`, 0149) e o da cadeira
+      // (`salon_invites_profissional_em_aberto_unico`, 0191). Dizer "e-mail
+      // repetido" para quem repetiu a CADEIRA mandaria o dono procurar o
+      // convite errado na lista.
+      const daCadeira = error?.message?.includes('profissional_em_aberto')
       setErro(
         error?.code === '23505'
-          ? 'Já existe um convite em aberto para este e-mail. Apague o convite antigo na lista abaixo para gerar outro.'
+          ? daCadeira
+            ? 'Já existe um convite em aberto ligado a esse barbeiro. Apague o convite antigo na lista abaixo para gerar outro.'
+            : 'Já existe um convite em aberto para este e-mail. Apague o convite antigo na lista abaixo para gerar outro.'
           : 'Não foi possível gerar o convite. Tente novamente.',
       )
       return
@@ -1132,6 +1170,48 @@ function ConviteModal({
           </div>
         ) : (
           <form onSubmit={criar} className="space-y-3">
+            {/* PRIMEIRO campo, antes do nome, e não um detalhe no fim: a
+                resposta aqui muda o que acontece com a agenda inteira da
+                pessoa. Só aparece quando há alguém para ligar — numa barbearia
+                em que todos já têm login, o campo seria enigma sem uso.
+
+                Escolher preenche o nome e a comissão da ficha que já existe,
+                para o dono ver que é a MESMA pessoa e não um cadastro paralelo. */}
+            {semAcesso.length > 0 && (
+              <Campo
+                rotulo="Essa pessoa já está na agenda?"
+                htmlFor="convite-liga"
+                apoio={
+                  ligarA
+                    ? 'O acesso vai para a ficha que já existe: os horários, o histórico e a comissão dela continuam onde estão.'
+                    : 'Escolha o barbeiro se ele já atende aqui sem login. Deixando em "não", um barbeiro novo é criado — e você ficaria com dois de mesmo nome.'
+                }
+              >
+                <Select
+                  id="convite-liga"
+                  value={ligarA}
+                  onChange={(e) => {
+                    const id = e.target.value
+                    setLigarA(id)
+                    const alvo = semAcesso.find((m) => m.id === id)
+                    if (alvo) {
+                      setNome(alvo.nome)
+                      if (alvo.comissao_percentual != null) {
+                        setComissao(String(Number(alvo.comissao_percentual)))
+                      }
+                    }
+                  }}
+                >
+                  <option value="">Não, é alguém novo</option>
+                  {semAcesso.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      Sim, é {m.nome}
+                      {m.ativo ? '' : ' (inativo)'}
+                    </option>
+                  ))}
+                </Select>
+              </Campo>
+            )}
             <Campo rotulo="Nome" htmlFor="convite-nome">
               <Input id="convite-nome" value={nome} onChange={(e) => setNome(e.target.value)} />
             </Campo>

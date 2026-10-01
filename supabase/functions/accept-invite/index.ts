@@ -80,7 +80,7 @@ Deno.serve(comSentry('accept-invite', async (req: Request, ctx) => {
   const { data: convite, error: conviteError } = await admin
     .from('salon_invites')
     .select(
-      'id, salon_id, nome, email, role, comissao_percentual, dias_de_teste, dono_atende, expira_em, usado_em, salons(nome, telefone)',
+      'id, salon_id, nome, email, role, comissao_percentual, dias_de_teste, dono_atende, expira_em, usado_em, professional_id, salons(nome, telefone)',
     )
     .eq('token', token)
     .maybeSingle()
@@ -189,6 +189,17 @@ Deno.serve(comSentry('accept-invite', async (req: Request, ctx) => {
   // já existia — com vínculos em outras barbearias — seria transformar um erro
   // transitório aqui em desastre lá.
   let criadaAgora = false
+  /**
+   * O profissional que JÁ EXISTIA e foi ligado a este login (0191).
+   *
+   * Existe pelo mesmo motivo que `criadaAgora`: o `catch` precisa saber o que
+   * ele pode desfazer. Profissional inserido agora pode ser apagado; profissional
+   * que já existia **não pode** — `appointments` e `commissions` apontam para ele
+   * com `on delete cascade`, então apagá-lo levaria embora o histórico inteiro de
+   * uma pessoa real por causa de uma falha transitória aqui. Nesse caso o catch
+   * desliga a ligação e devolve o `ativo` que havia, sem tocar na linha.
+   */
+  let ligado: { id: string; ativoAntes: boolean } | null = null
 
   try {
     if (idExistente) {
@@ -249,36 +260,147 @@ Deno.serve(comSentry('accept-invite', async (req: Request, ctx) => {
     const viraProfissional = convite.role !== 'owner' || convite.dono_atende !== false
 
     if (viraProfissional) {
-      const { data: profissional, error: profissionalError } = await admin
-        .from('professionals')
-        .insert({
-          salon_id: convite.salon_id,
-          user_id: userId,
-          nome: nomeFinal,
-          ativo: true,
-          comissao_percentual: convite.comissao_percentual,
-          // O do dono vai também na ficha dele: é por ela que o aviso de fim
-          // de teste o encontra (`vencimentos_proximos`).
-          ...(convite.role === 'owner' && telefoneInformado ? { telefone: telefoneInformado } : {}),
-        })
-        .select('id')
-        .single()
-      if (profissionalError || !profissional) {
-        throw profissionalError ?? new Error('Falha no profissional.')
+      /**
+       * Dois caminhos, e a diferença é um barbeiro duplicado (0191).
+       *
+       * Barbeiro que já ocupa cadeira sem login é caso real: ele atende, aparece
+       * na agenda, é oferecido pelo agente no WhatsApp, e nunca abre o CRM. Até
+       * aqui, dar acesso a ele INSERIA um segundo profissional — o dono ficava
+       * com dois "João", o antigo com todo o histórico e o novo vazio com o
+       * login.
+       *
+       * Quando o dono escolheu a cadeira no convite, LIGAMOS. A escolha é dele
+       * e não um casamento por nome ou telefone: ligação errada entrega o
+       * histórico, a comissão e a agenda de alguém para outra pessoa, e isso é
+       * pior que a duplicata — duplicata ele vê, ligação errada não.
+       *
+       * Que a cadeira seja desta barbearia é garantido pela FK COMPOSTA
+       * `(professional_id, salon_id)`, no banco. Aqui resta a parte que FK não
+       * expressa: ela ainda tem de estar sem login.
+       */
+      /**
+       * A ficha do profissional: a que o dono escolheu, ou uma nova.
+       *
+       * Declarada `string`, com vazio no lugar de `null`, e não por preguiça:
+       * assim **não existe estreitamento a fazer**, e por isso não existe
+       * estreitamento a perder. As três tentativas anteriores estão escritas
+       * aqui porque o `deno check` do CI pegou todas, e a próxima pessoa não
+       * precisa repetir:
+       *
+       * - `let id: string | null` lido direto lá embaixo: o TS abandona o
+       *   estreitamento de variável lida dentro de closure, e os serviços a leem
+       *   num `map`. Ficava `string | null`.
+       * - Extrair o insert para `function inserirProfissional()`: dentro de
+       *   função declarada o TS abandona também o estreitamento de `convite`,
+       *   que voltou a ser possivelmente nulo. Três erros no lugar de um.
+       * - `let id: string | null` com `const` no fim: o `data.id` do PostgREST
+       *   chega como `any` (este projeto não gera os tipos do banco), e atribuir
+       *   `any` não estreita nada — continuava `string | null`.
+       *
+       * Vazio é sentinela segura porque o id é um uuid: ele nunca é ''.
+       */
+      let fichaDoProfissional = ''
+
+      if (convite.professional_id) {
+        const { data: alvo, error: alvoError } = await admin
+          .from('professionals')
+          .select('id, ativo, user_id')
+          .eq('id', convite.professional_id)
+          .eq('salon_id', convite.salon_id)
+          .maybeSingle()
+        if (alvoError) throw alvoError
+
+        // `alvo` nulo = cadeira apagada entre a criação do convite e o aceite.
+        // A FK anula a referência quando o profissional é removido, mas a linha
+        // do convite já estava carregada em memória. Nesse caso tudo abaixo é
+        // pulado e cai no caminho de pessoa nova — travar quem está no meio do
+        // cadastro seria cobrar dele o dono ter apagado a cadeira.
+        if (alvo && alvo.user_id) {
+          // O índice parcial impede DOIS convites em aberto na mesma cadeira,
+          // mas não impede que a cadeira ganhe login por outro caminho entre a
+          // criação do convite e o aceite. Recusar é o certo: continuar tomaria
+          // a cadeira de quem já a tem, e inserir criaria a duplicata que esta
+          // migration existe para impedir.
+          return json(
+            {
+              error:
+                'Esse barbeiro já tem acesso ao sistema. Peça ao dono um convite novo, sem ligar a um barbeiro existente.',
+            },
+            409,
+          )
+        }
+
+        if (alvo) {
+          ligado = { id: alvo.id, ativoAntes: alvo.ativo }
+          const { error: ligaError } = await admin
+            .from('professionals')
+            .update({
+              user_id: userId,
+              nome: nomeFinal,
+              // O dono escolheu esta cadeira para dar acesso: deixá-la
+              // desligada seria dar login a quem não aparece na agenda.
+              ativo: true,
+              // A comissão do convite MANDA quando o convite diz algo; quando
+              // não diz, a que já estava na ficha fica. Sobrescrever com nulo
+              // apagaria em silêncio o acordo que já existia com a pessoa.
+              ...(convite.comissao_percentual != null
+                ? { comissao_percentual: convite.comissao_percentual }
+                : {}),
+            })
+            .eq('id', alvo.id)
+          if (ligaError) throw ligaError
+          fichaDoProfissional = alvo.id
+        }
       }
+
+      if (!fichaDoProfissional) {
+        const { data: criada, error: erroDaFicha } = await admin
+          .from('professionals')
+          .insert({
+            salon_id: convite.salon_id,
+            user_id: userId,
+            nome: nomeFinal,
+            ativo: true,
+            comissao_percentual: convite.comissao_percentual,
+            // O do dono vai também na ficha dele: é por ela que o aviso de fim
+            // de teste o encontra (`vencimentos_proximos`).
+            ...(convite.role === 'owner' && telefoneInformado ? { telefone: telefoneInformado } : {}),
+          })
+          .select('id')
+          .single()
+        if (erroDaFicha || !criada) {
+          throw erroDaFicha ?? new Error('Falha no profissional.')
+        }
+        fichaDoProfissional = criada.id
+      }
+
+      // Daqui para baixo o id é um só e não muda. É este `const` que sobrevive
+      // às closures de serviços e jornada logo abaixo.
+      const profissionalId = fichaDoProfissional
 
       // Sem vínculo com os serviços ele não apareceria como executante na
       // agenda. Entra fazendo tudo; o gestor ajusta depois na aba Equipe.
+      //
+      // Na cadeira LIGADA, só os que faltam. Ela pode já ter a lista ajustada
+      // pelo dono, e `professional_services` tem UNIQUE (professional_id,
+      // service_id) — conferido: reinserir levantaria 23505 e derrubaria o
+      // aceite inteiro no catch.
       const { data: servicos } = await admin
         .from('services')
         .select('id')
         .eq('salon_id', convite.salon_id)
         .eq('ativo', true)
 
-      if (servicos?.length) {
+      const { data: jaTem } = ligado
+        ? await admin.from('professional_services').select('service_id').eq('professional_id', profissionalId)
+        : { data: [] as { service_id: string }[] }
+      const tinha = new Set((jaTem ?? []).map((s) => s.service_id))
+      const faltando = (servicos ?? []).filter((s) => !tinha.has(s.id))
+
+      if (faltando.length) {
         await admin
           .from('professional_services')
-          .insert(servicos.map((s) => ({ professional_id: profissional.id, service_id: s.id })))
+          .insert(faltando.map((s) => ({ professional_id: profissionalId, service_id: s.id })))
       }
 
       // Jornada do profissional, derivada do horário da barbearia. Sem ela a
@@ -290,8 +412,20 @@ Deno.serve(comSentry('accept-invite', async (req: Request, ctx) => {
         .eq('id', convite.salon_id)
         .maybeSingle()
 
-      const jornada = jornadaDoHorario(salaoRow?.horario_funcionamento, profissional.id)
-      if (jornada.length) await admin.from('professional_schedules').insert(jornada)
+      // Na cadeira LIGADA, só se ela estiver sem jornada: ela pode ter a dela
+      // ajustada há meses, e derivar outra do horário da barbearia por cima
+      // seria apagar o expediente real de uma pessoa que já trabalha.
+      const { count: jornadasQueTem } = ligado
+        ? await admin
+            .from('professional_schedules')
+            .select('id', { count: 'exact', head: true })
+            .eq('professional_id', profissionalId)
+        : { count: 0 }
+
+      if (!jornadasQueTem) {
+        const jornada = jornadaDoHorario(salaoRow?.horario_funcionamento, profissionalId)
+        if (jornada.length) await admin.from('professional_schedules').insert(jornada)
+      }
     }
 
     // O relógio do teste começa AGORA, no primeiro acesso — não na criação do
@@ -341,13 +475,29 @@ Deno.serve(comSentry('accept-invite', async (req: Request, ctx) => {
   } catch (err) {
     console.error('Erro ao aceitar convite, desfazendo:', err)
     await capturarErro(err, 'accept-invite')
+    // A cadeira LIGADA é desfeita primeiro, e por DESLIGAMENTO, nunca por
+    // delete. `appointments` e `commissions` apontam para `professionals` com
+    // `on delete cascade`: apagar a cadeira de uma pessoa que já trabalhava
+    // levaria embora os horários e as comissões dela. Uma falha transitória
+    // aqui não pode custar o histórico de ninguém.
+    //
+    // Vale para os DOIS caminhos de conta, inclusive o `deleteUser` abaixo:
+    // sem isto, a linha ficaria com `user_id` apontando para um login apagado.
+    if (ligado) {
+      await admin
+        .from('professionals')
+        .update({ user_id: null, ativo: ligado.ativoAntes })
+        .eq('id', ligado.id)
+    }
+
     if (userId && criadaAgora) {
       // Conta nova incompleta: apagar inteira e deixar tentar de novo.
       await admin.auth.admin.deleteUser(userId)
     } else if (userId) {
       // Conta pré-existente: desfazer só o que ESTE aceite criou. A ordem é a
-      // inversa da criação; o profissional leva junto serviços e jornada por
-      // cascata do banco.
+      // inversa da criação; o profissional INSERIDO agora leva junto serviços e
+      // jornada por cascata do banco. O `ligado` já saiu de cena acima, então
+      // este delete nunca o alcança — ele não tem mais `user_id`.
       await admin
         .from('professionals')
         .delete()

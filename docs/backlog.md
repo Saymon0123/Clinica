@@ -6128,7 +6128,8 @@ escolha e dele:
    no numero CENTRAL. A Evolution e outro numero e nao tem como responder aquela
    conversa. O caminho certo e o que o projeto ja faz em `responder_lembrete`:
    resposta livre pelo proprio numero central, dentro da janela de 24h que a
-   mensagem dele abriu, sem template e sem tarifa de template.
+   mensagem dele abriu. **Mas de graca nao e mais** -- ver a secao do 01/10
+   abaixo: mensagem de servico passou a ser cobrada hoje.
 
    E se a conversa precisar do agente, o padrao tambem ja existe:
    `reagendar_central`. O comentario do `whatsapp-webhook` diz com estas
@@ -6161,3 +6162,103 @@ possivel. Medido como `anon`: select devolve 0 linhas, update afeta **0**, inser
 e recusado com 42501, e o corpo do `lembrete_hoje` ficou intacto. Segundo falso
 alarme desta sessao evitado por medir linhas afetadas em vez de concluir de
 "nao deu erro".
+
+
+---
+
+## As mudancas da Meta de 01/10/2026, conferidas na fonte primaria (2026-10-01)
+
+O dono pediu para revisar o que muda em outubro na regra da janela de 24h. Lido
+na pagina oficial de precos (`developers.facebook.com/docs/whatsapp/pricing`,
+**atualizada em 28/09/2026**), nao em BSP nem em blog.
+
+**Isto FECHA a lacuna L17 do `relatorio-tecnico.md`** ("Tarifas Meta
+pos-01/10/2026 no Brasil -- doc baseado em fontes secundarias"). O que estava
+registrado estava certo; agora esta confirmado e completo.
+
+### A regra da janela NAO mudou. O preco mudou.
+
+Palavras da Meta: *"Nao ha alteracao no momento em que a mensagem de servico pode
+ser enviada. Ela ainda pode ser enviada apenas em uma janela de atendimento ao
+cliente de 24 horas que e aberta e redefinida a cada mensagem do usuario."*
+
+O que mudou a partir de **01/10/2026**:
+
+| Mudanca | Antes | Agora |
+|---|---|---|
+| **Mensagem de servico** (texto livre dentro da janela) | gratuita desde 01/11/2024 | **cobrada**, a mesma taxa de utility/auth, por mercado |
+| **Template utility em resposta ao usuario** (dentro da janela) | gratuito desde 01/07/2025 | **cobrado** |
+| **Franquia** | nao existia para servico | **1.000 mensagens de servico entregues/mes, POR NUMERO** |
+
+Detalhes que importam:
+
+- A franquia **nao acumula**: 1.000 em outubro, 1.000 em novembro, o que sobrar
+  morre.
+- Entrega individual consome 1 unidade; envio em grupo consome **1 por
+  destinatario**.
+- O unico tipo de servico que segue gratuito para todos e **mensagem de reacao**,
+  e ela nao conta na franquia.
+- **O Brasil NAO esta nas listas de aumento nem de reducao.** A taxa BRL de
+  utility/auth nao mudou; o que e novo no Brasil e servico passar a custar o mesmo
+  que utility.
+- Os niveis de volume agregam no nivel do **portfolio empresarial**, por par
+  mercado-categoria (Brasil-utility, Brasil-auth...), nao por numero.
+
+### A armadilha que ninguem tinha registrado
+
+> *"Caso voce nao tenha uma forma de pagamento para sua conta do WhatsApp
+> Business, a Meta entregara mensagens de servico dentro do nivel gratuito
+> compartilhado, mas **nao as entregara depois que o nivel gratuito for usado**."*
+
+Isso nao e custo, e **queda de servico**. Passadas as 1.000, as respostas ao
+cliente simplesmente param de ser entregues. Combinado com o Error Workflow que
+nunca funcionou e o SMTP quebrado, para em silencio.
+
+### O que isso faz com o modelo hibrido deste projeto
+
+**A franquia e POR NUMERO, e o projeto usa UM numero central para todas as
+barbearias.** Entao 1.000 mensagens de servico por mes para a plataforma inteira,
+nao por barbearia. O backlog ja previa; a fonte primaria confirma.
+
+E corrige, pela segunda vez, a frase da saida 1 do template `vaga_ja_preenchida`:
+a resposta livre pelo central dentro da janela **nao e mais gratuita**. Primeira
+correcao foi o canal (Evolution -> central); esta e o preco.
+
+O lembrete (`lembrete_hoje`), que e o maior volume, e template utility enviado
+FORA da janela -- ja era cobrado, nao muda nada. Quem muda de lado e o
+`responder_lembrete`: a resposta livre que ele devolve era gratuita e agora conta
+na franquia.
+
+---
+
+## O canal oficial esta BLOQUEADO para enviar (2026-10-01)
+
+Achado ao conferir a conta por causa da mudanca de tarifa, e vale mais que ela.
+`GET /{waba}?fields=health_status` devolve:
+
+```
+can_send_message: BLOCKED
+  WABA     975811062135581 -> AVAILABLE
+  BUSINESS 334664782986386 -> AVAILABLE
+  APP      1054189290929803 -> BLOCKED
+     141011 The App does not have the required permissions to send/receive messages
+     solucao da propria Meta: "Add the WhatsApp Business Messaging to your app."
+```
+
+E o numero central (`+55 41 8475-4172`, "Club Cut", CLOUD_API, qualidade **GREEN**,
+throughput STANDARD) esta com **`code_verification_status: EXPIRED`**.
+
+**Consequencia:** os tres templates da fila, mesmo aprovados, nao enviam. Nem o
+lembrete, nem a avaliacao, nem o aviso de fim de teste. A WABA esta `ACTIVE` e
+`APPROVED` e a qualidade esta verde -- isto nao e punicao, e **configuracao que
+falta no App**.
+
+**Para o dono fazer:** adicionar o produto *WhatsApp Business Messaging* ao App
+1054189290929803 no painel de desenvolvedores, e reverificar o codigo do numero.
+Nao mexi: e configuracao de app e de numero dele, fora do alcance do que foi
+autorizado.
+
+**Por que isso nao apareceu antes:** criar template e operacao de WABA e passou
+sem erro -- os tres foram aceitos. Enviar e operacao de App. Ninguem tentou
+enviar desde que o App perdeu a permissao, e nada no sistema olha o
+`health_status`. O monitor cego que o relatorio tecnico ja apontava.

@@ -6231,7 +6231,59 @@ na franquia.
 
 ---
 
-## O canal oficial esta BLOQUEADO para enviar (2026-10-01)
+## FALSO ALARME: o canal oficial NAO esta bloqueado (2026-10-01)
+
+**A secao abaixo nasceu errada e fica aqui corrigida, nao apagada** -- o erro de
+leitura vale mais guardado que escondido.
+
+Eu li `GET /{waba}?fields=health_status` e reportei o canal como bloqueado. O
+dono respondeu que em teste ele RECEBEU lembrete no numero dele pelo central. Ele
+estava certo.
+
+**O que eu li errado:** o `health_status` e relativo ao **App do token que faz a
+chamada**. O token de `~/.clubcut/meta.env` e SYSTEM_USER do App Club Cut com
+escopos `whatsapp_business_management` e `public_profile` -- **sem**
+`whatsapp_business_messaging`. Conferido em `/debug_token`. Ou seja: o 141011
+descrevia com precisao **o meu token**, que gerencia template e nao envia. Era a
+resposta certa para a pergunta errada. E e provavelmente proposito de quem o
+criou: menor privilegio para um token de catalogo.
+
+**A prova de que envia:** `analytics` da propria WABA, de 01/06 a 01/10 --
+14 mensagens, **100% entregues**, nenhuma falha:
+
+| dia | enviadas | entregues |
+|---|---|---|
+| 22/08 | 2 | 2 |
+| 23/08 | 8 | 8 |
+| 10, 11, 13/09 | 1 cada | 1 cada |
+| **16/09** | 1 | 1 |
+
+**Por que silencio desde 17/09:** o fluxo `CRM Salao - Lembretes de Agendamento`
+esta ATIVO, roda a cada 10 min, 1.318 execucoes todas `success` e cada uma dura
+~80ms -- o tempo de consultar, nao achar nada e sair. Nao ha o que enviar.
+
+**E nao vai achar: isso fui eu.** Os 130 agendamentos futuros da amostra estao
+todos com `lembrete_enviado = true`, porque foi assim que eu os gerei.
+
+**E o flag deve FICAR.** Os 120 clientes da amostra tem DDD **(39)**, que nao
+existe no Brasil -- foi a garantia estrutural pedida pelo dono para nenhuma
+mensagem escapar para numero de verdade. Limpar o flag faria o sistema tentar 130
+envios para numero invalido, e envio para numero invalido derruba a nota de
+qualidade do numero, que hoje esta **GREEN**. Para ver lembrete disparar numa
+demonstracao, o caminho e **um** agendamento com o numero real dele na hora.
+
+**Fica em aberto, sem conclusao:** `code_verification_status: EXPIRED` no numero
+central. Nao sei quando expirou nem se atrapalha algo -- em 16/09 o envio
+funcionava. Nao e para tratar como falha ate alguem tentar enviar e falhar.
+
+**O que o episodio deixa de verdade:** nada no sistema olha o `health_status`, e
+quando eu olhei, interpretei pelo token errado. Uma checagem na auditoria diaria
+precisa usar um token COM escopo de envio, senao ela vai gritar bloqueio todo dia
+pelo mesmo motivo que eu gritei.
+
+<details><summary>O alarme original, preservado</summary>
+
+## ~~O canal oficial esta BLOQUEADO para enviar~~ (lido errado)
 
 Achado ao conferir a conta por causa da mudanca de tarifa, e vale mais que ela.
 `GET /{waba}?fields=health_status` devolve:
@@ -6262,3 +6314,5 @@ autorizado.
 sem erro -- os tres foram aceitos. Enviar e operacao de App. Ninguem tentou
 enviar desde que o App perdeu a permissao, e nada no sistema olha o
 `health_status`. O monitor cego que o relatorio tecnico ja apontava.
+
+</details>

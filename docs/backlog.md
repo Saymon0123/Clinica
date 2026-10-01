@@ -6493,3 +6493,62 @@ rodando um observador na `auditoria_canal_oficial` para ver o alarme
 `canal-sem-checagem` dar lugar ao que a leitura disser. **Nao executei o fluxo a
 mao de proposito:** isso dispararia o e-mail da auditoria, e o SMTP esta quebrado
 desde agosto -- eu trocaria uma verificacao por uma execucao com erro no historico.
+
+
+---
+
+## O WhatsApp pessoal do dono virou respondedor automatico (2026-10-01)
+
+O dono conectou o WhatsApp PESSOAL dele na Evolution para testarmos a conversa do
+agente, com a instrucao "nao envie mensagem para ninguem". Antes de testar,
+verifiquei a corrente -- e ela estava fechada e armada:
+
+- instancia Evolution `open`, perfil **"Saymon"**
+- webhook `enabled` para `/webhook/salao-atendimento`, evento `MESSAGES_UPSERT`
+- fluxo do agente **ativo**
+
+**Nao existe porta filtrando o remetente.** Li as treze portas do caminho de
+entrada, uma a uma: mensagem propria, provedor, tipo, instancia configurada,
+conversa existe (ela CRIA para remetente novo), debounce, agente pausado, tipo
+suportado, barbearia atendendo, roteamento -> envio. Nenhuma pergunta quem
+mandou, e isso e por desenho: o agente existe para atender desconhecido, que e
+cliente novo.
+
+Consequencia: **qualquer contato pessoal dele que escrevesse recebia resposta de
+barbearia.** Exatamente o que a instrucao proibia -- so que nao por mim, e sim
+pelo sistema, ja ligado.
+
+**O teste era impossivel sem violar a instrucao.** Toda mensagem que chega gera
+uma saindo, e a porta `Ignorar Mensagem Propria?` fecha ate o atalho de ele ser os
+dois lados: mensagem dele para ele mesmo e descartada.
+
+**Decisao do dono, perguntado:** desligar o agente. Feito -- `active: false`,
+conferido. Reversivel num clique.
+
+### A varredura dos outros 15 fluxos ativos
+
+Nenhum outro fala pela Evolution. Lembrete, avaliacao, reativacao e aviso de fim
+de teste saem todos pelo numero CENTRAL, por desenho (a descricao do fluxo de
+avaliacao diz com todas as letras: "NAO usa Evolution: conversa iniciada por nos
+sai sempre pelo oficial"). O resto e e-mail.
+
+E as quatro filas de envio estao **vazias**: `avaliacoes_a_pedir`,
+`vencimentos_a_avisar`, `mensagens_a_entregar`, `reativacoes_a_enviar`.
+
+### As quatro travas da amostra, todas conferidas
+
+1. os 120 clientes tem DDD **(39)**, que nao existe no Brasil
+2. os 120 tem **`recusou_contato = true`**
+3. os 130 agendamentos futuros tem `lembrete_enviado = true`
+4. `whatsapp_conversations` esta **vazia**, e e ela que da o numero de destino do
+   lembrete
+
+Qualquer uma sozinha ja impediria; sao quatro.
+
+### Para o teste acontecer
+
+O dono precisa de um **segundo numero** escrevendo para o numero conectado. A
+trava de allowlist (filtro de remetente logo depois do webhook) esta desenhada e
+pronta para aplicar quando ele disser qual numero liberar: todos os outros ficam
+sem resposta automatica, e a conversa normal dele nao muda -- a Evolution copia a
+mensagem, nao a consome.

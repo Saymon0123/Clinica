@@ -51,3 +51,9 @@ docs/auditoria/
 docs/relatorio-tecnico.md
 docs/aula-arquitetura.md
 _backup-claude-2026-09-01/
+
+# Gerado pelo `deno check` das edge functions, que o CLAUDE.md manda rodar
+# antes de mexer em `supabase/functions`. O CI resolve as dependencias do zero
+# a cada run, entao travar as versoes aqui so criaria divergencia entre a
+# maquina de quem escreve e a que valida.
+deno.lock

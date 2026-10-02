@@ -56,6 +56,20 @@ insert into salons (id, nome, ativo) values
   (:'salao_a', 'Barbearia A', true),
   (:'salao_b', 'Barbearia B', true);
 
+-- `user_salons.user_id` tem FK para `auth.users`: sem estas linhas o CI reprova
+-- com 23503 antes da primeira asserção. Eu tinha deduzido o contrário por ver os
+-- inserts em `user_salons` de outros testes sem olhar o que vinha antes deles.
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password,
+                        email_confirmed_at, created_at, updated_at) values
+  (:'dono_a',         '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+   'dono.a.0200@teste.local', '', now(), now(), now()),
+  (:'dono_b',         '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+   'dono.b.0200@teste.local', '', now(), now(), now()),
+  (:'login_barbeiro', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+   'barbeiro.0200@teste.local', '', now(), now(), now()),
+  (:'login_colega',   '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+   'colega.0200@teste.local', '', now(), now(), now());
+
 insert into user_salons (user_id, salon_id, role) values
   (:'dono_a', :'salao_a', 'owner'),
   (:'login_barbeiro', :'salao_a', 'barbeiro'),

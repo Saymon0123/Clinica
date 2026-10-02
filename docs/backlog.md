@@ -6699,3 +6699,83 @@ A segunda rodada do teste caiu com `Limit 30000, Used 24895, Requested 8544` —
 ou seja, **8,5 mil tokens por chamada do modelo**. Com 2 chamadas por mensagem
 isso cabe; com 3 não cabe. Nada do que foi feito aqui remove o teto: só subir o
 tier da conta (US$ 50 pagos levam a Tier 2) remove.
+
+---
+
+## 2026-10-02 — A voz do dono no prompt, e o id que o modelo inventa
+
+### O que entrou
+
+O prompt do agente foi reescrito com os **exemplos do proprio dono** como voz da
+casa (os oito que ele devolveu em 01/10) e cortado de **18.956 para 14.865
+caracteres** — 22% menor, com um script que confere **45 regras** uma a uma antes
+de publicar, porque corte de prompt feito no olho perde regra sem ninguem notar.
+
+A medida que justificou o corte: o erro de limite da OpenAI mostrou **8.544
+tokens por chamada do modelo**, e o prompt sozinho era ~5.000 deles. Ja o
+"contexto condicional" que estava no plano valia ~150 tokens (**menos de 2%**) e
+**saiu do plano** — complicava o fluxo para nada.
+
+Correcao do typo do dono: no exemplo 3 ele escreveu "Pode ser 15:30" e confirmou
+"marcado para as 15:00". Como exemplo literal isso ensinaria o agente a mudar a
+hora na confirmacao, que e o pior erro possivel aqui. Foi para 15:30.
+
+### O defeito do id, que apareceu TRES vezes seguidas
+
+O agente mandou, em chamadas diferentes, tres `professional_id` **inventados** —
+`cc568809-...`, `7f50279f-...`, `2d84a6fe-...` — todos com cara de uuid de
+verdade, nenhum existente. O `agendar_pelo_agente` recusou os tres com 42501
+("Profissional nao e deste salao ou esta inativo") e **nada foi marcado**: a
+tranca do banco fez o trabalho dela.
+
+Mas a causa nao era o modelo ser teimoso. **A lista de barbeiros era calculada no
+`Montar Contexto do Cliente` e nunca entrava no prompt.** O no montava a variavel
+`barbeiros`, e a expressao `text` do `Agente de Atendimento` — que monta o
+[CONTEXTO INTERNO] — nunca a referenciava. O modelo nao tinha de onde ler o id, e
+chutava.
+
+Isso ficou escondido enquanto `Listar Profissionais Ativos` existia como
+ferramenta: ela devolvia os ids. Aposentar a ferramenta (0198) tirou a muleta e
+expos o buraco.
+
+Entraram tres coisas, nesta ordem de causa:
+1. um bloco **[BARBEIROS]** no `text` do agente, com `id=` ao lado de cada nome;
+2. `id=` tambem no CATALOGO (que resolveu o irmao desse defeito, o
+   `"corte_masculino"`);
+3. o parametro `p_professional_id` **saiu** da ferramenta `Horarios Livres`: ela
+   devolve todos os barbeiros do dia e o agente filtra pelo nome na resposta.
+   Parametro que o modelo preenche com uuid e superficie de alucinacao; tirar o
+   parametro tira a superficie.
+
+### Provado ponta a ponta
+
+Cliente: *"isso, marca ai pra mim: Corte masculino amanha 13:40 com o Thiago"*.
+Agente: *"Fechado, Gustavo! Te vejo amanha as 13:40 para o Corte masculino com o
+Thiago. Qualquer coisa, e so chamar!"* — e o agendamento gravado com
+`origem = 'agente'`, Thiago Bastos, 13:40-14:20, com `token_gestao`. Apagado
+depois, junto com as conversas de teste.
+
+Os quatro nos de envio ficaram **desligados durante todos os testes** e foram
+religados ao final, com o numero pessoal do dono ja fora da Evolution
+(`state: close`, conferido).
+
+### Um erro meu que vale ficar escrito
+
+Numa das edicoes eu reescrevi o `jsonBody` do `Criar Agendamento` e **removi sem
+querer** o `.split(',').map(...).filter(...)` do `p_service_ids` — o que mandaria
+uma string onde a RPC espera `uuid[]`. Peguei relendo o parametro inteiro antes
+de culpar o modelo. Licao: ao trocar a DESCRICAO de um `$fromAI`, o alvo e a
+string da descricao, nao a expressao em volta dela.
+
+### Sobras conhecidas
+
+- O agente ainda gasta uma mensagem perguntando "vou marcar pra voce?" quando o
+  cliente ja pediu para marcar. A regra "escolher um horario JA E a confirmacao"
+  esta no prompt; ele obedece quando o horario vem da lista dele, e hesita quando
+  o cliente dita hora e barbeiro de primeira.
+- `whatsapp_connections.status` continua `open` para a El Corte com a instancia
+  fechada na Evolution: a tela de Conexao mente ate algo ressincronizar.
+- Com "dar um tapa no corte" o agente assumiu *Corte masculino* em vez de mostrar
+  os tres servicos com a palavra corte. A regra manda mostrar; a voz do dono
+  (exemplo 1) manda assumir e perguntar so sobre servico extra. **Decisao do
+  dono**, pendente.

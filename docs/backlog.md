@@ -6902,3 +6902,74 @@ da tela desceu de 10 para 6, e os componentes novos nasceram medidos
   sem o dono ter onde consertar.
 - O `accept-invite` continua ligando todos os serviços. Isso agora é **padrão
   honesto** (a marca diz que ninguém escolheu), não mais um chute invisível.
+
+---
+
+## 2026-10-02 — O barbeiro que não vem no dia 20 (item 18)
+
+O item, nas palavras do dono: *"se hoje o barbeiro informa que dia 20 ele não
+conseguirá trabalhar, ele tem que ter uma opção de registro para que os
+agendamentos sejam direcionados a outro barbeiro que irá trabalhar no dia"*.
+
+### Metade já existia, e isso mudou o tamanho do item
+
+Conferido antes de escrever qualquer coisa:
+
+- **Bloquear o dia inteiro**: existe desde a 0182 — caixa "dia inteiro"
+  (00:00–23:59) com motivo, no `NewAppointmentModal`.
+- **Trocar o barbeiro de um agendamento**: existe no `AppointmentDetailModal`,
+  que grava `professional_id` novo no reagendamento.
+- **O banco já impedia** bloquear por cima de horário marcado: a
+  `appointments_sem_sobreposicao` levanta 23P01, e a tela já traduzia como
+  *"Esse intervalo já tem horário marcado para este profissional. Cancele ou
+  remarque antes de bloquear."*
+
+Ou seja: o item não era construir o registro da falta. Era **fechar o beco sem
+saída que aquela frase cria** — o dono era mandado resolver e tinha de
+adivinhar, agendamento por agendamento, quem trabalha naquele dia, faz aquele
+serviço e está livre naquela hora. Três perguntas que o sistema sabia responder
+e não respondia.
+
+### O que entrou (0202 + `ConflitosDoBloqueio`)
+
+`quem_pode_assumir(appointment_id)` responde as três. Usa o `horarios_livres`
+**de propósito**: candidatura calculada por fora ofereceria gente que o trigger
+da folga (0134) depois recusa com 23P01 — o dono clicaria num nome para levar
+erro, que é pior do que não ter lista. Serviço entra pela régua da 0199.
+
+Ela **não move nada**. Mover continua sendo o `update` da tela, com a EXCLUDE e
+o trigger como última palavra: uma função que movesse teria de reproduzir as
+duas, e duas cópias da mesma regra é como elas divergem.
+
+Na tela, o 23P01 deixou de ser frase morta e passou a abrir o painel. Quando a
+lista esvazia, o bloqueio é tentado na hora.
+
+### Quatro lições do schema, cobradas pelo ensaio
+
+A fixture do ensaio caiu quatro vezes, e **nenhuma** foi a função:
+
+1. `trg_espelha_servico_principal` **já** grava o serviço principal em
+   `appointment_services` — inserir de novo levanta 23505.
+2. `bloqueio` não leva `client_id`: a EXCLUDE por **cliente** também conta esse
+   status, e o mesmo cliente no mesmo minuto é recusado.
+3. A "vítima" do teste de ocupado tem de sair da **própria resposta da função**:
+   supor quem estava livre bateu na agenda real da El Corte.
+4. O Supabase devolve relação embutida como **array** mesmo quando é
+   uma-para-uma (`clients(nome)`) — o typecheck pegou antes de virar
+   `undefined` na tela.
+
+Nas duas rodadas anteriores (itens 20 e 0200) eu usei o CI como test runner e
+reprovei duas vezes. Desta vez a fixture do pgTAP foi rodada contra o banco real
+antes do push, e o CI passou de primeira.
+
+### O que fica em aberto
+
+- **O cliente não é avisado da troca**, e a tela diz isso (*"Quem conta é
+  você"*). O aviso automático é mensagem iniciada pela plataforma e depende de
+  template aprovado, que o dono decidiu não usar por hora. Quando usar, o molde
+  mais próximo é o rascunho `imprevisto_na_barbearia`.
+- **Ninguém livre naquele minuto** devolve lista vazia, e a tela manda falar com
+  o cliente. Sugerir outro horário seria decidir pelo cliente; é aqui que a fila
+  de espera (item 16) encosta.
+- Nenhuma tela foi vista com os olhos em nenhum dos dois itens: não existe conta
+  de teste com login neste ambiente.

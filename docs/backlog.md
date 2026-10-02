@@ -6837,3 +6837,68 @@ listar horarios) e detectar "marca + dia + hora" por codigo antes do agente
 
 As duas regras novas ficaram no prompt de qualquer jeito: a do servico porque
 funciona, e a de marcar porque esta certa mesmo sem ser obedecida sempre.
+
+---
+
+## 2026-10-02 (noite) — O onboarding do barbeiro, fechado (item 20)
+
+O item 20 não era tour: era **confirmação**. O `accept-invite` entrega a cadeira
+configurada por suposição — todos os serviços ativos ligados e a jornada
+derivada do horário de funcionamento da barbearia — e nada na tela distinguia
+"ele confirmou" de "ninguém olhou".
+
+### O que foi medido antes de construir
+
+- `professional_services` estava **populada e ninguém a lia** (0199 consertou a
+  leitura).
+- Não existia controle de serviço em lugar nenhum do produto, apesar de o
+  comentário do `accept-invite` mandar "ajustar depois na aba Equipe".
+- Os quatro barbeiros da El Corte faziam os oito serviços, inclusive
+  "Luzes / platinado" a R$160.
+- **Nenhum dos quatro tem login** (`user_id` em branco): ninguém nunca aceitou
+  um convite como barbeiro nesta base.
+
+### As quatro peças
+
+| | onde | marca de "alguém escolheu" |
+|---|---|---|
+| leitura do vínculo | 0199, `horarios_livres_pelo_agente` | — |
+| trocar a lista | 0200, `salvar_servicos_do_barbeiro` | `servicos_confirmados_em` |
+| jornada | 0201, `salvar_jornada` | `jornada_confirmada_em` |
+| telas | `ServicosBarbeiroModal` + `CardDoBarbeiro` | as duas acima |
+
+A 0201 fechou um vão da 0200: eu dei a marca para a lista de serviços e **não**
+para a jornada, que tem o mesmo problema. Sem ela o cartão mostraria a jornada
+como pronta no primeiro segundo.
+
+O stamp mora na RPC e não num trigger de propósito: trigger marcaria também o
+insert do `accept-invite`, que é justamente o que não conta como escolha.
+
+### Duas restrições reais que moldaram o cartão
+
+1. **O barbeiro não tem a rota `/equipe`** (`somenteGestor` no AppLayout). O
+   cartão abre os modais ali mesmo, na Agenda — levar para `/equipe` seria
+   levar para uma tela que não abre para ele.
+2. **Só aparece para quem não é gestor.** O dono costuma ter cadeira também, e
+   veria dois cartões flutuantes no mesmo canto, um por cima do outro.
+
+### O tripwire dos botões cobrou, duas vezes
+
+O botão de Serviços na aba Equipe estourou o teto da `EquipePage` (11 para um
+teto de 10). A saída da casa não é afrouxar o teste: as **cinco** ações da linha
+eram o mesmo dialeto escrito cinco vezes e saíram para o `AcaoDaLinha`. O teto
+da tela desceu de 10 para 6, e os componentes novos nasceram medidos
+(`AcaoDaLinha` 1, `CardDoBarbeiro` 1, `ServicosBarbeiroModal` 0).
+
+### O que fica em aberto
+
+- **A primeira entrada não foi percorrida com os olhos.** Não existe conta de
+  barbeiro nesta base. Para testar de verdade falta um convite de barbeiro para
+  um e-mail do dono.
+- **A trava na ESCRITA** (recusar agendamento com barbeiro que não faz o
+  serviço, em `agendar_pelo_agente` ou num trigger em `appointments` cobrindo as
+  quatro portas) continua de fora, de propósito: agora que existe controle para
+  arrumar o dado, ela passou a ser possível — antes travaria a agenda de alguém
+  sem o dono ter onde consertar.
+- O `accept-invite` continua ligando todos os serviços. Isso agora é **padrão
+  honesto** (a marca diz que ninguém escolheu), não mais um chute invisível.

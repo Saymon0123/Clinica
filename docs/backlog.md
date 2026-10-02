@@ -6622,3 +6622,80 @@ clientes, todos DDD (39), zero conversa, zero mensagem.
 Agente **desligado** (como o dono escolheu) e os quatro nos de envio **devolvidos
 ao normal** no rascunho. A ordem importou: desliguei ANTES de reabilitar os
 envios, para nao existir nenhum instante com o agente ativo e a saida aberta.
+
+---
+
+## 2026-10-02 — O agente pergunta as vagas (0198), e um vazamento de WhatsApp
+
+### Primeiro o incidente, porque é o que importa
+
+Em **01/10 às 16:54 e 16:55 (SP)** o agente respondeu, **como barbearia**, a uma
+pessoa real que escreveu para o WhatsApp **pessoal do dono** (`554187275895`,
+"Samuel Rocha"). Duas mensagens saíram. O dono havia conectado o número dele na
+Evolution para os testes e o agente foi religado a pedido dele em 01/10 07:39Z;
+o número continuou conectado, e a conversa caiu no fluxo como se fosse cliente.
+
+Está tudo registrado em `whatsapp_messages` (conversa
+`52e3b731-54a4-40f7-942e-738962ba8fb2`) e nas execuções 45127–45134 do workflow
+`rJO1n7cFeNDIJyB5`.
+
+**O que foi feito na hora:** os quatro nós de envio (`Responder pela Cloud API`,
+`Responder Padrao pela Cloud API`, `Responder pela Evolution (Agente)`,
+`Responder pela Evolution (Padrão)`) foram **desligados e publicados** — o agente
+continua lendo, pensando e gravando, mas **não sai mensagem para ninguém**. E a
+conversa com aquele contato ficou com `agent_paused = true`.
+
+**Pendente (decisão do dono):** religar os envios **só depois** que o número
+pessoal sair da Evolution. Enquanto o número estiver conectado e os envios
+ligados, qualquer contato pessoal dele recebe atendimento de barbearia.
+
+A lição não é "faltou aviso" — o aviso foi dado. É que **número pessoal
+conectado + agente ativo é uma combinação que não deve existir nem por uma
+janela**, porque o custo cai em cima de terceiros que nunca pediram nada.
+
+### A migration 0198, e por que ela não era "mais uma RPC"
+
+O agente montava a lista de horários no **modelo**: `Listar Profissionais
+Ativos` + `Jornada da Equipe no Dia` + `Verificar Disponibilidade` e então
+procurava os buracos de cabeça. Isso ignorava folga entre atendimentos, bloqueio
+do barbeiro (0182), fechamento da loja e a vaga `reservado` (0192) — e cobrava
+**quatro voltas ao modelo por mensagem**.
+
+A `horarios_livres` já respondia isso inteiro, com `professional_id`,
+`profissional` e `hora_local`. Faltava uma coisa só: ela pede **duração em
+minutos**, e o agente conhece serviços, não minutos. A `0198` fecha esse vão —
+`horarios_livres_pelo_agente(salon, data, service_ids[], professional_id)` soma a
+duração com o **mesmo bloco do `agendar_pelo_agente`** e devolve as horas
+agrupadas por barbeiro. Dia sem vaga devolve o próximo dia que tem.
+
+**Medido** (execução 45551 contra 44571): o nó do modelo caiu de **4x para 2x**
+por mensagem, e uma ferramenta só rodou no lugar de quatro. A resposta ficou:
+"10:40 com Vinícius Prado, 10:50 com Diego Matos, 13:40 com Thiago Bastos,
+17:50 com Rafael Nogueira".
+
+### Dois defeitos que só o teste de verdade mostrou
+
+1. **O agente inventou o id do serviço.** Na primeira rodada mandou
+   `service_ids_csv = "corte_masculino"` e o Postgres recusou (`invalid input
+   syntax for type uuid`). O prompt mandava pegar o id em `Listar Servicos
+   Ativos`, e ele não chamou. É o padrão já conhecido da casa: **fato que o
+   agente precisa em toda conversa tem de estar no CONTEXTO, não atrás de uma
+   ferramenta.** O `catalogo` do contexto passou a trazer `id=` ao lado do nome e
+   do preço, e o prompt passou a mandar copiar dali.
+2. **`horas_no_proximo_dia` repetia a mesma hora.** O ensaio devolveu
+   "09:00, 09:00, 09:00, 09:00, 09:10, 09:10": as seis primeiras *vagas* eram a
+   mesma hora em quatro barbeiros. Virou `distinct` antes do `limit`.
+
+### Contradições que sobraram no prompt, para o passo 2
+
+- A linha "Informe preco e **duracao** copiando do CATALOGO" briga com "Nunca
+  diga a duracao ao cliente" — e o catálogo do contexto nunca teve duração.
+- O prompt cresceu de 18.503 para 18.956 caracteres neste passo. O corte de
+  verdade é o passo 2, junto com os exemplos de voz do dono.
+
+### O teto da OpenAI continua sendo o bloqueador
+
+A segunda rodada do teste caiu com `Limit 30000, Used 24895, Requested 8544` —
+ou seja, **8,5 mil tokens por chamada do modelo**. Com 2 chamadas por mensagem
+isso cabe; com 3 não cabe. Nada do que foi feito aqui remove o teto: só subir o
+tier da conta (US$ 50 pagos levam a Tier 2) remove.

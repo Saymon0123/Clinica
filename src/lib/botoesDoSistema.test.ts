@@ -104,7 +104,16 @@ const TETO: Record<string, number> = {
   'src/features/financeiro/SeletorDePeriodo.tsx': 6,
   'src/features/clientes/ClientesPage.tsx': 4,
   'src/features/catalogo/CatalogoPage.tsx': 0,
-  'src/features/equipe/EquipePage.tsx': 10,
+  // Desceu de 10 para 6 em 02/10: as cinco acoes da linha (comissao, servicos,
+  // horario, ativar, tirar) eram o mesmo dialeto escrito cinco vezes e sairam
+  // para o AcaoDaLinha. Foi o botao de servicos que estourou o teto e forcou a
+  // extracao -- mesma saida do seletor de periodo em 21/09.
+  'src/features/equipe/EquipePage.tsx': 6,
+  // O icone com rotulo de 10px e dialeto feito a mao por natureza; nasce
+  // medido, aparece UMA vez, e o numero so desce.
+  'src/features/equipe/AcaoDaLinha.tsx': 1,
+  // Nasce medido: os dois botoes dele usam classe do sistema.
+  'src/features/equipe/ServicosBarbeiroModal.tsx': 0,
   'src/features/conexao/ConexaoPage.tsx': 1,
   'src/features/rede/RedePage.tsx': 2,
   'src/features/vendas/NewSaleModal.tsx': 2,

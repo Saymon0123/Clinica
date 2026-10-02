@@ -97,6 +97,8 @@ const TETO: Record<string, number> = {
   'src/features/agenda/AgendaPage.tsx': 6,
   'src/features/agenda/AppointmentDetailModal.tsx': 3,
   'src/features/agenda/NewAppointmentModal.tsx': 1,
+  // Nasce medido: Passar usa btn-primary e os dois Cancelar usam btn-danger.
+  'src/features/agenda/ConflitosDoBloqueio.tsx': 0,
   // Desceu de 10 em 21/09: o seletor de período saiu para componente próprio.
   'src/features/financeiro/FinanceiroPage.tsx': 7,
   // O seletor Dia|Mês é dialeto feito à mão por natureza (chevrons + rótulos

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useCallback, useState, type FormEvent } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { Modal } from '../../components/Modal'
 import { Campo, Input, Select } from '../../components/Campo'
@@ -8,6 +8,7 @@ import { traduzirErroDoBanco } from '../../lib/erroDoBanco'
 import { classificarTelefone, AVISO_TELEFONE_INVALIDO } from '../../lib/telefone'
 import type { Professional, Service } from './types'
 import { ErroInline } from '../../components/ErroInline'
+import { ConflitosDoBloqueio } from './ConflitosDoBloqueio'
 import {
   DIA_INTEIRO,
   MOTIVO_MAX,
@@ -67,6 +68,16 @@ export function NewAppointmentModal({
   const [horaFim, setHoraFim] = useState(() => horaDe(minutosDe(defaultTime ?? '09:00') + 60))
   const [motivo, setMotivo] = useState('')
   const [diaInteiro, setDiaInteiro] = useState(false)
+
+  /**
+   * A janela cujo bloqueio bateu em horario marcado (23P01).
+   *
+   * Antes a tela dizia "cancele ou remarque antes de bloquear" e parava ali --
+   * correto e inutil, porque a tarefa inteira voltava para a mao do dono. Com
+   * isto preenchido, o painel de conflitos entra no lugar do erro e resolve o
+   * que a frase so mandava fazer.
+   */
+  const [conflito, setConflito] = useState<{ inicio: string; fim: string } | null>(null)
 
   // Com "dia inteiro" marcado os campos ficam desabilitados mostrando
   // 00:00–23:59, e `time`/`horaFim` seguem intocados embaixo: desmarcar
@@ -152,20 +163,46 @@ export function NewAppointmentModal({
       onClose()
     } catch (err) {
       console.error('Erro ao bloquear horário:', err)
-      setError(
-        traduzirErroDoBanco(
-          err as { code?: string; message?: string } | null,
-          {
-            '23P01':
-              'Esse intervalo já tem horário marcado para este profissional. Cancele ou remarque antes de bloquear.',
-          },
-          'Não foi possível bloquear o horário. Tente novamente.',
-        ),
-      )
+      // 23P01 aqui NAO e erro do dono: e a informacao de que ha horario marcado
+      // no caminho. Em vez da frase que manda resolver, abre o painel que
+      // resolve -- com quem pode assumir cada um ja respondido pela 0202.
+      const codigo = (err as { code?: string } | null)?.code
+      if (codigo === '23P01') {
+        setConflito({
+          inicio: toDateTimeLocal(date, janela.inicio).toISOString(),
+          fim: toDateTimeLocal(date, janela.fim).toISOString(),
+        })
+      } else {
+        setError(
+          traduzirErroDoBanco(
+            err as { code?: string; message?: string } | null,
+            undefined,
+            'Não foi possível bloquear o horário. Tente novamente.',
+          ),
+        )
+      }
     } finally {
       setSubmitting(false)
     }
   }
+
+  /**
+   * O painel esvaziou: todos os horarios foram passados ou cancelados.
+   *
+   * Tentar o bloqueio na hora e o certo -- pedir um segundo clique depois de o
+   * dono ja ter resolvido tudo seria cobrar duas vezes pela mesma decisao. Se
+   * um horario novo tiver entrado nesse meio tempo, o 23P01 reabre o painel com
+   * ele, que e exatamente o que deve acontecer.
+   *
+   * `useCallback` sem dependencias de proposito: a identidade precisa ser
+   * estavel porque vai como prop para o painel, e `salvarBloqueio` le o estado
+   * fresco a cada chamada.
+   */
+  const limparConflitoETentarDeNovo = useCallback(() => {
+    setConflito(null)
+    void salvarBloqueio()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -555,11 +592,20 @@ export function NewAppointmentModal({
                 />
               </Campo>
 
-              <p className="text-xs text-muted-foreground bg-surface-2 rounded-lg px-3 py-2">
-                O horário sai da agenda pública e o atendente do WhatsApp deixa de
-                oferecê-lo. Quem já tem reserva nesse intervalo <strong>não</strong> é
-                avisado — cancele ou remarque antes.
-              </p>
+              {conflito ? (
+                <ConflitosDoBloqueio
+                  professionalId={professionalId}
+                  inicio={conflito.inicio}
+                  fim={conflito.fim}
+                  onVazio={limparConflitoETentarDeNovo}
+                />
+              ) : (
+                <p className="text-xs text-muted-foreground bg-surface-2 rounded-lg px-3 py-2">
+                  O horário sai da agenda pública e o atendente do WhatsApp deixa de
+                  oferecê-lo. Quem já tem reserva nesse intervalo <strong>não</strong> é
+                  avisado — cancele ou remarque antes.
+                </p>
+              )}
             </>
           )}
 

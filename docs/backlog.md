@@ -6779,3 +6779,61 @@ string da descricao, nao a expressao em volta dela.
   os tres servicos com a palavra corte. A regra manda mostrar; a voz do dono
   (exemplo 1) manda assumir e perguntar so sobre servico extra. **Decisao do
   dono**, pendente.
+
+---
+
+## 2026-10-02 (tarde) — As duas regras que cobriam so o caminho previsto
+
+As duas sobras do passo 2 eram o MESMO defeito: regra escrita para o caminho que
+quem escreveu imaginou, deixando o modelo improvisar quando o cliente chega por
+outra porta. E a regua 1 da casa aplicada ao prompt.
+
+### Resolvido: o servico que o cliente nao detalha
+
+A regra dizia "'quero agendar um corte' NAO diz o servico: mostre os que
+servem". So que perguntar "qual dos tres cortes?" em todo pedido e formulario,
+nao atendimento -- e o exemplo 1 do proprio dono assume o corte e pergunta so
+sobre servico EXTRA.
+
+A regra virou: **assuma o corte comum e DIGA o nome do que assumiu na mesma
+mensagem** ("Pro *Corte masculino* amanha, tenho esses horarios"). Assim a
+correcao sai de graca, porque o nome esta na frente do cliente. Pergunta so com
+sinal de ambiguidade real: crianca ("pro meu filho"), barba junto, ou duvida
+dele.
+
+**Conferido em execucao de verdade**: "da pra marcar um corte amanha" ->
+"Pro *Corte masculino* amanha...". Sem pergunta extra.
+
+### NAO resolvido: ele pede permissao quando o cliente dita o horario
+
+Quando o cliente dita dia, hora e barbeiro de primeira ("da pra marcar um corte
+amanha 14:00 com o Thiago?"), o agente consulta a disponibilidade, confirma que
+existe... e **pergunta** "vou agendar pra ti, beleza?" em vez de marcar.
+
+**Tres tentativas, todas falharam:**
+1. regra no prompt ("escolher um horario JA E a confirmacao") -- nao cobria quem
+   dita de primeira;
+2. regra ampliada ("pedido de marcar E a confirmacao, venha de onde vier...
+   nunca pergunte 'vou marcar pra voce?'") -- ignorada;
+3. a instrucao movida para a **descricao da ferramenta** `Criar Agendamento`
+   ("CHAME ASSIM QUE o cliente pedir um horario concreto... nao pergunte
+   permissao e nao confira disponibilidade antes") -- tambem ignorada. Ele
+   continuou conferindo antes e perguntando depois.
+
+**Diagnostico:** nao e redacao, e limite de obediencia do gpt-4o a instrucao
+procedural negativa. Parar de insistir foi decisao consciente (regra das duas
+tentativas).
+
+**O que custa, medido:** UMA mensagem a mais, so no caminho em que o cliente ja
+sabe a hora que quer. No caminho normal (o agente lista, o cliente escolhe) ele
+marca direto -- isso esta provado. E o comportamento e SEGURO: ele nunca marca o
+que o cliente nao confirmou.
+
+**Decisao: aceitar por hora.** Revisitar quando a conta da OpenAI subir de tier e
+der para testar um modelo que obedece instrucao procedural melhor. As saidas
+descartadas, com o motivo: tirar a ferramenta de consulta (quebraria o caminho de
+listar horarios) e detectar "marca + dia + hora" por codigo antes do agente
+(fragil em linguagem natural, trabalho grande para economizar uma mensagem).
+
+As duas regras novas ficaram no prompt de qualquer jeito: a do servico porque
+funciona, e a de marcar porque esta certa mesmo sem ser obedecida sempre.

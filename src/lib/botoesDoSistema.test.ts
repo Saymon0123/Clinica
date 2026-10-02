@@ -119,6 +119,9 @@ const TETO: Record<string, number> = {
   'src/features/vendas/NewSaleModal.tsx': 2,
   'src/features/vendas/VendasSection.tsx': 0,
   'src/features/configuracoes/ConfiguracoesPage.tsx': 1,
+  // Nasce medido: so a pilula recolhida e dialeto proprio (o X usa btn-chip e
+  // os itens usam btn-ghost).
+  'src/features/ativacao/CardDoBarbeiro.tsx': 1,
   'src/components/AppLayout.tsx': 2,
 }
 

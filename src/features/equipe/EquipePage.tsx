@@ -8,6 +8,8 @@ import { Modal } from '../../components/Modal'
 import { useAuth } from '../auth/AuthContext'
 import { useSalon, type Papel } from '../auth/useSalon'
 import { HorarioBarbeiroModal } from './HorarioBarbeiroModal'
+import { ServicosBarbeiroModal } from './ServicosBarbeiroModal'
+import { AcaoDaLinha } from './AcaoDaLinha'
 import { toast } from '../../components/Toast'
 import { Badge } from '../../components/Badge'
 import { EstadoVazio } from '../../components/EstadoVazio'
@@ -23,6 +25,8 @@ type Membro = {
   ativo: boolean
   comissao_percentual: number | null
   user_id: string | null
+  /** `null` = ninguem escolheu os servicos dele ainda; a lista e o padrao do convite. */
+  servicos_confirmados_em: string | null
 }
 
 type Vinculo = { id: string; user_id: string; role: Papel }
@@ -82,6 +86,7 @@ export function EquipePage() {
   // Três segundos de toast não dão isso.
   const [avisoDoConvite, setAvisoDoConvite] = useState<Record<string, string>>({})
   const [horarioDe, setHorarioDe] = useState<Membro | null>(null)
+  const [servicosDe, setServicosDe] = useState<Membro | null>(null)
   const [editandoComissao, setEditandoComissao] = useState<string | null>(null)
   const [comissaoRascunho, setComissaoRascunho] = useState('')
   const [salvandoMembro, setSalvandoMembro] = useState<string | null>(null)
@@ -110,7 +115,7 @@ export function EquipePage() {
     const [profsRes, convsRes, vincsRes] = await Promise.all([
       supabase
         .from('professionals')
-        .select('id, nome, telefone, ativo, comissao_percentual, user_id')
+        .select('id, nome, telefone, ativo, comissao_percentual, user_id, servicos_confirmados_em')
         .eq('salon_id', salonId)
         .order('nome'),
       supabase
@@ -883,50 +888,67 @@ export function EquipePage() {
                   </select>
                 )
               })()}
-              {/* Rótulo embaixo de cada ícone: o `title` (tooltip) não existe
-                  no celular, e %/relógio/power eram hieróglifos para quem
-                  entra no sistema pela primeira vez. */}
-              <button
+              {/* As cinco acoes da linha sao o MESMO dialeto (icone + rotulo
+                  de 10px), e estavam escritas cinco vezes aqui. Viraram o
+                  AcaoDaLinha quando a sexta estourou o teto de botoes sem
+                  classe do sistema -- mesma saida do seletor de periodo em
+                  21/09. O rotulo embaixo do icone fica: `title` nao existe no
+                  celular, e %/relogio/tesoura/power eram hieroglifos. */}
+              <AcaoDaLinha
+                aria={`Comissão de ${m.nome}`}
+                rotulo="Comissão"
                 onClick={() => {
                   setEditandoComissao(m.id)
                   setComissaoRascunho(m.comissao_percentual != null ? String(Number(m.comissao_percentual)) : '')
                 }}
-                aria-label={`Comissão de ${m.nome}`}
-                className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-surface-2"
               >
                 <Percent size={16} />
-                <span className="text-[10px] leading-none">Comissão</span>
-              </button>
-              <button
+              </AcaoDaLinha>
+              <AcaoDaLinha
+                aria={`Serviços de ${m.nome}`}
+                rotulo="Serviços"
+                onClick={() => setServicosDe(m)}
+              >
+                {/* O ponto no canto do icone e a unica pista, na lista, de que
+                    ninguem escolheu os servicos dele: o padrao do convite liga
+                    TODOS, e tudo-marcado-por-padrao parece decisao tomada. */}
+                <span className="relative">
+                  <Scissors size={16} />
+                  {!m.servicos_confirmados_em && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute -top-0.5 -right-1 size-1.5 rounded-full bg-warning"
+                    />
+                  )}
+                </span>
+              </AcaoDaLinha>
+              <AcaoDaLinha
+                aria={`Horário de ${m.nome}`}
+                rotulo="Horário"
                 onClick={() => setHorarioDe(m)}
-                aria-label={`Horário de ${m.nome}`}
-                className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-surface-2"
               >
                 <Clock size={16} />
-                <span className="text-[10px] leading-none">Horário</span>
-              </button>
-              <button
+              </AcaoDaLinha>
+              <AcaoDaLinha
+                aria={m.ativo ? `Desativar ${m.nome}` : `Reativar ${m.nome}`}
+                rotulo={m.ativo ? 'Desativar' : 'Ativar'}
+                tom={m.ativo ? 'danger' : 'success'}
                 onClick={() => alternarAtivo(m)}
-                aria-label={m.ativo ? `Desativar ${m.nome}` : `Reativar ${m.nome}`}
-                className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-md hover:bg-surface-2 ${
-                  m.ativo ? 'text-danger' : 'text-success'
-                }`}
               >
                 <Power size={16} />
-                <span className="text-[10px] leading-none">{m.ativo ? 'Desativar' : 'Ativar'}</span>
-              </button>
+              </AcaoDaLinha>
               {/* Desativar tira da agenda; TIRAR DA EQUIPE tira o acesso. Eram a
                   mesma coisa na cabeça do dono e não eram no sistema: o
                   desativado continuava entrando e lendo clientes. */}
               {vinculo && (
-                <button
+                <AcaoDaLinha
+                  aria={`Tirar ${m.nome} da equipe`}
+                  rotulo="Tirar"
+                  tom="danger"
                   onClick={() => setTirandoDaEquipe({ vinculo: vinculo.id, nome: m.nome })}
-                  aria-label={`Tirar ${m.nome} da equipe`}
-                  className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-md text-danger hover:bg-surface-2"
                 >
                   <UserMinus size={16} />
-                  <span className="text-[10px] leading-none">Tirar</span>
-                </button>
+                </AcaoDaLinha>
               )}
             </div>
           </div>
@@ -948,6 +970,17 @@ export function EquipePage() {
           salonId={salonId}
           onClose={() => setQueroAtenderAberto(false)}
           onFeito={carregar}
+        />
+      )}
+
+      {servicosDe && salonId && (
+        <ServicosBarbeiroModal
+          professionalId={servicosDe.id}
+          salonId={salonId}
+          nome={servicosDe.nome}
+          confirmadoEm={servicosDe.servicos_confirmados_em}
+          onSalvo={carregar}
+          onClose={() => setServicosDe(null)}
         />
       )}
 

@@ -6622,3 +6622,218 @@ clientes, todos DDD (39), zero conversa, zero mensagem.
 Agente **desligado** (como o dono escolheu) e os quatro nos de envio **devolvidos
 ao normal** no rascunho. A ordem importou: desliguei ANTES de reabilitar os
 envios, para nao existir nenhum instante com o agente ativo e a saida aberta.
+
+---
+
+## 2026-10-02 — O agente pergunta as vagas (0198), e um vazamento de WhatsApp
+
+### Primeiro o incidente, porque é o que importa
+
+Em **01/10 às 16:54 e 16:55 (SP)** o agente respondeu, **como barbearia**, a uma
+pessoa real que escreveu para o WhatsApp **pessoal do dono** (`554187275895`,
+"Samuel Rocha"). Duas mensagens saíram. O dono havia conectado o número dele na
+Evolution para os testes e o agente foi religado a pedido dele em 01/10 07:39Z;
+o número continuou conectado, e a conversa caiu no fluxo como se fosse cliente.
+
+Está tudo registrado em `whatsapp_messages` (conversa
+`52e3b731-54a4-40f7-942e-738962ba8fb2`) e nas execuções 45127–45134 do workflow
+`rJO1n7cFeNDIJyB5`.
+
+**O que foi feito na hora:** os quatro nós de envio (`Responder pela Cloud API`,
+`Responder Padrao pela Cloud API`, `Responder pela Evolution (Agente)`,
+`Responder pela Evolution (Padrão)`) foram **desligados e publicados** — o agente
+continua lendo, pensando e gravando, mas **não sai mensagem para ninguém**. E a
+conversa com aquele contato ficou com `agent_paused = true`.
+
+**Pendente (decisão do dono):** religar os envios **só depois** que o número
+pessoal sair da Evolution. Enquanto o número estiver conectado e os envios
+ligados, qualquer contato pessoal dele recebe atendimento de barbearia.
+
+A lição não é "faltou aviso" — o aviso foi dado. É que **número pessoal
+conectado + agente ativo é uma combinação que não deve existir nem por uma
+janela**, porque o custo cai em cima de terceiros que nunca pediram nada.
+
+### A migration 0198, e por que ela não era "mais uma RPC"
+
+O agente montava a lista de horários no **modelo**: `Listar Profissionais
+Ativos` + `Jornada da Equipe no Dia` + `Verificar Disponibilidade` e então
+procurava os buracos de cabeça. Isso ignorava folga entre atendimentos, bloqueio
+do barbeiro (0182), fechamento da loja e a vaga `reservado` (0192) — e cobrava
+**quatro voltas ao modelo por mensagem**.
+
+A `horarios_livres` já respondia isso inteiro, com `professional_id`,
+`profissional` e `hora_local`. Faltava uma coisa só: ela pede **duração em
+minutos**, e o agente conhece serviços, não minutos. A `0198` fecha esse vão —
+`horarios_livres_pelo_agente(salon, data, service_ids[], professional_id)` soma a
+duração com o **mesmo bloco do `agendar_pelo_agente`** e devolve as horas
+agrupadas por barbeiro. Dia sem vaga devolve o próximo dia que tem.
+
+**Medido** (execução 45551 contra 44571): o nó do modelo caiu de **4x para 2x**
+por mensagem, e uma ferramenta só rodou no lugar de quatro. A resposta ficou:
+"10:40 com Vinícius Prado, 10:50 com Diego Matos, 13:40 com Thiago Bastos,
+17:50 com Rafael Nogueira".
+
+### Dois defeitos que só o teste de verdade mostrou
+
+1. **O agente inventou o id do serviço.** Na primeira rodada mandou
+   `service_ids_csv = "corte_masculino"` e o Postgres recusou (`invalid input
+   syntax for type uuid`). O prompt mandava pegar o id em `Listar Servicos
+   Ativos`, e ele não chamou. É o padrão já conhecido da casa: **fato que o
+   agente precisa em toda conversa tem de estar no CONTEXTO, não atrás de uma
+   ferramenta.** O `catalogo` do contexto passou a trazer `id=` ao lado do nome e
+   do preço, e o prompt passou a mandar copiar dali.
+2. **`horas_no_proximo_dia` repetia a mesma hora.** O ensaio devolveu
+   "09:00, 09:00, 09:00, 09:00, 09:10, 09:10": as seis primeiras *vagas* eram a
+   mesma hora em quatro barbeiros. Virou `distinct` antes do `limit`.
+
+### Contradições que sobraram no prompt, para o passo 2
+
+- A linha "Informe preco e **duracao** copiando do CATALOGO" briga com "Nunca
+  diga a duracao ao cliente" — e o catálogo do contexto nunca teve duração.
+- O prompt cresceu de 18.503 para 18.956 caracteres neste passo. O corte de
+  verdade é o passo 2, junto com os exemplos de voz do dono.
+
+### O teto da OpenAI continua sendo o bloqueador
+
+A segunda rodada do teste caiu com `Limit 30000, Used 24895, Requested 8544` —
+ou seja, **8,5 mil tokens por chamada do modelo**. Com 2 chamadas por mensagem
+isso cabe; com 3 não cabe. Nada do que foi feito aqui remove o teto: só subir o
+tier da conta (US$ 50 pagos levam a Tier 2) remove.
+
+---
+
+## 2026-10-02 — A voz do dono no prompt, e o id que o modelo inventa
+
+### O que entrou
+
+O prompt do agente foi reescrito com os **exemplos do proprio dono** como voz da
+casa (os oito que ele devolveu em 01/10) e cortado de **18.956 para 14.865
+caracteres** — 22% menor, com um script que confere **45 regras** uma a uma antes
+de publicar, porque corte de prompt feito no olho perde regra sem ninguem notar.
+
+A medida que justificou o corte: o erro de limite da OpenAI mostrou **8.544
+tokens por chamada do modelo**, e o prompt sozinho era ~5.000 deles. Ja o
+"contexto condicional" que estava no plano valia ~150 tokens (**menos de 2%**) e
+**saiu do plano** — complicava o fluxo para nada.
+
+Correcao do typo do dono: no exemplo 3 ele escreveu "Pode ser 15:30" e confirmou
+"marcado para as 15:00". Como exemplo literal isso ensinaria o agente a mudar a
+hora na confirmacao, que e o pior erro possivel aqui. Foi para 15:30.
+
+### O defeito do id, que apareceu TRES vezes seguidas
+
+O agente mandou, em chamadas diferentes, tres `professional_id` **inventados** —
+`cc568809-...`, `7f50279f-...`, `2d84a6fe-...` — todos com cara de uuid de
+verdade, nenhum existente. O `agendar_pelo_agente` recusou os tres com 42501
+("Profissional nao e deste salao ou esta inativo") e **nada foi marcado**: a
+tranca do banco fez o trabalho dela.
+
+Mas a causa nao era o modelo ser teimoso. **A lista de barbeiros era calculada no
+`Montar Contexto do Cliente` e nunca entrava no prompt.** O no montava a variavel
+`barbeiros`, e a expressao `text` do `Agente de Atendimento` — que monta o
+[CONTEXTO INTERNO] — nunca a referenciava. O modelo nao tinha de onde ler o id, e
+chutava.
+
+Isso ficou escondido enquanto `Listar Profissionais Ativos` existia como
+ferramenta: ela devolvia os ids. Aposentar a ferramenta (0198) tirou a muleta e
+expos o buraco.
+
+Entraram tres coisas, nesta ordem de causa:
+1. um bloco **[BARBEIROS]** no `text` do agente, com `id=` ao lado de cada nome;
+2. `id=` tambem no CATALOGO (que resolveu o irmao desse defeito, o
+   `"corte_masculino"`);
+3. o parametro `p_professional_id` **saiu** da ferramenta `Horarios Livres`: ela
+   devolve todos os barbeiros do dia e o agente filtra pelo nome na resposta.
+   Parametro que o modelo preenche com uuid e superficie de alucinacao; tirar o
+   parametro tira a superficie.
+
+### Provado ponta a ponta
+
+Cliente: *"isso, marca ai pra mim: Corte masculino amanha 13:40 com o Thiago"*.
+Agente: *"Fechado, Gustavo! Te vejo amanha as 13:40 para o Corte masculino com o
+Thiago. Qualquer coisa, e so chamar!"* — e o agendamento gravado com
+`origem = 'agente'`, Thiago Bastos, 13:40-14:20, com `token_gestao`. Apagado
+depois, junto com as conversas de teste.
+
+Os quatro nos de envio ficaram **desligados durante todos os testes** e foram
+religados ao final, com o numero pessoal do dono ja fora da Evolution
+(`state: close`, conferido).
+
+### Um erro meu que vale ficar escrito
+
+Numa das edicoes eu reescrevi o `jsonBody` do `Criar Agendamento` e **removi sem
+querer** o `.split(',').map(...).filter(...)` do `p_service_ids` — o que mandaria
+uma string onde a RPC espera `uuid[]`. Peguei relendo o parametro inteiro antes
+de culpar o modelo. Licao: ao trocar a DESCRICAO de um `$fromAI`, o alvo e a
+string da descricao, nao a expressao em volta dela.
+
+### Sobras conhecidas
+
+- O agente ainda gasta uma mensagem perguntando "vou marcar pra voce?" quando o
+  cliente ja pediu para marcar. A regra "escolher um horario JA E a confirmacao"
+  esta no prompt; ele obedece quando o horario vem da lista dele, e hesita quando
+  o cliente dita hora e barbeiro de primeira.
+- `whatsapp_connections.status` continua `open` para a El Corte com a instancia
+  fechada na Evolution: a tela de Conexao mente ate algo ressincronizar.
+- Com "dar um tapa no corte" o agente assumiu *Corte masculino* em vez de mostrar
+  os tres servicos com a palavra corte. A regra manda mostrar; a voz do dono
+  (exemplo 1) manda assumir e perguntar so sobre servico extra. **Decisao do
+  dono**, pendente.
+
+---
+
+## 2026-10-02 (tarde) — As duas regras que cobriam so o caminho previsto
+
+As duas sobras do passo 2 eram o MESMO defeito: regra escrita para o caminho que
+quem escreveu imaginou, deixando o modelo improvisar quando o cliente chega por
+outra porta. E a regua 1 da casa aplicada ao prompt.
+
+### Resolvido: o servico que o cliente nao detalha
+
+A regra dizia "'quero agendar um corte' NAO diz o servico: mostre os que
+servem". So que perguntar "qual dos tres cortes?" em todo pedido e formulario,
+nao atendimento -- e o exemplo 1 do proprio dono assume o corte e pergunta so
+sobre servico EXTRA.
+
+A regra virou: **assuma o corte comum e DIGA o nome do que assumiu na mesma
+mensagem** ("Pro *Corte masculino* amanha, tenho esses horarios"). Assim a
+correcao sai de graca, porque o nome esta na frente do cliente. Pergunta so com
+sinal de ambiguidade real: crianca ("pro meu filho"), barba junto, ou duvida
+dele.
+
+**Conferido em execucao de verdade**: "da pra marcar um corte amanha" ->
+"Pro *Corte masculino* amanha...". Sem pergunta extra.
+
+### NAO resolvido: ele pede permissao quando o cliente dita o horario
+
+Quando o cliente dita dia, hora e barbeiro de primeira ("da pra marcar um corte
+amanha 14:00 com o Thiago?"), o agente consulta a disponibilidade, confirma que
+existe... e **pergunta** "vou agendar pra ti, beleza?" em vez de marcar.
+
+**Tres tentativas, todas falharam:**
+1. regra no prompt ("escolher um horario JA E a confirmacao") -- nao cobria quem
+   dita de primeira;
+2. regra ampliada ("pedido de marcar E a confirmacao, venha de onde vier...
+   nunca pergunte 'vou marcar pra voce?'") -- ignorada;
+3. a instrucao movida para a **descricao da ferramenta** `Criar Agendamento`
+   ("CHAME ASSIM QUE o cliente pedir um horario concreto... nao pergunte
+   permissao e nao confira disponibilidade antes") -- tambem ignorada. Ele
+   continuou conferindo antes e perguntando depois.
+
+**Diagnostico:** nao e redacao, e limite de obediencia do gpt-4o a instrucao
+procedural negativa. Parar de insistir foi decisao consciente (regra das duas
+tentativas).
+
+**O que custa, medido:** UMA mensagem a mais, so no caminho em que o cliente ja
+sabe a hora que quer. No caminho normal (o agente lista, o cliente escolhe) ele
+marca direto -- isso esta provado. E o comportamento e SEGURO: ele nunca marca o
+que o cliente nao confirmou.
+
+**Decisao: aceitar por hora.** Revisitar quando a conta da OpenAI subir de tier e
+der para testar um modelo que obedece instrucao procedural melhor. As saidas
+descartadas, com o motivo: tirar a ferramenta de consulta (quebraria o caminho de
+listar horarios) e detectar "marca + dia + hora" por codigo antes do agente
+(fragil em linguagem natural, trabalho grande para economizar uma mensagem).
+
+As duas regras novas ficaram no prompt de qualquer jeito: a do servico porque
+funciona, e a de marcar porque esta certa mesmo sem ser obedecida sempre.

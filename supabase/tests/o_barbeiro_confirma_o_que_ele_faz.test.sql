@@ -26,7 +26,7 @@ create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
 begin;
-select plan(10);
+select plan(11);
 
 \set salao_a 'aaaa2000-0000-0000-0000-000000000001'
 \set salao_b 'aaaa2000-0000-0000-0000-000000000002'

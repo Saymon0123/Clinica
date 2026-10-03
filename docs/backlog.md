@@ -6090,6 +6090,10 @@ intencao, e a submissao de hoje provou de forma incomoda quanto isso e verdade.
 Ids na Meta: `1401421392139416`, `2213231590076636`, `1754010445665149`. Todos
 `PENDING` na analise, e `ativo = false` no banco — nada envia.
 
+> **Em 03/10 os tres sairam para `APPROVED`**, com as categorias desta tabela
+> confirmadas. Ver "Os tres templates da fila foram aprovados, e o banco nao
+> sabia", no fim do arquivo. `ativo` segue `false`.
+
 ### A armadilha que quase passou: a resposta da CRIACAO mente
 
 O `POST` de criacao devolveu `category: UTILITY` **nos tres**. Minutos depois, o
@@ -7069,12 +7073,13 @@ rastro apagado depois.
 
 ### O que fica em aberto
 
-- **O aviso automático não existe**, e é a única peça que falta. Mensagem
-  iniciada pela plataforma exige template aprovado, e dos três submetidos em
-  01/10 a Meta devolveu `fila_vaga_abriu` como `utility` e os outros dois como
-  `marketing` (entrada de 01/10). Os três seguem `PENDING` e `ativo = false`.
-  **Decisão do dono, parada por ele.** Até lá quem chama é o dono, pela tela —
-  que mostra o telefone e diz, com letra, que o cliente não foi avisado.
+- **O aviso automático não existe**, e é a única peça que falta.
+  **ATUALIZADO no mesmo dia:** os três templates foram **aprovados** pela Meta
+  (`fila_vaga_abriu` como `utility`, os outros dois como `marketing`) — ver a
+  entrada "Os três templates da fila foram aprovados, e o banco não sabia", no
+  fim deste arquivo. O aviso deixou de depender da Meta; falta decidir quais
+  ligar. Os três seguem `ativo = false`. Enquanto isso quem chama é o dono, pela
+  tela — que mostra o telefone e diz, com letra, que o cliente não foi avisado.
 - **`rodar_a_fila` não tem quem a chame, e isso é de propósito até o aviso
   existir.** Conferido na `devolver_chamados_sem_resposta`: chamada sem resposta
   grava `chamadas + 1` e **na segunda encerra a inscrição**. Com o varredor
@@ -7088,3 +7093,61 @@ rastro apagado depois.
 - Sem o aviso, a reserva de 30 minutos é um risco pequeno e aceito: ela segura
   um horário para alguém que ainda não sabe que foi chamado. Quando o template
   entrar, o prazo passa a valer de verdade e o número deve ser revisto.
+
+---
+
+## 2026-10-03 — Os três templates da fila foram aprovados, e o banco não sabia
+
+Eu ia reportar ao dono que o aviso da fila seguia travado na Meta, com base na
+submissão de 01/10. Fui conferir antes de afirmar, e **os três estão
+`APPROVED`** — o `GET` da WABA de produção:
+
+```
+espera_encerrada        APPROVED  MARKETING
+vaga_ja_preenchida      APPROVED  MARKETING
+vaga_que_voce_pediu     APPROVED  UTILITY
+```
+
+O banco ainda dizia `em_analise` nos três. Dois dias de atraso bastaram para o
+ledger passar a mentir, e **a mentira era a que mais custa**: ela diz "não dá
+para fazer" sobre algo que já dá.
+
+### O que isso muda no item 16
+
+O aviso automático **deixou de depender da Meta**. O que falta é decisão sobre
+quais dos três ligar, e são três coisas diferentes:
+
+| template | a Meta deu | o que diz |
+|---|---|---|
+| `fila_vaga_abriu` | **utility** | abriu a vaga que você pediu, segurada por X min, confirma? |
+| `fila_vaga_perdida` | marketing | a vaga avisada foi preenchida; você segue na espera |
+| `fila_espera_encerrada` | marketing | o período pedido passou sem vaga; espera encerrada |
+
+**O aviso que a fila precisa é o primeiro, e ele é `utility`.** Os outros dois
+são cortesia — avisam que *nada* aconteceu — e `marketing` custa ~9x e conta
+como reengajamento. Dá para ligar a fila inteira com o `utility` só, e decidir
+os dois depois sem bloquear nada.
+
+### O trinco, conferido antes de escrever no banco
+
+A 0195 diz, com letra: *"só `aprovado` envia: as views de envio filtram por
+ele"*. Então marcar `status = 'aprovado'` **não é anotação**, é mexer na porta.
+Medido antes:
+
+- as duas views de envio (`avaliacoes_a_pedir`, `vencimentos_a_avisar`) filtram
+  `ativo` **e** `aprovado` — as duas condições, não uma;
+- **nenhuma view de envio lê os templates da fila**, porque o remetente da fila
+  não existe ainda;
+- ensaio com `DO` + `raise exception`: 3 linhas mexidas, `ativo=true` entre os da
+  fila = **0**, e as duas views de envio inalteradas (0 → 0).
+
+Só então o `update` foi aplicado. `ativo` segue `false` nos três: ligar envio é
+decisão do dono, não efeito colateral de arrumar um status.
+
+### A lição, que é a mesma de sempre com outra roupa
+
+Estado que vive fora do repositório (Meta, n8n, painel) **envelhece sem avisar**,
+e o banco não é fonte de verdade sobre ele — é cópia, com a data em que foi
+tirada. `status = 'em_analise'` parecia fato e era lembrança. A regra
+*"verificar na ferramenta antes de qualquer afirmação"* já existe; o que faltava
+era aplicá-la também ao que **eu mesmo** escrevi dois dias antes.

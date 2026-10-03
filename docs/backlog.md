@@ -7151,3 +7151,105 @@ e o banco não é fonte de verdade sobre ele — é cópia, com a data em que fo
 tirada. `status = 'em_analise'` parecia fato e era lembrança. A regra
 *"verificar na ferramenta antes de qualquer afirmação"* já existe; o que faltava
 era aplicá-la também ao que **eu mesmo** escrevi dois dias antes.
+
+---
+
+## 2026-10-03 — A ponte do botão da fila (0209), e como o sistema sabe de qual barbearia
+
+O dono levantou o incômodo certo: *"o número que vai enviar a mensagem da fila é
+o da nossa empresa; não fica estranho ele estar em contato com o número da
+barbearia e receber o aviso de outro número?"*
+
+### A resposta curta: fica, e já é assim — mas o problema real era maior
+
+Medido antes de responder: `remetentes_oficiais` tem **uma linha só**
+(`phone_number_id 1288009817732005`, WABA Club Cut), e o nó que o fluxo de
+lembretes usa a lê com `ativo = true, limit 1` e **sem filtro de salão**. O
+lembrete de cliente de qualquer barbearia já sai do número central — 1.855
+agendamentos com `lembrete_enviado`, de 01/07 a 07/10. A divisão não seria criada
+pela fila; ela já existe.
+
+E o projeto já tinha batido nisso: há comentário no `whatsapp-webhook` dizendo
+que *"Reagendar no número central NÃO vai ao agente: o agente mora no número da
+barbearia (Evolution)"*, com uma ponte (`wa.me`) construída para aquele caso.
+
+**O que estava de fato quebrado:** o clique no aviso da fila morreria. A edge
+tentava `responder_lembrete`, tentava `responder_avaliacao`, testava opt-out, e
+terminava em `console.error('clique no numero central sem lembrete nem
+avaliacao')`. O cliente apertaria "Sim" no horário que pediu, **nada voltaria**,
+e a vaga ficaria presa 30 minutos antes de ser dada a outro — pior do que nunca
+ter avisado.
+
+**Decisão do dono:** manter o envio pelo número central e **construir a ponte**.
+
+### Como o sistema sabe de qual barbearia, com 10 barbearias
+
+Pelo **wamid**, não pelo telefone. É o mecanismo que a `responder_lembrete` usa
+desde sempre:
+
+```sql
+select * into v_ag from public.appointments where lembrete_message_id = p_message_id;
+```
+
+Cada mensagem enviada tem id próprio; no clique, a Meta manda `context.id` = o
+wamid da mensagem respondida. Esse id aponta para **uma** linha, e o `salon_id`
+vem de carona. Telefone não serviria: a mesma pessoa pode ser cliente de duas
+barbearias, com dois avisos — só o wamid desempata. Está escrito no código da
+edge: *"o banco resolve tudo, inclusive de qual barbearia é o agendamento"*.
+
+A 0209 repete esse molde para a fila, com `fila_avisos.message_id` (mesma forma
+do `avaliacao_pedidos.message_id`). **Tabela, e não coluna**, porque a mesma
+inscrição é chamada mais de uma vez: com coluna, o aviso novo sobrescreve o
+anterior e quem apertar num aviso **antigo** cai outra vez no `console.error`.
+
+### Os três botões são os que a Meta aprovou
+
+`vaga_que_voce_pediu` saiu com `Sim`, `Esse nao serve`, `Sair da espera`
+(QUICK_REPLY, confirmado no `GET` da WABA). Botão novo exige submissão nova,
+então a régua casa com esses três e mais nada — e o que não casa devolve
+`atendido = false`, que é o que deixa o opt-out de LGPD seguir funcionando.
+`"Sair da espera"` não colide com ele: o `ehPedidoDeSaida` compara a **mensagem
+inteira** contra um conjunto exato.
+
+### Um defeito que a ponte criaria, achado antes de criar
+
+`Esse nao serve` devolve a vaga e mantém a inscrição esperando. Só isso seria um
+**laço**: a `chamar_proximos_da_fila` seleciona `status = 'esperando'` **sem
+carência nenhuma** (conferido no código), então a varredura seguinte ofereceria o
+MESMO horário — e cada oferta é um template pago.
+
+Regra nova: **nunca oferecer o mesmo início duas vezes à mesma inscrição**, por
+`not exists` no `fila_avisos`. É a informação que o cliente deu virando regra, em
+vez de um relógio arbitrário. Medido no ensaio: recusou 09:00, a chamada seguinte
+veio 09:10.
+
+E `chamadas` **não sobe** na recusa. O contador é de chamada **perdida**, e duas
+encerram a inscrição; queimar ficha de quem respondeu encerraria a espera de quem
+está participando — o mesmo dano de ligar a varredura sem aviso.
+
+### Duas armadilhas de verificação, que valem mais que a feature
+
+1. **O arquivo da migration e a produção divergiam.** Antes de emendar a
+   `chamar_proximos_da_fila` eu comparei `prosrc` com o arquivo da 0205: 4.077
+   caracteres contra 5.365. A diferença era só **comentário e espaço** (a versão
+   aplicada no dia tinha ido sem comentários), provado normalizando os dois —
+   mas eu só souberia disso conferindo. Retipar 160 linhas de memória é como
+   cláusula some calada. A recriação da 0209 devolveu os comentários ao banco.
+2. **`lower()` do Postgres não baixa acentuada maiúscula; o do Python baixa.**
+   Minha receita de comparação usava `lower()` nos dois lados e acusou
+   divergência falsa em `responder_vaga_da_fila` (`'ÁÀÂÃ...'` dentro do
+   `translate`). Sem `lower()`, os três corpos batem. **A ferramenta de
+   comparação também mente** — quando ela acusa, o primeiro suspeito é ela.
+
+### O que ainda falta (e é só isto)
+
+- **O remetente do aviso.** `rodar_a_fila` e `registrar_aviso_da_fila` estão
+  prontas e testadas; falta o fluxo no n8n que varre, envia o
+  `vaga_que_voce_pediu` e grava o wamid logo depois (molde do
+  `Guardar wamid do Lembrete`). **A resposta não precisa de nada no n8n**: o
+  `entregarAoN8n` posta sempre na mesma URL e o `Usar Resposta Pronta` manda
+  `resposta` verbatim.
+- O varredor segue desligado até o aviso existir, pelo motivo já registrado:
+  chamar quem não é avisado encerra a inscrição de quem nunca soube.
+- Os dois templates `marketing` (`vaga_ja_preenchida`, `espera_encerrada`)
+  seguem `ativo = false`. A fila inteira funciona com o `utility` sozinho.

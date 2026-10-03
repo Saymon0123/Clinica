@@ -250,9 +250,13 @@ function janelaEmPalavras(i: Inscricao) {
     return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`
   }
   const faixa = i.de === i.ate ? `dia ${dia(i.de)}` : `de ${dia(i.de)} a ${dia(i.ate)}`
+
+  // As QUATRO formas de janela, iguais as da view fila_do_cliente. A primeira
+  // versao daqui (e o CHECK da 0203) assumia que janela vinha sempre inteira --
+  // e "so antes das 9" foi a primeira frase de cliente de verdade a chegar.
+  const de = i.hora_de?.slice(0, 5)
+  const ate = i.hora_ate?.slice(0, 5)
   const hora =
-    i.hora_de && i.hora_ate
-      ? `, entre ${i.hora_de.slice(0, 5)} e ${i.hora_ate.slice(0, 5)}`
-      : ''
+    de && ate ? `, entre ${de} e ${ate}` : ate ? `, até ${ate}` : de ? `, a partir de ${de}` : ''
   return `espera ${faixa}${hora}`
 }

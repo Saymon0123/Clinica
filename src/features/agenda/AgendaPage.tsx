@@ -6,6 +6,7 @@ import { traduzirErroDoBanco } from '../../lib/erroDoBanco'
 import { useSalon } from '../auth/useSalon'
 import { useAgendaData } from './useAgendaData'
 import { AvisoDeCancelamentos } from './AvisoDeCancelamentos'
+import { FilaDeEspera } from './FilaDeEspera'
 import { MiniCalendar } from './MiniCalendar'
 import { NewAppointmentModal } from './NewAppointmentModal'
 import { AppointmentDetailModal } from './AppointmentDetailModal'
@@ -404,6 +405,11 @@ export function AgendaPage() {
             vai fazer nos próximos minutos — a cadeira que esvaziou. Some
             sozinho quando não há nada. */}
         <AvisoDeCancelamentos salonId={salonId} />
+
+        {/* Logo abaixo do aviso de cancelamento de proposito: a sequencia na
+            tela e a sequencia da cabeca do dono -- "o cliente desmarcou" e,
+            na linha seguinte, "quem eu chamo". */}
+        <FilaDeEspera salonId={salonId} />
 
         {/* Toolbar */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">

@@ -6973,3 +6973,118 @@ antes do push, e o CI passou de primeira.
   de espera (item 16) encosta.
 - Nenhuma tela foi vista com os olhos em nenhum dos dois itens: não existe conta
   de teste com login neste ambiente.
+
+---
+
+## 2026-10-03 — A fila de espera, completa menos o aviso (item 16)
+
+O item, do bloco decidido em 30/09: quem liga e não tem horário hoje vai embora
+sem nada. A fila guarda o pedido e chama quando a vaga abre.
+
+Entrou em `0203`-`0208`, sobre a reserva que a `0192` já tinha criado. A tela do
+dono vai junto, e no n8n três ferramentas (`Entrar na Fila`, `Sair da Fila`,
+`Confirmar Vaga da Fila`) mais um nó de contexto (`Fila do Cliente`). O aviso
+automático **não** — o porquê está no fim.
+
+### A decisão de projeto que dispensou o evento
+
+A vaga abre de cinco formas: cancelamento, bloqueio removido, agendamento
+movido, horário de funcionamento esticado, e reserva da própria fila vencendo.
+Reagir a cada uma significaria cinco gatilhos, cada um com a mesma pergunta
+embutida e cada um podendo divergir dos outros.
+
+A `0205` **pergunta** em vez de reagir: `private.chamar_proximos_da_fila` roda a
+varredura e faz uma pergunta só — *existe vaga que caiba nesta inscrição?* — pelo
+`horarios_livres`, que é a mesma régua da agenda pública e do agente. As cinco
+formas viram uma. O preço é a latência da varredura, que para "te aviso quando
+abrir" não é preço nenhum.
+
+A fachada `public.rodar_a_fila(limite)` existe porque o n8n só alcança `public`
+(regra da `0197`).
+
+### Duas coisas que eu desenhei erradas
+
+**1. O CHECK proibia a frase mais comum do cliente.** A `0203` exigia as duas
+pontas da janela de hora, com este comentário meu: *"ou a janela inteira, ou
+nenhuma: só uma das pontas é um filtro que ninguém sabe ler"*. No teste, alguém
+disse *"só consigo antes das 9"*. O agente leu certo, montou
+`hora_de: null, hora_ate: '09:00'` — a tradução exata da frase — e o banco
+recusou com 23514.
+
+*"Antes das 9"* e *"depois das 18"* são as duas restrições que cliente mais diz.
+E o mais revelador: a função que procura a vaga **já** tratava as pontas de forma
+independente (`v_f.hora_de is null or ...`). Eu escrevi o código certo e a trava
+errada, sem perceber que uma proibia o que a outra sabia fazer. A `0208`
+afrouxou, nulo passou a significar **ponta aberta**, e a asserção do pgTAP que
+guardava a regra errada virou o oposto.
+
+**2. A fila sabia chamar e ninguém sabia dizer sim.** Esse apareceu *escrevendo a
+instrução do agente*, não testando. Eu ia escrever *"se ele tiver vaga segurada,
+confirme com Criar Agendamento"* — e isso criaria um **segundo** agendamento no
+mesmo minuto para o mesmo cliente, que a `appointments_cliente_sem_sobreposicao`
+recusaria com 23P01. O cliente diria "quero" e ouviria que não deu, com a vaga
+dele na mão.
+
+Nasceu a `0207`. O buraco não apareceu no ensaio nem no pgTAP porque os dois
+testavam a **chamada**; escrever o passo a passo em português é que encontrou o
+caminho de volta.
+
+### Duas de fluxo, que só a conversa de verdade mostrou
+
+**3. O nó de contexto novo matou a conversa.** O `Fila do Cliente` devolveu zero
+linhas (o cliente não estava na fila) e **o n8n para o ramo quando um nó não
+emite nada** — o agente nunca rodou. Todo nó de contexto irmão tem
+`alwaysOutputData: true` e `onError: continueRegularOutput`; o meu não tinha
+nenhum dos dois. Terceira vez que um nó de contexto com zero linhas custa uma
+rodada.
+
+**4. O agente foi mais cuidadoso que a minha regra.** Pedi domingo (fechado) e
+ele respondeu *"a gente não atende aos domingos, que tal outro dia?"* em vez de
+oferecer a fila — **o que está certo**: vaga nunca abre em dia fechado, e a fila
+seria um telefone que nunca toca. Minha regra dizia só "dia sem vaga, ofereça a
+fila". Corrigida para distinguir dia **cheio** de dia **fechado**.
+
+### Três armadilhas de schema, cobradas pelo ensaio
+
+1. `returns table (... appointment_id ...)` **sombreia a coluna** de mesmo nome:
+   o `on conflict (appointment_id, ...)` levantou 42702. Renomear o OUT exigiu
+   `drop function` antes (42P13).
+2. A reserva nascia com a duração do serviço **principal** (40 min em vez de 70),
+   liberando meia hora que não existe. `data_hora_fim` passou a ser explícito.
+3. `status` e `reservada_ate` mudam na **mesma instrução**: o CHECK
+   `appointments_reserva_com_prazo` exige prazo quando `reservado` e exige a
+   ausência dele quando não. Mexer num sem o outro levanta 23514.
+
+### O que a fila diz, e o que ela não promete
+
+Nunca diz posição na fila nem quantos estão na frente. O agente não sabe: a
+ordem depende do que cada um aceita, e número inventado é promessa que não se
+cumpre. A inscrição também não garante horário, e o agente diz isso —
+*"te aviso na hora que abrir"* é verdade, *"já está quase marcado"* não é.
+
+Provado ponta a ponta na conversa: *"me avisa se abrir qualquer coisa essa semana
+antes das 9"* virou `de 03/10 a 09/10`, `até 09:00`, Corte masculino, qualquer
+barbeiro, `esperando` — com os quatro nós de envio desligados durante o teste e o
+rastro apagado depois.
+
+### O que fica em aberto
+
+- **O aviso automático não existe**, e é a única peça que falta. Mensagem
+  iniciada pela plataforma exige template aprovado, e dos três submetidos em
+  01/10 a Meta devolveu `fila_vaga_abriu` como `utility` e os outros dois como
+  `marketing` (entrada de 01/10). Os três seguem `PENDING` e `ativo = false`.
+  **Decisão do dono, parada por ele.** Até lá quem chama é o dono, pela tela —
+  que mostra o telefone e diz, com letra, que o cliente não foi avisado.
+- **`rodar_a_fila` não tem quem a chame, e isso é de propósito até o aviso
+  existir.** Conferido na `devolver_chamados_sem_resposta`: chamada sem resposta
+  grava `chamadas + 1` e **na segunda encerra a inscrição**. Com o varredor
+  ligado e nenhum aviso saindo, o sistema chamaria alguém que não sabe que foi
+  chamado, prenderia a vaga dele 30 minutos, repetiria, e **encerraria a
+  inscrição de quem nunca foi contatado** — dando a vaga a mais ninguém no meio
+  tempo. O agendamento no n8n só pode nascer junto do envio; a função está
+  pronta e testada, e até lá roda à mão.
+- **Nenhuma tela foi vista com os olhos.** Mesmo motivo dos itens 20 e 18: não
+  existe conta de teste com login neste ambiente.
+- Sem o aviso, a reserva de 30 minutos é um risco pequeno e aceito: ela segura
+  um horário para alguém que ainda não sabe que foi chamado. Quando o template
+  entrar, o prazo passa a valer de verdade e o número deve ser revisto.

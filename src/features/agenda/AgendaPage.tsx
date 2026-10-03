@@ -11,6 +11,7 @@ import { NewAppointmentModal } from './NewAppointmentModal'
 import { AppointmentDetailModal } from './AppointmentDetailModal'
 import type { Appointment } from './types'
 import { CardAtivacao } from '../ativacao/CardAtivacao'
+import { CardDoBarbeiro } from '../ativacao/CardDoBarbeiro'
 import { PageHeader } from '../../components/PageHeader'
 import { SkeletonPagina } from '../../components/Skeleton'
 import { EstadoVazio } from '../../components/EstadoVazio'
@@ -393,6 +394,10 @@ export function AgendaPage() {
       <div className="flex-1 min-w-0">
         <PageHeader titulo="Agenda" subtitulo="As reservas do dia, por profissional" />
         <CardAtivacao />
+        {/* Um ou o outro, nunca os dois: o CardAtivacao sai para quem nao e
+            gestor e o CardDoBarbeiro sai para quem e. Sem isso, o dono que
+            tambem tem cadeira veria dois cartoes flutuantes no mesmo canto. */}
+        <CardDoBarbeiro />
 
         {/* O que o cliente cancelou sozinho e a barbearia ainda nao viu.
             Acima da grade de propósito: é a informação que muda o que o dono

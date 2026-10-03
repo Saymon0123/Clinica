@@ -26,7 +26,7 @@ create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
 begin;
-select plan(11);
+select plan(13);
 
 \set salao_a 'aaaa2000-0000-0000-0000-000000000001'
 \set salao_b 'aaaa2000-0000-0000-0000-000000000002'
@@ -172,9 +172,33 @@ select lives_ok(
   'o proprio barbeiro salva a jornada dele (antes da 0200 era so gestor)'
 );
 
+---------- 10 e 11. a marca da jornada: insert cru nao conta como escolha
+
+-- As linhas de jornada que o `accept-invite` deriva do horario da barbearia
+-- existem sem ninguem ter olhado. Se o insert cru marcasse, o cartao de
+-- primeira entrada nasceria riscado e o barbeiro nunca veria o expediente que o
+-- sistema inventou para ele.
+select pg_temp.sair();
+insert into professionals (id, salon_id, user_id, nome, ativo) values
+  ('aaaa2003-0000-0000-0000-000000000003', :'salao_a', null, 'So Cadeira', true);
+insert into professional_schedules (professional_id, dia_semana, hora_inicio, hora_fim, ativo)
+select 'aaaa2003-0000-0000-0000-000000000003', d, '09:00', '18:00', true
+  from generate_series(0, 6) d;
+
+select ok(
+  (select jornada_confirmada_em is null from professionals
+    where id = 'aaaa2003-0000-0000-0000-000000000003'),
+  'jornada DERIVADA (insert cru, como o accept-invite faz) nao conta como escolha'
+);
+
+select pg_temp.entrar(:'dono_a');
+select ok(
+  (select jornada_confirmada_em is not null from professionals where id = :'barbeiro'),
+  'e a jornada SALVA pela RPC fica marcada: e o que risca o item do cartao'
+);
 select pg_temp.sair();
 
---------------------------------------------------------------- 10. o trinco
+--------------------------------------------------------------- 12. o trinco
 
 select ok(
   not has_function_privilege('anon',

@@ -97,6 +97,8 @@ const TETO: Record<string, number> = {
   'src/features/agenda/AgendaPage.tsx': 6,
   'src/features/agenda/AppointmentDetailModal.tsx': 3,
   'src/features/agenda/NewAppointmentModal.tsx': 1,
+  // Nasce medido: Passar usa btn-primary e os dois Cancelar usam btn-danger.
+  'src/features/agenda/ConflitosDoBloqueio.tsx': 0,
   // Desceu de 10 em 21/09: o seletor de período saiu para componente próprio.
   'src/features/financeiro/FinanceiroPage.tsx': 7,
   // O seletor Dia|Mês é dialeto feito à mão por natureza (chevrons + rótulos
@@ -119,6 +121,9 @@ const TETO: Record<string, number> = {
   'src/features/vendas/NewSaleModal.tsx': 2,
   'src/features/vendas/VendasSection.tsx': 0,
   'src/features/configuracoes/ConfiguracoesPage.tsx': 1,
+  // Nasce medido: so a pilula recolhida e dialeto proprio (o X usa btn-chip e
+  // os itens usam btn-ghost).
+  'src/features/ativacao/CardDoBarbeiro.tsx': 1,
   'src/components/AppLayout.tsx': 2,
 }
 

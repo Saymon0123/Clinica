@@ -6837,3 +6837,139 @@ listar horarios) e detectar "marca + dia + hora" por codigo antes do agente
 
 As duas regras novas ficaram no prompt de qualquer jeito: a do servico porque
 funciona, e a de marcar porque esta certa mesmo sem ser obedecida sempre.
+
+---
+
+## 2026-10-02 (noite) — O onboarding do barbeiro, fechado (item 20)
+
+O item 20 não era tour: era **confirmação**. O `accept-invite` entrega a cadeira
+configurada por suposição — todos os serviços ativos ligados e a jornada
+derivada do horário de funcionamento da barbearia — e nada na tela distinguia
+"ele confirmou" de "ninguém olhou".
+
+### O que foi medido antes de construir
+
+- `professional_services` estava **populada e ninguém a lia** (0199 consertou a
+  leitura).
+- Não existia controle de serviço em lugar nenhum do produto, apesar de o
+  comentário do `accept-invite` mandar "ajustar depois na aba Equipe".
+- Os quatro barbeiros da El Corte faziam os oito serviços, inclusive
+  "Luzes / platinado" a R$160.
+- **Nenhum dos quatro tem login** (`user_id` em branco): ninguém nunca aceitou
+  um convite como barbeiro nesta base.
+
+### As quatro peças
+
+| | onde | marca de "alguém escolheu" |
+|---|---|---|
+| leitura do vínculo | 0199, `horarios_livres_pelo_agente` | — |
+| trocar a lista | 0200, `salvar_servicos_do_barbeiro` | `servicos_confirmados_em` |
+| jornada | 0201, `salvar_jornada` | `jornada_confirmada_em` |
+| telas | `ServicosBarbeiroModal` + `CardDoBarbeiro` | as duas acima |
+
+A 0201 fechou um vão da 0200: eu dei a marca para a lista de serviços e **não**
+para a jornada, que tem o mesmo problema. Sem ela o cartão mostraria a jornada
+como pronta no primeiro segundo.
+
+O stamp mora na RPC e não num trigger de propósito: trigger marcaria também o
+insert do `accept-invite`, que é justamente o que não conta como escolha.
+
+### Duas restrições reais que moldaram o cartão
+
+1. **O barbeiro não tem a rota `/equipe`** (`somenteGestor` no AppLayout). O
+   cartão abre os modais ali mesmo, na Agenda — levar para `/equipe` seria
+   levar para uma tela que não abre para ele.
+2. **Só aparece para quem não é gestor.** O dono costuma ter cadeira também, e
+   veria dois cartões flutuantes no mesmo canto, um por cima do outro.
+
+### O tripwire dos botões cobrou, duas vezes
+
+O botão de Serviços na aba Equipe estourou o teto da `EquipePage` (11 para um
+teto de 10). A saída da casa não é afrouxar o teste: as **cinco** ações da linha
+eram o mesmo dialeto escrito cinco vezes e saíram para o `AcaoDaLinha`. O teto
+da tela desceu de 10 para 6, e os componentes novos nasceram medidos
+(`AcaoDaLinha` 1, `CardDoBarbeiro` 1, `ServicosBarbeiroModal` 0).
+
+### O que fica em aberto
+
+- **A primeira entrada não foi percorrida com os olhos.** Não existe conta de
+  barbeiro nesta base. Para testar de verdade falta um convite de barbeiro para
+  um e-mail do dono.
+- **A trava na ESCRITA** (recusar agendamento com barbeiro que não faz o
+  serviço, em `agendar_pelo_agente` ou num trigger em `appointments` cobrindo as
+  quatro portas) continua de fora, de propósito: agora que existe controle para
+  arrumar o dado, ela passou a ser possível — antes travaria a agenda de alguém
+  sem o dono ter onde consertar.
+- O `accept-invite` continua ligando todos os serviços. Isso agora é **padrão
+  honesto** (a marca diz que ninguém escolheu), não mais um chute invisível.
+
+---
+
+## 2026-10-02 — O barbeiro que não vem no dia 20 (item 18)
+
+O item, nas palavras do dono: *"se hoje o barbeiro informa que dia 20 ele não
+conseguirá trabalhar, ele tem que ter uma opção de registro para que os
+agendamentos sejam direcionados a outro barbeiro que irá trabalhar no dia"*.
+
+### Metade já existia, e isso mudou o tamanho do item
+
+Conferido antes de escrever qualquer coisa:
+
+- **Bloquear o dia inteiro**: existe desde a 0182 — caixa "dia inteiro"
+  (00:00–23:59) com motivo, no `NewAppointmentModal`.
+- **Trocar o barbeiro de um agendamento**: existe no `AppointmentDetailModal`,
+  que grava `professional_id` novo no reagendamento.
+- **O banco já impedia** bloquear por cima de horário marcado: a
+  `appointments_sem_sobreposicao` levanta 23P01, e a tela já traduzia como
+  *"Esse intervalo já tem horário marcado para este profissional. Cancele ou
+  remarque antes de bloquear."*
+
+Ou seja: o item não era construir o registro da falta. Era **fechar o beco sem
+saída que aquela frase cria** — o dono era mandado resolver e tinha de
+adivinhar, agendamento por agendamento, quem trabalha naquele dia, faz aquele
+serviço e está livre naquela hora. Três perguntas que o sistema sabia responder
+e não respondia.
+
+### O que entrou (0202 + `ConflitosDoBloqueio`)
+
+`quem_pode_assumir(appointment_id)` responde as três. Usa o `horarios_livres`
+**de propósito**: candidatura calculada por fora ofereceria gente que o trigger
+da folga (0134) depois recusa com 23P01 — o dono clicaria num nome para levar
+erro, que é pior do que não ter lista. Serviço entra pela régua da 0199.
+
+Ela **não move nada**. Mover continua sendo o `update` da tela, com a EXCLUDE e
+o trigger como última palavra: uma função que movesse teria de reproduzir as
+duas, e duas cópias da mesma regra é como elas divergem.
+
+Na tela, o 23P01 deixou de ser frase morta e passou a abrir o painel. Quando a
+lista esvazia, o bloqueio é tentado na hora.
+
+### Quatro lições do schema, cobradas pelo ensaio
+
+A fixture do ensaio caiu quatro vezes, e **nenhuma** foi a função:
+
+1. `trg_espelha_servico_principal` **já** grava o serviço principal em
+   `appointment_services` — inserir de novo levanta 23505.
+2. `bloqueio` não leva `client_id`: a EXCLUDE por **cliente** também conta esse
+   status, e o mesmo cliente no mesmo minuto é recusado.
+3. A "vítima" do teste de ocupado tem de sair da **própria resposta da função**:
+   supor quem estava livre bateu na agenda real da El Corte.
+4. O Supabase devolve relação embutida como **array** mesmo quando é
+   uma-para-uma (`clients(nome)`) — o typecheck pegou antes de virar
+   `undefined` na tela.
+
+Nas duas rodadas anteriores (itens 20 e 0200) eu usei o CI como test runner e
+reprovei duas vezes. Desta vez a fixture do pgTAP foi rodada contra o banco real
+antes do push, e o CI passou de primeira.
+
+### O que fica em aberto
+
+- **O cliente não é avisado da troca**, e a tela diz isso (*"Quem conta é
+  você"*). O aviso automático é mensagem iniciada pela plataforma e depende de
+  template aprovado, que o dono decidiu não usar por hora. Quando usar, o molde
+  mais próximo é o rascunho `imprevisto_na_barbearia`.
+- **Ninguém livre naquele minuto** devolve lista vazia, e a tela manda falar com
+  o cliente. Sugerir outro horário seria decidir pelo cliente; é aqui que a fila
+  de espera (item 16) encosta.
+- Nenhuma tela foi vista com os olhos em nenhum dos dois itens: não existe conta
+  de teste com login neste ambiente.

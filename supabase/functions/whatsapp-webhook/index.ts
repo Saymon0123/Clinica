@@ -491,17 +491,60 @@ Deno.serve(comSentry('whatsapp-webhook', async (req, ctx) => {
                     'resposta-avaliacao',
                   )
                 } else if (!av?.atendido) {
-                  // Nem lembrete nem avaliação: é aqui que cai o botão "Nao
-                  // quero mais receber" dos templates de reativação. Ele chega
-                  // com `context.id` do convite, mas nenhuma das duas RPCs o
-                  // reconhece — e por isso morria neste `console.error`,
-                  // deixando o opt-out de LGPD sem nenhuma escrita no sistema.
-                  if (ehPedidoDeSaida(texto)) {
-                    await registrarSaida(admin, m.from, phoneNumberId)
-                  } else {
-                    console.error('clique no numero central sem lembrete nem avaliacao:',
-                      m.context.id, 'de:', m.from)
+                  // Terceira tentativa: o aviso de vaga da FILA DE ESPERA, que
+                  // sai pelo mesmo número central. Sem esta chamada, o cliente
+                  // aperta "Sim" no horário que pediu, nada volta, e a vaga dele
+                  // fica presa 30 minutos antes de ser dada a outro — pior do
+                  // que nunca ter avisado. Decisão do dono em 03/10: manter o
+                  // envio pelo número central e construir esta ponte.
+                  //
+                  // A RPC resolve pelo WAMID, e é por isso que funciona com N
+                  // barbearias saindo do mesmo número: o telefone não desempata
+                  // (a mesma pessoa pode ser cliente de duas), o wamid sim.
+                  const { data: fl, error: erroFila } = await admin.rpc('responder_vaga_da_fila', {
+                    p_message_id: m.context.id,
+                    p_botao: texto,
+                  })
+                  if (erroFila) {
+                    console.error('responder_vaga_da_fila falhou:', erroFila.message)
+                    continue
                   }
+                  if (fl?.atendido && fl.resposta) {
+                    // Mesmo caminho das outras: `entregarAoN8n` posta sempre na
+                    // mesma URL e o fluxo manda `resposta` verbatim. `acao`
+                    // viaja só para o log — nenhuma mudança no n8n é precisa.
+                    await entregarAoN8n(
+                      {
+                        salon_id: fl.salon_id ?? null,
+                        phone_number_id: phoneNumberId,
+                        contact_phone: m.from,
+                        appointment_id: fl.appointment_id ?? null,
+                        acao: fl.acao,
+                        resposta: fl.resposta,
+                      },
+                      'resposta-fila-de-espera',
+                    )
+                  } else if (!fl?.atendido) {
+                    // Nem lembrete, nem avaliação, nem fila: é aqui que cai o
+                    // botão "Nao quero mais receber" dos templates de
+                    // reativação. Ele chega com `context.id` do convite, mas
+                    // nenhuma das RPCs o reconhece — e por isso morria neste
+                    // `console.error`, deixando o opt-out de LGPD sem nenhuma
+                    // escrita no sistema.
+                    //
+                    // "Sair da espera" NÃO cai aqui, e não pode: o
+                    // `ehPedidoDeSaida` compara a mensagem INTEIRA contra um
+                    // conjunto exato, e essa frase não está nele. Sair da fila é
+                    // sair daquela espera, não de todo contato.
+                    if (ehPedidoDeSaida(texto)) {
+                      await registrarSaida(admin, m.from, phoneNumberId)
+                    } else {
+                      console.error('clique no numero central sem lembrete, avaliacao nem fila:',
+                        m.context.id, 'de:', m.from)
+                    }
+                  }
+                  // `atendido` com `resposta` nula é o clique repetido no mesmo
+                  // aviso: nada a refazer e nada a dizer de novo.
                 }
                 continue
               }

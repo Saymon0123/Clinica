@@ -28,7 +28,7 @@ create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
 begin;
-select plan(12);
+select plan(13);
 
 \set salao_a 'aaaa2300-0000-0000-0000-000000000001'
 \set salao_b 'aaaa2300-0000-0000-0000-000000000002'
@@ -178,12 +178,26 @@ update fila_de_espera
        appointment_id = 'aaaa2305-0000-0000-0000-000000000001'
  where client_id = :'cli';
 
+-- A chamada roda numa instrucao SO, e o resultado fica guardado.
+--
+-- A primeira versao desta assercao juntava a chamada e a consequencia num `and`
+-- unico -- `sair_da_fila(...) and not exists(...)` -- e o CI reprovou. SQL **nao
+-- garante a ordem de avaliacao** de um `and`: o `not exists` foi medido ANTES de
+-- a funcao apagar a reserva. E a mesma licao que ja esta escrita em
+-- `a_vaga_segurada_para_quem_foi_chamado.test.sql`, e eu a repeti aqui -- motivo
+-- de ela estar escrita duas vezes agora.
+create temp table saida as
+select sair_da_fila((select id from fila_de_espera where client_id = :'cli')) as r;
+
 select ok(
-  (sair_da_fila((select id from fila_de_espera where client_id = :'cli'))
-    ->>'vaga_devolvida')::boolean
-  and not exists (select 1 from appointments
-                   where id = 'aaaa2305-0000-0000-0000-000000000001'),
-  'quem sai da fila com vaga segurada devolve a vaga NA HORA, sem esperar a varredura'
+  ((select r from saida)->>'vaga_devolvida')::boolean,
+  'sair da fila com vaga segurada devolve a vaga (vaga_devolvida: true)'
+);
+
+select ok(
+  not exists (select 1 from appointments
+               where id = 'aaaa2305-0000-0000-0000-000000000001'),
+  'e a reserva e apagada NA HORA, sem esperar a varredura: o horario pode ser o da proxima pessoa'
 );
 
 --------------------------- 9. sair duas vezes e conversa, nao erro

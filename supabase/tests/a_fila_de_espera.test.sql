@@ -28,7 +28,7 @@ create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
 begin;
-select plan(13);
+select plan(14);
 
 \set salao_a 'aaaa2300-0000-0000-0000-000000000001'
 \set salao_b 'aaaa2300-0000-0000-0000-000000000002'
@@ -39,6 +39,7 @@ select plan(13);
 \set sumido  'aaaa2303-0000-0000-0000-000000000002'
 \set cli     'aaaa2304-0000-0000-0000-000000000001'
 \set cli2    'aaaa2304-0000-0000-0000-000000000002'
+\set cli3    'aaaa2304-0000-0000-0000-000000000003'
 
 create or replace function pg_temp.hoje() returns date
 language sql as $fn$ select ((now() at time zone 'America/Sao_Paulo')::date) $fn$;
@@ -96,8 +97,9 @@ insert into services (id, salon_id, nome, duracao_minutos, preco, ativo) values
   (:'sumido', :'salao_a', 'Sumido', 30, 50, false);
 
 insert into clients (id, salon_id, nome, telefone) values
-  (:'cli',  :'salao_a', 'Quem Espera',      '41977770041'),
-  (:'cli2', :'salao_a', 'Quem Espera Dois', '41977770042');
+  (:'cli',  :'salao_a', 'Quem Espera',       '41977770041'),
+  (:'cli2', :'salao_a', 'Quem Espera Dois',  '41977770042'),
+  (:'cli3', :'salao_a', 'Quem So Pode Cedo', '41977770043');
 
 --------------------------------------------- 1 a 4. os quatro CHECKs
 
@@ -117,14 +119,26 @@ select throws_ok(
   'faixa invertida (ate antes de de) e recusada'
 );
 
--- CHECK so recusa FALSE: com uma ponta nula o `>` daria NULL e passaria. Por
--- isso os dois lados sao explicitos na constraint.
+-- MEIA JANELA E ACEITA (0208), e esta assercao e o oposto da que existia aqui.
+--
+-- A 0203 exigia as duas pontas, com o comentario "meia janela e filtro que
+-- ninguem le". E falso: "antes das 9" e "depois das 18" sao as duas restricoes
+-- que cliente mais diz. A primeira frase de cliente de verdade num teste do
+-- agente -- "so consigo antes das 9" -- foi recusada com 23514, e a funcao que
+-- procura a vaga JA tratava as pontas de forma independente.
+select lives_ok(
+  format($q$insert into fila_de_espera (salon_id, client_id, de, ate, hora_ate)
+            values (%L, %L, %s, %s, '09:00')$q$,
+         :'salao_a', :'cli3', 'pg_temp.hoje()', 'pg_temp.hoje()'),
+  'meia janela ("so ate as 09:00") e ACEITA: ponta nula e ponta aberta'
+);
+
 select throws_ok(
-  format($q$insert into fila_de_espera (salon_id, client_id, de, ate, hora_de)
-            values (%L, %L, %s, %s, '14:00')$q$,
+  format($q$insert into fila_de_espera (salon_id, client_id, de, ate, hora_de, hora_ate)
+            values (%L, %L, %s, %s, '18:00', '09:00')$q$,
          :'salao_a', :'cli', 'pg_temp.hoje()', 'pg_temp.hoje()'),
   '23514', null,
-  'janela de hora com UMA ponta e recusada: meia janela e filtro que ninguem le'
+  'mas com as DUAS pontas, fim antes do comeco continua recusado'
 );
 
 select throws_ok(

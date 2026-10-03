@@ -7075,8 +7075,14 @@ rastro apagado depois.
   `marketing` (entrada de 01/10). Os três seguem `PENDING` e `ativo = false`.
   **Decisão do dono, parada por ele.** Até lá quem chama é o dono, pela tela —
   que mostra o telefone e diz, com letra, que o cliente não foi avisado.
-- **`rodar_a_fila` não tem quem a chame.** Falta o agendamento no n8n (a cada
-  N minutos) — a função está pronta e testada, mas hoje só roda à mão.
+- **`rodar_a_fila` não tem quem a chame, e isso é de propósito até o aviso
+  existir.** Conferido na `devolver_chamados_sem_resposta`: chamada sem resposta
+  grava `chamadas + 1` e **na segunda encerra a inscrição**. Com o varredor
+  ligado e nenhum aviso saindo, o sistema chamaria alguém que não sabe que foi
+  chamado, prenderia a vaga dele 30 minutos, repetiria, e **encerraria a
+  inscrição de quem nunca foi contatado** — dando a vaga a mais ninguém no meio
+  tempo. O agendamento no n8n só pode nascer junto do envio; a função está
+  pronta e testada, e até lá roda à mão.
 - **Nenhuma tela foi vista com os olhos.** Mesmo motivo dos itens 20 e 18: não
   existe conta de teste com login neste ambiente.
 - Sem o aviso, a reserva de 30 minutos é um risco pequeno e aceito: ela segura

@@ -7414,3 +7414,72 @@ stubs de `cron`), o SQL da comparação e os números medidos.
 O dump leva nome e telefone dos 120 clientes e, com `auth`, os **hashes de
 senha**. Ficou na pasta temporária da sessão, **fora do repositório** (que é
 público), e o contêiner foi removido ao fim — conferido.
+## 2026-10-03 — O painel do item 18 nunca funcionou, e o dono achou na primeira tela
+
+O dono abriu a Agenda com o login de teste, tentou bloquear o dia inteiro de um
+barbeiro que tinha horários, e viu isto:
+
+> **Tem 0 horários marcados nesse dia.** Passe cada um para outro barbeiro ou
+> cancele. Só depois o dia pode ser bloqueado.
+>
+> ⚠ Não foi possível ler os horários desse dia.
+
+Dois defeitos meus na mesma tela, e eu tinha entregue o item 18 dizendo que a
+frase morta virara painel.
+
+### 1. A consulta falhava SEMPRE (PGRST201)
+
+```js
+.select('id, data_hora_inicio, clients(nome), services(nome)')
+```
+
+Existem **dois** caminhos de `appointments` para `services` — a FK direta
+(`appointments_service_id_fkey`) e a tabela de junção (`appointment_services`).
+O PostgREST não escolhe sozinho: devolve **PGRST201**. Não é intermitente, não
+depende de dado, não aparece só em produção: **o painel nunca leu nada, nenhuma
+vez.**
+
+Reproduzido pelo caminho real (REST com a chave de serviço) antes de qualquer
+conserto. Com `services!appointments_service_id_fkey(nome)`, volta certo.
+
+**E a regra já estava escrita no próprio repositório**, num comentário do
+`useAgendaData.ts` desde a 0120: *"é OBRIGATÓRIO"*. Todos os outros cinco lugares
+usam a FK nomeada. Eu escrevi o sexto errado. **Comentário não segura regra.**
+
+### 2. Erro de leitura e contagem apareciam juntos
+
+O aviso com a contagem renderizava **incondicionalmente**; sob erro, `conflitos`
+era `[]` e a tela dizia *"Tem 0 horários"* — pedindo uma ação sobre um número que
+ninguém conseguiu ler — com o erro logo abaixo. É a mesma família do *"R$ 0,00
+para quem só está sem rede"*, que o `ErroDeCarga.test.ts` existe para impedir.
+
+O componente estava **fora** daquele tripwire, porque ele cobria as cinco
+*páginas* (que usam o banner `ErroDeCarga`) e este é um *painel* de modal (usa
+`ErroInline`). A classe de defeito é a mesma; a catraca não alcançava.
+
+Agora `erroLeitura` é estado separado de `erro` (ação), e sob erro de leitura o
+painel **sai cedo**: só o erro e um "Tentar de novo". A lista também é limpa —
+lista velha embaixo de um erro é a mesma mentira.
+
+### As duas catracas que nasceram disso
+
+- **`src/lib/servicoEmbutido.test.ts`** — varre todo `src` por `import.meta.glob`
+  (arquivo novo entra sozinho, sem lista para alguém esquecer de atualizar) e
+  reprova qualquer `services(` dentro de um select de `appointments`. **Provada
+  nos dois sentidos:** passa com o conserto e **reprova quando o defeito é
+  reintroduzido de propósito** — teste que não pode falhar não testa nada.
+  Ignora comentários, senão acusaria o próprio arquivo que documenta a lição.
+- **Bloco novo no `ErroDeCarga.test.ts`** para os *painéis*: `ConflitosDoBloqueio`
+  e `FilaDeEspera` precisam do `return` cedo sob erro de leitura.
+
+### O que isto diz sobre as outras entregas
+
+`FilaDeEspera` foi conferida no mesmo dia: a consulta dela é **válida** (um
+caminho só de `fila_de_espera` para cada relação, medido pelo REST) e o estado de
+erro dela **já saía cedo**. O defeito era só do painel de conflitos.
+
+Mas a lição maior é outra, e vale mais que as duas catracas: **os itens 20, 18 e
+16 foram entregues com "verificado por leitura", porque não havia login de
+teste.** O primeiro item que foi aberto por olhos humanos tinha um defeito de
+100% de reprodução. Ler o código prova que ele faz o que está escrito; não prova
+que o que está escrito funciona.

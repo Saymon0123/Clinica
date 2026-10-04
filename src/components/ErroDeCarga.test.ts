@@ -114,3 +114,32 @@ describe('as cinco listas têm os três estados', () => {
     })
   }
 })
+
+/**
+ * O mesmo tripwire para os PAINÉIS, que vivem dentro de modal e usam
+ * `ErroInline` em vez do banner de página.
+ *
+ * Entrou em 03/10 porque o `ConflitosDoBloqueio` falhava assim: a leitura dava
+ * erro, a lista ficava vazia, e a tela mostrava **"Tem 0 horários marcados nesse
+ * dia. Passe cada um para outro barbeiro"** — com o erro logo abaixo. Pedir uma
+ * ação sobre um número que ninguém conseguiu ler é a mesma família do "R$ 0,00
+ * para quem só está sem rede", e o dono viu isso na primeira tela que abriu.
+ *
+ * O gate é um `return` CEDO: sob erro de leitura o painel mostra só o erro e o
+ * "Tentar de novo". Erro de AÇÃO (passar, cancelar, tirar da fila) é outra
+ * coisa — ali a lista continua valendo e o erro é daquela linha.
+ */
+const PAINEIS: Record<string, string> = {
+  '../features/agenda/ConflitosDoBloqueio.tsx': 'if (erroLeitura) {',
+  '../features/agenda/FilaDeEspera.tsx': 'if (erroDeCarga) {',
+}
+
+describe('os painéis calam a contagem sob erro de leitura', () => {
+  for (const [arquivo, gate] of Object.entries(PAINEIS)) {
+    it(`${arquivo.split('/').pop()} sai cedo sob erro de leitura`, () => {
+      const fonte = readFileSync(new URL(arquivo, import.meta.url), 'utf-8')
+      expect(fonte).toContain("from '../../components/ErroInline'")
+      expect(fonte).toContain(gate)
+    })
+  }
+})

@@ -56,6 +56,17 @@ export function ConflitosDoBloqueio({
   const [conflitos, setConflitos] = useState<Conflito[]>([])
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
+  /**
+   * Erro de LEITURA separado do erro de ACAO, e nao um `erro` so.
+   *
+   * Sao duas situacoes diferentes para quem olha: falhar ao LER significa que
+   * nao se sabe quantos horarios existem -- e aí a tela nao pode dizer "Tem 0
+   * horarios. Passe cada um para outro barbeiro", que foi exatamente o que ela
+   * dizia, com o erro logo abaixo. Numero que nao foi lido e numero inventado.
+   * Falhar ao PASSAR um horario e outra coisa: a lista continua valendo e o
+   * erro e daquela linha.
+   */
+  const [erroLeitura, setErroLeitura] = useState<string | null>(null)
   const [mexendo, setMexendo] = useState<string | null>(null)
   const [escolha, setEscolha] = useState<Record<string, string>>({})
 
@@ -74,10 +85,17 @@ export function ConflitosDoBloqueio({
   const carregar = useCallback(async () => {
     setCarregando(true)
     setErro(null)
+    setErroLeitura(null)
 
     const { data, error } = await supabase
       .from('appointments')
-      .select('id, data_hora_inicio, clients(nome), services(nome)')
+      // `services!appointments_service_id_fkey` com a FK NOMEADA, e nao
+      // `services(nome)`. Existem DOIS caminhos de `appointments` para
+      // `services` -- a FK direta (`service_id`) e a tabela de juncao
+      // (`appointment_services`) --, o PostgREST nao escolhe sozinho e devolve
+      // **PGRST201** sempre, independente dos dados. Com `services(nome)` este
+      // painel nunca leu nada: a consulta falhava 100% das vezes.
+      .select('id, data_hora_inicio, clients(nome), services!appointments_service_id_fkey(nome)')
       .eq('professional_id', professionalId)
       .gte('data_hora_inicio', inicio)
       .lt('data_hora_inicio', fim)
@@ -86,7 +104,10 @@ export function ConflitosDoBloqueio({
 
     if (error) {
       console.error('Erro ao ler os horários no caminho:', error)
-      setErro('Não foi possível ler os horários desse dia.')
+      setErroLeitura('Não foi possível ler os horários desse dia.')
+      // A lista vai junto: lista velha embaixo de um erro e a mesma mentira do
+      // "R$ 0,00 para quem só está sem rede".
+      setConflitos([])
       setCarregando(false)
       return
     }
@@ -202,6 +223,23 @@ export function ConflitosDoBloqueio({
   }
 
   if (carregando) return <SkeletonLinhas />
+
+  // Erro de leitura CALA a contagem e a lista: sem ter lido, a tela não sabe
+  // quantos horários existem, e dizer "Tem 0" com o erro embaixo é pedir uma
+  // ação sobre um número que ninguém mediu.
+  if (erroLeitura) {
+    return (
+      <div className="space-y-3">
+        <ErroInline>{erroLeitura}</ErroInline>
+        <button
+          onClick={() => void carregar()}
+          className="btn-secondary rounded-lg px-3 py-1.5 text-xs font-medium"
+        >
+          Tentar de novo
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-3">

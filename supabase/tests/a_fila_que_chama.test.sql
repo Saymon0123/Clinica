@@ -28,7 +28,7 @@ create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
 begin;
-select plan(12);
+select plan(15);
 
 \set salao   'aaaa2400-0000-0000-0000-000000000001'
 \set prof    'aaaa2401-0000-0000-0000-000000000001'
@@ -39,6 +39,7 @@ select plan(12);
 \set c1      'aaaa2403-0000-0000-0000-000000000001'
 \set c2      'aaaa2403-0000-0000-0000-000000000002'
 \set c3      'aaaa2403-0000-0000-0000-000000000003'
+\set c4      'aaaa2403-0000-0000-0000-000000000004'
 
 create or replace function pg_temp.hoje() returns date
 language sql as $fn$ select ((now() at time zone 'America/Sao_Paulo')::date) $fn$;
@@ -77,7 +78,8 @@ insert into professional_services (professional_id, service_id) values
 insert into clients (id, salon_id, nome, telefone) values
   (:'c1', :'salao', 'Primeiro da Fila', '41977770051'),
   (:'c2', :'salao', 'Segundo da Fila',  '41977770052'),
-  (:'c3', :'salao', 'Terceiro da Fila', '41977770053');
+  (:'c3', :'salao', 'Terceiro da Fila', '41977770053'),
+  (:'c4', :'salao', 'Quarto da Fila',   '41977770054');
 
 ------------------- 1. a inscricao impossivel se recusa na PORTA
 
@@ -198,6 +200,49 @@ select ok(
   and not has_function_privilege('authenticated',
         'private.chamar_proximos_da_fila(integer,integer)', 'execute'),
   'so o service_role roda o tique da fila: nem anon nem a tela do dono chamam isto'
+);
+
+--------------------------- 13 a 15. o tique APAGA a reserva vencida (0211)
+
+-- Ate a 0211 NINGUEM chamava `expirar_reservas` -- nem cron, nem edge, nem n8n
+-- (procurado nos quatro). E a `devolver_chamados_sem_resposta` reconhece quem
+-- nao respondeu pela AUSENCIA da reserva. Sem apagar antes, a pessoa ficava
+-- presa em `chamado` para sempre E o horario ficava bloqueado para todo mundo,
+-- porque a `horarios_livres` nao olha `reservada_ate`.
+--
+-- Repare na assercao 5 deste mesmo arquivo: ela chama `private.expirar_reservas()`
+-- A MAO. O teste fazia o papel do chamador que nao existia -- foi assim que o
+-- buraco se escondeu por tres migrations.
+--
+-- Precisa de gente NOVA: a esta altura `c1` e `c3` estao `expirou` e `c2` nunca
+-- e chamada (ninguem faz quimica). Sem alguem chamavel nao nasce reserva, e a
+-- assercao passaria por vazio.
+
+select ok(
+  (entrar_na_fila(:'salao', :'c4', array[:'corte'::uuid],
+                  pg_temp.hoje(), pg_temp.hoje() + 6)->>'ok')::boolean,
+  'quarta pessoa entra na fila, para existir uma reserva que possa vencer'
+);
+
+create temp table tique4 as select rodar_a_fila(10) as r;
+
+select is(
+  (select status from fila_de_espera where client_id = :'c4'),
+  'chamado',
+  'ela e chamada e ganha a reserva (senao o resto nao mediria nada)'
+);
+
+-- O prazo vence.
+update appointments set reservada_ate = now() - interval '1 minute'
+ where id = (select appointment_id from fila_de_espera where client_id = :'c4');
+
+create temp table tique5 as select rodar_a_fila(10) as r;
+
+select is(
+  (select count(*)::int from appointments
+    where status = 'reservado' and reservada_ate < now()),
+  0,
+  'o tique nao deixa reserva VENCIDA de pe: horario preso para sempre era o defeito'
 );
 
 select * from finish();

@@ -22,7 +22,7 @@ create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
 begin;
-select plan(10);
+select plan(12);
 
 \set salao   'aaaa1920-0000-0000-0000-000000000001'
 \set prof    'aaaa1921-0000-0000-0000-000000000001'
@@ -30,6 +30,7 @@ select plan(10);
 \set cliente 'aaaa1923-0000-0000-0000-000000000001'
 \set outro   'aaaa1923-0000-0000-0000-000000000002'
 \set reserva 'aaaa1924-0000-0000-0000-000000000001'
+\set gatilho 'aaaa1924-0000-0000-0000-000000000002'
 
 create or replace function pg_temp.dia() returns date
 language sql as $fn$ select ((now() at time zone 'America/Sao_Paulo')::date + 1) $fn$;
@@ -170,6 +171,41 @@ select ok(
   and has_function_privilege('service_role', 'private.expirar_reservas()', 'execute'),
   'so o service_role varre: a funcao nova nao ficou com execute para todos'
 );
+
+----------- 11 e 12. sair de `reservado` limpa o prazo (gatilho da 0212)
+
+-- O dono tentou cancelar uma vaga segurada pela tela do CRM e levou 23514: ela
+-- faz `set status = 'cancelado'` e mais nada, e o CHECK acima exige o PAR.
+-- Exigir que CADA caller lembre disso e a forma de errar o proximo -- e o
+-- proximo ja existia, porque `reservado` sai para cancelado, faltou, agendado
+-- ou confirmado, por quatro portas.
+
+insert into appointments (id, salon_id, client_id, professional_id, service_id,
+                          data_hora_inicio, data_hora_fim, status, origem, reservada_ate)
+values (:'gatilho', :'salao', :'cliente', :'prof', :'servico',
+        pg_temp.em('16:00'), pg_temp.em('16:30'),
+        'reservado', 'fila', now() + interval '30 minutes');
+
+select isnt(
+  (select reservada_ate from appointments where id = :'gatilho'),
+  null,
+  'reserva viva mantem o prazo: o gatilho nao atrapalha quem ja estava certo'
+);
+
+-- A instrucao numa linha SO, e a consequencia medida depois: `and` em SQL nao
+-- garante ordem de avaliacao, e misturar as duas ja reprovou no CI aqui.
+update appointments set status = 'cancelado' where id = :'gatilho';
+
+select is(
+  (select status || '/' || coalesce(reservada_ate::text, 'sem prazo')
+     from appointments where id = :'gatilho'),
+  'cancelado/sem prazo',
+  'cancelar mexendo SO no status passa, e o prazo some junto -- era 23514 na tela do dono'
+);
+
+-- A outra ponta (nascer com prazo sem ser reserva) NAO entra aqui: a assercao 3
+-- deste mesmo arquivo ja garante que o insert e RECUSADO, e o gatilho da 0212 e
+-- so de UPDATE justamente para nao tornar aquela garantia inalcancavel.
 
 select * from finish();
 rollback;

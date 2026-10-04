@@ -7483,3 +7483,135 @@ Mas a lição maior é outra, e vale mais que as duas catracas: **os itens 20, 1
 teste.** O primeiro item que foi aberto por olhos humanos tinha um defeito de
 100% de reprodução. Ler o código prova que ele faz o que está escrito; não prova
 que o que está escrito funciona.
+
+---
+
+## 2026-10-03 — A reserva vencida não tinha quem a apagasse (0211)
+
+Achado por acaso, conferindo o `cron.job` antes de inserir uma inscrição de teste
+para o dono revisar o item 16: **nada chamava `expirar_reservas`.** Nenhum dos
+sete jobs, nenhuma tela, nenhuma edge, nenhum fluxo do n8n — procurado nos
+quatro.
+
+E a história explica como passou: a `private.expirar_reservas` nasceu na **0192**,
+a **0197** criou a fachada `public.expirar_reservas` **justamente para o n8n
+poder chamá-la**, e o chamador nunca foi construído. Cada peça assumiu que a
+outra ligaria o fio. Código morto cuja ausência quebrava a fila inteira.
+
+### O que estava quebrado, e eram três coisas ao mesmo tempo
+
+A `devolver_chamados_sem_resposta` diz no próprio comentário que reconhece quem
+não respondeu pela **ausência** da reserva (`chamado` com `appointment_id` nulo,
+pela FK `on delete set null`). Sem ninguém apagando:
+
+1. quem fosse chamado e não respondesse ficaria `chamado` **para sempre** — nunca
+   voltaria para a fila, nunca seria chamado de novo, nunca encerraria;
+2. a reserva ficaria `reservado` **para sempre**, e a `horarios_livres` **não olha
+   `reservada_ate`** (conferido) — o horário ficaria bloqueado para todo mundo:
+   agenda pública, agente e CRM;
+3. e se a pessoa respondesse "Sim" depois do prazo, a `confirmar_vaga_da_fila`
+   recusaria com *"O prazo da reserva venceu"* — perderia a vaga, a vaga seguiria
+   bloqueada, e ela seguiria presa.
+
+**O prazo de 30 minutos era decorativo: ninguém o fazia valer.**
+
+Nada disso mordeu porque o remetente está desligado e não havia reserva viva.
+Mordia no dia em que fosse ligado — e esse dia é o dono apertar dois
+interruptores.
+
+### O conserto
+
+`rodar_a_fila` ganhou a expiração como **primeiro** passo, e passou de três para
+quatro. A ordem agora importa duas vezes: apagar a reserva **antes** de devolver
+(é a ausência dela que sinaliza "não respondeu"), e devolver **antes** de chamar
+(a que chama só enxerga `esperando`).
+
+Dentro do tique, e não num job novo, de propósito: quem agenda o remetente agenda
+tudo. **Um job separado seria uma segunda coisa para alguém lembrar de ligar — e
+foi exatamente esquecer de ligar que criou este defeito.**
+
+A `horarios_livres` **não** mudou. Ela é a régua que a agenda pública, o agente e
+o CRM usam, e mexer nela para cobrir atraso de varredura seria tratar o sintoma
+no lugar mais caro do sistema. Com o tique a cada 10 minutos, uma reserva fica no
+máximo ~10 minutos vencida.
+
+### Medido, não deduzido
+
+O ensaio provou o defeito **e** o conserto na mesma transação: com a reserva
+vencida e **sem** expirar, a inscrição ficou presa em `chamado` e a reserva
+continuou existindo; com o tique novo, `reservas_expiradas=1`, a reserva sumiu, a
+pessoa foi devolvida (`devolvidas=1`) e chamada de novo. Duas asserções novas no
+`a_fila_que_chama.test.sql` (12 → 14).
+
+### A forma do achado vale mais que o achado
+
+Isto não apareceu testando a fila, nem lendo a 0205. Apareceu porque eu fui
+**conferir o cron antes de inserir dado de teste** — uma checagem lateral, feita
+por cautela, sobre uma coisa que eu não suspeitava. É o terceiro defeito do dia
+achado assim: a régua do destino (0210) veio de precisar do telefone, e o PGRST201
+veio do dono abrir a tela.
+
+---
+
+## 2026-10-04 — Dois achados do dono na revisão: o cancelamento e o dia inteiro
+
+### 1. Cancelar uma vaga segurada era recusado (0212)
+
+O dono tentou apagar a inscrição de teste pela tela do agendamento e levou
+*"Essa operação não é permitida porque deixaria um dado inválido"* — o CHECK
+`appointments_reserva_com_prazo` (0192):
+
+```
+(status = 'reservado' AND reservada_ate IS NOT NULL)
+OR (status <> 'reservado' AND reservada_ate IS NULL)
+```
+
+A tela faz `update appointments set status = 'cancelado'` e mais nada. Medido,
+não deduzido: com só o status, **23514**; com os dois campos juntos, passa.
+
+**E eu já sabia disso.** Está escrito na 0207, onde a `confirmar_vaga_da_fila`
+muda os dois na mesma instrução *"porque o CHECK exige o par"*. Tratei o caso da
+fila e deixei os outros — e os outros são cancelar (dois botões), faltar,
+concluir e remarcar, por quatro portas.
+
+O conserto não foi na tela: foi um gatilho `before insert or update` que zera
+`reservada_ate` sempre que a linha não está em `reservado`. Caller por caller é a
+forma de errar o próximo; **o próximo já existia e ninguém tinha visto**, porque
+a fila nunca tivera uma reserva viva numa tela de verdade. O CHECK continua sendo
+a garantia; o gatilho é quem a cumpre.
+
+Ensaio em produção, cinco pontos: reserva viva mantém o prazo, cancelar só com o
+status passa, `faltou` passa, `agendado` passa, e nascer `agendado` com prazo é
+normalizado em vez de recusado. pgTAP da 0192: 10 → 13.
+
+### 2. "Dia inteiro" deixava as 23:59 abertas
+
+O dono: *"clico em dia todo e ainda assim é possível realizar um agendamento
+para aquele dia"*.
+
+Primeiro a investigação derrubou a hipótese óbvia: o `DIA_INTEIRO` está certo
+(`00:00`–`23:59`), o modal usa a janela certa, e a trava de sobreposição do banco
+**inclui** `bloqueio`. Então medi.
+
+Com um bloqueio de dia inteiro num dia sem nada marcado, os horários livres
+caíram de **59 para 1** — não para zero. O que sobrava era exatamente o que
+**começa às 23:59**.
+
+A causa é o intervalo do banco ser `[início, fim)`: um bloqueio que **termina**
+às 23:59 não se sobrepõe a um horário que **começa** às 23:59. O dia inteiro
+precisa terminar na meia-noite **seguinte**.
+
+`fimDoDiaInteiro` foi para o módulo puro `janelaDeBloqueio.ts` — e não ficou
+dentro do componente — justamente para poder ser testada: quatro testes novos,
+incluindo virada de mês e de ano, e um que afirma que o fim passa das 23:59. Usa
+`setDate`, não soma de 24h em milissegundos: virada de fuso é com o calendário.
+
+Nos campos da tela o fim continua 23:59. *"Termina à meia-noite do dia seguinte"*
+é verdade de banco, não frase para quem está marcando uma folga.
+
+### O que os dois têm em comum
+
+Nenhum dos dois apareceu em teste automático, e os dois estavam em código que eu
+tinha declarado pronto. **Os dois precisaram de um humano abrindo a tela** — o
+primeiro dia em que isso aconteceu rendeu três defeitos (este, o PGRST201 e o
+dia inteiro), todos de reprodução garantida.

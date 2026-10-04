@@ -14,6 +14,7 @@ import {
   MOTIVO_MAX,
   erroDaJanela,
   fimDeslocado,
+  fimDoDiaInteiro,
   horaDe,
   minutosDe,
 } from './janelaDeBloqueio'
@@ -84,6 +85,25 @@ export function NewAppointmentModal({
   // devolve a janela que ele tinha escolhido, em vez de um horário inventado.
   const janela = diaInteiro ? DIA_INTEIRO : { inicio: time, fim: horaFim }
 
+  /**
+   * O fim que vai para o BANCO — e com "dia inteiro" ele não é 23:59.
+   *
+   * O intervalo do banco é `[inicio, fim)`: fim aberto. Terminar às 23:59 deixa
+   * o último minuto de fora, e a `horarios_livres` continuava oferecendo o
+   * horário que COMEÇA às 23:59 — medido: o dia inteiro derrubava os livres de
+   * 59 para **1**, não para zero, e o que sobrava era exatamente as 23:59.
+   *
+   * O dia inteiro termina na meia-noite SEGUINTE. Pelo `setDate` e não somando
+   * 24h, que é o jeito que atravessa virada de mês e mudança de fuso sem
+   * inventar uma hora.
+   *
+   * Nos campos da tela o fim continua 23:59: "termina à meia-noite do dia
+   * seguinte" é verdade de banco, não frase para quem está bloqueando a folga.
+   */
+  function fimDoBloqueio(): Date {
+    return diaInteiro ? fimDoDiaInteiro(date) : toDateTimeLocal(date, janela.fim)
+  }
+
   function mudarInicio(novo: string) {
     // O fim anda junto, preservando a duração -- quem já ajustou "até as 14h"
     // não quer o fim recalculado do zero ao adiantar o começo em dez minutos.
@@ -147,7 +167,7 @@ export function NewAppointmentModal({
     setSubmitting(true)
     try {
       const inicio = toDateTimeLocal(date, janela.inicio)
-      const fim = toDateTimeLocal(date, janela.fim)
+      const fim = fimDoBloqueio()
       const { error: bloqueioError } = await supabase.from('appointments').insert({
         salon_id: salonId,
         professional_id: professionalId,
@@ -170,7 +190,9 @@ export function NewAppointmentModal({
       if (codigo === '23P01') {
         setConflito({
           inicio: toDateTimeLocal(date, janela.inicio).toISOString(),
-          fim: toDateTimeLocal(date, janela.fim).toISOString(),
+          // A MESMA janela que o insert tentou, senão o painel procuraria
+          // conflito num intervalo diferente do que foi recusado.
+          fim: fimDoBloqueio().toISOString(),
         })
       } else {
         setError(

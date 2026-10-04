@@ -7550,3 +7550,68 @@ Isto não apareceu testando a fila, nem lendo a 0205. Apareceu porque eu fui
 por cautela, sobre uma coisa que eu não suspeitava. É o terceiro defeito do dia
 achado assim: a régua do destino (0210) veio de precisar do telefone, e o PGRST201
 veio do dono abrir a tela.
+
+---
+
+## 2026-10-04 — Dois achados do dono na revisão: o cancelamento e o dia inteiro
+
+### 1. Cancelar uma vaga segurada era recusado (0212)
+
+O dono tentou apagar a inscrição de teste pela tela do agendamento e levou
+*"Essa operação não é permitida porque deixaria um dado inválido"* — o CHECK
+`appointments_reserva_com_prazo` (0192):
+
+```
+(status = 'reservado' AND reservada_ate IS NOT NULL)
+OR (status <> 'reservado' AND reservada_ate IS NULL)
+```
+
+A tela faz `update appointments set status = 'cancelado'` e mais nada. Medido,
+não deduzido: com só o status, **23514**; com os dois campos juntos, passa.
+
+**E eu já sabia disso.** Está escrito na 0207, onde a `confirmar_vaga_da_fila`
+muda os dois na mesma instrução *"porque o CHECK exige o par"*. Tratei o caso da
+fila e deixei os outros — e os outros são cancelar (dois botões), faltar,
+concluir e remarcar, por quatro portas.
+
+O conserto não foi na tela: foi um gatilho `before insert or update` que zera
+`reservada_ate` sempre que a linha não está em `reservado`. Caller por caller é a
+forma de errar o próximo; **o próximo já existia e ninguém tinha visto**, porque
+a fila nunca tivera uma reserva viva numa tela de verdade. O CHECK continua sendo
+a garantia; o gatilho é quem a cumpre.
+
+Ensaio em produção, cinco pontos: reserva viva mantém o prazo, cancelar só com o
+status passa, `faltou` passa, `agendado` passa, e nascer `agendado` com prazo é
+normalizado em vez de recusado. pgTAP da 0192: 10 → 13.
+
+### 2. "Dia inteiro" deixava as 23:59 abertas
+
+O dono: *"clico em dia todo e ainda assim é possível realizar um agendamento
+para aquele dia"*.
+
+Primeiro a investigação derrubou a hipótese óbvia: o `DIA_INTEIRO` está certo
+(`00:00`–`23:59`), o modal usa a janela certa, e a trava de sobreposição do banco
+**inclui** `bloqueio`. Então medi.
+
+Com um bloqueio de dia inteiro num dia sem nada marcado, os horários livres
+caíram de **59 para 1** — não para zero. O que sobrava era exatamente o que
+**começa às 23:59**.
+
+A causa é o intervalo do banco ser `[início, fim)`: um bloqueio que **termina**
+às 23:59 não se sobrepõe a um horário que **começa** às 23:59. O dia inteiro
+precisa terminar na meia-noite **seguinte**.
+
+`fimDoDiaInteiro` foi para o módulo puro `janelaDeBloqueio.ts` — e não ficou
+dentro do componente — justamente para poder ser testada: quatro testes novos,
+incluindo virada de mês e de ano, e um que afirma que o fim passa das 23:59. Usa
+`setDate`, não soma de 24h em milissegundos: virada de fuso é com o calendário.
+
+Nos campos da tela o fim continua 23:59. *"Termina à meia-noite do dia seguinte"*
+é verdade de banco, não frase para quem está marcando uma folga.
+
+### O que os dois têm em comum
+
+Nenhum dos dois apareceu em teste automático, e os dois estavam em código que eu
+tinha declarado pronto. **Os dois precisaram de um humano abrindo a tela** — o
+primeiro dia em que isso aconteceu rendeu três defeitos (este, o PGRST201 e o
+dia inteiro), todos de reprodução garantida.

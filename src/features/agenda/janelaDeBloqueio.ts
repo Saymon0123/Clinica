@@ -56,3 +56,26 @@ export function erroDaJanela(inicio: string, fim: string): string | null {
 
 /** O dia inteiro, do primeiro ao último minuto. */
 export const DIA_INTEIRO = { inicio: '00:00', fim: '23:59' } as const
+
+/**
+ * O fim que vai para o BANCO quando o bloqueio é de dia inteiro.
+ *
+ * **Não é 23:59.** O intervalo do banco é `[início, fim)` — fim aberto —, então
+ * terminar às 23:59 deixa o último minuto de fora. Medido em produção: um
+ * bloqueio de dia inteiro derrubava os horários livres de **59 para 1**, não
+ * para zero, e o que sobrava era exatamente o que começa às **23:59**. O dono
+ * bloqueava a folga e ainda dava para marcar naquele dia.
+ *
+ * O dia inteiro termina na meia-noite SEGUINTE. Por `setDate`, e não somando
+ * 24h em milissegundos: assim a virada de mês, de ano e de fuso ficam com o
+ * calendário, que sabe fazer isso, em vez de com uma conta minha.
+ *
+ * Nos campos da tela o fim continua 23:59 — "termina à meia-noite do dia
+ * seguinte" é verdade de banco, não frase para quem está marcando uma folga.
+ */
+export function fimDoDiaInteiro(dia: Date): Date {
+  const seguinte = new Date(dia)
+  seguinte.setDate(seguinte.getDate() + 1)
+  seguinte.setHours(0, 0, 0, 0)
+  return seguinte
+}

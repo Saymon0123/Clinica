@@ -4,6 +4,7 @@ import {
   MOTIVO_MAX,
   erroDaJanela,
   fimDeslocado,
+  fimDoDiaInteiro,
   horaDe,
   minutosDe,
 } from './janelaDeBloqueio'
@@ -70,5 +71,37 @@ describe('a janela do bloqueio', () => {
     // Se a migration 0182 mudar o CHECK e ninguém mexer aqui, o barbeiro
     // digita, salva e recebe 23514 em inglês.
     expect(MOTIVO_MAX).toBe(60)
+  })
+})
+
+describe('fimDoDiaInteiro', () => {
+  it('termina na meia-noite do dia SEGUINTE, não às 23:59', () => {
+    const fim = fimDoDiaInteiro(new Date(2026, 9, 5, 14, 30))
+    expect(fim.getFullYear()).toBe(2026)
+    expect(fim.getMonth()).toBe(9)
+    expect(fim.getDate()).toBe(6)
+    expect(fim.getHours()).toBe(0)
+    expect(fim.getMinutes()).toBe(0)
+  })
+
+  it('atravessa a virada de mês', () => {
+    const fim = fimDoDiaInteiro(new Date(2026, 9, 31, 9, 0))
+    expect(fim.getMonth()).toBe(10)
+    expect(fim.getDate()).toBe(1)
+  })
+
+  it('atravessa a virada de ano', () => {
+    const fim = fimDoDiaInteiro(new Date(2026, 11, 31, 9, 0))
+    expect(fim.getFullYear()).toBe(2027)
+    expect(fim.getMonth()).toBe(0)
+    expect(fim.getDate()).toBe(1)
+  })
+
+  it('cobre o minuto que o 23:59 deixava de fora', () => {
+    // O defeito, em uma linha: o horario que COMECA as 23:59 nao se sobrepoe a
+    // um bloqueio que TERMINA as 23:59, porque o fim e aberto.
+    const dia = new Date(2026, 9, 5)
+    const vinteTresCinquentaENove = new Date(2026, 9, 5, 23, 59)
+    expect(fimDoDiaInteiro(dia).getTime()).toBeGreaterThan(vinteTresCinquentaENove.getTime())
   })
 })

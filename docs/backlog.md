@@ -7335,6 +7335,85 @@ ponta em nenhum momento.
 
 ---
 
+## 2026-10-03 — O backup foi restaurado pela primeira vez, e faltava um schema
+
+O item estava aberto desde agosto como *"o único que pode acabar com o negócio
+num dia"*, com a premissa **errada**: *"Supabase no plano gratuito, sem backup
+gerenciado"*. A organização está no **Pro**, com **7 backups físicos diários**
+(27/09 a 03/10, ~05:48 UTC = 02:48 SP), todos `COMPLETED`.
+
+O que faltava não era backup: era **prova de que dá para voltar**.
+
+### O caminho oficial custa US$ 9,99, e o de graça provou mais
+
+A aba `Restore to new project` (Beta) clona para um projeto novo e **é paga**.
+O dono não podia pagar agora, então o teste foi feito com Docker: `pg_dump` da
+produção, Postgres 17 limpo num contêiner, restauração e comparação. Custo zero.
+
+E vale dizer que o caminho de graça prova a coisa **mais** útil: não que o botão
+da Supabase funciona (isso é infraestrutura deles), mas que **nós conseguimos
+reconstruir a partir de um arquivo nosso** — garantia que não depende de pagar
+nem de eles estarem no ar.
+
+### O achado: sem `--schema=auth`, quatro tabelas perdem tudo
+
+Primeira tentativa, dumpando só `public` + `private`: **17 erros**, e quatro
+deles eram violação de chave estrangeira contra `auth.users`:
+
+```
+user_salons.user_id          <- o vinculo entre o login e a barbearia
+termos_aceites.user_id
+notificacoes_vistas.user_id
+cash_registers.aberto_por
+```
+
+O banco subiria inteiro e **ninguém conseguiria entrar na própria barbearia**.
+Um dump que "deu certo" e uma restauração que parece completa — e o sistema
+inutilizável. **Só restaurando isso aparece.**
+
+Com `--schema=auth` incluído: **1 erro**, e é `schema "public" already exists`,
+inofensivo.
+
+### A comparação, e por que ela inclui os grants
+
+As duas pontas idênticas — 51 tabelas, **10.456 linhas**, 288 funções, 51 com
+RLS, 66 policies, e os **dois md5 batendo**: contagens e **grants por coluna**.
+
+O md5 dos grants está na receita de propósito: `salons` dá UPDATE **por coluna** e
+`salon_invites` dá INSERT **por coluna**. Uma restauração que trouxesse as linhas
+e perdesse esses privilégios **pareceria certa** e derrubaria telas inteiras — é a
+lição de 30/09 (o dono não salvava o horário de funcionamento) voltando por outra
+porta.
+
+Também por isso os papéis (`anon`, `authenticated`, `service_role`,
+`supabase_admin`…) são criados **antes** de restaurar: sem eles a única saída
+seria `--no-privileges`, que joga fora exatamente o que importa medir.
+
+### O roteiro virou arquivo
+
+[`docs/recuperacao.md`](recuperacao.md), com os comandos, o preparo do alvo (os
+papéis, `btree_gist` para as travas EXCLUDE, `extensions.gen_random_bytes`, os
+stubs de `cron`), o SQL da comparação e os números medidos.
+
+### O que continua sem prova, agora nomeado
+
+- **PITR desligado** (`pitr_enabled: false`): a perda máxima num desastre é o que
+  entrou entre 02:48 e o incidente, até ~24h. É add-on pago, e é a única alavanca
+  que diminui esse número.
+- **O botão `Restore` da Supabase nunca foi usado** — e restaurar por cima da
+  produção derruba o projeto durante o processo, então não é coisa de testar por
+  curiosidade.
+- **A volta completa nunca foi ensaiada junta**: banco + 12 edges + segredos do
+  Vault + configuração de Auth + fluxos do n8n. O roteiro cobre a primeira parte.
+- **Backup de banco não leva Storage** (a tela avisa). Hoje custa zero — o
+  projeto tem zero buckets. Passa a custar quando a logo por barbearia existir
+  (item 17).
+
+### Higiene
+
+O dump leva nome e telefone dos 120 clientes e, com `auth`, os **hashes de
+senha**. Ficou na pasta temporária da sessão, **fora do repositório** (que é
+público), e o contêiner foi removido ao fim — conferido.
 ## 2026-10-03 — O painel do item 18 nunca funcionou, e o dono achou na primeira tela
 
 O dono abriu a Agenda com o login de teste, tentou bloquear o dia inteiro de um

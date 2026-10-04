@@ -7615,3 +7615,70 @@ Nenhum dos dois apareceu em teste automático, e os dois estavam em código que 
 tinha declarado pronto. **Os dois precisaram de um humano abrindo a tela** — o
 primeiro dia em que isso aconteceu rendeu três defeitos (este, o PGRST201 e o
 dia inteiro), todos de reprodução garantida.
+
+---
+
+## 2026-10-04 — O "dia inteiro" que só falhava quando havia agendamento
+
+O conserto anterior (fim na meia-noite seguinte) estava certo e **não era o
+defeito que o dono via**. Ele voltou com a observação que resolveu tudo:
+
+> *"se o barbeiro não tem nenhum agendamento no dia, o bloqueio funciona para o
+> dia todo"* — a falha era só quando havia agendamento e ele passava para outro
+> barbeiro pelo painel.
+
+Essa fronteira é a assinatura de um **fechamento congelado**, e era:
+
+```ts
+const limparConflitoETentarDeNovo = useCallback(() => {
+  setConflito(null)
+  void salvarBloqueio()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [])
+```
+
+Lista de dependências vazia guarda a `salvarBloqueio` do **primeiro render** —
+quando `diaInteiro` ainda é `false` e `time`/`horaFim` são os valores de abertura
+do modal. Dia vazio salva direto, com o fechamento atual, e funciona. Dia com
+agendamento passa pelo painel, e o reenvio automático vem por aqui: **bloqueio de
+60 minutos no horário clicado**, com a caixa marcada na tela.
+
+Confirmado nos dados: as duas linhas que ele gerou testando eram `10:00–11:00` e
+`09:00–10:00`, **60 minutos cada**.
+
+### O comentário que me convenceu era falso
+
+Junto do `eslint-disable` havia esta justificativa, minha:
+
+> *a identidade precisa ser estável porque vai como prop para o painel, e
+> `salvarBloqueio` lê o estado fresco a cada chamada*
+
+**A segunda metade é mentira.** `salvarBloqueio` é recriada a cada render; a que
+o `useCallback` guardou é a do primeiro, e ela lê o estado daquele render. O
+defeito passou por revisão porque o comentário explicava com segurança uma coisa
+que não acontece.
+
+### As duas defesas se anularam
+
+Eu havia construído, no `ConflitosDoBloqueio`, uma `onVazioRef` **exatamente**
+para o pai poder passar função nova a cada render sem disparar laço de consulta.
+E então memoizei no pai assim mesmo. A defesa de lá tornava o `useCallback`
+dispensável; o `useCallback` tornava a defesa de lá inútil. Duas proteções, zero
+proteção.
+
+O conserto é a função comum. A catraca (`janelaDeBloqueio.test.ts`) afirma duas
+coisas sobre a fonte do modal: que o reenvio **não** é memoizado e que o arquivo
+**não** silencia `exhaustive-deps` — e foi provada nos dois sentidos, passando com
+o conserto e reprovando com o defeito reintroduzido.
+
+A catraca é por arquivo de propósito: suprimir `exhaustive-deps` tem uso legítimo
+em efeito de montagem, e sete arquivos do projeto o fazem. Neste, não — é
+justamente o aviso que teria evitado isto.
+
+### Um aviso de lint que apareceu junto, e não é meu
+
+Removido o `useCallback`, o oxlint passou a analisar o componente e acusou
+`Date.now()` durante o render (`react(purity)`), numa linha **pré-existente e
+intocada** (`horarioJaPassou`). O aviso está certo sobre o código; o
+comportamento não mudou. Fica registrado em vez de silenciado — silenciar aviso
+foi o que criou o defeito acima.

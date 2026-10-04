@@ -28,7 +28,7 @@ create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
 begin;
-select plan(12);
+select plan(14);
 
 \set salao   'aaaa2400-0000-0000-0000-000000000001'
 \set prof    'aaaa2401-0000-0000-0000-000000000001'
@@ -198,6 +198,36 @@ select ok(
   and not has_function_privilege('authenticated',
         'private.chamar_proximos_da_fila(integer,integer)', 'execute'),
   'so o service_role roda o tique da fila: nem anon nem a tela do dono chamam isto'
+);
+
+--------------------------- 13 e 14. o tique APAGA a reserva vencida (0211)
+
+-- Ate a 0211 NINGUEM chamava `expirar_reservas` -- nem cron, nem edge, nem n8n
+-- (procurado nos quatro). E a `devolver_chamados_sem_resposta` reconhece quem
+-- nao respondeu pela AUSENCIA da reserva. Sem apagar antes, a pessoa ficava
+-- presa em `chamado` para sempre E o horario ficava bloqueado para todo mundo,
+-- porque a `horarios_livres` nao olha `reservada_ate`. O prazo de 30 minutos era
+-- decorativo: ninguem o fazia valer.
+
+-- `c1` esta `esperando` com chamadas=1 desde a assercao 6. Chama de novo para
+-- ter uma reserva, e vence o prazo dela na marra.
+create temp table rechamado as select * from private.chamar_proximos_da_fila(10);
+
+update appointments set reservada_ate = now() - interval '1 minute'
+ where id = (select appointment_id from fila_de_espera where client_id = :'c1');
+
+create temp table tique_com_expiracao as select rodar_a_fila(10) as r;
+
+select ok(
+  ((select r from tique_com_expiracao)->>'reservas_expiradas')::int >= 1,
+  'o tique apaga a reserva vencida -- e por isso a inscricao volta a ser enxergada'
+);
+
+select is(
+  (select count(*)::int from appointments a
+     where a.status = 'reservado' and a.reservada_ate < now()),
+  0,
+  'nao sobra reserva vencida depois do tique: horario preso para sempre era o defeito'
 );
 
 select * from finish();

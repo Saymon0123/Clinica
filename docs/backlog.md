@@ -7483,3 +7483,70 @@ Mas a lição maior é outra, e vale mais que as duas catracas: **os itens 20, 1
 teste.** O primeiro item que foi aberto por olhos humanos tinha um defeito de
 100% de reprodução. Ler o código prova que ele faz o que está escrito; não prova
 que o que está escrito funciona.
+
+---
+
+## 2026-10-03 — A reserva vencida não tinha quem a apagasse (0211)
+
+Achado por acaso, conferindo o `cron.job` antes de inserir uma inscrição de teste
+para o dono revisar o item 16: **nada chamava `expirar_reservas`.** Nenhum dos
+sete jobs, nenhuma tela, nenhuma edge, nenhum fluxo do n8n — procurado nos
+quatro.
+
+E a história explica como passou: a `private.expirar_reservas` nasceu na **0192**,
+a **0197** criou a fachada `public.expirar_reservas` **justamente para o n8n
+poder chamá-la**, e o chamador nunca foi construído. Cada peça assumiu que a
+outra ligaria o fio. Código morto cuja ausência quebrava a fila inteira.
+
+### O que estava quebrado, e eram três coisas ao mesmo tempo
+
+A `devolver_chamados_sem_resposta` diz no próprio comentário que reconhece quem
+não respondeu pela **ausência** da reserva (`chamado` com `appointment_id` nulo,
+pela FK `on delete set null`). Sem ninguém apagando:
+
+1. quem fosse chamado e não respondesse ficaria `chamado` **para sempre** — nunca
+   voltaria para a fila, nunca seria chamado de novo, nunca encerraria;
+2. a reserva ficaria `reservado` **para sempre**, e a `horarios_livres` **não olha
+   `reservada_ate`** (conferido) — o horário ficaria bloqueado para todo mundo:
+   agenda pública, agente e CRM;
+3. e se a pessoa respondesse "Sim" depois do prazo, a `confirmar_vaga_da_fila`
+   recusaria com *"O prazo da reserva venceu"* — perderia a vaga, a vaga seguiria
+   bloqueada, e ela seguiria presa.
+
+**O prazo de 30 minutos era decorativo: ninguém o fazia valer.**
+
+Nada disso mordeu porque o remetente está desligado e não havia reserva viva.
+Mordia no dia em que fosse ligado — e esse dia é o dono apertar dois
+interruptores.
+
+### O conserto
+
+`rodar_a_fila` ganhou a expiração como **primeiro** passo, e passou de três para
+quatro. A ordem agora importa duas vezes: apagar a reserva **antes** de devolver
+(é a ausência dela que sinaliza "não respondeu"), e devolver **antes** de chamar
+(a que chama só enxerga `esperando`).
+
+Dentro do tique, e não num job novo, de propósito: quem agenda o remetente agenda
+tudo. **Um job separado seria uma segunda coisa para alguém lembrar de ligar — e
+foi exatamente esquecer de ligar que criou este defeito.**
+
+A `horarios_livres` **não** mudou. Ela é a régua que a agenda pública, o agente e
+o CRM usam, e mexer nela para cobrir atraso de varredura seria tratar o sintoma
+no lugar mais caro do sistema. Com o tique a cada 10 minutos, uma reserva fica no
+máximo ~10 minutos vencida.
+
+### Medido, não deduzido
+
+O ensaio provou o defeito **e** o conserto na mesma transação: com a reserva
+vencida e **sem** expirar, a inscrição ficou presa em `chamado` e a reserva
+continuou existindo; com o tique novo, `reservas_expiradas=1`, a reserva sumiu, a
+pessoa foi devolvida (`devolvidas=1`) e chamada de novo. Duas asserções novas no
+`a_fila_que_chama.test.sql` (12 → 14).
+
+### A forma do achado vale mais que o achado
+
+Isto não apareceu testando a fila, nem lendo a 0205. Apareceu porque eu fui
+**conferir o cron antes de inserir dado de teste** — uma checagem lateral, feita
+por cautela, sobre uma coisa que eu não suspeitava. É o terceiro defeito do dia
+achado assim: a régua do destino (0210) veio de precisar do telefone, e o PGRST201
+veio do dono abrir a tela.

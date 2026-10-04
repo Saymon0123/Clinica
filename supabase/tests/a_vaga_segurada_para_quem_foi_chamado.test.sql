@@ -22,7 +22,7 @@ create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
 begin;
-select plan(13);
+select plan(12);
 
 \set salao   'aaaa1920-0000-0000-0000-000000000001'
 \set prof    'aaaa1921-0000-0000-0000-000000000001'
@@ -31,7 +31,6 @@ select plan(13);
 \set outro   'aaaa1923-0000-0000-0000-000000000002'
 \set reserva 'aaaa1924-0000-0000-0000-000000000001'
 \set gatilho 'aaaa1924-0000-0000-0000-000000000002'
-\set nascido 'aaaa1924-0000-0000-0000-000000000003'
 
 create or replace function pg_temp.dia() returns date
 language sql as $fn$ select ((now() at time zone 'America/Sao_Paulo')::date + 1) $fn$;
@@ -173,7 +172,7 @@ select ok(
   'so o service_role varre: a funcao nova nao ficou com execute para todos'
 );
 
--------- 11 a 13. sair de `reservado` limpa o prazo sozinho (gatilho da 0212)
+----------- 11 e 12. sair de `reservado` limpa o prazo (gatilho da 0212)
 
 -- O dono tentou cancelar uma vaga segurada pela tela do CRM e levou 23514: ela
 -- faz `set status = 'cancelado'` e mais nada, e o CHECK acima exige o PAR.
@@ -204,18 +203,9 @@ select is(
   'cancelar mexendo SO no status passa, e o prazo some junto -- era 23514 na tela do dono'
 );
 
--- Pela outra ponta: nascer sem ser reserva, mas com prazo preenchido.
-insert into appointments (id, salon_id, client_id, professional_id, service_id,
-                          data_hora_inicio, data_hora_fim, status, origem, reservada_ate)
-values (:'nascido', :'salao', :'cliente', :'prof', :'servico',
-        pg_temp.em('17:00'), pg_temp.em('17:30'),
-        'agendado', 'crm', now() + interval '30 minutes');
-
-select is(
-  (select coalesce(reservada_ate::text, 'sem prazo') from appointments where id = :'nascido'),
-  'sem prazo',
-  'nascer com prazo sem ser reserva e NORMALIZADO no insert, nao recusado'
-);
+-- A outra ponta (nascer com prazo sem ser reserva) NAO entra aqui: a assercao 3
+-- deste mesmo arquivo ja garante que o insert e RECUSADO, e o gatilho da 0212 e
+-- so de UPDATE justamente para nao tornar aquela garantia inalcancavel.
 
 select * from finish();
 rollback;

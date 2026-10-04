@@ -29,15 +29,24 @@
 -- porta que ainda nem foi escrita. O CHECK continua: ele é a garantia, o
 -- gatilho é quem a cumpre.
 --
--- ## Por que `before insert or update`
+-- ## Por que só no `update`, e não no `insert`
 --
--- No `insert` também: nascer `agendado` com prazo preenchido é o mesmo dado
--- inválido pela outra ponta, e sai mais barato recusar a possibilidade do que
--- confiar que ninguém vai fazer.
+-- A primeira versão pegava os dois, e **o pgTAP da 0192 reprovou** — com razão.
+-- Ele já afirmava que *"agendamento comum NÃO aceita prazo de reserva"*: inserir
+-- `agendado` com prazo é **recusado**. Normalizar no insert tornaria essa
+-- garantia inalcançável, e eu teria afrouxado um teste que estava certo para
+-- caber uma implementação que estava errada.
 --
--- Não há perda: `reservada_ate` só significa alguma coisa enquanto a reserva
--- está de pé. Depois que ela vira agendamento, cancelamento ou falta, o prazo
--- não é histórico — é lixo que o CHECK proíbe.
+-- E as duas pontas são situações diferentes. Quem **insere** `agendado` com
+-- prazo está confuso sobre o que está criando, e recusar é o sinal — normalizar
+-- em silêncio esconde o defeito de quem chamou. Quem **atualiza** o status de
+-- uma reserva que existe está fazendo a coisa certa (cancelar, concluir, marcar
+-- falta), e o prazo ali já não significa nada: depois que a reserva vira
+-- agendamento, cancelamento ou falta, ele não é histórico, é lixo que o CHECK
+-- proíbe.
+--
+-- Recusar na entrada, normalizar na transição. O teste antigo definiu a metade
+-- que eu teria quebrado.
 
 create or replace function private.limpa_prazo_fora_da_reserva()
 returns trigger
@@ -57,11 +66,11 @@ $function$;
 revoke all on function private.limpa_prazo_fora_da_reserva() from public, anon, authenticated;
 
 comment on function private.limpa_prazo_fora_da_reserva() is
-  'Zera reservada_ate sempre que a linha nao esta (ou deixa de estar) em `reservado`. Existe porque o CHECK appointments_reserva_com_prazo exige o par, e exigir que CADA caller lembre disso e a forma de errar o proximo: a tela do dono fazia `set status = cancelado` e so, e cancelar uma vaga segurada era recusado com 23514. O CHECK e a garantia; este gatilho e quem a cumpre.';
+  'Zera reservada_ate quando um UPDATE tira a linha de `reservado`. So no update: o pgTAP da 0192 ja garante que INSERIR com prazo sem ser reserva e RECUSADO, e normalizar no insert tornaria essa garantia inalcancavel -- recusar na entrada, normalizar na transicao. Existe porque o CHECK appointments_reserva_com_prazo exige o par, e exigir que CADA caller lembre disso e a forma de errar o proximo: a tela do dono fazia `set status = cancelado` e so, e cancelar uma vaga segurada era recusado com 23514. O CHECK e a garantia; este gatilho e quem a cumpre.';
 
 drop trigger if exists trg_limpa_prazo_fora_da_reserva on public.appointments;
 
 create trigger trg_limpa_prazo_fora_da_reserva
-before insert or update on public.appointments
+before update on public.appointments
 for each row
 execute function private.limpa_prazo_fora_da_reserva();

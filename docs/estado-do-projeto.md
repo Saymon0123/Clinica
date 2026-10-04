@@ -40,13 +40,18 @@ usada no teste de pagamento.
 
 **Bloqueia crescer:**
 
-- **Backup** — a premissa deste item **mudou e ninguém atualizou**: o texto dizia
-  *"Supabase no plano gratuito, sem backup gerenciado"*, e em 03/10 a
-  organização está no plano **Pro** (`tier_pro`, conferido na API). O Pro inclui
-  backup diário pela plataforma, então o risco não é mais "não existe backup".
-  **O que continua aberto é o que sempre importou:** ninguém nunca testou uma
-  **restauração**. Backup que não foi restaurado uma vez é suposição, não
-  garantia — e é isso que vale agendar.
+- ~~**Backup**~~ — **RESOLVIDO em 03/10.** A premissa estava errada (o texto dizia
+  *"plano gratuito, sem backup gerenciado"*; a organização está no **Pro**, com 7
+  backups diários), e o que faltava — **prova de que dá para voltar** — foi feito:
+  dump da produção, restauração num Postgres limpo e comparação das duas pontas,
+  **idênticas até o md5 dos grants por coluna**. O roteiro está em
+  [`recuperacao.md`](recuperacao.md), com o achado que só apareceu restaurando:
+  sem `--schema=auth` o banco sobe inteiro e **ninguém entra na própria
+  barbearia**.
+
+  **O que sobrou, menor e nomeado:** PITR está desligado, então a perda máxima é
+  de até ~24h (do backup das 02:48 ao incidente); e a volta **completa** (banco +
+  12 edges + segredos + n8n) nunca foi ensaiada junta.
 - ~~**Domínio próprio**~~ — resolvido: `clubcut.space` no ar desde 04/09
   (Hostinger, renova 04/09/2027), com Vercel, Supabase Auth, n8n e QR do
   balcão apontados; canonical e OG do `index.html` alinhados em 15/09.

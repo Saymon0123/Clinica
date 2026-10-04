@@ -1,4 +1,4 @@
-import { useCallback, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { Modal } from '../../components/Modal'
 import { Campo, Input, Select } from '../../components/Campo'
@@ -216,15 +216,40 @@ export function NewAppointmentModal({
    * um horario novo tiver entrado nesse meio tempo, o 23P01 reabre o painel com
    * ele, que e exatamente o que deve acontecer.
    *
-   * `useCallback` sem dependencias de proposito: a identidade precisa ser
-   * estavel porque vai como prop para o painel, e `salvarBloqueio` le o estado
-   * fresco a cada chamada.
+   * ## Função COMUM, e não `useCallback` — a diferença aqui foi um defeito real
+   *
+   * Esta linha era `useCallback(..., [])` com o aviso do `exhaustive-deps`
+   * silenciado, e com este comentário meu justificando:
+   *
+   *     a identidade precisa ser estavel porque vai como prop para o painel,
+   *     e `salvarBloqueio` le o estado fresco a cada chamada
+   *
+   * **A segunda metade é falsa.** `salvarBloqueio` é recriada a cada render; a
+   * que o `useCallback` guardou é a do PRIMEIRO, e ela lê o estado daquele
+   * render. A frase afirmava o contrário da verdade, e foi por isso que o
+   * defeito passou por revisão: o comentário convencia.
+   *
+   * Lista de dependências vazia **congela o fechamento do
+   * primeiro render**, quando `diaInteiro` ainda é `false` e `time`/`horaFim`
+   * ainda são os valores de abertura do modal. O resultado: bloquear o dia
+   * inteiro funcionava quando o dia estava vazio (salvamento direto, fechamento
+   * atual) e virava um bloqueio de **60 minutos no horário clicado** quando
+   * havia agendamento no caminho — porque aí o salvamento vinha por aqui, pelo
+   * reenvio automático, com os valores de antes de o dono marcar a caixa.
+   *
+   * O dono descreveu exatamente essa fronteira: *"se o barbeiro não tem nenhum
+   * agendamento no dia, o bloqueio funciona para o dia todo"*.
+   *
+   * Memoizar não era necessário: o `ConflitosDoBloqueio` guarda o `onVazio`
+   * numa ref justamente para o pai poder passar função nova a cada render sem
+   * disparar laço de consulta. As duas defesas se anularam — a de lá tornava o
+   * `useCallback` daqui dispensável, e o `useCallback` daqui tornava a de lá
+   * inútil.
    */
-  const limparConflitoETentarDeNovo = useCallback(() => {
+  function limparConflitoETentarDeNovo() {
     setConflito(null)
     void salvarBloqueio()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()

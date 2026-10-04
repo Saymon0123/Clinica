@@ -105,3 +105,48 @@ describe('fimDoDiaInteiro', () => {
     expect(fimDoDiaInteiro(dia).getTime()).toBeGreaterThan(vinteTresCinquentaENove.getTime())
   })
 })
+
+/**
+ * O reenvio automático do bloqueio precisa ler o estado ATUAL.
+ *
+ * Quando o painel de conflitos esvazia, o modal tenta o bloqueio de novo
+ * sozinho. Esse caminho ficou um dia com `useCallback(..., [])` e o aviso do
+ * `exhaustive-deps` silenciado: o fechamento congelava no primeiro render, e
+ * "Dia inteiro" marcado DEPOIS da abertura não chegava ao salvamento.
+ *
+ * O defeito tinha uma fronteira cruel: dia vazio funcionava (salvamento direto,
+ * fechamento atual) e dia com agendamento virava bloqueio de 60 minutos no
+ * horário clicado. Foi o dono quem a descreveu, abrindo a tela.
+ *
+ * Aqui a catraca é por arquivo, de propósito: suprimir `exhaustive-deps` tem
+ * uso legítimo em efeito que roda só na montagem, e sete arquivos do projeto o
+ * fazem. Neste, não — é justamente o aviso que teria evitado isto.
+ */
+describe('o reenvio do bloqueio nao congela o estado', () => {
+  // `import.meta.glob` e nao `readFileSync(new URL(...))`: neste arquivo o
+  // `import.meta.url` nao chega como `file://` e o `fs` recusa. O glob do Vite
+  // entrega a fonte do jeito que o `servicoEmbutido.test.ts` ja usa.
+  const fonte = Object.values(
+    import.meta.glob('./NewAppointmentModal.tsx', {
+      query: '?raw',
+      import: 'default',
+      eager: true,
+    }) as Record<string, string>,
+  )[0]
+
+  it('acha a fonte do modal (senao o resto passaria vazio)', () => {
+    expect(fonte).toBeTruthy()
+    expect(fonte.length).toBeGreaterThan(1000)
+  })
+
+  it('o retry e funcao comum, nao memoizada', () => {
+    expect(fonte).toContain('function limparConflitoETentarDeNovo()')
+  })
+
+  it('o NewAppointmentModal nao silencia o exhaustive-deps', () => {
+    // `.` não casa quebra de linha, então isto só acha os dois na MESMA linha —
+    // que é a forma do `eslint-disable-next-line`.
+    const suprimido = /eslint-disable.*exhaustive-deps/.test(fonte)
+    expect(suprimido).toBe(false)
+  })
+})

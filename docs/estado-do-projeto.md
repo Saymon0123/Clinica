@@ -40,8 +40,13 @@ usada no teste de pagamento.
 
 **Bloqueia crescer:**
 
-- **Backup** — Supabase no plano gratuito, **sem backup gerenciado**. É o único
-  item que pode acabar com o negócio num dia.
+- **Backup** — a premissa deste item **mudou e ninguém atualizou**: o texto dizia
+  *"Supabase no plano gratuito, sem backup gerenciado"*, e em 03/10 a
+  organização está no plano **Pro** (`tier_pro`, conferido na API). O Pro inclui
+  backup diário pela plataforma, então o risco não é mais "não existe backup".
+  **O que continua aberto é o que sempre importou:** ninguém nunca testou uma
+  **restauração**. Backup que não foi restaurado uma vez é suposição, não
+  garantia — e é isso que vale agendar.
 - ~~**Domínio próprio**~~ — resolvido: `clubcut.space` no ar desde 04/09
   (Hostinger, renova 04/09/2027), com Vercel, Supabase Auth, n8n e QR do
   balcão apontados; canonical e OG do `index.html` alinhados em 15/09.
@@ -53,9 +58,8 @@ usada no teste de pagamento.
   **PIX no AbacatePay** (`cobrar-uso` cria, `abacate-webhook` confirma). A edge
   chamada `asaas` continua existindo e sendo chamada pelo CRM, mas é só o nome
   velho: ela não fala com provedor nenhum.
-- **El Guardians** cobrava R$ 5,00/mês **no Asaas**. Com o provedor trocado, não
-  dá para afirmar daqui se aquela recorrência morreu junto — **conferir no painel
-  do Asaas e cancelar se ainda estiver de pé.**
+- ~~El Guardians cobra R$ 5,00/mês no Asaas~~ — **não importa**: era conta de
+  teste, e o provedor saiu (dono, 03/10).
 
 **Decisões suas, não código:**
 

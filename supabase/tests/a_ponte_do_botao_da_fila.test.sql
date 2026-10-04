@@ -36,7 +36,7 @@ create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
 begin;
-select plan(17);
+select plan(20);
 
 \set salao 'aaaa2600-0000-0000-0000-000000000001'
 \set prof  'aaaa2601-0000-0000-0000-000000000001'
@@ -44,6 +44,7 @@ select plan(17);
 \set c1    'aaaa2603-0000-0000-0000-000000000001'
 \set c2    'aaaa2603-0000-0000-0000-000000000002'
 \set c3    'aaaa2603-0000-0000-0000-000000000003'
+\set c4    'aaaa2603-0000-0000-0000-000000000004'
 
 create or replace function pg_temp.hoje() returns date
 language sql as $fn$ select ((now() at time zone 'America/Sao_Paulo')::date) $fn$;
@@ -74,7 +75,11 @@ values (:'prof', :'corte');
 insert into clients (id, salon_id, nome, telefone) values
   (:'c1', :'salao', 'Quem Espera',       '41977770061'),
   (:'c2', :'salao', 'Quem Espera Dois',  '41977770062'),
-  (:'c3', :'salao', 'Quem Espera Tres',  '41977770063');
+  (:'c3', :'salao', 'Quem Espera Tres',  '41977770063'),
+  -- SEM telefone: o CHECK clients_telefone_valido e
+  -- `telefone IS NULL OR telefone_valido(...)`, entao nulo passa de proposito.
+  -- E este o caso alcancavel; telefone com lixo e recusado na porta.
+  (:'c4', :'salao', 'Quem Nao Tem Numero', null);
 
 ------------- 1. sem vaga segurada nao ha o que avisar
 
@@ -277,6 +282,36 @@ select is(
            or has_function_privilege('authenticated', p.oid, 'execute'))),
   0,
   'nenhuma das tres funcoes e executavel por anon ou authenticated: quem chama e a edge, com service_role'
+);
+
+------------- 18 a 20. a regua do destino (migration 0210)
+
+-- O fluxo NAO monta numero: `private.destino_whatsapp` poe o 55 em telefone de
+-- balcao (11 digitos) e deixa quem ja tem DDI em paz. Duas copias dessa regra e
+-- como elas divergem, e o comentario da propria funcao diz qual e o defeito:
+-- "somar outro 55 aqui".
+select is(
+  (select destino from primeira_chamada limit 1),
+  '5541977770061',
+  'a varredura devolve o destino PRONTO pela regua da casa: telefone de balcao ganha o 55'
+);
+
+select ok(
+  (entrar_na_fila(:'salao', :'c4', array[:'corte'::uuid],
+                  pg_temp.hoje(), pg_temp.hoje() + 6)->>'ok')::boolean,
+  'quem nao tem telefone entra na fila: o dono ainda pode ligar a mao'
+);
+
+create temp table varredura_sem_destino as
+  select * from private.chamar_proximos_da_fila(10);
+
+-- Se ela FOSSE chamada, a reserva prenderia um horario 30 minutos para quem
+-- nunca receberia o aviso, e duas varreduras depois a inscricao se encerraria em
+-- silencio -- tirando da fila quem nunca soube.
+select is(
+  (select status || '/' || chamadas from fila_de_espera where client_id = :'c4'),
+  'esperando/0',
+  'quem nao tem destino montavel NAO e chamado: fica esperando, sem reserva e sem queimar ficha'
 );
 
 select * from finish();

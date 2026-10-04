@@ -7253,3 +7253,82 @@ está participando — o mesmo dano de ligar a varredura sem aviso.
   chamar quem não é avisado encerra a inscrição de quem nunca soube.
 - Os dois templates `marketing` (`vaga_ja_preenchida`, `espera_encerrada`)
   seguem `ativo = false`. A fila inteira funciona com o `utility` sozinho.
+
+---
+
+## 2026-10-03 — O remetente do aviso (0210 + fluxo no n8n): o item 16 fechado
+
+Última peça do item 16. A fila agora tem as cinco: fundação (0192), a fila e as
+portas (0203-0204), a chamada (0205), a tela do dono, o agente (0206-0208), a
+ponte do botão (0209) e o remetente — **criado inativo, de propósito.**
+
+### O destino saiu da régua que já existia (0210)
+
+Escrevendo o fluxo eu precisei do telefone para mandar o template, e a
+`chamar_proximos_da_fila` devolvia `c.telefone` **cru**. Fui ver como o fluxo de
+Reativação monta o dele e achei `private.destino_whatsapp`: 10-11 dígitos ganham
+o `55`, 12-13 passam como estão, qualquer outra coisa vira **nulo**. Montar
+número no fluxo seria a segunda cópia da regra, e o comentário dela diz o defeito
+que isso produz: *"somar outro 55 aqui"*.
+
+Medido no ensaio: `41999990210 → 5541999990210`, e `554187275895` intacto.
+
+### O nulo abriu um furo, e o furo não era o que eu supunha
+
+Minha primeira fixture usou `'123'` como telefone ruim e **o banco recusou**: o
+CHECK `clients_telefone_valido` já barra lixo na porta. Mas ele é
+`telefone IS NULL OR private.telefone_valido(telefone)` — **nulo passa de
+propósito**. Então o caso alcançável é cliente **sem** telefone: hoje 0 de 120, e
+nada impede o próximo cadastro de vir sem número.
+
+E sumir só do envio não bastaria: a inscrição seria chamada do mesmo jeito,
+prendendo um horário por 30 minutos para quem nunca receberia o aviso, e duas
+varreduras depois a `devolver_chamados_sem_resposta` encerraria a inscrição em
+silêncio. Agora **quem não tem destino montável não é chamado** — fica
+`esperando`, na tela do dono, que liga à mão.
+
+`drop` + `create` porque acrescentar coluna em `returns table` muda a assinatura
+(42P13, a mesma lição do `reserva_id`). `rodar_a_fila` não mudou: o `to_jsonb(c)`
+da fachada pegou a coluna nova sozinho.
+
+### O fluxo: `CRM Salão - Fila de Espera (Aviso de Vaga)` (`97Q7LLEdoI9uxS3Q`)
+
+Molde do fluxo de Reativação, com **uma diferença deliberada: o gate do template
+vem ANTES da varredura.**
+
+No Reativação, o `Buscar Template Aprovado` fica depois de ler a fila — lá isso
+é inofensivo, porque ler não muda nada. Aqui mudaria: `rodar_a_fila` **cria
+reserva** e marca `chamado`. Com o gate depois, uma varredura com envio bloqueado
+chamaria gente que nunca receberia aviso e, em duas rodadas, encerraria a
+inscrição de quem nunca soube — o dano que já está registrado acima. Com o gate
+antes, **`whatsapp_templates.ativo` é um interruptor só para as duas coisas**:
+sem ele, nem varre nem envia.
+
+### Dois trincos independentes, e o que ligar
+
+O fluxo nasceu **inativo** (`active: false`, `activeVersionId: null`, conferido
+lendo de volta) e o template segue `ativo = false`. Para ligar, nesta ordem:
+
+1. `update public.whatsapp_templates set ativo = true where chave = 'fila_vaga_abriu';`
+2. ativar o workflow no n8n.
+
+Faltando qualquer uma, nada sai.
+
+### O que ficou verificado, e o que não
+
+**Verificado:** ensaio da 0210 em produção dentro de transação (só quem tem
+destino é chamado; quem não tem fica `esperando/0`; destino normalizado nos dois
+formatos); migration aplicada e o arquivo conferido contra `prosrc` por md5;
+`destino text` no `pg_get_function_result`; ACL só para `service_role`; o fluxo
+lido de volta nó a nó, com o gate antes da varredura e a saída de **erro** do
+envio voltando ao loop (sem ela, uma falha de envio travaria o resto da rodada).
+
+**Não verificado:** o fluxo **nunca rodou**. Tentei uma execução manual — segura,
+porque o gate barra e a fila está vazia — e o sistema de permissões recusou, por
+ser um fluxo que pode mandar WhatsApp. Não contornei. Então o gate está provado
+**por leitura das ligações, não por execução**, e a primeira rodada de verdade
+será a do dono.
+
+**Também não verificado:** nenhuma mensagem desta fila jamais saiu, então o
+caminho Meta → cliente → botão → edge → n8n → cliente não foi exercido ponta a
+ponta em nenhum momento.

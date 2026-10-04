@@ -1,6 +1,8 @@
 # Estado do projeto
 
-**Atualizado em 2026-08-16.**
+**Atualizado em 2026-10-03** (atualização parcial: a fila de espera, a troca do
+provedor de pagamento e a contagem de testes. O resto do arquivo é de 2026-08-16
+e **envelheceu** — conferir no [`backlog.md`](backlog.md) antes de confiar.)
 
 Três perguntas, meia página. Se passar de uma, virou backlog — e para isso já
 existe o [`backlog.md`](backlog.md).
@@ -26,6 +28,7 @@ criada → assinatura → pagamento → acesso liberado pelo webhook, sem interv
 | Cobrança | assinar, pagar, trocar de plano com rateio, cancelar, bloquear |
 | Entrada de clientes | cadastro aberto **e** convite por link |
 | QR do balcão | cliente sem hora marcada agenda sozinho — **só na Curitiba**, pela chave `agenda_publica` |
+| Fila de espera | o cliente se inscreve pela conversa, o sistema procura a vaga e segura por 30 min, e o dono vê na agenda com o telefone. **O aviso automático está pronto e DESLIGADO** — ver as decisões suas, abaixo |
 | Jurídico | termos e privacidade publicados, com aceite registrado |
 | Vigilância | auditoria do agente, fronteira, teto de uso, alerta de queda |
 | CI | verde nos dois jobs; pgTAP passou pela primeira vez em 2026-08-16 |
@@ -46,12 +49,22 @@ usada no teste de pagamento.
 **Trava o funil:**
 
 - Entrega de e-mail testada **só no Gmail**. Todo o cadastro depende dela.
-- Pix e boleto **bloqueados** na conta do Asaas, pendentes de análise. Hoje só
-  cartão recebe.
-- El Guardians cobra **R$ 5,00/mês** no Asaas até alguém clicar em Cancelar.
+- ~~Pix e boleto bloqueados na conta do Asaas~~ — **o Asaas saiu.** A cobrança é
+  **PIX no AbacatePay** (`cobrar-uso` cria, `abacate-webhook` confirma). A edge
+  chamada `asaas` continua existindo e sendo chamada pelo CRM, mas é só o nome
+  velho: ela não fala com provedor nenhum.
+- **El Guardians** cobrava R$ 5,00/mês **no Asaas**. Com o provedor trocado, não
+  dá para afirmar daqui se aquela recorrência morreu junto — **conferir no painel
+  do Asaas e cancelar se ainda estiver de pé.**
 
 **Decisões suas, não código:**
 
+- **Ligar o aviso da fila de espera**, se quiser: (1)
+  `update public.whatsapp_templates set ativo = true where chave = 'fila_vaga_abriu';`
+  e (2) ativar o workflow `CRM Salão - Fila de Espera (Aviso de Vaga)` no n8n.
+  Faltando qualquer uma das duas, nada é enviado e ninguém é chamado. Os outros
+  dois templates da fila voltaram da Meta como `marketing` (custam ~9x) e seguem
+  desligados — a fila funciona inteira sem eles.
 - Data do backup e data de início da emissão de NF (assumidas em contrato)
 - Comarca do contrato e se haverá multa (recomendação: não haver)
 - Levar o [`contrato.md`](contrato.md) a um advogado
@@ -84,7 +97,7 @@ compra crescimento.
 ## Como verificar que nada quebrou
 
 ```
-node --version && npx vitest run          # 133 testes
+node --version && npx vitest run          # 573 testes em 64 arquivos
 npx tsc --noEmit && npx oxlint src/       # typecheck e lint
 gh run list --limit 1                     # o CI ficou verde?
 ```

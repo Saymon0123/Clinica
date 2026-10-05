@@ -8407,3 +8407,50 @@ O **fluxo do n8n** que chama `rodar_os_avisos_do_imprevisto`, manda o
 `imprevisto_na_barbearia` (já aprovado) pelo número central e chama
 `registrar_aviso_do_imprevisto` no sucesso / `devolver_aviso_do_imprevisto` na
 falha. O motor está pronto e inerte até ele existir.
+
+### O fluxo do n8n do aviso (05/10)
+
+**`CRM Salão - Aviso de Imprevisto (Folga)`**, id `R4PMPsM96cVDF09b`, **inativo de
+propósito**. 13 nós, no projeto pessoal.
+
+A cada 10 minutos: gate do template → remetente central → `rodar_os_avisos_do_imprevisto`
+→ separar → um a um → enviar pelo número central → registrar o WAMID.
+
+**O ramo de erro é o que esta feature tem de diferente da fila.** `Enviar` sai com
+`onError: continueErrorOutput`, e a saída 1 vai para **`Devolver Aviso`**:
+
+    Enviar → [0] Registrar Aviso → Um a Um
+           → [1] Devolver Aviso  → Um a Um
+
+Sem essa linha, uma falha de rede consumiria o aviso **único** de quem nunca o
+recebeu — a reivindicação é gravada antes do envio justamente para duas
+varreduras não avisarem a mesma pessoa duas vezes, e o preço disso é ter de
+devolver quando não deu. Na fila é o contrário: lá se grava **depois** do envio,
+porque o que se guarda é o WAMID.
+
+**O botão de URL:** o nó nativo do WhatsApp aceita `sub_type: 'url'`, `index: 0` e
+`buttonParameters`, então não precisou de HTTP Request cru para montar o
+componente — o que eu temia ao começar.
+
+#### Medido com `test_workflow`
+
+Pin data com uma resposta realista da RPC (dois avisos, um **sem telefone**):
+
+- `Template Liberado?` mandou para a saída verdadeira — o gate abre com o
+  template aprovado e ativo;
+- `Separar Avisos` devolveu **um** item de dois: `parametros: ["João", "07/10",
+  "09:00", "El Corte"]`, token separado, e **o sem destino filtrado**;
+- o primeiro nome saiu sozinho e **com acento** (`João`), que era o risco depois
+  do episódio de codificação do mesmo dia;
+- o laço chegou ao `Fim`.
+
+O que o teste **não** prova: as credenciais, porque `test_workflow` fixa os nós
+que as usam. A primeira execução real é quem diz.
+
+#### Para ligar, nesta ordem
+
+1. `update public.whatsapp_templates set ativo = true where chave = 'horario_cancelado_pela_barbearia';`
+2. Ativar o workflow `R4PMPsM96cVDF09b`.
+
+Faltando qualquer uma, nada é avisado — e o gate da 0215 garante que nada seja
+reivindicado nem cancelado também.

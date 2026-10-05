@@ -7682,3 +7682,82 @@ Removido o `useCallback`, o oxlint passou a analisar o componente e acusou
 intocada** (`horarioJaPassou`). O aviso está certo sobre o código; o
 comportamento não mudou. Fica registrado em vez de silenciado — silenciar aviso
 foi o que criou o defeito acima.
+
+---
+
+## 2026-10-04 — A folga do barbeiro: o desenho fechado com o dono
+
+Pergunta dele, depois de o bloqueio de dia inteiro funcionar: **e numa barbearia
+de um barbeiro só?** E a seguir, o caso que quebra tudo: *"hoje é dia 4, surge um
+imprevisto, no dia 7 ele não pode trabalhar — e tem 10 agendamentos"*.
+
+### O que o levantamento mostrou
+
+- O `quem_pode_assumir` procura *"outros barbeiros ativos do salão"*. Com um
+  barbeiro só, a resposta é **sempre vazia, por definição** — e a frase da tela
+  (*"ninguém está livre nesse horário"*) sugere coincidência de agendas, quando a
+  verdade é "você é o único".
+- A agenda pública separa "fechado" de "lotado" pela **jornada semanal**, não
+  pelos bloqueios. O dia de folga do barbeiro solo apareceria como **lotado** —
+  e o cliente espera uma desistência que não pode existir.
+- **Não existe conceito de dia fechado por data**: `horario_funcionamento` é só
+  por dia da semana.
+- Mas **o cliente já sabe remarcar sozinho**: a edge `agenda-publica` tem
+  `remarcar_horario` e `cancelar_horario` pelo `token_gestao` (0176), e a página
+  já mostra o WhatsApp da barbearia.
+
+### O problema real não era mover 10 pessoas
+
+Era que **o dia 7 continua enchendo enquanto ele tenta esvaziá-lo.** O bloqueio é
+recusado enquanto houver agendamento no caminho (23P01), e nesse meio tempo a
+agenda pública e o agente seguem oferecendo o dia — porque nada disse a eles que
+ele fechou. Hoje **"fechar para novos" e "resolver os que existem" são a mesma
+ação**, e só com antecedência isso aparece.
+
+### O desenho aprovado
+
+1. **Folga que não colide** — uma linha (barbeiro + dia) que o `horarios_livres`
+   subtrai, **sem** ser agendamento. O dia para de ser oferecido no instante em
+   que é marcado, nas quatro portas, e os agendamentos existentes continuam lá
+   para serem resolvidos com calma. O bloqueio de hoje segue servindo para o caso
+   pequeno (almoço, duas horas, dia já vazio).
+2. **Aviso escalonado**, do horário **mais cedo para o mais tarde** (decisão do
+   dono). É a fila de espera ao contrário, e reusa o mesmo motor: prazo por
+   pessoa, e o seguinte é avisado quando o anterior resolve.
+3. **Um aviso só** (decisão do dono): quem não remarca perde o horário sem novo
+   aviso. *"Ele foi avisado e pedido para que alterasse."*
+4. **No prazo final, quem não respondeu é cancelado** — o dia esvazia e a folga
+   se completa.
+5. Quem abrir o link e **não achar vaga** entra na **fila de espera** para os dias
+   seguintes, em vez de sair de mãos vazias.
+
+### O template, e por que ele ficou com UM botão
+
+O dono queria três: link da agenda, WhatsApp e cancelar. A pesquisa na Meta
+derrubou dois deles — e as regras estão agora em
+[`templates-para-a-meta.md`](templates-para-a-meta.md):
+
+- **botão de URL não pode apontar para o WhatsApp** (`error_subcode 2388081`,
+  medido tentando);
+- **misturar resposta rápida com outro tipo quebra o WhatsApp Web** — a pessoa no
+  desktop não consegue usar a mensagem.
+
+Então ficou **um botão de URL** (`Ver horários` → `/meu-horario/{{token}}`), com
+cancelar e WhatsApp na própria página, que já os tem. O rodapé diz *"se preferir,
+responda esta mensagem"* — o número central roteia pela 0148.
+
+`imprevisto_na_barbearia`, id `27718933454446964`, **`PENDING` e `UTILITY`
+confirmado pelo GET**. Tem argumento de categoria muito mais forte que os da
+fila: há transação em curso (um agendamento existente mudando).
+
+**Um erro meu no caminho:** submeti primeiro sem acentos, apaguei para corrigir, e
+a Meta bloqueou o nome por mais de dois minutos (dizendo "menos de um"). Tive que
+criar com outro nome — acabou sendo o `imprevisto_na_barbearia` que o projeto já
+planejava. Conferir o texto antes de submeter custa segundos; apagar custa o nome.
+
+### O que falta
+
+A implementação, nesta ordem: a **folga que não colide** (migration, mexe no
+`horarios_livres`), depois o aviso escalonado sobre o motor da fila, depois a
+fila como rede para quem não acha vaga. E a aprovação da Meta, que não depende
+de nós.

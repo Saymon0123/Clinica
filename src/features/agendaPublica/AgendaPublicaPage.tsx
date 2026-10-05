@@ -109,6 +109,10 @@ type Consulta = {
   /** Dias da semana (0 = domingo) em que alguém da equipe tem jornada. Separa
    *  "fechado" de "lotado" na faixa. */
   diasDeTrabalho?: number[]
+  /** Datas em que ninguém trabalha por folga (0213). A jornada é semanal e a
+   *  folga é por data, então `diasDeTrabalho` não dá conta sozinho. Ausente numa
+   *  edge anterior a isto. */
+  diasFechados?: string[]
   horarios: Horario[]
   /** Por que `horarios` veio vazio (M8). Ausente numa função anterior a isto. */
   motivoVazio?: MotivoSemHorario | null
@@ -807,6 +811,7 @@ export function AgendaPublicaPage() {
         dias: dados.dias,
         horario: dados.horarioFuncionamento,
         diasDeTrabalho: dados.diasDeTrabalho ?? [],
+        diasFechados: dados.diasFechados ?? [],
         agora,
       })
     : []

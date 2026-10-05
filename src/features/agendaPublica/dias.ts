@@ -16,12 +16,19 @@ import {
  * dia que mente é um beco.
  *
  * FECHADO NÃO É LOTADO, e a diferença importa. `horarios_livres` devolve zero
- * para os dois, então a contagem sozinha não distingue. Aqui se cruzam três
- * coisas: o horário de funcionamento do salão (dia de folga), os dias em que
- * ALGUÉM da equipe tem jornada (`diasDeTrabalho`, que a edge manda), e o
+ * para os dois, então a contagem sozinha não distingue. Aqui se cruzam quatro
+ * coisas: o horário de funcionamento do salão (dia fechado na semana), os dias
+ * em que ALGUÉM da equipe tem jornada (`diasDeTrabalho`), as datas em que
+ * ninguém trabalha porque tirou folga (`diasFechados`, migration 0213) e o
  * relógio (só para hoje). Dia fechado fica desabilitado — tocar num dia que a
  * barbearia não abre e receber "não sobrou horário" faria a pessoa achar que
  * está cheio, e voltar amanhã para tentar de novo.
+ *
+ * A FOLGA PRECISA DE CAMPO PRÓPRIO porque a jornada é semanal e ela é por data:
+ * o barbeiro de folga numa quarta continua tendo jornada de quarta, então
+ * `diasDeTrabalho` não a enxerga. Numa barbearia de um barbeiro só, o dia dele
+ * sem poder trabalhar apareceria como "lotado", e o cliente esperaria uma
+ * desistência que não pode existir.
  *
  * O FUSO é o da barbearia, como em todo o resto: quem abre a página com o
  * celular em outro fuso não pode ver "hoje" no dia errado da faixa.
@@ -31,7 +38,8 @@ const CURTO = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'] as const
 const LONGO = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'] as const
 
 export type EstadoDoDia =
-  /** A barbearia não abre, ou ninguém da equipe trabalha. Botão desabilitado. */
+  /** A barbearia não abre, ninguém da equipe tem jornada, ou quem teria está de
+   *  folga nessa data. Botão desabilitado. */
   | 'fechado'
   /** Só hoje: abriu, mas já passou da hora de fechar. */
   | 'encerrado'
@@ -60,22 +68,30 @@ export function montarFaixa({
   dias,
   horario,
   diasDeTrabalho,
+  diasFechados,
   agora,
 }: {
   dias: ContagemDoDia[]
   horario: HorarioFuncionamento
   /** Dias da semana (0 = domingo) em que alguém da equipe tem jornada ativa. */
   diasDeTrabalho: number[]
+  /**
+   * Datas ('YYYY-MM-DD') em que NINGUÉM trabalha, já descontada a folga por
+   * data. Opcional de propósito: a edge passou a mandar o campo na 0213, e nos
+   * minutos entre ela subir e a Vercel terminar o build a tela fica sem ele.
+   */
+  diasFechados?: string[]
   agora: Date
 }): DiaDaFaixa[] {
   const { data: hoje, hhmm } = agoraEmSaoPaulo(agora)
   const agoraMin = minutos(hhmm)
   const trabalha = new Set(diasDeTrabalho)
+  const deFolga = new Set(diasFechados ?? [])
 
   return dias.map((d, i) => {
     const ehHoje = d.dia === hoje
     const faixa = faixaDoDia(horario, chaveDe(d.dia))
-    const fechado = !faixa || !trabalha.has(diaDaSemanaDe(d.dia))
+    const fechado = !faixa || !trabalha.has(diaDaSemanaDe(d.dia)) || deFolga.has(d.dia)
 
     let estado: EstadoDoDia
     if (fechado) estado = 'fechado'

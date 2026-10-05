@@ -7761,3 +7761,469 @@ A implementação, nesta ordem: a **folga que não colide** (migration, mexe no
 `horarios_livres`), depois o aviso escalonado sobre o motor da fila, depois a
 fila como rede para quem não acha vaga. E a aprovação da Meta, que não depende
 de nós.
+
+---
+
+## 2026-10-04 — A folga que não colide, construída (0213)
+
+A parte 1 do desenho acima, de ponta a ponta: tabela, régua, catraca, agenda
+pública, agente e CRM.
+
+### O que foi feito
+
+**`public.dias_de_folga`** (barbeiro + data, motivo até 60, uma por barbeiro por
+dia). Fora de `appointments` de propósito: a folga precisa **conviver** com os
+agendamentos do dia, e agendamento nenhum convive com outro — a
+`appointments_sem_sobreposicao` os separa por definição. É isso que o bloqueio
+não consegue fazer.
+
+**O filtro entrou na `jornada`**, dentro de `horarios_livres`, e não num
+`not exists` no fim. `na_grade` (a grade de 10 em 10) e `apos_atendimento` (o
+encaixe depois de um atendimento) **nascem as duas da `jornada`**: tirando o
+barbeiro de lá, ele desaparece das duas de uma vez e não sobra caminho por onde
+uma vaga escape.
+
+Uma linha fechou **seis portas**, porque todas passam pela mesma régua —
+`agendar_pelo_agente`, `remarcar_pelo_cliente` e `quem_pode_assumir` como trava
+de recusa, não como sugestão; `dias_com_horario`, `criar_agendamentos_de_reativacao`
+e `chamar_proximos_da_fila` por herança.
+
+### Medido em produção, pelo caminho real
+
+Ensaio em transação (9 asserções) antes de aplicar, e depois a prova de ponta a
+ponta com os cinco barbeiros da El Corte de folga em 07/10 — fixture criada,
+medida e apagada, com a agenda conferida de volta nos 182 horários:
+
+| Medida | Sem folga | Com folga |
+|---|---|---|
+| `horarios` do dia | 182 | **0** |
+| `diasFechados` | `[]` | `['2026-10-07']` |
+| `diasDeTrabalho` | `[0..6]` | **`[0..6]`, inalterado** |
+| `motivoVazio` | — | **`fechado_hoje`** |
+| dia seguinte | — | 283 (não vazou) |
+
+E o agente, na RPC que o n8n chama de verdade:
+
+```json
+{"ok": false, "motivo": "Nao ha horario livre nesse dia.",
+ "proximo_dia_com_vaga": "08/10", "horas_no_proximo_dia": "09:00, 09:10, ..."}
+```
+
+Ele recusa **e já oferece o próximo dia com vaga**, de graça: a função já fazia
+isso, e herdou a folga pela régua única.
+
+### "Fechado", não "lotado" — e sem valor novo no fio
+
+Esta pendência estava anotada como *"um quinto valor em `MotivoSemHorario`"*.
+**Não precisou.** `motivoSemHorario` já recebia `alguemTrabalhaHoje`, e
+`fechado_hoje` já significava "fechado no dia escolhido". O que estava errado era
+o **cálculo**: o booleano vinha de `diasDeTrabalho`, que é por dia da semana — o
+barbeiro de folga numa quarta continua tendo jornada de quarta.
+
+A edge passou a cruzar jornada com folga por data (`trabalhaNoDia`) e a mandar
+`diasFechados` como campo **novo e opcional**, que a tela lê com `?? []`. Valor
+novo no enum obrigaria tela e edge a subirem juntas, e elas não sobem: a edge
+publica na hora, a Vercel termina o build minutos depois. Nesse vão a tela antiga
+cairia no `default` e diria *"não sobrou horário"* num dia de folga — o próprio
+comentário do `semHorario.ts` avisava disso, e foi o que evitou o erro.
+
+### O CRM: nenhuma UI nova, porque a linguagem já existia
+
+O botão **"Marcar folga nesse dia"** entrou no `ConflitosDoBloqueio`, que é
+exatamente onde o dono bateu no muro. Aparece **só quando o bloqueio é de dia
+inteiro** (`onFolga` ausente no resto): folga de duas horas não existe, e
+oferecê-la num bloqueio de almoço fecharia o dia por engano.
+
+E para a folga **aparecer** na agenda, a resposta estava escrita no próprio
+código: *"`null` na jornada é folga"* (`AgendaPage.tsx`). O `useAgendaData` passou
+a sobrescrever a jornada com `null` para quem está de folga, e a coluna inteira
+fica cinza — o visual que já existia. Sem isto o dono marcaria a folga, a agenda
+ficaria idêntica e ele concluiria que não funcionou.
+
+A folga **pesa mais** que a jornada da semana, e por isso é aplicada depois no
+mapa. Os agendamentos continuam desenhados por cima do cinza, que é a figura
+certa: dia fechado, e estes aqui para resolver.
+
+### Achado de segurança, no caminho: `TRUNCATE` para `authenticated`
+
+Conferindo os grants da tabela nova, ela nasceu com **sete** privilégios para
+`authenticated`, não os quatro concedidos — `REFERENCES`, `TRIGGER` e
+`TRUNCATE` vieram do padrão do schema. **`TRUNCATE` ignora RLS.**
+
+- **Medido:** `authenticated` tem `TRUNCATE` em **75 relações** deste banco,
+  `appointments` e `clients` entre elas.
+- **Deduzido, não medido:** não é alcançável pelo PostgREST — os verbos REST
+  viram só DML, e `authenticated` não é papel de login, é assumido por `set role`
+  depois do JWT. Então é **privilégio desnecessário, não buraco aberto**.
+
+Na `dias_de_folga` ficou `revoke all` antes do `grant`, e o pgTAP guarda isso.
+**As outras 74 são decisão do dono**, porque é mexer no grant de todo o banco:
+dá para fazer num `revoke` por tabela, e o risco é algum papel depender de
+`REFERENCES` para FK em migration futura.
+
+### Catraca
+
+`a_folga_que_nao_colide.test.sql`, 13 asserções. As duas primeiras são um par e
+valem o arquivo: a 1 prova que **o bloqueio é recusado com 23P01** no dia com
+agendamento, a 2 prova que **a folga entra no mesmo dia com os mesmos dois
+agendamentos de pé**. Se alguém "simplificar" a folga para um agendamento de dia
+inteiro, a 2 cai e a mensagem diz por quê.
+
+A 3 existe porque a 4 sozinha não mediria nada — "zero vagas depois da folga" só
+significa algo se havia vaga antes. É a lição da asserção de expiração que passou
+medindo zero em 03/10.
+
+### O deno check cobrou de novo
+
+`npm run typecheck` passou verde e `deno check` reprovou: `dias` sai de um
+`rpc()` sem tipo gerado, e o `any` implícito só aparece lá. Terceira vez que esse
+comando pega algo que o `tsc` do projeto não vê.
+
+### O que falta da folga
+
+1. **O aviso escalonado** sobre o motor da fila — do horário mais cedo para o
+   mais tarde, um aviso só, prazo por pessoa, e cancelamento automático no fim.
+   Depende do template `imprevisto_na_barbearia` sair de `PENDING` na Meta.
+2. **A fila como rede** para quem abrir o link e não achar vaga.
+3. **Remover** a folga pela tela: hoje só entra. Marcar errado exige SQL, e isso
+   não serve. É a primeira coisa a fazer no próximo passo.
+4. O `quem_pode_assumir` ainda diz *"ninguém está livre nesse horário"* quando o
+   salão tem **um barbeiro só** — a frase sugere coincidência de agenda, e a
+   verdade é "você é o único". O botão de folga agora dá a saída, mas a frase
+   continua imprecisa.
+
+### A folga agora sai pelo mesmo lugar por onde se vê (05/10)
+
+A folga entrava por um clique e **não saía por lugar nenhum**: marcar no dia
+errado só se consertava por SQL. Ação que se faz com um clique e se desfaz só com
+ajuda não é ação, é armadilha — e isso ficou dito ao abrir a #215, antes de o
+dono pedir.
+
+**`AvisoDeFolga`**, acima da grade: diz o **nome** de quem está de folga, o que
+isso causa ("o dia não é oferecido na agenda pública, no WhatsApp nem na fila; os
+horários já marcados continuam") e oferece a remoção em **dois passos**, como a
+`LinhaDeExcluir` do detalhe — remover devolve o dia aos clientes na mesma hora.
+
+**Por que aviso e não selo no cabeçalho da coluna:** o cabeçalho tem 160px e já
+carrega inicial, nome e o selo de inativo. Confirmação em dois passos não cabe
+lá, e sem confirmação um toque errado reabre o dia sem ninguém perceber. A coluna
+cinza continua sendo o sinal visual — ela vem de graça —, mas **a coluna cinza
+sozinha não distingue folga de "não trabalha nesse dia da semana"**. Quem diz o
+nome é o aviso.
+
+**O barbeiro vê e não mexe:** a RLS só deixa o gestor escrever, então mostrar o
+botão para ele seria oferecer ação que o banco recusa.
+
+**Componente novo em arquivo próprio**, não botões soltos na `AgendaPage`: é a
+mesma saída da última vez que a catraca de botões reclamou — o arquivo novo nasce
+medido, e o teto de 6 da `AgendaPage` não se mexe.
+
+#### A catraca, provada nos dois sentidos
+
+`folgaRemovivel.test.ts`, 5 asserções. A que vale o arquivo é o **escopo do
+delete**: ele filtra por barbeiro **E** por dia. Esquecer o segundo `.eq` não dá
+erro, não aparece na tela e apaga **todas as folgas daquele barbeiro, de todos os
+dias** — inclusive as de meses à frente, que ninguém está olhando.
+
+Provada tirando a linha `.eq('dia', dia)`: o teste reprovou, e voltou a passar
+com ela de volta. E medido também no banco, em transação: com três folgas
+(barbeiro A em 10/11 e 11/11, barbeiro B em 10/11), o delete da tela removeu
+**uma** e as outras duas sobreviveram.
+
+A segunda asserção guarda o portão `!error` da `AgendaPage`. O aviso diz nome de
+pessoa, e com a carga falhando `folgas` é a lista velha — é a mentira do "R$ 0,00
+para quem só está sem rede", pior aqui, porque nome dá impressão de leitura
+fresca.
+
+#### Fica aberto: o bloqueio de dia inteiro num dia VAZIO ainda diz "lotado"
+
+Achado ao percorrer a porta que o dono não usou. A folga só é oferecida quando o
+bloqueio é **recusado** (23P01), ou seja, quando há agendamento no caminho. Num
+dia **vazio**, o bloqueio de dia inteiro passa — e aí:
+
+- a vaga desaparece corretamente (`horarios_livres` devolve zero), mas
+- `diasFechados` **não** contém o dia (o barbeiro não tem folga, tem bloqueio),
+  então a faixa da agenda pública marca **"lotado"** em vez de "fechado".
+
+É a mesma imprecisão que a folga consertou, pela outra porta, e é
+**pré-existente** — não nasceu na 0213. O conserto natural é a edge contar o
+bloqueio de dia inteiro como dia sem ninguém, ou o CRM marcar folga junto quando
+o bloqueio cobre o dia todo. Não foi feito aqui para não crescer a #215; fica
+como decisão de desenho.
+
+---
+
+## 2026-10-05 — Meta: o nome de exibição e o template do imprevisto
+
+### O nome de exibição: **ainda sem retorno**, e há uma 4ª variação em análise
+
+Medido na Graph API e no webhook, não lido de anotação:
+
+```
+verified_name     : Club Cut
+name_status       : DECLINED
+new_name_status   : PENDING_REVIEW
+new_display_name  : "Aura IA - Club Cut"
+```
+
+O `eventos_da_waba` guarda **três** recusas, todas com o mesmo código:
+
+| Quando | Nome pedido | Decisão |
+|---|---|---|
+| 08/09 20:43 | `Club_Cut` | REJECTED — `BIZ_COMMERCE_VIOLATION_OTHER` |
+| 14/09 21:30 | `Club Cut` | REJECTED — mesmo código |
+| 19/09 13:30 | `Club Cut - Aura IA` | REJECTED — mesmo código |
+
+E **nenhum `phone_number_name_update` desde 19/09** — 16 dias. A quarta variação
+(`Aura IA - Club Cut`, a terceira com a ordem invertida) está em análise sem
+decisão.
+
+**O silêncio é da Meta, não do nosso lado:** o mesmo webhook gravou um
+`message_template_status_update` hoje às 05:00 UTC. O cano está vivo; é a revisão
+que não voltou.
+
+**Nota:** a regra registrada em 20/09, ao abrir o chamado no Direct Support, era
+**não reenviar uma 4ª variação** até o suporte dizer o motivo específico — três
+grafias com um código só indicam que o bloqueio é a avaliação do negócio, não a
+string. A 4ª foi enviada de todo modo. Como ela já está em análise, reenviar
+agora só reinicia a fila: o que resta é esperar esta decisão **ou** o retorno do
+chamado.
+
+O resto da conta está saudável, o que reforça que o problema é específico do nome:
+`account_review_status: APPROVED`, `business_verification_status: verified`,
+`status: CONNECTED`, `quality_rating: GREEN`.
+
+**O que DECLINED custa, em uma linha:** não bloqueia envio nenhum. O cliente que
+não tem o número salvo vê **o número**, não "Club Cut". É confiança, não entrega.
+(`is_official_business_account: false` e `search_visibility: NON_VISIBLE` são
+outros dois assuntos, e nenhum deles é este.)
+
+### `imprevisto_na_barbearia` foi **APROVADO**
+
+Webhook em **05/10 05:00:06 UTC**, `event: APPROVED`, `reason: NONE` — e
+conferido pelo GET: `status APPROVED`, `category UTILITY`, `pt_BR`. Criado
+ontem, aprovado em menos de um dia.
+
+A linha do banco foi sincronizada (`status='aprovado'`). **`ativo` continua
+`false`** de propósito: não existe motor que o mande ainda — o aviso escalonado é
+o passo 2 da folga —, e ligar é decisão do dono.
+
+Com isso, **a Meta deixou de ser o que bloqueia o aviso escalonado**. O que falta
+é nosso.
+
+### A quarta recusa, e o webhook que não contou (05/10)
+
+O dono mandou o print do Gerenciador: **"Seu nome de exibição Aura IA - Club Cut
+foi rejeitado."** Três fontes, duas versões, medidas no mesmo minuto:
+
+| Fonte | O que diz |
+|---|---|
+| Painel (Gerenciador) | `Aura IA - Club Cut` **rejeitado**, motivo genérico ("não segue as Diretrizes") |
+| Graph API | `new_name_status: PENDING_REVIEW`, `new_display_name: "Aura IA - Club Cut"` |
+| `eventos_da_waba` | **nada** para esse nome; último `phone_number_name_update` é de 19/09 |
+
+**O achado operacional: o webhook não é fonte confiável para a decisão do nome.**
+O backlog de 14/09 dizia *"a decisão chega pelo webhook `phone_number_name_update`"* —
+e essa suposição acabou de falhar. O painel tem uma decisão que o webhook nunca
+entregou e que a API ainda não reflete. O cano está vivo (ele gravou um
+`message_template_status_update` às 05:00 do mesmo dia), então não é queda nossa.
+
+**Consequência prática:** conferir o nome de exibição exige olhar o painel OU a
+Graph API à mão. Esperar o webhook avisar é esperar um aviso que pode não vir.
+
+### Quatro nomes, um código — a string não é o problema
+
+| Quando | Nome | Resultado |
+|---|---|---|
+| 08/09 | `Club_Cut` | REJECTED — `BIZ_COMMERCE_VIOLATION_OTHER` |
+| 14/09 | `Club Cut` | REJECTED — mesmo código |
+| 19/09 | `Club Cut - Aura IA` | REJECTED — mesmo código |
+| ~05/10 | `Aura IA - Club Cut` | rejeitado pelo painel; API ainda diz em análise |
+
+Sublinhado, espaço, e as **duas ordens** da forma composta. Se o problema fosse a
+grafia, uma das quatro teria passado. Isto fecha a conclusão que o chamado de
+20/09 já suspeitava: **o bloqueio é a avaliação do negócio por trás do nome**, e
+não o texto enviado.
+
+**O que não consegui medir daqui:** o nome do negócio VERIFICADO no Business
+Manager. O token não tem `business_management` (`(#200) Requires
+business_management permission`), e o `owner_business_info` da WABA exige ser
+BSP. A diretriz exige relação clara entre o nome de exibição e o negócio
+verificado — se o negócio verificado não se parece com "Club Cut" nem com "Aura
+IA", isso sozinho explica as quatro. **É a primeira coisa a conferir, e só o dono
+consegue:** Business Manager → Configurações do negócio → Informações do negócio.
+
+**Regra que continua valendo:** não enviar uma 5ª variação. Cada envio reinicia a
+fila e não traz informação nova — quatro tentativas já provaram isso. O caminho é
+o chamado do Direct Support aberto em 20/09.
+
+### Meta SDK: não serve a este projeto, e o motivo é o inventário
+
+Pergunta do dono em 05/10. Levantado antes de responder: **o código do projeto
+não chama a Graph API em lugar nenhum.**
+
+- `supabase/functions/whatsapp/index.ts` → fala com a **Evolution** (canal do
+  número da barbearia), não com a Meta.
+- `supabase/functions/whatsapp-webhook/index.ts` → só **recebe** da Meta e
+  repassa ao n8n. Nenhuma chamada de saída para a Graph.
+- Quem envia pela Cloud API é o **nó nativo do n8n**, com credencial própria. Um
+  SDK não entra ali: a implementação é do n8n.
+- A gestão (templates, número) é feita à mão, por `curl`, em tarefas pontuais.
+
+Ou seja, o SDK não teria onde se encaixar. E teria custo: as edges rodam em
+**Deno**, o Business SDK é feito para Node e entraria como `npm:` com árvore de
+dependências própria — em um projeto onde `npm audit` é catraca de CI e o
+`deno check` já cobrou erro que o `tsc` não viu.
+
+**Quando valeria reabrir:** se a gestão de templates for para dentro do CRM (o
+dono criando e editando template pela tela em vez de eu por `curl`). Aí são ~6
+endpoints e um SDK ajudaria — mas mesmo nesse caso, a Graph é REST com bearer, e
+o invólucro que o projeto já usaria tem dez linhas.
+
+### Por que o nome é recusado: o negócio verificado não tem nada a ver com "Club Cut"
+
+O dono mandou os prints do portfólio empresarial em 05/10, e eles fecham a
+pergunta que quatro recusas deixaram aberta. A cadeia que um revisor da Meta
+percorre, medida:
+
+| Onde | O nome que está lá |
+|---|---|
+| Razão social (o CNPJ) | **nome de pessoa física** (MEI) |
+| Portfólio verificado | **Aura AI** |
+| **Site do negócio, no portfólio** | **aurastudioai.com.br** |
+| O que esse site é | *"AuraStudio — Tecnologia de IA para **Odontologia Estética**"* |
+| Rodapé do clubcut.space | "um produto **Aura IA**" |
+| Instagram no rodapé | **@auraiagency** |
+| Perfil do WhatsApp | "um produto **Aura IA**", site `clubcut.space` |
+| Nome de exibição pedido | **Club Cut** |
+
+**O site do negócio verificado é de odontologia estética e não menciona "Club
+Cut" em lugar nenhum** — conferido no ar: a palavra não aparece.
+
+A diretriz de nome de exibição pede relação clara entre o nome e o negócio
+verificado. O revisor que abre o negócio "Aura AI" cai num site de odontologia,
+procura "Club Cut" e não acha. Recusar é o resultado esperado — e seria o mesmo
+com um revisor humano agindo com razoabilidade. Isto é **inferência forte com
+evidência**, não motivo declarado pela Meta: eles nunca disseram a cláusula.
+
+E há **cinco grafias** da mesma marca em circulação: `Aura AI` (portfólio),
+`AuraStudio` (site), `auraiagency` (Instagram), `Aura IA` (rodapé do Club Cut e
+perfil do WhatsApp), `aurastudioai` (domínio). O backlog de 15/09 já tinha
+apontado duas; agora são cinco.
+
+**O conserto mais direto, e barato:** trocar (ou acrescentar) o **site do
+portfólio empresarial** para `clubcut.space`. Isso dá ao revisor o elo que hoje
+não existe — o nome pedido passa a estar escrito, em destaque, no site do próprio
+negócio verificado. Só depois disso reenviar `Club Cut`.
+
+Alternativas piores: pôr o Club Cut como produto dentro do aurastudioai.com.br
+(exige mexer naquele site), ou pedir `Aura AI` como nome de exibição — passaria,
+mas aí o cliente da barbearia recebe mensagem de "Aura AI", que não diz nada a
+ele.
+
+**Fica para o dono decidir**, porque é o site da outra empresa dele.
+
+### Verificação do acesso (Provedor de Tecnologia): prazo **04/12/2026**
+
+Segundo e terceiro prints. São **duas** verificações diferentes, e o painel
+mostra as duas juntas:
+
+1. **Verificação da empresa** — confirma que a empresa existe. **Feita** em
+   21/08/2026.
+2. **Verificação do acesso** — confirma que a empresa é **Provedor de
+   Tecnologia**, exigida de quem usa a API para alcançar ativos e dados de
+   **outras** empresas. É exatamente o caso do Club Cut: um número central da
+   Aura AI atendendo o cliente final de várias barbearias.
+
+O status diz "Verificado", mas ao abrir os detalhes há um formulário com aviso:
+*"Para evitar restrições a **1 app**, essa ação precisa ser concluída até
+**04/12/2026**."*
+
+**O app é o `1054189290929803`** — o mesmo por onde passa o webhook da WABA e o
+envio pela Cloud API. Restrição nele é a integração de WhatsApp parando. **É
+bomba de tempo com data, e entra na lista do `relatorio-tecnico.md §Bombas de
+tempo`.**
+
+As três perguntas e a resposta certa para este projeto:
+
+1. *Quais opções descrevem melhor a sua empresa?* → **Plataforma de SaaS**.
+2. *Como usará a plataforma de dados para ativar um produto ou serviço em nome
+   dos seus clientes?* → rascunho redigido para o dono revisar (abaixo).
+3. *Gerencia vários portfólios empresariais?* → **Não**, hoje. Há um portfólio
+   só, e as barbearias não têm portfólio próprio — o número é central. Se um dia
+   o Club Cut usar Embedded Signup com WABA por barbearia, a resposta muda.
+
+**Rascunho da resposta 2** (linguagem simples, como o formulário pede):
+
+> A Aura AI desenvolve e opera o Club Cut (clubcut.space), um sistema de
+> agendamento para barbearias. As barbearias que contratam o Club Cut nos
+> autorizam a atender os clientes delas pelo WhatsApp: o sistema responde às
+> mensagens, marca, remarca e cancela horários na agenda da barbearia e envia
+> lembretes dos horários já marcados. Usamos os dados da plataforma do WhatsApp
+> — mensagens recebidas, status de entrega e o identificador do contato — apenas
+> para manter essa conversa de agendamento e registrar o atendimento no painel da
+> própria barbearia. Cada barbearia enxerga somente os próprios clientes e
+> horários.
+
+Tudo nele é verificável no produto: o agente atende, marca, remarca e cancela; o
+lembrete existe; e o isolamento por barbearia é a RLS por `salon_id`.
+
+### Correção: trocar o site do portfólio é o caminho CARO, e pode estar fechado
+
+Eu havia escrito acima que o conserto mais direto era apontar o site do portfólio
+empresarial para `clubcut.space`. **Está errado como "mais direto"** — lido na
+Central de Ajuda da Meta (`/business/help/322526208728282` e `/1294735268952297`)
+depois que o dono relatou não conseguir editar:
+
+1. **O botão Editar pode estar bloqueado justamente por causa do WhatsApp.** A
+   Meta escreve, no artigo de edição de empresa verificada:
+   *"Talvez você não consiga clicar em **Editar** se o portfólio empresarial for
+   usado para uma **conta do WhatsApp Business**."*
+   O portfólio Aura AI tem uma WABA. É exatamente o sintoma relatado.
+
+2. **Trocar o site de uma empresa verificada exige verificar tudo de novo.**
+   *"se você editar a razão social, país, número de telefone, **endereço do
+   site** ou identificação fiscal da empresa, será necessário concluir o processo
+   de verificação da empresa novamente"* — com documentos. E ainda:
+   *"Você deverá realizar o processo de verificação da empresa **sempre que**
+   atualizar seus detalhes devido a uma alteração no endereço do seu site."*
+
+3. **A exceção não serve aqui.** *"você pode **adicionar** um número de telefone
+   ou endereço de site caso estejam **faltando**, sem precisar verificar
+   novamente"* — só vale para campo vazio, e o site já está preenchido com
+   `aurastudioai.com.br`.
+
+4. **O que tranquiliza:** *"O status atual da verificação da empresa não será
+   alterado durante o processo de edição."* Reverificar não derruba o selo
+   enquanto corre.
+
+**O caminho barato, que não encosta na Meta:** pôr o Club Cut **dentro do
+aurastudioai.com.br** — uma seção de produto, com o nome escrito e link para
+`clubcut.space`. O revisor que abre o negócio verificado passa a achar "Club Cut"
+no site do próprio negócio, que é o elo que falta hoje. Zero risco de
+reverificação, zero formulário, e depende só de um deploy daquele site, que é do
+dono.
+
+Só depois disso reenviar `Club Cut` como nome de exibição.
+
+**Requisito que vale para qualquer site que fique no registro:** precisa ser
+ativo e HTTPS. *"Se o site usado para verificação não funcionar mais e você não
+tiver outro site, perderá o status de verificação da empresa."* Os dois estão no
+ar e em HTTPS hoje — conferido.
+
+### O perfil do WhatsApp passou a dizer 'Aura AI' (05/10)
+
+Terceira das cinco grafias alinhada, a pedido do dono. `about` e `description`
+do numero central trocaram 'Aura IA' por 'Aura AI' — a grafia do portfolio no
+painel da Meta.
+
+O payload foi **derivado do valor atual por script**, nao redigitado, com assert
+de que a troca mudou so o alvo (`n.replace(novo, velho) == v`). E enviado com
+`--data-binary @arquivo.json` em UTF-8: foi exatamente assim que o mojibake de
+14/09 entrou, quando o shell do Windows mandou os acentos em codepage errada.
+
+Lido de volta: `Aura AI` presente, `Aura IA' ausente, acentos preservados, sem
+mojibake.
+
+**Faltam duas, e nenhuma e nossa:** o Instagram (`@auraiagency`, decisao do dono)
+e o site da empresa (`AuraStudio`, do socio).

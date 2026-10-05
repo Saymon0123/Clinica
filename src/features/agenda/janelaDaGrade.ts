@@ -26,6 +26,9 @@ export type HorarioNaGrade = { data_hora_inicio: string; data_hora_fim: string }
  */
 export const JANELA_PADRAO = { horaInicio: 8, horaFim: 20 } as const
 
+/** Um dia, em minutos. O bloqueio de dia inteiro vai de 0 até aqui. */
+const DIA_EM_MINUTOS = 24 * 60
+
 export type Janela = { horaInicio: number; horaFim: number }
 
 /**
@@ -55,8 +58,34 @@ export function janelaDaGrade(
     const i = new Date(h.data_hora_inicio)
     const f = new Date(h.data_hora_fim)
     if (Number.isNaN(i.getTime()) || Number.isNaN(f.getTime())) continue
-    inicios.push(i.getHours() + i.getMinutes() / 60)
-    fins.push(f.getHours() + f.getMinutes() / 60)
+
+    // Minutos desde a MEIA-NOITE do dia em que o horário começa, e não
+    // `getHours()`.
+    //
+    // O bloqueio de dia inteiro termina à meia-noite do dia SEGUINTE (a janela
+    // é `[início, fim)`, então 23:59 deixava o último minuto de fora). Para o
+    // `getHours()` esse fim é a hora **0** — ou seja, o fim lido como ANTES do
+    // próprio começo. A conta por diferença de tempo devolve 1440 e não se
+    // confunde com a virada do dia.
+    const meiaNoite = new Date(i)
+    meiaNoite.setHours(0, 0, 0, 0)
+    const iMin = (i.getTime() - meiaNoite.getTime()) / 60000
+    const fMin = (f.getTime() - meiaNoite.getTime()) / 60000
+
+    // O que cobre o dia inteiro não diz QUAIS horas interessam.
+    //
+    // Um bloqueio de dia inteiro ia do minuto 0 ao 1440 e puxava a grade para
+    // começar à meia-noite: a agenda de uma barbearia que abre às 9h ganhava
+    // oito faixas vazias no topo, e o dono via a grade "subir" sozinha ao
+    // bloquear um barbeiro. A janela tem de sair da jornada e dos horários
+    // REAIS; quem cobre tudo não acrescenta informação nenhuma.
+    //
+    // `>= DIA_EM_MINUTOS - 1` e não `>= DIA_EM_MINUTOS` por causa dos
+    // bloqueios antigos, gravados até 23:59 antes da correção da janela.
+    if (iMin <= 0 && fMin >= DIA_EM_MINUTOS - 1) continue
+
+    inicios.push(Math.max(0, iMin) / 60)
+    fins.push(Math.min(DIA_EM_MINUTOS, fMin) / 60)
   }
 
   if (inicios.length === 0) return { ...JANELA_PADRAO }

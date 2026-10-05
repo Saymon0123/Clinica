@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowRight, CalendarX, UserX } from 'lucide-react'
+import { ArrowRight, CalendarOff, CalendarX, UserX } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { traduzirErroDoBanco } from '../../lib/erroDoBanco'
 import { ErroInline } from '../../components/ErroInline'
@@ -45,6 +45,8 @@ export function ConflitosDoBloqueio({
   inicio,
   fim,
   onVazio,
+  onFolga,
+  salvando,
 }: {
   professionalId: string
   /** ISO do começo da janela do bloqueio. */
@@ -52,6 +54,16 @@ export function ConflitosDoBloqueio({
   fim: string
   /** Chamado quando não sobrou nenhum conflito: o bloqueio pode ser tentado. */
   onVazio: () => void
+  /**
+   * Marcar o dia como folga em vez de resolver tudo antes de bloquear.
+   *
+   * **Ausente quando o bloqueio não é de dia inteiro**, e por isso é opcional:
+   * folga de duas horas não existe, e oferecer a opção num bloqueio de almoço
+   * fecharia o dia inteiro por engano.
+   */
+  onFolga?: () => void
+  /** O pai está gravando (a folga). Trava o botão para não inserir duas vezes. */
+  salvando?: boolean
 }) {
   const [conflitos, setConflitos] = useState<Conflito[]>([])
   const [carregando, setCarregando] = useState(true)
@@ -251,6 +263,31 @@ export function ConflitosDoBloqueio({
         </strong>{' '}
         Passe cada um para outro barbeiro ou cancele. Só depois o dia pode ser bloqueado.
       </div>
+
+      {/* A saída para o dia que não dá para esvaziar agora.
+          Sem ela o dono fica sem caminho nenhum quando é o único barbeiro: não
+          há para quem passar, e cancelar dez pessoas de uma vez não é decisão
+          que se toma com um clique. */}
+      {onFolga && (
+        <div className="text-xs bg-surface-2 border border-border rounded-lg px-3 py-2.5 space-y-2">
+          <p className="text-muted-foreground">
+            <strong className="font-medium text-foreground">
+              Não precisa resolver tudo agora.
+            </strong>{' '}
+            Marcar folga fecha o dia para novos agendamentos na hora — na agenda pública, no
+            WhatsApp e na fila de espera. Os horários acima continuam na agenda para você
+            resolver com calma.
+          </p>
+          <button
+            onClick={onFolga}
+            disabled={salvando}
+            className="btn-secondary rounded-lg px-2.5 py-1.5 text-xs font-medium disabled:opacity-50"
+          >
+            <CalendarOff size={13} className="inline mr-1 -mt-0.5" />
+            {salvando ? 'Marcando...' : 'Marcar folga nesse dia'}
+          </button>
+        </div>
+      )}
 
       <ErroInline>{erro}</ErroInline>
 

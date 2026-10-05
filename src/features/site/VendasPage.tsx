@@ -1157,10 +1157,23 @@ export function Rodape() {
         <span className="landing-label text-[var(--l-fg-faint)]">
           © {new Date().getFullYear()} Club Cut
         </span>
-        {/* Uma marca, uma assinatura (auditoria 2026-08-28, P0 de marca) — e
-            a grafia é a que a Meta verificou como empresa: Aura IA, a mesma
-            do nome de exibição do WhatsApp (decisão do dono, 15/09). */}
-        <span className="landing-label text-[var(--l-fg-faint)]">um produto Aura IA</span>
+        {/* Uma marca, uma assinatura (auditoria 2026-08-28, P0 de marca).
+            A grafia é **Aura AI**, que é como o portfólio empresarial aparece
+            no painel da Meta — conferido no print do dono em 05/10.
+
+            Estava "Aura IA" até aqui, com um comentário meu afirmando que essa
+            era "a grafia que a Meta verificou". Era premissa errada: o que a
+            Meta verificou é a razão social (um CNPJ MEI, nome de pessoa
+            física); "Aura AI" é o rótulo do portfólio, e "Aura IA" não existia
+            em lugar nenhum do lado deles.
+
+            Por que isso importa e não é frescura: o nome de exibição do
+            WhatsApp foi recusado quatro vezes, e a diretriz pede relação clara
+            entre o nome e o negócio verificado. Cinco grafias da mesma marca
+            circulando (Aura AI, AuraStudio, auraiagency, Aura IA, aurastudioai)
+            é exatamente o tipo de coisa que um revisor encontra ao cruzar as
+            páginas. Esta é a que está sob nosso controle. */}
+        <span className="landing-label text-[var(--l-fg-faint)]">um produto Aura AI</span>
       </div>
     </footer>
   )

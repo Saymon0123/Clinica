@@ -84,7 +84,10 @@ export const EMPRESA = {
   // registro na Receita é "67.127.614 Samuel Rocha Almeida dos Santos"
   // (conferido via BrasilAPI) — "Aura Studio Ltda." nunca existiu, e nome de
   // fachada ao lado de CNPJ real seria mentira. Null esconde a linha; o CNPJ
-  // e a cidade continuam. A marca é outra coisa: Aura IA (grafia da Meta).
+  // e a cidade continuam. A marca é outra coisa: Aura AI — a grafia do
+  // portfólio empresarial no painel da Meta (print do dono, 05/10). Até lá
+  // estava escrito "Aura IA (grafia da Meta)", o que era falso: a Meta
+  // verificou a razão social, não a marca.
   razaoSocial: null as string | null,
   /** Formatado como se lê: '00.000.000/0001-00'. */
   cnpj: '67.127.614/0001-00' as string | null,

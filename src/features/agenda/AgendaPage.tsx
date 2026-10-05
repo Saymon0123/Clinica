@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Building2, CalendarDays, ChevronLeft, ChevronRight, MessageSquareQuote, Plus, Users } from 'lucide-react'
+import { Building2, CalendarDays, Check, ChevronLeft, ChevronRight, MessageSquareQuote, Plus, Users } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { traduzirErroDoBanco } from '../../lib/erroDoBanco'
 import { useSalon } from '../auth/useSalon'
 import { useAgendaData } from './useAgendaData'
 import { AvisoDeCancelamentos } from './AvisoDeCancelamentos'
+import { AvisoDeFolga } from './AvisoDeFolga'
+import { LegendaDaAgenda } from './LegendaDaAgenda'
 import { FilaDeEspera } from './FilaDeEspera'
 import { MiniCalendar } from './MiniCalendar'
 import { NewAppointmentModal } from './NewAppointmentModal'
@@ -19,6 +21,7 @@ import { EstadoVazio } from '../../components/EstadoVazio'
 import { ErroInline } from '../../components/ErroInline'
 import { ErroDeCarga } from '../../components/ErroDeCarga'
 import { janelaDaGrade } from './janelaDaGrade'
+import { chaveDoDia } from '../../lib/periodo'
 
 // A janela da grade nao mora mais aqui: ela sai do expediente do dia, em
 // `janelaDaGrade`. A grade desenhava das 6h as 22h para toda barbearia, e numa
@@ -46,29 +49,89 @@ function formatTime(iso: string) {
   return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
 
+/**
+ * A cor de cada estado na grade.
+ *
+ * ## O que estava errado
+ *
+ * Três estados dividiam o estilo `default` — agendado, confirmado e bloqueio —
+ * e `concluido` usava `success`, que neste projeto é **irmão** do verde da
+ * marca de propósito (está escrito no `index.css`). No tema escuro `--success`
+ * e `--primary` são o MESMO hex, `#7cc5a0`; no claro, `#dcf0e4` e `#e2efe7`
+ * diferem por seis pontos de RGB. Não eram parecidos: eram o mesmo verde.
+ *
+ * ## A régua
+ *
+ * **Matiz diz a natureza, forma diz o estado** — a regra que o próprio
+ * `index.css` enuncia ("a separação é de FORMA, e não de matiz") e que a
+ * agenda era o lugar onde ela estava quebrada.
+ *
+ * - **Agendado e confirmado** são o mesmo verde com tinta diferente: meia para
+ *   o que ainda não foi confirmado, cheia para o que foi, mais o visto. Mais
+ *   tinta = mais certo.
+ * - **Concluído recua para neutro.** O passado não precisa de atenção; ela vai
+ *   para o que ainda vai acontecer. A borda verde e o visto continuam dizendo
+ *   "deu certo", sem disputar o olho com o que está por vir.
+ * - **"Não veio" sai do cinza e ganha carmim.** Faltar e cancelar não são a
+ *   mesma coisa: cancelamento é combinado, falta é prejuízo — e é o que o
+ *   depósito contra falta (item 19) existe para atacar. Precisa ser visível.
+ * - **Reservado em âmbar tracejado**, porque é provisório: a fila segura a vaga
+ *   por 30 minutos e ela **evapora**. Sem cor própria ficaria igual a um
+ *   agendado, que é o oposto da verdade.
+ * - **Bloqueio ganha hachura**, porque não é cliente — não deve parecer um
+ *   cartão de cliente.
+ *
+ * Nenhum token novo: tudo sai de `primary`, `success`, `danger`, `warning`,
+ * `surface-2` e `border-strong`, que já existem nos dois temas.
+ *
+ * O texto do reservado é `foreground`, e não `text-warning`: âmbar sobre
+ * `warning-soft` dá contraste baixo no tema claro, e aqui a letra tem 11px. O
+ * matiz mora no fundo e na borda, onde ele é lido sem precisar de contraste de
+ * leitura.
+ *
+ * A `LegendaDaAgenda` copia estas mesmas classes. Mudar uma cor aqui e esquecer
+ * de lá faz a legenda mentir — por isso as amostras de lá são as strings daqui.
+ */
 const BLOCK_STYLES: Record<string, { container: string; text: string; subtext: string }> = {
+  // `default` é o AGENDADO, e também o que segura status que ainda não tenham
+  // cor própria: meia tinta do verde da marca.
   default: {
+    container: 'bg-primary-soft/50 border-primary',
+    text: 'text-primary-soft-foreground',
+    subtext: 'text-primary-soft-foreground/70',
+  },
+  confirmado: {
     container: 'bg-primary-soft border-primary',
     text: 'text-primary-soft-foreground',
     subtext: 'text-primary-soft-foreground/70',
   },
+  reservado: {
+    container: 'bg-warning-soft border-warning border-dashed',
+    text: 'text-foreground',
+    subtext: 'text-muted-foreground',
+  },
   concluido: {
-    container: 'bg-success-soft border-success',
-    text: 'text-success',
-    subtext: 'text-success/70',
+    container: 'bg-surface-2 border-success',
+    text: 'text-muted-foreground',
+    subtext: 'text-muted-foreground/70',
   },
   cancelado: {
     container: 'bg-surface-2 border-border-strong opacity-60',
     text: 'text-muted-foreground line-through',
     subtext: 'text-muted-foreground/70',
   },
-  // Mesmo tratamento do cancelado, e pelo mesmo motivo: as travas de
-  // sobreposição e o `horarios_livres` ignoram os dois, então o horário está
-  // livre de verdade. Sem isto o bloco continuaria azul, dando a entender que
-  // segue ocupado logo depois de o barbeiro liberar a cadeira.
+  // Deixou de ser igual ao cancelado. Os dois liberam o horário — as travas de
+  // sobreposição e o `horarios_livres` ignoram ambos —, mas isso é o que
+  // acontece com a AGENDA, não o que aconteceu com o cliente. Cancelar é
+  // combinado; faltar é prejuízo, e some no cinza junto com o que foi avisado.
   faltou: {
-    container: 'bg-surface-2 border-border-strong opacity-60',
-    text: 'text-muted-foreground line-through',
+    container: 'bg-danger-soft border-danger',
+    text: 'text-danger line-through',
+    subtext: 'text-danger/70',
+  },
+  bloqueio: {
+    container: 'bloco-bloqueio border-border-strong',
+    text: 'text-muted-foreground',
     subtext: 'text-muted-foreground/70',
   },
 }
@@ -76,6 +139,7 @@ const BLOCK_STYLES: Record<string, { container: string; text: string; subtext: s
 function AppointmentBlock({
   appt,
   horaInicio,
+  horaFim,
   dragging,
   onDragStart,
   onDragEnd,
@@ -84,19 +148,36 @@ function AppointmentBlock({
   appt: Appointment
   /** Hora em que a grade comeca, para o bloco saber onde se pendurar. */
   horaInicio: number
+  /** Hora em que a grade termina, para o bloco não ser desenhado para fora. */
+  horaFim: number
   dragging: boolean
   onDragStart: () => void
   onDragEnd: () => void
   onClick: () => void
 }) {
-  const top = (minutesSinceStart(appt.data_hora_inicio, horaInicio) / 60) * ROW_HEIGHT
+  const topoBruto = (minutesSinceStart(appt.data_hora_inicio, horaInicio) / 60) * ROW_HEIGHT
   const durationMin =
     (new Date(appt.data_hora_fim).getTime() - new Date(appt.data_hora_inicio).getTime()) / 60000
+
+  // O bloco é recortado pela grade, em vez de transbordar dela.
+  //
+  // A coluna é `relative` sem `overflow-hidden`, então um bloco que começa
+  // ANTES da primeira faixa é desenhado com `top` negativo e pinta por cima do
+  // cabeçalho. O bloqueio de dia inteiro fazia exatamente isso: começava à
+  // meia-noite numa grade que abre às 8h (`top: -480px`) e tinha 1440px de
+  // altura numa coluna de 720px.
+  //
+  // Recortar aqui, e não com `overflow-hidden` na coluna, porque a coluna
+  // também hospeda o indicador de "agora" e as sombras de fora-da-jornada —
+  // cortar tudo por lá esconderia coisa que deve aparecer.
+  const alturaDaGrade = (horaFim - horaInicio) * ROW_HEIGHT
+  const top = Math.max(topoBruto, 0)
+  const fundoBruto = topoBruto + (durationMin / 60) * ROW_HEIGHT
   // Piso de 32px (achado 36 da revisão de 01/09): um bloco de 15 minutos tinha
   // 16px de altura — impossível de acertar com o dedo. O piso vale para o TOQUE,
   // não para a escala: um bloco curto ainda começa na hora certa e só avança um
   // pouco sobre o vizinho, que continua clicável pelo resto da área dele.
-  const height = Math.max((durationMin / 60) * ROW_HEIGHT, 32)
+  const height = Math.max(Math.min(fundoBruto, alturaDaGrade) - top, 32)
   const style = BLOCK_STYLES[appt.status] ?? BLOCK_STYLES.default
   // Cancelado e faltou liberam o horário, então um agendamento novo pode nascer
   // por cima. O finalizado fica ATRÁS (zIndex menor) para o ativo continuar
@@ -107,7 +188,14 @@ function AppointmentBlock({
     appt.status === 'faltou' ? 'não veio' :
     appt.status === 'concluido' ? 'concluído' :
     appt.status === 'confirmado' ? 'confirmado' :
+    appt.status === 'reservado' ? 'reservado pela fila' :
     appt.status === 'bloqueio' ? 'bloqueio' : 'agendado'
+
+  // O visto duplica a cor com FORMA, e é o que separa confirmado de agendado
+  // para quem não distingue meia tinta de tinta cheia — inclusive em tela
+  // pequena e sob sol. No concluído ele diz "deu certo" mesmo com o bloco
+  // apagado.
+  const temVisto = appt.status === 'confirmado' || appt.status === 'concluido'
 
   // Bloqueio não tem cliente, e o `?? 'Cliente'` de baixo escrevia
   // "12:00 · Cliente" no almoço do barbeiro -- com o leitor de tela dizendo
@@ -146,6 +234,7 @@ function AppointmentBlock({
       style={{ top, height, zIndex: finalizado ? 1 : 2 }}
     >
       <div className={`text-xs font-medium truncate ${style.text}`}>
+        {temVisto && <Check size={11} className="inline-block mr-0.5 align-[-1px]" aria-hidden="true" />}
         {formatTime(appt.data_hora_inicio)} · {rotuloPrincipal}
         {/* O ponto do recado (0178): o barbeiro precisa saber que TEM pedido
             sem abrir cada horário da grade. O texto mora no detalhe — aqui
@@ -211,7 +300,7 @@ export function AgendaPage() {
   const { salonId, isManager, loading: salonLoading } = useSalon()
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [visibleMonth, setVisibleMonth] = useState(new Date())
-  const { professionals, services, appointments, jornadas, loading, error, reload } = useAgendaData(salonId, selectedDate)
+  const { professionals, services, appointments, jornadas, folgas, loading, error, reload } = useAgendaData(salonId, selectedDate)
 
   const [modalState, setModalState] = useState<{ professionalId?: string; time?: string } | null>(null)
   const [detailAppt, setDetailAppt] = useState<Appointment | null>(null)
@@ -235,6 +324,19 @@ export function AgendaPage() {
   const { horaInicio, horaFim } = useMemo(
     () => janelaDaGrade(jornadas, appointments),
     [jornadas, appointments],
+  )
+
+  /**
+   * Quem está de folga, com nome — na ordem em que a coluna aparece.
+   *
+   * O `filter` é o que importa: `folgas` pode trazer um barbeiro que já saiu da
+   * lista de colunas (desativado e sem horário no dia). Dizer o nome de quem
+   * não está na tela só confundiria, e o `professionals.find` devolveria
+   * `undefined` no meio do aviso.
+   */
+  const folgasComNome = useMemo(
+    () => professionals.filter((p) => folgas.includes(p.id)).map((p) => ({ id: p.id, nome: p.nome })),
+    [professionals, folgas],
   )
 
   const hours = useMemo(
@@ -413,6 +515,10 @@ export function AgendaPage() {
 
         {/* Toolbar */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          {/* A data e a legenda andam juntas à esquerda; "Nova reserva" fica
+              sozinha à direita. Sem este agrupamento o `justify-between`
+              jogaria a legenda para o meio do cabeçalho, longe das duas. */}
+          <div className="flex flex-wrap items-center gap-3">
           {/* Stepper segmentado: os dois chevrons e a data numa peça só, em vez
               de dois botões quadrados órfãos flutuando em volta do texto. */}
           <div className="flex items-center rounded-lg border border-border bg-surface overflow-hidden">
@@ -440,6 +546,13 @@ export function AgendaPage() {
             </button>
           </div>
 
+          {/* A legenda vive COLADA na navegação de data, e não numa faixa
+              fixa: a altura da grade é disputada aqui (a janela já encolheu de
+              6h–22h para o expediente), e o que cada cor significa se lê nas
+              primeiras vezes e depois se sabe de cor. */}
+          <LegendaDaAgenda />
+          </div>
+
           <button
             onClick={() => setModalState({})}
             className="flex items-center gap-2 btn-primary rounded-full px-5 py-2 text-sm font-medium"
@@ -464,6 +577,19 @@ export function AgendaPage() {
           <div className="mb-3">
             <ErroDeCarga mensagem={error} aoTentarDeNovo={reload} tentando={loading} />
           </div>
+        )}
+
+        {/* A folga do dia (0213), com o nome de quem está de folga e a saída
+            para desfazer. Condicionado a `!error` pelo mesmo motivo do vazio
+            logo abaixo: com a carga falhando, `folgas` é a lista velha, e dizer
+            quem está de folga a partir dela seria afirmar o que não foi lido. */}
+        {!error && folgasComNome.length > 0 && (
+          <AvisoDeFolga
+            deFolga={folgasComNome}
+            dia={chaveDoDia(selectedDate)}
+            aoMudar={reload}
+            podeGerenciar={isManager}
+          />
         )}
 
         {/* E o vazio deixou de mentir. Condicionado só a `!loading`, ele
@@ -623,6 +749,7 @@ export function AgendaPage() {
                   {appointmentsFor(p.id).map((appt) => (
                     <AppointmentBlock
                       horaInicio={horaInicio}
+                      horaFim={horaFim}
                       key={appt.id}
                       appt={appt}
                       dragging={draggingId === appt.id}

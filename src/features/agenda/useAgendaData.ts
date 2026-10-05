@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { chaveDoDia } from '../../lib/periodo'
 import type { Appointment, Professional, Service } from './types'
 
 function dayBounds(date: Date) {
@@ -35,6 +36,15 @@ export function useAgendaData(salonId: string | null, date: Date) {
   // (aí a grade fica neutra, sem sombrear nada — sombrear tudo assustaria
   // exatamente quem acabou de criar a conta).
   const [jornadas, setJornadas] = useState<Record<string, Jornada | null>>({})
+  /**
+   * Quem está de folga no dia aberto (0213).
+   *
+   * Separado da `jornadas` porque lá a folga vira `null`, e `null` já
+   * significava "não trabalha nesse dia da semana" — a coluna cinza não
+   * distingue as duas. Quem precisa dizer o NOME de quem está de folga precisa
+   * desta lista.
+   */
+  const [folgas, setFolgas] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -64,7 +74,7 @@ export function useAgendaData(salonId: string | null, date: Date) {
 
       const { start, end } = dayBounds(date)
 
-      const [profResult, servResult, apptResult, jornadaResult] = await Promise.all([
+      const [profResult, servResult, apptResult, jornadaResult, folgaResult] = await Promise.all([
         // Todos, não só os ativos: o inativo com horário marcado no dia continua
         // com coluna (achado 42) — filtrado logo abaixo, com os agendamentos na mão.
         supabase.from('professionals').select('id, nome, ativo').eq('salon_id', salonId).order('nome'),
@@ -96,6 +106,12 @@ export function useAgendaData(salonId: string | null, date: Date) {
           .from('professional_schedules')
           .select('professional_id, hora_inicio, hora_fim, ativo')
           .eq('dia_semana', date.getDay()),
+        // A folga do dia (0213). Entra aqui, e não numa carga própria, porque a
+        // agenda já tem a linguagem visual certa para ela: `null` na jornada
+        // significa folga desde sempre, e a coluna inteira fica cinza. Sem
+        // isto, o dono marcaria a folga e a agenda ficaria IDÊNTICA — ele
+        // concluiria que não funcionou.
+        supabase.from('dias_de_folga').select('professional_id').eq('dia', chaveDoDia(date)),
       ])
 
       // Uma carga mais nova já foi pedida: esta resposta é velha e não escreve.
@@ -115,7 +131,16 @@ export function useAgendaData(salonId: string | null, date: Date) {
           ? { inicioMin: minutosDe(j.hora_inicio), fimMin: minutosDe(j.hora_fim) }
           : null
       }
+      // A folga PESA MAIS que a jornada da semana, e por isso vem depois: quem
+      // tirou folga nessa data não trabalha nela, mesmo tendo jornada nesse dia
+      // da semana. Sobrescrever com `null` é o que acende a coluna cinza.
+      if (folgaResult.error) console.error('Erro ao ler as folgas do dia:', folgaResult.error)
+      const deFolga = (folgaResult.data ?? []).map((f) => f.professional_id as string)
+      for (const id of deFolga) {
+        mapaJornadas[id] = null
+      }
       setJornadas(mapaJornadas)
+      setFolgas(deFolga)
 
       // Desativar um barbeiro sumia com os agendamentos dele da tela (achado 42
       // da revisão de 01/09): a agenda só carregava ativos, e os horários
@@ -256,5 +281,5 @@ export function useAgendaData(salonId: string | null, date: Date) {
     }
   }, [salonId])
 
-  return { professionals, services, appointments, jornadas, loading, error, reload }
+  return { professionals, services, appointments, jornadas, folgas, loading, error, reload }
 }

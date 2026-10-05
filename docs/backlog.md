@@ -8167,3 +8167,46 @@ As três perguntas e a resposta certa para este projeto:
 
 Tudo nele é verificável no produto: o agente atende, marca, remarca e cancela; o
 lembrete existe; e o isolamento por barbearia é a RLS por `salon_id`.
+
+### Correção: trocar o site do portfólio é o caminho CARO, e pode estar fechado
+
+Eu havia escrito acima que o conserto mais direto era apontar o site do portfólio
+empresarial para `clubcut.space`. **Está errado como "mais direto"** — lido na
+Central de Ajuda da Meta (`/business/help/322526208728282` e `/1294735268952297`)
+depois que o dono relatou não conseguir editar:
+
+1. **O botão Editar pode estar bloqueado justamente por causa do WhatsApp.** A
+   Meta escreve, no artigo de edição de empresa verificada:
+   *"Talvez você não consiga clicar em **Editar** se o portfólio empresarial for
+   usado para uma **conta do WhatsApp Business**."*
+   O portfólio Aura AI tem uma WABA. É exatamente o sintoma relatado.
+
+2. **Trocar o site de uma empresa verificada exige verificar tudo de novo.**
+   *"se você editar a razão social, país, número de telefone, **endereço do
+   site** ou identificação fiscal da empresa, será necessário concluir o processo
+   de verificação da empresa novamente"* — com documentos. E ainda:
+   *"Você deverá realizar o processo de verificação da empresa **sempre que**
+   atualizar seus detalhes devido a uma alteração no endereço do seu site."*
+
+3. **A exceção não serve aqui.** *"você pode **adicionar** um número de telefone
+   ou endereço de site caso estejam **faltando**, sem precisar verificar
+   novamente"* — só vale para campo vazio, e o site já está preenchido com
+   `aurastudioai.com.br`.
+
+4. **O que tranquiliza:** *"O status atual da verificação da empresa não será
+   alterado durante o processo de edição."* Reverificar não derruba o selo
+   enquanto corre.
+
+**O caminho barato, que não encosta na Meta:** pôr o Club Cut **dentro do
+aurastudioai.com.br** — uma seção de produto, com o nome escrito e link para
+`clubcut.space`. O revisor que abre o negócio verificado passa a achar "Club Cut"
+no site do próprio negócio, que é o elo que falta hoje. Zero risco de
+reverificação, zero formulário, e depende só de um deploy daquele site, que é do
+dono.
+
+Só depois disso reenviar `Club Cut` como nome de exibição.
+
+**Requisito que vale para qualquer site que fique no registro:** precisa ser
+ativo e HTTPS. *"Se o site usado para verificação não funcionar mais e você não
+tiver outro site, perderá o status de verificação da empresa."* Os dois estão no
+ar e em HTTPS hoje — conferido.

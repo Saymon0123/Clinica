@@ -6,6 +6,7 @@ import { traduzirErroDoBanco } from '../../lib/erroDoBanco'
 import { useSalon } from '../auth/useSalon'
 import { useAgendaData } from './useAgendaData'
 import { AvisoDeCancelamentos } from './AvisoDeCancelamentos'
+import { AvisoDeFolga } from './AvisoDeFolga'
 import { FilaDeEspera } from './FilaDeEspera'
 import { MiniCalendar } from './MiniCalendar'
 import { NewAppointmentModal } from './NewAppointmentModal'
@@ -19,6 +20,7 @@ import { EstadoVazio } from '../../components/EstadoVazio'
 import { ErroInline } from '../../components/ErroInline'
 import { ErroDeCarga } from '../../components/ErroDeCarga'
 import { janelaDaGrade } from './janelaDaGrade'
+import { chaveDoDia } from '../../lib/periodo'
 
 // A janela da grade nao mora mais aqui: ela sai do expediente do dia, em
 // `janelaDaGrade`. A grade desenhava das 6h as 22h para toda barbearia, e numa
@@ -211,7 +213,7 @@ export function AgendaPage() {
   const { salonId, isManager, loading: salonLoading } = useSalon()
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [visibleMonth, setVisibleMonth] = useState(new Date())
-  const { professionals, services, appointments, jornadas, loading, error, reload } = useAgendaData(salonId, selectedDate)
+  const { professionals, services, appointments, jornadas, folgas, loading, error, reload } = useAgendaData(salonId, selectedDate)
 
   const [modalState, setModalState] = useState<{ professionalId?: string; time?: string } | null>(null)
   const [detailAppt, setDetailAppt] = useState<Appointment | null>(null)
@@ -235,6 +237,19 @@ export function AgendaPage() {
   const { horaInicio, horaFim } = useMemo(
     () => janelaDaGrade(jornadas, appointments),
     [jornadas, appointments],
+  )
+
+  /**
+   * Quem está de folga, com nome — na ordem em que a coluna aparece.
+   *
+   * O `filter` é o que importa: `folgas` pode trazer um barbeiro que já saiu da
+   * lista de colunas (desativado e sem horário no dia). Dizer o nome de quem
+   * não está na tela só confundiria, e o `professionals.find` devolveria
+   * `undefined` no meio do aviso.
+   */
+  const folgasComNome = useMemo(
+    () => professionals.filter((p) => folgas.includes(p.id)).map((p) => ({ id: p.id, nome: p.nome })),
+    [professionals, folgas],
   )
 
   const hours = useMemo(
@@ -464,6 +479,19 @@ export function AgendaPage() {
           <div className="mb-3">
             <ErroDeCarga mensagem={error} aoTentarDeNovo={reload} tentando={loading} />
           </div>
+        )}
+
+        {/* A folga do dia (0213), com o nome de quem está de folga e a saída
+            para desfazer. Condicionado a `!error` pelo mesmo motivo do vazio
+            logo abaixo: com a carga falhando, `folgas` é a lista velha, e dizer
+            quem está de folga a partir dela seria afirmar o que não foi lido. */}
+        {!error && folgasComNome.length > 0 && (
+          <AvisoDeFolga
+            deFolga={folgasComNome}
+            dia={chaveDoDia(selectedDate)}
+            aoMudar={reload}
+            podeGerenciar={isManager}
+          />
         )}
 
         {/* E o vazio deixou de mentir. Condicionado só a `!loading`, ele

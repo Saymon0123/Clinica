@@ -29,7 +29,7 @@ criada → assinatura → pagamento → acesso liberado pelo webhook, sem interv
 | Entrada de clientes | cadastro aberto **e** convite por link |
 | QR do balcão | cliente sem hora marcada agenda sozinho — **só na Curitiba**, pela chave `agenda_publica` |
 | Fila de espera | o cliente se inscreve pela conversa, o sistema procura a vaga e segura por 30 min, e o dono vê na agenda com o telefone. **O aviso automático está pronto e DESLIGADO** — ver as decisões suas, abaixo |
-| Folga do barbeiro | o dia fecha para novos nas seis portas (agenda pública, agente, remarcação, reativação, fila, "quem pode assumir") **sem colidir** com os horários já marcados, que ficam na agenda para resolver. Marcada no painel de conflitos do bloqueio de dia inteiro; a coluna fica cinza. **O aviso ao cliente ainda não existe** — depende do template `imprevisto_na_barbearia` na Meta |
+| Folga do barbeiro | o dia fecha para novos nas seis portas (agenda pública, agente, remarcação, reativação, fila, "quem pode assumir") **sem colidir** com os horários já marcados, que ficam na agenda para resolver. Marcada no painel de conflitos do bloqueio de dia inteiro, removida pelo aviso acima da grade; a coluna fica cinza. **O aviso ao cliente ainda não existe** — o template `imprevisto_na_barbearia` já está APROVADO, falta o motor do aviso escalonado |
 | Jurídico | termos e privacidade publicados, com aceite registrado |
 | Vigilância | auditoria do agente, fronteira, teto de uso, alerta de queda |
 | CI | verde nos dois jobs; pgTAP passou pela primeira vez em 2026-08-16 |

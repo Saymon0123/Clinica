@@ -36,6 +36,15 @@ export function useAgendaData(salonId: string | null, date: Date) {
   // (aí a grade fica neutra, sem sombrear nada — sombrear tudo assustaria
   // exatamente quem acabou de criar a conta).
   const [jornadas, setJornadas] = useState<Record<string, Jornada | null>>({})
+  /**
+   * Quem está de folga no dia aberto (0213).
+   *
+   * Separado da `jornadas` porque lá a folga vira `null`, e `null` já
+   * significava "não trabalha nesse dia da semana" — a coluna cinza não
+   * distingue as duas. Quem precisa dizer o NOME de quem está de folga precisa
+   * desta lista.
+   */
+  const [folgas, setFolgas] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -126,10 +135,12 @@ export function useAgendaData(salonId: string | null, date: Date) {
       // tirou folga nessa data não trabalha nela, mesmo tendo jornada nesse dia
       // da semana. Sobrescrever com `null` é o que acende a coluna cinza.
       if (folgaResult.error) console.error('Erro ao ler as folgas do dia:', folgaResult.error)
-      for (const f of folgaResult.data ?? []) {
-        mapaJornadas[f.professional_id] = null
+      const deFolga = (folgaResult.data ?? []).map((f) => f.professional_id as string)
+      for (const id of deFolga) {
+        mapaJornadas[id] = null
       }
       setJornadas(mapaJornadas)
+      setFolgas(deFolga)
 
       // Desativar um barbeiro sumia com os agendamentos dele da tela (achado 42
       // da revisão de 01/09): a agenda só carregava ativos, e os horários
@@ -270,5 +281,5 @@ export function useAgendaData(salonId: string | null, date: Date) {
     }
   }, [salonId])
 
-  return { professionals, services, appointments, jornadas, loading, error, reload }
+  return { professionals, services, appointments, jornadas, folgas, loading, error, reload }
 }

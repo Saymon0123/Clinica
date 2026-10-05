@@ -7891,3 +7891,122 @@ comando pega algo que o `tsc` do projeto não vê.
    salão tem **um barbeiro só** — a frase sugere coincidência de agenda, e a
    verdade é "você é o único". O botão de folga agora dá a saída, mas a frase
    continua imprecisa.
+
+### A folga agora sai pelo mesmo lugar por onde se vê (05/10)
+
+A folga entrava por um clique e **não saía por lugar nenhum**: marcar no dia
+errado só se consertava por SQL. Ação que se faz com um clique e se desfaz só com
+ajuda não é ação, é armadilha — e isso ficou dito ao abrir a #215, antes de o
+dono pedir.
+
+**`AvisoDeFolga`**, acima da grade: diz o **nome** de quem está de folga, o que
+isso causa ("o dia não é oferecido na agenda pública, no WhatsApp nem na fila; os
+horários já marcados continuam") e oferece a remoção em **dois passos**, como a
+`LinhaDeExcluir` do detalhe — remover devolve o dia aos clientes na mesma hora.
+
+**Por que aviso e não selo no cabeçalho da coluna:** o cabeçalho tem 160px e já
+carrega inicial, nome e o selo de inativo. Confirmação em dois passos não cabe
+lá, e sem confirmação um toque errado reabre o dia sem ninguém perceber. A coluna
+cinza continua sendo o sinal visual — ela vem de graça —, mas **a coluna cinza
+sozinha não distingue folga de "não trabalha nesse dia da semana"**. Quem diz o
+nome é o aviso.
+
+**O barbeiro vê e não mexe:** a RLS só deixa o gestor escrever, então mostrar o
+botão para ele seria oferecer ação que o banco recusa.
+
+**Componente novo em arquivo próprio**, não botões soltos na `AgendaPage`: é a
+mesma saída da última vez que a catraca de botões reclamou — o arquivo novo nasce
+medido, e o teto de 6 da `AgendaPage` não se mexe.
+
+#### A catraca, provada nos dois sentidos
+
+`folgaRemovivel.test.ts`, 5 asserções. A que vale o arquivo é o **escopo do
+delete**: ele filtra por barbeiro **E** por dia. Esquecer o segundo `.eq` não dá
+erro, não aparece na tela e apaga **todas as folgas daquele barbeiro, de todos os
+dias** — inclusive as de meses à frente, que ninguém está olhando.
+
+Provada tirando a linha `.eq('dia', dia)`: o teste reprovou, e voltou a passar
+com ela de volta. E medido também no banco, em transação: com três folgas
+(barbeiro A em 10/11 e 11/11, barbeiro B em 10/11), o delete da tela removeu
+**uma** e as outras duas sobreviveram.
+
+A segunda asserção guarda o portão `!error` da `AgendaPage`. O aviso diz nome de
+pessoa, e com a carga falhando `folgas` é a lista velha — é a mentira do "R$ 0,00
+para quem só está sem rede", pior aqui, porque nome dá impressão de leitura
+fresca.
+
+#### Fica aberto: o bloqueio de dia inteiro num dia VAZIO ainda diz "lotado"
+
+Achado ao percorrer a porta que o dono não usou. A folga só é oferecida quando o
+bloqueio é **recusado** (23P01), ou seja, quando há agendamento no caminho. Num
+dia **vazio**, o bloqueio de dia inteiro passa — e aí:
+
+- a vaga desaparece corretamente (`horarios_livres` devolve zero), mas
+- `diasFechados` **não** contém o dia (o barbeiro não tem folga, tem bloqueio),
+  então a faixa da agenda pública marca **"lotado"** em vez de "fechado".
+
+É a mesma imprecisão que a folga consertou, pela outra porta, e é
+**pré-existente** — não nasceu na 0213. O conserto natural é a edge contar o
+bloqueio de dia inteiro como dia sem ninguém, ou o CRM marcar folga junto quando
+o bloqueio cobre o dia todo. Não foi feito aqui para não crescer a #215; fica
+como decisão de desenho.
+
+---
+
+## 2026-10-05 — Meta: o nome de exibição e o template do imprevisto
+
+### O nome de exibição: **ainda sem retorno**, e há uma 4ª variação em análise
+
+Medido na Graph API e no webhook, não lido de anotação:
+
+```
+verified_name     : Club Cut
+name_status       : DECLINED
+new_name_status   : PENDING_REVIEW
+new_display_name  : "Aura IA - Club Cut"
+```
+
+O `eventos_da_waba` guarda **três** recusas, todas com o mesmo código:
+
+| Quando | Nome pedido | Decisão |
+|---|---|---|
+| 08/09 20:43 | `Club_Cut` | REJECTED — `BIZ_COMMERCE_VIOLATION_OTHER` |
+| 14/09 21:30 | `Club Cut` | REJECTED — mesmo código |
+| 19/09 13:30 | `Club Cut - Aura IA` | REJECTED — mesmo código |
+
+E **nenhum `phone_number_name_update` desde 19/09** — 16 dias. A quarta variação
+(`Aura IA - Club Cut`, a terceira com a ordem invertida) está em análise sem
+decisão.
+
+**O silêncio é da Meta, não do nosso lado:** o mesmo webhook gravou um
+`message_template_status_update` hoje às 05:00 UTC. O cano está vivo; é a revisão
+que não voltou.
+
+**Nota:** a regra registrada em 20/09, ao abrir o chamado no Direct Support, era
+**não reenviar uma 4ª variação** até o suporte dizer o motivo específico — três
+grafias com um código só indicam que o bloqueio é a avaliação do negócio, não a
+string. A 4ª foi enviada de todo modo. Como ela já está em análise, reenviar
+agora só reinicia a fila: o que resta é esperar esta decisão **ou** o retorno do
+chamado.
+
+O resto da conta está saudável, o que reforça que o problema é específico do nome:
+`account_review_status: APPROVED`, `business_verification_status: verified`,
+`status: CONNECTED`, `quality_rating: GREEN`.
+
+**O que DECLINED custa, em uma linha:** não bloqueia envio nenhum. O cliente que
+não tem o número salvo vê **o número**, não "Club Cut". É confiança, não entrega.
+(`is_official_business_account: false` e `search_visibility: NON_VISIBLE` são
+outros dois assuntos, e nenhum deles é este.)
+
+### `imprevisto_na_barbearia` foi **APROVADO**
+
+Webhook em **05/10 05:00:06 UTC**, `event: APPROVED`, `reason: NONE` — e
+conferido pelo GET: `status APPROVED`, `category UTILITY`, `pt_BR`. Criado
+ontem, aprovado em menos de um dia.
+
+A linha do banco foi sincronizada (`status='aprovado'`). **`ativo` continua
+`false`** de propósito: não existe motor que o mande ainda — o aviso escalonado é
+o passo 2 da folga —, e ligar é decisão do dono.
+
+Com isso, **a Meta deixou de ser o que bloqueia o aviso escalonado**. O que falta
+é nosso.

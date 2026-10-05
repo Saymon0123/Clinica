@@ -81,6 +81,16 @@ insert into clients (id, salon_id, nome, telefone) values
   (:'c3', :'salao', 'Terceiro da Fila', '41977770053'),
   (:'c4', :'salao', 'Quarto da Fila',   '41977770054');
 
+-- A fila so aceita gente com o aviso de vaga LIGADO (migration 0214): quem nao
+-- pode avisar nao pode prometer. Este teste exercita a fila FUNCIONANDO, entao o
+-- interruptor faz parte da fixture -- e `whatsapp_templates` e global, sem
+-- `salon_id`, por isso o upsert em vez de supor que a linha existe no banco de
+-- teste.
+insert into whatsapp_templates (chave, nome_meta, categoria, corpo, status, ativo)
+values ('fila_vaga_abriu', 'vaga_que_voce_pediu', 'utility', 'corpo de teste', 'aprovado', true)
+on conflict (chave) do update set status = 'aprovado', ativo = true;
+
+
 ------------------- 1. a inscricao impossivel se recusa na PORTA
 
 select is(

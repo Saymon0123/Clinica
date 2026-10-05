@@ -81,6 +81,15 @@ insert into clients (id, salon_id, nome, telefone) values
   -- E este o caso alcancavel; telefone com lixo e recusado na porta.
   (:'c4', :'salao', 'Quem Nao Tem Numero', null);
 
+-- A fila so aceita gente com o aviso de vaga LIGADO (migration 0214): quem nao
+-- pode avisar nao pode prometer. Este teste exercita a fila FUNCIONANDO, entao o
+-- interruptor faz parte da fixture -- e `whatsapp_templates` e global, sem
+-- `salon_id`, por isso o upsert em vez de supor que a linha existe no banco de
+-- teste.
+insert into whatsapp_templates (chave, nome_meta, categoria, corpo, status, ativo)
+values ('fila_vaga_abriu', 'vaga_que_voce_pediu', 'utility', 'corpo de teste', 'aprovado', true)
+on conflict (chave) do update set status = 'aprovado', ativo = true;
+
 ------------- 1. sem vaga segurada nao ha o que avisar
 
 select ok(

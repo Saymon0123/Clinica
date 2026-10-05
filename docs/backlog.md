@@ -8227,3 +8227,90 @@ mojibake.
 
 **Faltam duas, e nenhuma e nossa:** o Instagram (`@auraiagency`, decisao do dono)
 e o site da empresa (`AuraStudio`, do socio).
+
+---
+
+## 2026-10-05 — A fila adiada, e o buraco que o inventário achou
+
+O dono pediu para adiar a fila de espera. Ao levantar o que era exclusivo dela,
+apareceu algo que não era hipótese.
+
+### O agente estava oferecendo a fila com a máquina de aviso desligada
+
+Medido no fluxo do n8n, que está **ativo**: três ferramentas ligadas (`Entrar na
+Fila`, `Sair da Fila`, `Confirmar Vaga da Fila`) e o prompt mandando, nestas
+palavras:
+
+> Dia CHEIO nao e fim de conversa. Antes de encerrar, ofereca a fila: "quer que
+> eu te avise se abrir?"
+> [...] **"Te aviso na hora que abrir" e verdade**
+
+**A última linha era falsa.** Quem chama é o `rodar_a_fila`, que só roda pelo
+fluxo `97Q7LLEdoI9uxS3Q` — inativo — e o `fila_vaga_abriu` está `ativo = false`.
+O cliente entraria na fila e ninguém nunca ligaria.
+
+Não chegou a acontecer: `fila_de_espera` tem zero linhas. Mas estava a um dia
+cheio de distância — e o próprio prompt já enuncia o risco noutro trecho:
+*"prometer aviso e prometer um telefone que nunca toca"*.
+
+### O inventário, para a decisão
+
+**Exclusivo da fila e já parado:** 3 tabelas vazias, 9 funções sem chamador, 3
+templates `ativo=false`, o fluxo inativo, 6 arquivos pgTAP, e o `FilaDeEspera.tsx`
+— que já some sozinho (`if (!lista.length) return null`). Nada custa parado.
+
+**Nasceu na fila mas serve a outra coisa:** `private.destino_whatsapp` (a régua
+única do "55 + DDD"), o trigger `limpa_prazo_fora_da_reserva` (trava geral em
+`appointments`, nunca dispara sem reservas) e o roteamento de clique de botão na
+`whatsapp-webhook`, **compartilhado** com lembrete e avaliação, que estão em uso.
+
+**O CRM não consegue inscrever ninguém** — conferido: nenhuma tela chama
+`entrar_na_fila`; o painel só lista e chama `sair_da_fila`. O único que inscreve
+é o agente.
+
+### A trava (migration 0214), e por que no banco
+
+`entrar_na_fila` passou a recusar na porta quando o template do aviso não está
+`aprovado + ativo`, devolvendo `{ok:false, motivo}` — recusa de negócio, que o
+agente lê e repassa, e não exceção.
+
+**No banco, e não só no prompt**, porque prompt apodrece: "a fila está desligada"
+passaria a morar na cabeça de quem editou. Aqui vale para qualquer caminho e
+**some sozinha quando o template for religado** — é interruptor, não parede.
+
+É o mesmo gate que o fluxo do n8n já faz antes de varrer, e pelo mesmo motivo
+que a nota dele documenta: chamar alguém sem poder avisar cria reserva de 30
+minutos, marca `chamado`, e duas varreduras depois a inscrição é encerrada em
+silêncio — tirando da fila quem nunca soube.
+
+**O que ela não cobre:** confere o template, não o workflow. Religar o template
+sem ativar o fluxo devolve a promessa vazia. A ordem das duas chaves está em
+[`a-fila-no-agente.md`](a-fila-no-agente.md).
+
+Medido em produção com chamada real depois de aplicar: recusa devolvida, **zero
+linhas criadas**, ACL preservada.
+
+### O pgTAP reprovou, e estava certo
+
+A trava quebrou **três** arquivos de teste da fila — 19 asserções. Eles
+exercitam a fila FUNCIONANDO, então o interruptor passou a fazer parte da
+fixture de cada um. Foi o CI local dizendo a verdade: a 0214 muda a precondição
+do recurso, e quem testa o recurso precisa declará-la.
+
+**Um erro meu no caminho:** o script que inseriu o bloco nas três fixtures
+procurou o primeiro `;` depois do `insert into clients` — e num dos arquivos esse
+`;` estava **dentro de um comentário** (*"e este o caso alcancavel; telefone com
+lixo..."*). O bloco caiu no meio do insert e o arquivo passou a rodar zero
+testes. Splice por posição precisa de asserção sobre o ponto de corte, não só
+sobre o resultado.
+
+Catraca nova: `a_fila_nao_promete_o_que_nao_pode_cumprir.test.sql`, 5 asserções.
+A 3 guarda a **ordem** (o gate vem antes das validações, senão o agente receberia
+exceção em vez de conversa) e a 4 prova que é interruptor, não parede.
+
+### O que FALTA, e depende de decisão do dono
+
+Tirar as três ferramentas e o bloco do prompt do agente. Hoje ele continua
+oferecendo a fila e recebendo a recusa da 0214 — honesto, mas desperdiça uma ida
+ao banco e uma volta de conversa. O que sai, e como repor, está em
+[`a-fila-no-agente.md`](a-fila-no-agente.md).

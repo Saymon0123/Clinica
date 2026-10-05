@@ -8010,3 +8010,72 @@ o passo 2 da folga —, e ligar é decisão do dono.
 
 Com isso, **a Meta deixou de ser o que bloqueia o aviso escalonado**. O que falta
 é nosso.
+
+### A quarta recusa, e o webhook que não contou (05/10)
+
+O dono mandou o print do Gerenciador: **"Seu nome de exibição Aura IA - Club Cut
+foi rejeitado."** Três fontes, duas versões, medidas no mesmo minuto:
+
+| Fonte | O que diz |
+|---|---|
+| Painel (Gerenciador) | `Aura IA - Club Cut` **rejeitado**, motivo genérico ("não segue as Diretrizes") |
+| Graph API | `new_name_status: PENDING_REVIEW`, `new_display_name: "Aura IA - Club Cut"` |
+| `eventos_da_waba` | **nada** para esse nome; último `phone_number_name_update` é de 19/09 |
+
+**O achado operacional: o webhook não é fonte confiável para a decisão do nome.**
+O backlog de 14/09 dizia *"a decisão chega pelo webhook `phone_number_name_update`"* —
+e essa suposição acabou de falhar. O painel tem uma decisão que o webhook nunca
+entregou e que a API ainda não reflete. O cano está vivo (ele gravou um
+`message_template_status_update` às 05:00 do mesmo dia), então não é queda nossa.
+
+**Consequência prática:** conferir o nome de exibição exige olhar o painel OU a
+Graph API à mão. Esperar o webhook avisar é esperar um aviso que pode não vir.
+
+### Quatro nomes, um código — a string não é o problema
+
+| Quando | Nome | Resultado |
+|---|---|---|
+| 08/09 | `Club_Cut` | REJECTED — `BIZ_COMMERCE_VIOLATION_OTHER` |
+| 14/09 | `Club Cut` | REJECTED — mesmo código |
+| 19/09 | `Club Cut - Aura IA` | REJECTED — mesmo código |
+| ~05/10 | `Aura IA - Club Cut` | rejeitado pelo painel; API ainda diz em análise |
+
+Sublinhado, espaço, e as **duas ordens** da forma composta. Se o problema fosse a
+grafia, uma das quatro teria passado. Isto fecha a conclusão que o chamado de
+20/09 já suspeitava: **o bloqueio é a avaliação do negócio por trás do nome**, e
+não o texto enviado.
+
+**O que não consegui medir daqui:** o nome do negócio VERIFICADO no Business
+Manager. O token não tem `business_management` (`(#200) Requires
+business_management permission`), e o `owner_business_info` da WABA exige ser
+BSP. A diretriz exige relação clara entre o nome de exibição e o negócio
+verificado — se o negócio verificado não se parece com "Club Cut" nem com "Aura
+IA", isso sozinho explica as quatro. **É a primeira coisa a conferir, e só o dono
+consegue:** Business Manager → Configurações do negócio → Informações do negócio.
+
+**Regra que continua valendo:** não enviar uma 5ª variação. Cada envio reinicia a
+fila e não traz informação nova — quatro tentativas já provaram isso. O caminho é
+o chamado do Direct Support aberto em 20/09.
+
+### Meta SDK: não serve a este projeto, e o motivo é o inventário
+
+Pergunta do dono em 05/10. Levantado antes de responder: **o código do projeto
+não chama a Graph API em lugar nenhum.**
+
+- `supabase/functions/whatsapp/index.ts` → fala com a **Evolution** (canal do
+  número da barbearia), não com a Meta.
+- `supabase/functions/whatsapp-webhook/index.ts` → só **recebe** da Meta e
+  repassa ao n8n. Nenhuma chamada de saída para a Graph.
+- Quem envia pela Cloud API é o **nó nativo do n8n**, com credencial própria. Um
+  SDK não entra ali: a implementação é do n8n.
+- A gestão (templates, número) é feita à mão, por `curl`, em tarefas pontuais.
+
+Ou seja, o SDK não teria onde se encaixar. E teria custo: as edges rodam em
+**Deno**, o Business SDK é feito para Node e entraria como `npm:` com árvore de
+dependências própria — em um projeto onde `npm audit` é catraca de CI e o
+`deno check` já cobrou erro que o `tsc` não viu.
+
+**Quando valeria reabrir:** se a gestão de templates for para dentro do CRM (o
+dono criando e editando template pela tela em vez de eu por `curl`). Aí são ~6
+endpoints e um SDK ajudaria — mas mesmo nesse caso, a Graph é REST com bearer, e
+o invólucro que o projeto já usaria tem dez linhas.

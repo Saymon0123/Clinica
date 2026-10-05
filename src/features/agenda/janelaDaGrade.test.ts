@@ -8,6 +8,15 @@ function hoje(hora: number, minuto = 0) {
   return d.toISOString()
 }
 
+/** O mesmo relógio local, no dia seguinte — onde o bloqueio de dia inteiro
+ *  termina desde que a janela virou `[início, fim)`. */
+function amanha(hora: number, minuto = 0) {
+  const d = new Date()
+  d.setDate(d.getDate() + 1)
+  d.setHours(hora, minuto, 0, 0)
+  return d.toISOString()
+}
+
 const semJornada: Record<string, JornadaDoDia> = {}
 
 describe('a janela da grade da Agenda', () => {
@@ -67,6 +76,36 @@ describe('a janela da grade da Agenda', () => {
     const j = { a: { inicioMin: 9 * 60, fimMin: 19 * 60 } }
     const ruim = [{ data_hora_inicio: 'nao e data', data_hora_fim: 'nem isso' }]
     expect(janelaDaGrade(j, ruim)).toEqual({ horaInicio: 8, horaFim: 20 })
+  })
+
+  // O bloqueio de dia inteiro (0182 + a correção da janela na #213). O dono
+  // descreveu assim: "quando é feito o bloqueio de um dia no barbeiro, acaba
+  // bugando e sobe uma linha inteira passando do limite de horário".
+  it('bloqueio de dia inteiro NAO estica a grade ate a meia-noite', () => {
+    // Ele cobre o dia todo, então não diz QUAIS horas interessam. Antes disto a
+    // agenda de uma barbearia que abre às 9h ganhava oito faixas vazias no
+    // topo, e o dono via a grade "subir" sozinha ao bloquear um barbeiro.
+    const j = { a: { inicioMin: 9 * 60, fimMin: 19 * 60 } }
+    const diaInteiro = [{ data_hora_inicio: hoje(0, 0), data_hora_fim: amanha(0, 0) }]
+    expect(janelaDaGrade(j, diaInteiro)).toEqual({ horaInicio: 8, horaFim: 20 })
+  })
+
+  it('o bloqueio antigo, gravado ate 23:59, tambem nao estica', () => {
+    // Antes da correção da janela os bloqueios de dia inteiro terminavam em
+    // 23:59, e esses continuam no banco. Se só a forma nova fosse reconhecida,
+    // o defeito seguiria vivo em toda barbearia que já bloqueou um dia.
+    const j = { a: { inicioMin: 9 * 60, fimMin: 19 * 60 } }
+    const antigo = [{ data_hora_inicio: hoje(0, 0), data_hora_fim: hoje(23, 59) }]
+    expect(janelaDaGrade(j, antigo)).toEqual({ horaInicio: 8, horaFim: 20 })
+  })
+
+  it('o fim na meia-noite seguinte nao e lido como hora ZERO', () => {
+    // A armadilha por baixo das duas de cima: `getHours()` de uma meia-noite do
+    // dia seguinte devolve 0 — o fim lido como ANTES do próprio começo. Aqui o
+    // bloqueio da TARDE atravessa a virada, então não é "dia inteiro" e precisa
+    // esticar a grade até o fim do dia, em vez de encolher para trás.
+    const atravessa = [{ data_hora_inicio: hoje(22, 0), data_hora_fim: amanha(0, 0) }]
+    expect(janelaDaGrade(semJornada, atravessa)).toEqual({ horaInicio: 21, horaFim: 24 })
   })
 
   it('garante duas horas de altura minima', () => {

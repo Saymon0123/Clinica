@@ -78,6 +78,7 @@ const BLOCK_STYLES: Record<string, { container: string; text: string; subtext: s
 function AppointmentBlock({
   appt,
   horaInicio,
+  horaFim,
   dragging,
   onDragStart,
   onDragEnd,
@@ -86,19 +87,36 @@ function AppointmentBlock({
   appt: Appointment
   /** Hora em que a grade comeca, para o bloco saber onde se pendurar. */
   horaInicio: number
+  /** Hora em que a grade termina, para o bloco não ser desenhado para fora. */
+  horaFim: number
   dragging: boolean
   onDragStart: () => void
   onDragEnd: () => void
   onClick: () => void
 }) {
-  const top = (minutesSinceStart(appt.data_hora_inicio, horaInicio) / 60) * ROW_HEIGHT
+  const topoBruto = (minutesSinceStart(appt.data_hora_inicio, horaInicio) / 60) * ROW_HEIGHT
   const durationMin =
     (new Date(appt.data_hora_fim).getTime() - new Date(appt.data_hora_inicio).getTime()) / 60000
+
+  // O bloco é recortado pela grade, em vez de transbordar dela.
+  //
+  // A coluna é `relative` sem `overflow-hidden`, então um bloco que começa
+  // ANTES da primeira faixa é desenhado com `top` negativo e pinta por cima do
+  // cabeçalho. O bloqueio de dia inteiro fazia exatamente isso: começava à
+  // meia-noite numa grade que abre às 8h (`top: -480px`) e tinha 1440px de
+  // altura numa coluna de 720px.
+  //
+  // Recortar aqui, e não com `overflow-hidden` na coluna, porque a coluna
+  // também hospeda o indicador de "agora" e as sombras de fora-da-jornada —
+  // cortar tudo por lá esconderia coisa que deve aparecer.
+  const alturaDaGrade = (horaFim - horaInicio) * ROW_HEIGHT
+  const top = Math.max(topoBruto, 0)
+  const fundoBruto = topoBruto + (durationMin / 60) * ROW_HEIGHT
   // Piso de 32px (achado 36 da revisão de 01/09): um bloco de 15 minutos tinha
   // 16px de altura — impossível de acertar com o dedo. O piso vale para o TOQUE,
   // não para a escala: um bloco curto ainda começa na hora certa e só avança um
   // pouco sobre o vizinho, que continua clicável pelo resto da área dele.
-  const height = Math.max((durationMin / 60) * ROW_HEIGHT, 32)
+  const height = Math.max(Math.min(fundoBruto, alturaDaGrade) - top, 32)
   const style = BLOCK_STYLES[appt.status] ?? BLOCK_STYLES.default
   // Cancelado e faltou liberam o horário, então um agendamento novo pode nascer
   // por cima. O finalizado fica ATRÁS (zIndex menor) para o ativo continuar
@@ -651,6 +669,7 @@ export function AgendaPage() {
                   {appointmentsFor(p.id).map((appt) => (
                     <AppointmentBlock
                       horaInicio={horaInicio}
+                      horaFim={horaFim}
                       key={appt.id}
                       appt={appt}
                       dragging={draggingId === appt.id}

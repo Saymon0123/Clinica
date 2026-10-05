@@ -8210,3 +8210,20 @@ Só depois disso reenviar `Club Cut` como nome de exibição.
 ativo e HTTPS. *"Se o site usado para verificação não funcionar mais e você não
 tiver outro site, perderá o status de verificação da empresa."* Os dois estão no
 ar e em HTTPS hoje — conferido.
+
+### O perfil do WhatsApp passou a dizer 'Aura AI' (05/10)
+
+Terceira das cinco grafias alinhada, a pedido do dono. `about` e `description`
+do numero central trocaram 'Aura IA' por 'Aura AI' — a grafia do portfolio no
+painel da Meta.
+
+O payload foi **derivado do valor atual por script**, nao redigitado, com assert
+de que a troca mudou so o alvo (`n.replace(novo, velho) == v`). E enviado com
+`--data-binary @arquivo.json` em UTF-8: foi exatamente assim que o mojibake de
+14/09 entrou, quando o shell do Windows mandou os acentos em codepage errada.
+
+Lido de volta: `Aura AI` presente, `Aura IA' ausente, acentos preservados, sem
+mojibake.
+
+**Faltam duas, e nenhuma e nossa:** o Instagram (`@auraiagency`, decisao do dono)
+e o site da empresa (`AuraStudio`, do socio).

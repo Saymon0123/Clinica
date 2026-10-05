@@ -8079,3 +8079,91 @@ dependências própria — em um projeto onde `npm audit` é catraca de CI e o
 dono criando e editando template pela tela em vez de eu por `curl`). Aí são ~6
 endpoints e um SDK ajudaria — mas mesmo nesse caso, a Graph é REST com bearer, e
 o invólucro que o projeto já usaria tem dez linhas.
+
+### Por que o nome é recusado: o negócio verificado não tem nada a ver com "Club Cut"
+
+O dono mandou os prints do portfólio empresarial em 05/10, e eles fecham a
+pergunta que quatro recusas deixaram aberta. A cadeia que um revisor da Meta
+percorre, medida:
+
+| Onde | O nome que está lá |
+|---|---|
+| Razão social (o CNPJ) | **nome de pessoa física** (MEI) |
+| Portfólio verificado | **Aura AI** |
+| **Site do negócio, no portfólio** | **aurastudioai.com.br** |
+| O que esse site é | *"AuraStudio — Tecnologia de IA para **Odontologia Estética**"* |
+| Rodapé do clubcut.space | "um produto **Aura IA**" |
+| Instagram no rodapé | **@auraiagency** |
+| Perfil do WhatsApp | "um produto **Aura IA**", site `clubcut.space` |
+| Nome de exibição pedido | **Club Cut** |
+
+**O site do negócio verificado é de odontologia estética e não menciona "Club
+Cut" em lugar nenhum** — conferido no ar: a palavra não aparece.
+
+A diretriz de nome de exibição pede relação clara entre o nome e o negócio
+verificado. O revisor que abre o negócio "Aura AI" cai num site de odontologia,
+procura "Club Cut" e não acha. Recusar é o resultado esperado — e seria o mesmo
+com um revisor humano agindo com razoabilidade. Isto é **inferência forte com
+evidência**, não motivo declarado pela Meta: eles nunca disseram a cláusula.
+
+E há **cinco grafias** da mesma marca em circulação: `Aura AI` (portfólio),
+`AuraStudio` (site), `auraiagency` (Instagram), `Aura IA` (rodapé do Club Cut e
+perfil do WhatsApp), `aurastudioai` (domínio). O backlog de 15/09 já tinha
+apontado duas; agora são cinco.
+
+**O conserto mais direto, e barato:** trocar (ou acrescentar) o **site do
+portfólio empresarial** para `clubcut.space`. Isso dá ao revisor o elo que hoje
+não existe — o nome pedido passa a estar escrito, em destaque, no site do próprio
+negócio verificado. Só depois disso reenviar `Club Cut`.
+
+Alternativas piores: pôr o Club Cut como produto dentro do aurastudioai.com.br
+(exige mexer naquele site), ou pedir `Aura AI` como nome de exibição — passaria,
+mas aí o cliente da barbearia recebe mensagem de "Aura AI", que não diz nada a
+ele.
+
+**Fica para o dono decidir**, porque é o site da outra empresa dele.
+
+### Verificação do acesso (Provedor de Tecnologia): prazo **04/12/2026**
+
+Segundo e terceiro prints. São **duas** verificações diferentes, e o painel
+mostra as duas juntas:
+
+1. **Verificação da empresa** — confirma que a empresa existe. **Feita** em
+   21/08/2026.
+2. **Verificação do acesso** — confirma que a empresa é **Provedor de
+   Tecnologia**, exigida de quem usa a API para alcançar ativos e dados de
+   **outras** empresas. É exatamente o caso do Club Cut: um número central da
+   Aura AI atendendo o cliente final de várias barbearias.
+
+O status diz "Verificado", mas ao abrir os detalhes há um formulário com aviso:
+*"Para evitar restrições a **1 app**, essa ação precisa ser concluída até
+**04/12/2026**."*
+
+**O app é o `1054189290929803`** — o mesmo por onde passa o webhook da WABA e o
+envio pela Cloud API. Restrição nele é a integração de WhatsApp parando. **É
+bomba de tempo com data, e entra na lista do `relatorio-tecnico.md §Bombas de
+tempo`.**
+
+As três perguntas e a resposta certa para este projeto:
+
+1. *Quais opções descrevem melhor a sua empresa?* → **Plataforma de SaaS**.
+2. *Como usará a plataforma de dados para ativar um produto ou serviço em nome
+   dos seus clientes?* → rascunho redigido para o dono revisar (abaixo).
+3. *Gerencia vários portfólios empresariais?* → **Não**, hoje. Há um portfólio
+   só, e as barbearias não têm portfólio próprio — o número é central. Se um dia
+   o Club Cut usar Embedded Signup com WABA por barbearia, a resposta muda.
+
+**Rascunho da resposta 2** (linguagem simples, como o formulário pede):
+
+> A Aura AI desenvolve e opera o Club Cut (clubcut.space), um sistema de
+> agendamento para barbearias. As barbearias que contratam o Club Cut nos
+> autorizam a atender os clientes delas pelo WhatsApp: o sistema responde às
+> mensagens, marca, remarca e cancela horários na agenda da barbearia e envia
+> lembretes dos horários já marcados. Usamos os dados da plataforma do WhatsApp
+> — mensagens recebidas, status de entrega e o identificador do contato — apenas
+> para manter essa conversa de agendamento e registrar o atendimento no painel da
+> própria barbearia. Cada barbearia enxerga somente os próprios clientes e
+> horários.
+
+Tudo nele é verificável no produto: o agente atende, marca, remarca e cancela; o
+lembrete existe; e o isolamento por barbearia é a RLS por `salon_id`.

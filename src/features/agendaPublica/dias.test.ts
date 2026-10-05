@@ -57,6 +57,47 @@ describe('montarFaixa', () => {
     expect(faixa.find((d) => d.rotulo === 'QUA')?.estado).toBe('lotado')
   })
 
+  // A folga por data (migration 0213). Os três testes abaixo existem porque a
+  // jornada é SEMANAL e a folga é de UM DIA: o barbeiro de folga na quarta
+  // continua tendo jornada de quarta, então `diasDeTrabalho` não a enxerga.
+  it('folga por data fecha o dia, mesmo com jornada nesse dia da semana e contagem acima de zero', () => {
+    // A contagem veio 5 de propósito: se a ordem das condições invertesse, o
+    // "livre" ganharia do "fechado" e o dia da folga voltaria a ser oferecido.
+    const faixa = montarFaixa({
+      dias: janela('2026-09-14', 5),
+      horario: HORARIO,
+      diasDeTrabalho: TRABALHA,
+      diasFechados: ['2026-09-16'],
+      agora: spo('2026-09-14T10:00:00'),
+    })
+    expect(faixa.find((d) => d.data === '2026-09-16')?.estado).toBe('fechado')
+  })
+
+  it('a folga fecha SO aquela data, nao toda quarta-feira', () => {
+    const faixa = montarFaixa({
+      dias: janela('2026-09-14', 5),
+      horario: HORARIO,
+      diasDeTrabalho: TRABALHA,
+      diasFechados: ['2026-09-16'],
+      agora: spo('2026-09-14T10:00:00'),
+    })
+    // 23/09 é a quarta seguinte.
+    expect(faixa.find((d) => d.data === '2026-09-23')?.estado).toBe('livre')
+  })
+
+  it('sem o campo a faixa se comporta como antes -- o intervalo entre a edge e a Vercel', () => {
+    // A edge sobe na hora; o build da Vercel termina minutos depois. Nesse vão a
+    // tela nova recebe payload antigo, e o certo é voltar ao de antes em vez de
+    // tratar `undefined` como "tudo fechado".
+    const faixa = montarFaixa({
+      dias: janela('2026-09-14', 5),
+      horario: HORARIO,
+      diasDeTrabalho: TRABALHA,
+      agora: spo('2026-09-14T10:00:00'),
+    })
+    expect(faixa.find((d) => d.data === '2026-09-16')?.estado).toBe('livre')
+  })
+
   it('salao fechado no dia PESA MAIS que a jornada do barbeiro', () => {
     // O caso que o teste do domingo acima não pegava, porque lá a jornada
     // também excluía o domingo — os dois sinais concordavam, e um deles podia

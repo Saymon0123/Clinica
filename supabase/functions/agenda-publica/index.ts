@@ -829,12 +829,57 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
     // serve à faixa E ao motivo, então é uma no lugar de uma.
     const { data: jornadas } = await admin
       .from('professional_schedules')
-      .select('dia_semana, professionals!inner(salon_id, ativo)')
+      .select('dia_semana, professional_id, professionals!inner(salon_id, ativo)')
       .eq('professionals.salon_id', salonId)
       .eq('professionals.ativo', true)
       .eq('ativo', true)
     // 0 = domingo, como o `extract(dow)` de `horarios_livres`.
     const diasDeTrabalho = [...new Set((jornadas ?? []).map((j) => j.dia_semana as number))].sort()
+
+    // Quem está de folga em cada dia da janela (migration 0213). A jornada é
+    // semanal; a folga é por DATA — só o cruzamento das duas responde "tem
+    // alguém trabalhando NESTE dia?".
+    //
+    // SEM ISTO o dia de folga apareceria como LOTADO. `horarios_livres` devolve
+    // zero para fechado e para cheio, e quem separa os dois é a jornada
+    // semanal, que a folga não muda. Numa barbearia de um barbeiro só, o
+    // cliente leria "sem vaga para esse serviço" e ficaria esperando uma
+    // desistência que não pode existir — o beco que a faixa de catorze dias
+    // existe para evitar.
+    const { data: folgas } = await admin
+      .from('dias_de_folga')
+      .select('dia, professional_id, professionals!inner(salon_id, ativo)')
+      .eq('professionals.salon_id', salonId)
+      .eq('professionals.ativo', true)
+      .gte('dia', hoje)
+      .lte('dia', somaDias(hoje, DIAS_VISIVEIS - 1))
+
+    const folgaPorDia = new Map<string, Set<string>>()
+    for (const f of folgas ?? []) {
+      const doDia = folgaPorDia.get(f.dia as string) ?? new Set<string>()
+      doDia.add(f.professional_id as string)
+      folgaPorDia.set(f.dia as string, doDia)
+    }
+
+    /** Alguém da equipe trabalha nesse dia, já descontada a folga? */
+    const trabalhaNoDia = (iso: string) => {
+      const dow = new Date(`${iso}T12:00:00Z`).getUTCDay()
+      const deFolga = folgaPorDia.get(iso)
+      return (jornadas ?? []).some(
+        (j) => j.dia_semana === dow && !deFolga?.has(j.professional_id as string),
+      )
+    }
+
+    // Os dias da janela em que NINGUÉM trabalha. Campo novo, e a tela o lê com
+    // `?? []` como já faz com `diasDeTrabalho`: nos minutos entre a edge subir e
+    // a Vercel terminar o build, a tela antiga simplesmente não o vê e volta ao
+    // comportamento de antes, em vez de quebrar.
+    // O tipo vem anotado à mão: `dias` sai de um `rpc()` sem tipo gerado, e o
+    // `deno check` do CI (que o `tsc` do projeto não cobre) reprova o `any`
+    // implícito — foi assim que isto custou três idas ao CI em 01/10.
+    const diasFechados = (dias ?? [])
+      .map((d: { dia: string }) => d.dia)
+      .filter((iso: string) => !trabalhaNoDia(iso))
 
     // Lista vazia tem quatro causas, e a tela dizia a mesma frase para todas —
     // "tente outro serviço acima", inclusive às 23h e em dia de folga (M8). O
@@ -850,7 +895,9 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
           minute: '2-digit',
           hourCycle: 'h23',
         }),
-        alguemTrabalhaHoje: diasDeTrabalho.includes(new Date(`${data}T12:00:00Z`).getUTCDay()),
+        // Pela folga TAMBÉM, não só pela jornada da semana: o barbeiro solo de
+        // folga no dia 7 tem jornada na quarta e mesmo assim ninguém trabalha.
+        alguemTrabalhaHoje: trabalhaNoDia(data),
         // Só no dia de hoje o relógio decide alguma coisa. Num dia futuro,
         // "o expediente já acabou" seria a frase certa no dia errado.
         ehHoje,
@@ -872,6 +919,7 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
       data,
       dias: dias ?? [],
       diasDeTrabalho,
+      diasFechados,
       horarios: horarios ?? [],
       motivoVazio,
     })

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { chaveDoDia } from '../../lib/periodo'
 import type { Appointment, Professional, Service } from './types'
 
 function dayBounds(date: Date) {
@@ -64,7 +65,7 @@ export function useAgendaData(salonId: string | null, date: Date) {
 
       const { start, end } = dayBounds(date)
 
-      const [profResult, servResult, apptResult, jornadaResult] = await Promise.all([
+      const [profResult, servResult, apptResult, jornadaResult, folgaResult] = await Promise.all([
         // Todos, não só os ativos: o inativo com horário marcado no dia continua
         // com coluna (achado 42) — filtrado logo abaixo, com os agendamentos na mão.
         supabase.from('professionals').select('id, nome, ativo').eq('salon_id', salonId).order('nome'),
@@ -96,6 +97,12 @@ export function useAgendaData(salonId: string | null, date: Date) {
           .from('professional_schedules')
           .select('professional_id, hora_inicio, hora_fim, ativo')
           .eq('dia_semana', date.getDay()),
+        // A folga do dia (0213). Entra aqui, e não numa carga própria, porque a
+        // agenda já tem a linguagem visual certa para ela: `null` na jornada
+        // significa folga desde sempre, e a coluna inteira fica cinza. Sem
+        // isto, o dono marcaria a folga e a agenda ficaria IDÊNTICA — ele
+        // concluiria que não funcionou.
+        supabase.from('dias_de_folga').select('professional_id').eq('dia', chaveDoDia(date)),
       ])
 
       // Uma carga mais nova já foi pedida: esta resposta é velha e não escreve.
@@ -114,6 +121,13 @@ export function useAgendaData(salonId: string | null, date: Date) {
         mapaJornadas[j.professional_id] = j.ativo
           ? { inicioMin: minutosDe(j.hora_inicio), fimMin: minutosDe(j.hora_fim) }
           : null
+      }
+      // A folga PESA MAIS que a jornada da semana, e por isso vem depois: quem
+      // tirou folga nessa data não trabalha nela, mesmo tendo jornada nesse dia
+      // da semana. Sobrescrever com `null` é o que acende a coluna cinza.
+      if (folgaResult.error) console.error('Erro ao ler as folgas do dia:', folgaResult.error)
+      for (const f of folgaResult.data ?? []) {
+        mapaJornadas[f.professional_id] = null
       }
       setJornadas(mapaJornadas)
 

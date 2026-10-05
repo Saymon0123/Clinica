@@ -7761,3 +7761,133 @@ A implementação, nesta ordem: a **folga que não colide** (migration, mexe no
 `horarios_livres`), depois o aviso escalonado sobre o motor da fila, depois a
 fila como rede para quem não acha vaga. E a aprovação da Meta, que não depende
 de nós.
+
+---
+
+## 2026-10-04 — A folga que não colide, construída (0213)
+
+A parte 1 do desenho acima, de ponta a ponta: tabela, régua, catraca, agenda
+pública, agente e CRM.
+
+### O que foi feito
+
+**`public.dias_de_folga`** (barbeiro + data, motivo até 60, uma por barbeiro por
+dia). Fora de `appointments` de propósito: a folga precisa **conviver** com os
+agendamentos do dia, e agendamento nenhum convive com outro — a
+`appointments_sem_sobreposicao` os separa por definição. É isso que o bloqueio
+não consegue fazer.
+
+**O filtro entrou na `jornada`**, dentro de `horarios_livres`, e não num
+`not exists` no fim. `na_grade` (a grade de 10 em 10) e `apos_atendimento` (o
+encaixe depois de um atendimento) **nascem as duas da `jornada`**: tirando o
+barbeiro de lá, ele desaparece das duas de uma vez e não sobra caminho por onde
+uma vaga escape.
+
+Uma linha fechou **seis portas**, porque todas passam pela mesma régua —
+`agendar_pelo_agente`, `remarcar_pelo_cliente` e `quem_pode_assumir` como trava
+de recusa, não como sugestão; `dias_com_horario`, `criar_agendamentos_de_reativacao`
+e `chamar_proximos_da_fila` por herança.
+
+### Medido em produção, pelo caminho real
+
+Ensaio em transação (9 asserções) antes de aplicar, e depois a prova de ponta a
+ponta com os cinco barbeiros da El Corte de folga em 07/10 — fixture criada,
+medida e apagada, com a agenda conferida de volta nos 182 horários:
+
+| Medida | Sem folga | Com folga |
+|---|---|---|
+| `horarios` do dia | 182 | **0** |
+| `diasFechados` | `[]` | `['2026-10-07']` |
+| `diasDeTrabalho` | `[0..6]` | **`[0..6]`, inalterado** |
+| `motivoVazio` | — | **`fechado_hoje`** |
+| dia seguinte | — | 283 (não vazou) |
+
+E o agente, na RPC que o n8n chama de verdade:
+
+```json
+{"ok": false, "motivo": "Nao ha horario livre nesse dia.",
+ "proximo_dia_com_vaga": "08/10", "horas_no_proximo_dia": "09:00, 09:10, ..."}
+```
+
+Ele recusa **e já oferece o próximo dia com vaga**, de graça: a função já fazia
+isso, e herdou a folga pela régua única.
+
+### "Fechado", não "lotado" — e sem valor novo no fio
+
+Esta pendência estava anotada como *"um quinto valor em `MotivoSemHorario`"*.
+**Não precisou.** `motivoSemHorario` já recebia `alguemTrabalhaHoje`, e
+`fechado_hoje` já significava "fechado no dia escolhido". O que estava errado era
+o **cálculo**: o booleano vinha de `diasDeTrabalho`, que é por dia da semana — o
+barbeiro de folga numa quarta continua tendo jornada de quarta.
+
+A edge passou a cruzar jornada com folga por data (`trabalhaNoDia`) e a mandar
+`diasFechados` como campo **novo e opcional**, que a tela lê com `?? []`. Valor
+novo no enum obrigaria tela e edge a subirem juntas, e elas não sobem: a edge
+publica na hora, a Vercel termina o build minutos depois. Nesse vão a tela antiga
+cairia no `default` e diria *"não sobrou horário"* num dia de folga — o próprio
+comentário do `semHorario.ts` avisava disso, e foi o que evitou o erro.
+
+### O CRM: nenhuma UI nova, porque a linguagem já existia
+
+O botão **"Marcar folga nesse dia"** entrou no `ConflitosDoBloqueio`, que é
+exatamente onde o dono bateu no muro. Aparece **só quando o bloqueio é de dia
+inteiro** (`onFolga` ausente no resto): folga de duas horas não existe, e
+oferecê-la num bloqueio de almoço fecharia o dia por engano.
+
+E para a folga **aparecer** na agenda, a resposta estava escrita no próprio
+código: *"`null` na jornada é folga"* (`AgendaPage.tsx`). O `useAgendaData` passou
+a sobrescrever a jornada com `null` para quem está de folga, e a coluna inteira
+fica cinza — o visual que já existia. Sem isto o dono marcaria a folga, a agenda
+ficaria idêntica e ele concluiria que não funcionou.
+
+A folga **pesa mais** que a jornada da semana, e por isso é aplicada depois no
+mapa. Os agendamentos continuam desenhados por cima do cinza, que é a figura
+certa: dia fechado, e estes aqui para resolver.
+
+### Achado de segurança, no caminho: `TRUNCATE` para `authenticated`
+
+Conferindo os grants da tabela nova, ela nasceu com **sete** privilégios para
+`authenticated`, não os quatro concedidos — `REFERENCES`, `TRIGGER` e
+`TRUNCATE` vieram do padrão do schema. **`TRUNCATE` ignora RLS.**
+
+- **Medido:** `authenticated` tem `TRUNCATE` em **75 relações** deste banco,
+  `appointments` e `clients` entre elas.
+- **Deduzido, não medido:** não é alcançável pelo PostgREST — os verbos REST
+  viram só DML, e `authenticated` não é papel de login, é assumido por `set role`
+  depois do JWT. Então é **privilégio desnecessário, não buraco aberto**.
+
+Na `dias_de_folga` ficou `revoke all` antes do `grant`, e o pgTAP guarda isso.
+**As outras 74 são decisão do dono**, porque é mexer no grant de todo o banco:
+dá para fazer num `revoke` por tabela, e o risco é algum papel depender de
+`REFERENCES` para FK em migration futura.
+
+### Catraca
+
+`a_folga_que_nao_colide.test.sql`, 13 asserções. As duas primeiras são um par e
+valem o arquivo: a 1 prova que **o bloqueio é recusado com 23P01** no dia com
+agendamento, a 2 prova que **a folga entra no mesmo dia com os mesmos dois
+agendamentos de pé**. Se alguém "simplificar" a folga para um agendamento de dia
+inteiro, a 2 cai e a mensagem diz por quê.
+
+A 3 existe porque a 4 sozinha não mediria nada — "zero vagas depois da folga" só
+significa algo se havia vaga antes. É a lição da asserção de expiração que passou
+medindo zero em 03/10.
+
+### O deno check cobrou de novo
+
+`npm run typecheck` passou verde e `deno check` reprovou: `dias` sai de um
+`rpc()` sem tipo gerado, e o `any` implícito só aparece lá. Terceira vez que esse
+comando pega algo que o `tsc` do projeto não vê.
+
+### O que falta da folga
+
+1. **O aviso escalonado** sobre o motor da fila — do horário mais cedo para o
+   mais tarde, um aviso só, prazo por pessoa, e cancelamento automático no fim.
+   Depende do template `imprevisto_na_barbearia` sair de `PENDING` na Meta.
+2. **A fila como rede** para quem abrir o link e não achar vaga.
+3. **Remover** a folga pela tela: hoje só entra. Marcar errado exige SQL, e isso
+   não serve. É a primeira coisa a fazer no próximo passo.
+4. O `quem_pode_assumir` ainda diz *"ninguém está livre nesse horário"* quando o
+   salão tem **um barbeiro só** — a frase sugere coincidência de agenda, e a
+   verdade é "você é o único". O botão de folga agora dá a saída, mas a frase
+   continua imprecisa.

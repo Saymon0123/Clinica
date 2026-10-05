@@ -6,6 +6,7 @@ import { Badge } from '../../components/Badge'
 import { supabase } from '../../lib/supabase'
 import { traduzirErroDoBanco } from '../../lib/erroDoBanco'
 import { classificarTelefone, AVISO_TELEFONE_INVALIDO } from '../../lib/telefone'
+import { chaveDoDia } from '../../lib/periodo'
 import type { Professional, Service } from './types'
 import { ErroInline } from '../../components/ErroInline'
 import { ConflitosDoBloqueio } from './ConflitosDoBloqueio'
@@ -206,6 +207,55 @@ export function NewAppointmentModal({
     } finally {
       setSubmitting(false)
     }
+  }
+
+  /**
+   * A folga do dia — a saída para quando o bloqueio não cabe.
+   *
+   * O bloqueio É um agendamento, e a `appointments_sem_sobreposicao` separa
+   * agendamentos por definição: enquanto houver horário marcado, ele é recusado
+   * com 23P01. Numa barbearia de um barbeiro só não existe para quem passar, e
+   * o dono fica sem saída nenhuma — foi o caso que ele descreveu: *"no dia 7 ele
+   * não pode trabalhar, porém no dia 7 ele possui 10 agendamentos"*.
+   *
+   * A folga (0213) fecha o dia para NOVOS sem colidir com os que já existem. O
+   * dia sai da agenda pública, do agente, da reativação e da fila no instante
+   * em que ela é marcada, porque as seis portas passam pela mesma régua
+   * (`horarios_livres`), e os horários de pé continuam na agenda para serem
+   * resolvidos com calma.
+   */
+  async function marcarFolga() {
+    setSubmitting(true)
+    setError(null)
+
+    const { error: folgaError } = await supabase.from('dias_de_folga').insert({
+      professional_id: professionalId,
+      // `chaveDoDia` e não `toISOString()`: a segunda é UTC e devolveria o dia
+      // anterior em todo horário antes das 21h no Brasil.
+      dia: chaveDoDia(date),
+      motivo: motivo.trim() || null,
+    })
+
+    setSubmitting(false)
+
+    if (folgaError) {
+      console.error('Erro ao marcar a folga:', folgaError)
+      setError(
+        traduzirErroDoBanco(
+          folgaError,
+          {
+            // A folga já existe. Isso não é erro do dono: o dia já está
+            // fechado, que é o que ele queria.
+            '23505': 'Esse dia já está marcado como folga para esse barbeiro.',
+          },
+          'Não foi possível marcar a folga. Tente novamente.',
+        ),
+      )
+      return
+    }
+
+    onCreated()
+    onClose()
   }
 
   /**
@@ -645,6 +695,11 @@ export function NewAppointmentModal({
                   inicio={conflito.inicio}
                   fim={conflito.fim}
                   onVazio={limparConflitoETentarDeNovo}
+                  // Só no dia inteiro: folga de duas horas não existe, e
+                  // oferecê-la num bloqueio de almoço fecharia o dia todo por
+                  // engano. Ausente, o painel não mostra a opção.
+                  onFolga={diaInteiro ? marcarFolga : undefined}
+                  salvando={submitting}
                 />
               ) : (
                 <p className="text-xs text-muted-foreground bg-surface-2 rounded-lg px-3 py-2">

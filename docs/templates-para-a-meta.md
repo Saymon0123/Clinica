@@ -63,6 +63,54 @@ isso.
 corpo começa ou termina com variável; não há duas variáveis coladas; no máximo
 três botões de resposta rápida.
 
+## Botões: o que a Meta permite, e as duas armadilhas (04/10/2026)
+
+Levantado na documentação oficial e **confirmado criando um template de
+verdade** — as duas armadilhas abaixo só apareceram no segundo jeito.
+
+**Os limites, da doc (atualizada em 24/06/2026):**
+
+- até **dois** botões de **URL**; até **dez** de resposta rápida; **dez** no total;
+- botão de URL aceita **uma** variável, e ela vai **no fim** da string;
+- com **mais de três** botões, só dois aparecem na mensagem — o resto some atrás
+  de "Ver todas as opções".
+
+**Armadilha 1 — botão de URL não pode apontar para o WhatsApp.** Tentar
+`https://wa.me/{{1}}` devolve:
+
+```
+error_subcode 2388081
+"Os botões não podem conter links diretos para o WhatsApp."
+```
+
+Então **não existe** botão "falar no WhatsApp" num template. O caminho é a página
+de destino levar o contato, ou o rodapé pedir que a pessoa responda a mensagem —
+o número central roteia pela `barbearia_para_contato_central` (0148).
+
+**Armadilha 2 — misturar resposta rápida com outro tipo quebra o WhatsApp Web.**
+A doc permite misturar, exigindo **dois grupos** (as respostas rápidas juntas, os
+outros juntos); `QR, URL, QR` a API recusa. Mas o custo real está escrito noutro
+parágrafo:
+
+> modelos com quatro ou mais botões, **ou um botão de resposta rápida e um ou
+> mais botões de outro tipo**, não poderão ser visualizados no WhatsApp para
+> computador.
+
+Não é degradar: é a pessoa no desktop **não conseguir usar a mensagem**. Então a
+escolha prática é **ou só URL/telefone, ou só respostas rápidas** — nunca os dois.
+Foi por isso que o `imprevisto_na_barbearia` ficou com **um** botão de URL e as
+outras ações (cancelar, falar com a barbearia) na própria página de gestão.
+
+**E uma de operação: apagar um template bloqueia o nome por alguns minutos.**
+Apaguei o `imprevisto_remarcar` para corrigir os acentos do corpo e a recriação
+foi recusada com `error_subcode 2388023` — *"não é possível adicionar novo
+conteúdo enquanto o existente está sendo excluído"*. A mensagem diz *"tente
+novamente em less than 1 minute"* e **mentiu**: ainda recusava depois de dois
+minutos. A saída que a própria Meta sugere é criar com outro nome.
+
+**Lição prática:** conferir o texto (acento inclusive) **antes** de submeter.
+Apagar para corrigir custa o nome por um tempo indeterminado.
+
 ---
 
 ## Família LEMBRETE — todos `utility`

@@ -62,9 +62,21 @@ chaves está escrita abaixo.
 
 ## O que FOI retirado do agente
 
-> Preencher ao executar o passo 3. Até lá, o agente continua oferecendo a fila e
-> recebendo a recusa da 0214 — honesto, mas desperdiça uma ida ao banco e uma
-> volta de conversa.
+**Feito em 05/10/2026** no fluxo `CRM Salão - Atendimento WhatsApp (Supabase
+Nativo)` (`rJO1n7cFeNDIJyB5`), numa única atualização atômica — para não existir
+estado intermediário em que o prompt cite ferramenta que já saiu.
+
+Conferido lendo de volta: fluxo ainda **ativo**, 91 nós (eram 94), **16**
+ferramentas no agente (eram 19), **zero** menções a "fila" nos dois campos do
+prompt, acentos preservados e sem mojibake. A cadeia principal continua
+`Produtos para Contexto → Fila do Cliente (Contexto) → Montar Contexto do
+Cliente`.
+
+Foram **cinco** cortes, e dois deles só apareceram porque a conferência passou a
+ignorar a caixa: as menções em `A FILA DE ESPERA DELE` (na lista do que o agente
+recebe) e `Inscricao da fila: campo fila_id=` (na seção dos ids) estavam em
+MAIÚSCULAS, e a primeira varredura procurava `[Ff]ila`. O quinto foi um
+`ou por na fila` minúsculo na seção dos barbeiros.
 
 ### As três ferramentas (`httpRequestTool`, ligadas como `ai_tool`)
 

@@ -874,3 +874,27 @@ body {
     --barra-inferior: calc(3.5rem + env(safe-area-inset-bottom, 0px));
   }
 }
+
+/* A hachura do BLOQUEIO na grade da Agenda.
+
+   Bloqueio não é cliente — é a agenda fechada —, então não deve parecer um
+   cartão de cliente. Antes ele dividia o estilo `default` com agendado e
+   confirmado, e o barbeiro só sabia o que era lendo o texto dentro do bloco.
+
+   Listra e não cor porque as quatro famílias de cor já estão ocupadas pelos
+   estados que SÃO de cliente (verde agendado/confirmado, âmbar reservado,
+   carmim faltou, cinza cancelado). Textura separa sem gastar matiz, e é a
+   mesma ideia que este arquivo já enuncia: separar por FORMA quando o matiz
+   acaba.
+
+   Usa `--surface-2` e `--border`, então acompanha os dois temas sozinha. */
+.bloco-bloqueio {
+  background-color: var(--surface-2);
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent,
+    transparent 5px,
+    var(--border) 5px,
+    var(--border) 6px
+  );
+}

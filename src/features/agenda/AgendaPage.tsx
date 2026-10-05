@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Building2, CalendarDays, ChevronLeft, ChevronRight, MessageSquareQuote, Plus, Users } from 'lucide-react'
+import { Building2, CalendarDays, Check, ChevronLeft, ChevronRight, MessageSquareQuote, Plus, Users } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { traduzirErroDoBanco } from '../../lib/erroDoBanco'
 import { useSalon } from '../auth/useSalon'
 import { useAgendaData } from './useAgendaData'
 import { AvisoDeCancelamentos } from './AvisoDeCancelamentos'
 import { AvisoDeFolga } from './AvisoDeFolga'
+import { LegendaDaAgenda } from './LegendaDaAgenda'
 import { FilaDeEspera } from './FilaDeEspera'
 import { MiniCalendar } from './MiniCalendar'
 import { NewAppointmentModal } from './NewAppointmentModal'
@@ -48,29 +49,89 @@ function formatTime(iso: string) {
   return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
 
+/**
+ * A cor de cada estado na grade.
+ *
+ * ## O que estava errado
+ *
+ * Três estados dividiam o estilo `default` — agendado, confirmado e bloqueio —
+ * e `concluido` usava `success`, que neste projeto é **irmão** do verde da
+ * marca de propósito (está escrito no `index.css`). No tema escuro `--success`
+ * e `--primary` são o MESMO hex, `#7cc5a0`; no claro, `#dcf0e4` e `#e2efe7`
+ * diferem por seis pontos de RGB. Não eram parecidos: eram o mesmo verde.
+ *
+ * ## A régua
+ *
+ * **Matiz diz a natureza, forma diz o estado** — a regra que o próprio
+ * `index.css` enuncia ("a separação é de FORMA, e não de matiz") e que a
+ * agenda era o lugar onde ela estava quebrada.
+ *
+ * - **Agendado e confirmado** são o mesmo verde com tinta diferente: meia para
+ *   o que ainda não foi confirmado, cheia para o que foi, mais o visto. Mais
+ *   tinta = mais certo.
+ * - **Concluído recua para neutro.** O passado não precisa de atenção; ela vai
+ *   para o que ainda vai acontecer. A borda verde e o visto continuam dizendo
+ *   "deu certo", sem disputar o olho com o que está por vir.
+ * - **"Não veio" sai do cinza e ganha carmim.** Faltar e cancelar não são a
+ *   mesma coisa: cancelamento é combinado, falta é prejuízo — e é o que o
+ *   depósito contra falta (item 19) existe para atacar. Precisa ser visível.
+ * - **Reservado em âmbar tracejado**, porque é provisório: a fila segura a vaga
+ *   por 30 minutos e ela **evapora**. Sem cor própria ficaria igual a um
+ *   agendado, que é o oposto da verdade.
+ * - **Bloqueio ganha hachura**, porque não é cliente — não deve parecer um
+ *   cartão de cliente.
+ *
+ * Nenhum token novo: tudo sai de `primary`, `success`, `danger`, `warning`,
+ * `surface-2` e `border-strong`, que já existem nos dois temas.
+ *
+ * O texto do reservado é `foreground`, e não `text-warning`: âmbar sobre
+ * `warning-soft` dá contraste baixo no tema claro, e aqui a letra tem 11px. O
+ * matiz mora no fundo e na borda, onde ele é lido sem precisar de contraste de
+ * leitura.
+ *
+ * A `LegendaDaAgenda` copia estas mesmas classes. Mudar uma cor aqui e esquecer
+ * de lá faz a legenda mentir — por isso as amostras de lá são as strings daqui.
+ */
 const BLOCK_STYLES: Record<string, { container: string; text: string; subtext: string }> = {
+  // `default` é o AGENDADO, e também o que segura status que ainda não tenham
+  // cor própria: meia tinta do verde da marca.
   default: {
+    container: 'bg-primary-soft/50 border-primary',
+    text: 'text-primary-soft-foreground',
+    subtext: 'text-primary-soft-foreground/70',
+  },
+  confirmado: {
     container: 'bg-primary-soft border-primary',
     text: 'text-primary-soft-foreground',
     subtext: 'text-primary-soft-foreground/70',
   },
+  reservado: {
+    container: 'bg-warning-soft border-warning border-dashed',
+    text: 'text-foreground',
+    subtext: 'text-muted-foreground',
+  },
   concluido: {
-    container: 'bg-success-soft border-success',
-    text: 'text-success',
-    subtext: 'text-success/70',
+    container: 'bg-surface-2 border-success',
+    text: 'text-muted-foreground',
+    subtext: 'text-muted-foreground/70',
   },
   cancelado: {
     container: 'bg-surface-2 border-border-strong opacity-60',
     text: 'text-muted-foreground line-through',
     subtext: 'text-muted-foreground/70',
   },
-  // Mesmo tratamento do cancelado, e pelo mesmo motivo: as travas de
-  // sobreposição e o `horarios_livres` ignoram os dois, então o horário está
-  // livre de verdade. Sem isto o bloco continuaria azul, dando a entender que
-  // segue ocupado logo depois de o barbeiro liberar a cadeira.
+  // Deixou de ser igual ao cancelado. Os dois liberam o horário — as travas de
+  // sobreposição e o `horarios_livres` ignoram ambos —, mas isso é o que
+  // acontece com a AGENDA, não o que aconteceu com o cliente. Cancelar é
+  // combinado; faltar é prejuízo, e some no cinza junto com o que foi avisado.
   faltou: {
-    container: 'bg-surface-2 border-border-strong opacity-60',
-    text: 'text-muted-foreground line-through',
+    container: 'bg-danger-soft border-danger',
+    text: 'text-danger line-through',
+    subtext: 'text-danger/70',
+  },
+  bloqueio: {
+    container: 'bloco-bloqueio border-border-strong',
+    text: 'text-muted-foreground',
     subtext: 'text-muted-foreground/70',
   },
 }
@@ -127,7 +188,14 @@ function AppointmentBlock({
     appt.status === 'faltou' ? 'não veio' :
     appt.status === 'concluido' ? 'concluído' :
     appt.status === 'confirmado' ? 'confirmado' :
+    appt.status === 'reservado' ? 'reservado pela fila' :
     appt.status === 'bloqueio' ? 'bloqueio' : 'agendado'
+
+  // O visto duplica a cor com FORMA, e é o que separa confirmado de agendado
+  // para quem não distingue meia tinta de tinta cheia — inclusive em tela
+  // pequena e sob sol. No concluído ele diz "deu certo" mesmo com o bloco
+  // apagado.
+  const temVisto = appt.status === 'confirmado' || appt.status === 'concluido'
 
   // Bloqueio não tem cliente, e o `?? 'Cliente'` de baixo escrevia
   // "12:00 · Cliente" no almoço do barbeiro -- com o leitor de tela dizendo
@@ -166,6 +234,7 @@ function AppointmentBlock({
       style={{ top, height, zIndex: finalizado ? 1 : 2 }}
     >
       <div className={`text-xs font-medium truncate ${style.text}`}>
+        {temVisto && <Check size={11} className="inline-block mr-0.5 align-[-1px]" aria-hidden="true" />}
         {formatTime(appt.data_hora_inicio)} · {rotuloPrincipal}
         {/* O ponto do recado (0178): o barbeiro precisa saber que TEM pedido
             sem abrir cada horário da grade. O texto mora no detalhe — aqui
@@ -446,6 +515,10 @@ export function AgendaPage() {
 
         {/* Toolbar */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          {/* A data e a legenda andam juntas à esquerda; "Nova reserva" fica
+              sozinha à direita. Sem este agrupamento o `justify-between`
+              jogaria a legenda para o meio do cabeçalho, longe das duas. */}
+          <div className="flex flex-wrap items-center gap-3">
           {/* Stepper segmentado: os dois chevrons e a data numa peça só, em vez
               de dois botões quadrados órfãos flutuando em volta do texto. */}
           <div className="flex items-center rounded-lg border border-border bg-surface overflow-hidden">
@@ -471,6 +544,13 @@ export function AgendaPage() {
             >
               <ChevronRight size={18} />
             </button>
+          </div>
+
+          {/* A legenda vive COLADA na navegação de data, e não numa faixa
+              fixa: a altura da grade é disputada aqui (a janela já encolheu de
+              6h–22h para o expediente), e o que cada cor significa se lê nas
+              primeiras vezes e depois se sabe de cor. */}
+          <LegendaDaAgenda />
           </div>
 
           <button

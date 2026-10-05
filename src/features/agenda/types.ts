@@ -19,6 +19,20 @@ export type AppointmentStatus =
   | 'bloqueio'
   // Aceito no banco desde a migration 0063, mas faltava aqui.
   | 'faltou'
+  /**
+   * A vaga que a fila de espera segura por 30 minutos (migration 0192).
+   *
+   * Aceito no `appointments_status_check` desde então e **faltava aqui** — a
+   * segunda vez que este tipo fica atrás do banco. Zero linhas hoje, porque a
+   * fila nunca rodou: o template está aprovado e `ativo = false`, e o fluxo do
+   * n8n está inativo. No dia em que esses dois interruptores virarem, reservas
+   * aparecem na grade — e sem o tipo, o TypeScript diria que esse estado não
+   * existe enquanto a tela o estivesse desenhando.
+   *
+   * Tem prazo: `reservada_ate` é obrigatório neste status e proibido nos
+   * outros (`appointments_reserva_com_prazo`).
+   */
+  | 'reservado'
 
 export type Appointment = {
   id: string

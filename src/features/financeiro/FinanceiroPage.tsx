@@ -50,6 +50,17 @@ function formatCurrency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
+/**
+ * 'YYYY-MM-DD' → '03/10', para as pontas do eixo e o balão de cada barra.
+ *
+ * Por partes, sem `Date`: `new Date('YYYY-MM-DD')` é lido como UTC e volta um
+ * dia em qualquer fuso negativo — o Brasil inteiro.
+ */
+function rotuloDoDia(iso: string) {
+  const [, mes, dia] = iso.split('-')
+  return `${dia}/${mes}`
+}
+
 import {
   hojeISO,
   labelDoDia,
@@ -108,7 +119,8 @@ export function FinanceiroPage() {
   // desce a qualquer dia para achar os de mais movimento.
   const [refDia, setRefDia] = useState(hojeISO)
   const ehMesCorrente = refMonth === mesCorrente()
-  const ehHoje = refDia === hojeISO()
+  const hoje = hojeISO()
+  const ehHoje = refDia === hoje
   // "Este mês" quando é o corrente; "ago 2026" quando navegou para trás;
   // "Hoje" ou "sáb, 20/09" no filtro por dia.
   const rotuloPeriodo =
@@ -494,11 +506,23 @@ export function FinanceiroPage() {
           ({ key, label, icon: Icon, format }) => {
           const metric = data.metrics[key]
           const invert = key === 'cancelamentos'
-          const bars = metric.spark.map((p, i) => ({
-            label: String(p.x ?? i),
+          // Sob erro o hook sai cedo e NÃO zera o que já estava em `data`: sem
+          // esta guarda, uma recarga que falha deixa o número em "—" e o
+          // gráfico desenhando os dados velhos ao lado — o mesmo engano do
+          // achado 31, só que em forma de barra.
+          const spark = error ? [] : metric.spark
+          const bars = spark.map((p, i) => ({
+            label: rotuloDoDia(p.x),
             value: p.y,
-            highlight: i === metric.spark.length - 1,
+            highlight: i === spark.length - 1,
           }))
+          // As pontas do eixo. A da direita vira "hoje" quando o último dia da
+          // série é hoje — que é o caso o mês inteiro, e explica sozinha por
+          // que a última barra costuma ser mais baixa: o dia ainda não acabou.
+          const fim = spark[spark.length - 1]?.x
+          const eixo: [string, string] | undefined = spark.length
+            ? [rotuloDoDia(spark[0].x), fim === hoje ? 'hoje' : rotuloDoDia(fim)]
+            : undefined
           return (
             <StatsCard
               key={key}
@@ -512,15 +536,19 @@ export function FinanceiroPage() {
               }
               badge={<ChangeBadge pct={metric.changePct} invert={invert} emHero={key === 'faturamento'} />}
               bars={bars}
+              eixo={eixo}
               hero={key === 'faturamento'}
               // A divisão da soma: quanto foi cancelamento e quanto foi falta.
               detalhe={key === 'cancelamentos' && !loading && !error ? rotuloDasPerdas(data.perdas) : undefined}
+              // 25% do verde sobre o branco dá rgb(199,215,208) — um cinza que
+              // mal se distingue do card. Em 40% a barra vira barra, e o dia
+              // destacado continua se separando por ser a cor cheia.
               barColor={
                 key === 'faturamento'
-                  ? 'bg-primary-foreground/25'
+                  ? 'bg-primary-foreground/30'
                   : key === 'cancelamentos'
-                    ? 'bg-danger/25'
-                    : 'bg-primary/25'
+                    ? 'bg-danger/40'
+                    : 'bg-primary/40'
               }
               barHighlightColor={
                 key === 'faturamento'

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Bell, CalendarClock, CalendarPlus, CalendarX, Inbox } from 'lucide-react'
+import { Bell, CalendarClock, CalendarPlus, CalendarX, Inbox, MessageSquareWarning } from 'lucide-react'
 import { useSalon } from '../auth/useSalon'
 import { useNotificacoesDoShell } from './NotificacoesContext'
 import { rotuloDaNotificacao, tempoRelativo, type Notificacao } from './notificacoes'
@@ -11,12 +11,18 @@ const ICONE = {
   novo_horario: CalendarPlus,
   cancelou: CalendarX,
   remarcou: CalendarClock,
+  // Nao e calendario: o pedido de dono nao tem horario nenhum por tras.
+  pediu_dono: MessageSquareWarning,
 } as const
 
 const COR = {
   novo_horario: 'bg-primary-soft text-primary-soft-foreground',
   cancelou: 'bg-danger-soft text-danger',
   remarcou: 'bg-warning-soft text-warning',
+  // Vermelho junto com o cancelamento de proposito: os dois PEDEM acao do dono,
+  // ao contrario de marcar e remarcar, que sao so noticia. Quem separa os dois
+  // e o icone, nao a cor.
+  pediu_dono: 'bg-danger-soft text-danger',
 } as const
 
 function Item({ n, nova }: { n: Notificacao; nova: boolean }) {

@@ -32,7 +32,7 @@ export function useNotificacoes(salonId: string | null) {
     const [lista, visto] = await Promise.all([
       supabase
         .from('notificacoes_do_salao')
-        .select('chave, tipo, evento_em, data_hora_inicio, origem, cliente, barbeiro, servicos')
+        .select('chave, tipo, evento_em, data_hora_inicio, origem, cliente, barbeiro, servicos, detalhe')
         .eq('salon_id', salonId)
         .order('evento_em', { ascending: false })
         .limit(50),

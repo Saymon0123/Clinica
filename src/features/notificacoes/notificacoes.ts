@@ -7,19 +7,25 @@
  * a frase de cada tipo, o "há 5 min", e a conta do que ainda não foi visto.
  */
 
-export type TipoDeNotificacao = 'novo_horario' | 'cancelou' | 'remarcou'
+export type TipoDeNotificacao = 'novo_horario' | 'cancelou' | 'remarcou' | 'pediu_dono'
 
 export type Notificacao = {
   chave: string
   tipo: TipoDeNotificacao
-  /** Quando o EVENTO aconteceu (criou/cancelou/remarcou) — ordena a lista. */
+  /** Quando o EVENTO aconteceu (criou/cancelou/remarcou/pediu) — ordena a lista. */
   evento_em: string
-  /** O horário do atendimento em si. */
-  data_hora_inicio: string
+  /**
+   * O horário do atendimento em si — **nulo no `pediu_dono`**, que não tem
+   * agendamento nenhum por trás. Era `string` antes da 0216: deixar assim faria
+   * a formatação escrever "Invalid Date" no lugar da frase.
+   */
+  data_hora_inicio: string | null
   origem: string | null
   cliente: string | null
   barbeiro: string | null
   servicos: string | null
+  /** O resumo que o agente escreveu ao chamar o dono. Nulo nos outros tipos. */
+  detalhe: string | null
 }
 
 /** Formata o horário do atendimento: "sáb., 20/09, 14:00". */
@@ -40,8 +46,20 @@ function horarioDoAtendimento(iso: string) {
  */
 export function rotuloDaNotificacao(n: Notificacao): { titulo: string; detalhe: string } {
   const cliente = n.cliente?.trim() || 'Um cliente'
+
+  // ANTES de qualquer formatação de horário: este tipo não tem agendamento, e
+  // `horarioDoAtendimento(null)` escreveria "Invalid Date" na cara do dono.
+  // O detalhe é o resumo que o agente escreveu — quando ele não escreveu, a
+  // frase diz isso em vez de ficar vazia.
+  if (n.tipo === 'pediu_dono') {
+    return {
+      titulo: `${cliente} quer falar com você`,
+      detalhe: n.detalhe?.trim() || 'O agente não registrou o motivo.',
+    }
+  }
+
   const servicos = n.servicos?.trim() || 'um horário'
-  const quando = horarioDoAtendimento(n.data_hora_inicio)
+  const quando = n.data_hora_inicio ? horarioDoAtendimento(n.data_hora_inicio) : 'sem horário'
   const comQuem = n.barbeiro?.trim() ? ` · com ${n.barbeiro.trim()}` : ''
 
   if (n.tipo === 'cancelou') {

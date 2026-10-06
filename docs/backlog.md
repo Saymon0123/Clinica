@@ -8563,3 +8563,220 @@ Financeiro, e os cards da `RedePage`, que parecem irmãos, são de número puro 
 não têm mini-gráfico. O conserto cobre tudo o que existe hoje.
 
 Lint segue em **276**; 611 testes verdes em 68 arquivos.
+
+### Giro completo de back e front (06/10)
+
+Varredura pedida pelo dono: falhas, código sem uso, parecer. Usados os conectores
+do Supabase, do n8n, da Vercel e a API da Meta. O Sentry ficou de fora — o MCP
+pede autorização que só ele pode dar.
+
+**Medida do terreno:** 215 migrations, 58 arquivos pgTAP, 13 edge functions (12
+publicadas, `_shared` não conta), 24 features, 274 arquivos TS/TSX, 43.249 linhas,
+611 testes, 18 workflows no n8n (16 ativos).
+
+#### O que está limpo (medido, não suposto)
+
+- **Zero arquivos órfãos** em `src/` — os 274 são alcançáveis a partir de
+  `main.tsx`/`App.tsx`.
+- **Zero dependências de produção sem uso** (são 10 ao todo).
+- **Zero `console.log`**; os 125 `console.*` são todos `console.error`.
+- **Zero TODO/FIXME de verdade** — as ocorrências são a palavra portuguesa
+  "TODO" em comentário.
+- **12 edge functions no disco = 12 publicadas.** Sem deriva.
+- **Dos 276 avisos do lint, 194 são de `.agents/skills/`** (código de terceiros)
+  e 1 de `.claude/`. **Nossos são 81**: 49 `set-state-in-effect`, 12 `purity`,
+  12 `only-export-components`, 8 diversos.
+- **A RLS segura pelo caminho real.** Provado chamando o PostgREST com a chave
+  publicável: `whatsapp_templates`, `remetentes_oficiais`, `precos_modelo`,
+  `mensagens_recebidas`, `consumo_ia`, `eventos_da_waba`, `clients` e
+  `appointments` devolvem todos **HTTP 200 com `[]`**. Os 15 avisos
+  `rls_enabled_no_policy` do advisor são o padrão certo aqui, não um furo.
+
+#### ACHADO 1 — O aviso de fim de teste grátis nunca vai sair (ALTO)
+
+O workflow `Dz35hJOz7UJER1Ll` ("Aviso de Fim de Teste") está **ativo** e sem erro.
+Mas a view `vencimentos_a_avisar` faz
+`join whatsapp_templates t on t.chave='fim_de_teste' and t.status='aprovado' and t.ativo`
+— e `fim_de_teste` está em `rascunho`. O nome na Meta (`fim_do_teste_gratis`)
+**não existe na WABA**: dos 27 registros da tabela, só 12 têm template de verdade.
+
+Medido: `template_libera = 0`. Como o join é interno, **nenhum candidato
+sobrevive, qualquer que seja o número deles**. Hoje `vencimentos_proximos`
+também está em 0 (nenhum salão perto de vencer), então a falha é **latente, e
+certa quando chegar a hora**.
+
+Não é cegueira total: o CRM mostra a contagem na tela (`AssinaturaPage`,
+`AvisoAssinatura`). O que está morto é o empurrão por WhatsApp para quem não
+abriu o CRM — e o fluxo se reporta saudável enquanto isso.
+
+**Para ligar:** submeter `fim_do_teste_gratis` à Meta, aprovar, e só então
+`update whatsapp_templates set status='aprovado' where chave='fim_de_teste'`.
+
+#### ACHADO 2 — Dois templates da fila vieram como MARKETING (MÉDIO, dormente)
+
+A view `templates_recategorizados` — que já existia para isso — acusa:
+`vaga_ja_preenchida` e `espera_encerrada` foram pedidos como `utility` e a Meta
+devolveu `marketing`. Marketing custa mais e respeita opt-out de marketing, o
+que muda a entrega. Os dois estão inativos junto com a fila; quando a fila voltar,
+é a primeira coisa a reavaliar.
+
+#### ACHADO 3 — Seis linhas dizem `ativo = true` para template inexistente (BAIXO)
+
+`agendamento_confirmado`, `cancelamento_confirmado`, `fim_de_teste`,
+`lembrete_primeira_vez`, `lembrete_recorrente`, `reagendamento_confirmado`.
+Nenhuma envia, porque todo consumidor confere `status='aprovado'` junto — mas a
+escrituração mente, e é ela que alguém vai ler no futuro.
+
+#### ACHADO 4 — Um deploy antigo do CRM continua no ar (MÉDIO)
+
+Na Vercel há cinco projetos; só `clubcut` é o atual. O `crm-salao-web` aponta
+para o repositório antigo `Saymon0123/crm-salao`, teve o último deploy de
+produção em **ago/2026**, está `READY` e segue alcançável publicamente — uma
+cópia velha do CRM servindo na internet. `crm-salao`, `beleza-em-dia` e
+`playbook-projetos` estão parados do mesmo jeito.
+
+#### ACHADO 5 — `authenticated` tem TRUNCATE em 74 tabelas (MÉDIO, já conhecido)
+
+Medido de novo: SELECT em 81 tabelas, DELETE em 75, INSERT/REFERENCES/TRIGGER/
+**TRUNCATE em 74**, UPDATE em 71. `TRUNCATE` ignora RLS. Não é alcançável pelo
+PostgREST (os verbos REST viram DML, e `authenticated` é assumido por `set role`,
+não é papel de login), mas uma migration fecha.
+
+#### ACHADO 6 — Cinco funções `private.*` sem `search_path` fixo (BAIXO)
+
+`fechamento_vigente`, `limpa_prazo_fora_da_reserva`, `telefone_valido`,
+`destino_whatsapp`, `documento_valido`. **Conferido: todas são SECURITY INVOKER**
+(`prosecdef = false`), então não há escalada de privilégio — o advisor marca WARN
+por padrão, mas o risco real é baixo. Barato de fechar mesmo assim.
+
+#### ACHADO 7 — Desempenho: nada dói hoje, mas há rastro (BAIXO)
+
+- **120 avisos de múltiplas políticas permissivas**: `services` 24,
+  `stock_movements` 18, `commissions` 12, `pacotes_do_cliente` 12, e mais nove
+  tabelas com 6 cada (inclusive `dias_de_folga`, que nasceu assim na 0213 por
+  espelhar `professional_schedules`). Com 1.851 linhas na maior tabela isso é
+  irrelevante; a 100 mil, não é.
+- **1 política reavaliando `auth.uid()` por linha**: `notificacoes_vistas`.
+  Conserto de uma linha — `(select auth.uid())`.
+- **7 índices nunca usados** e **18 chaves estrangeiras sem índice**.
+
+#### ACHADO 8 — Quatro arquivos passaram de 1.200 linhas (BAIXO)
+
+`NewSaleModal.tsx` 1.440, `EquipePage.tsx` 1.411, `AgendaPublicaPage.tsx` 1.363,
+`VendasPage.tsx` 1.227. Não é defeito; é o lugar onde o próximo defeito vai se
+esconder.
+
+#### O que dá para apagar hoje
+
+| | onde |
+|---|---|
+| `DIAS_DE_VALIDADE_DO_CONVITE` | `src/lib/planos.ts:27` — única constante exportada que ninguém usa, nem no próprio arquivo |
+| `hello_world` | template de exemplo da Meta, en_US, sem uso |
+| 7 índices sem uso | banco |
+| 3 ou 4 projetos da Vercel | painel |
+
+Os outros 50 exports "sem uso externo" são **tipos e constantes usados dentro do
+próprio arquivo** — exportar tipo documenta contrato, não é código morto. Foram
+conferidos um a um.
+
+#### O que não deu para verificar
+
+- **Sentry**: o MCP exige autorização do dono. As quatro variáveis estão na
+  Vercel (`VITE_SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN`)
+  e o código as usa em dez arquivos, então está ligado — mas não dá para ver os
+  erros reais daqui.
+- Se os 16 workflows ativos do n8n têm todos o `errorWorkflow` apontado para o
+  `MCA5cHn52f1k9sSf`. Não foram abertos um a um.
+- Caminhos de tela: nada foi aberto logado no CRM.
+
+#### ACHADO 9 — A variacao do Financeiro compara 6 dias contra 30 (ALTO para o dono)
+
+Apareceu montando os prints de captacao, e nao e artefato dos dados de exemplo:
+esta no `computePeriods`. No filtro "Este mes", o periodo atual vai do dia 1
+ate AGORA, e o anterior e o mes passado **inteiro**:
+
+    currentStart = 1 do mes       currentEnd = endOfDay(hoje)
+    prevStart    = 1 do mes passado   prevEnd = ultimo dia do mes passado
+
+No dia 6, isso compara 6 dias de faturamento contra 30. A conta da uma queda de
+~80% — e a tela mostra exatamente isso: **"queda de 82,7%" em vermelho**, no
+cartao do faturamento, que e o primeiro que o dono olha. 6/30 = 20%, ou seja
+80% de "queda"; o numero medido foi 82,7%.
+
+Ou seja: **durante quase todo o mes o dono abre o Financeiro e ve que esta indo
+muito mal**, mesmo faturando mais que no mes passado. So vira verde nos ultimos
+dias, quando os dois periodos finalmente tem tamanho parecido.
+
+O conserto e comparar o MESMO recorte: 1 a 6 do mes passado contra 1 a 6 deste.
+Uma linha em `computePeriods` (`prevEnd` truncado ao mesmo dia do mes), e o
+`computePeriods.test.ts` ja existe para guardar a regra.
+
+Nao foi corrigido aqui porque o pedido era print, nao conserto — mas e o achado
+mais caro deste dia: ele mente para o dono todo mes.
+
+#### E ficou pronto um ambiente de prints
+
+`preview.local/` (ignorada pelo git, com LEIA-ME): sobe o App real — rotas, CSS,
+tokens e componentes de verdade — com uma barbearia inventada, sem conta e sem
+banco. O corte e no `fetch`: intercepta o dominio do Supabase e devolve dados de
+mentira; o resto da pilha e o produto.
+
+Tres armadilhas que custaram tempo e valem para qualquer preview assim:
+
+1. **`IntersectionObserver` nao dispara em aba que o sistema nao esta pintando**
+   — e os cartoes do Financeiro so mostram numero depois de serem "vistos". O
+   print saia com tudo zerado, parecendo erro de dado.
+2. **`requestAnimationFrame` tambem nao roda** — e e ele que faz o numero subir.
+   Mesmo sintoma, segunda causa.
+3. **O substituto do `rAF` precisa ser ASSINCRONO.** Chamando o callback na
+   hora, o recharts quebra com "Cannot access 'rafId' before initialization":
+   ele faz `const rafId = requestAnimationFrame(cb)` e o proprio `cb` le `rafId`.
+
+### "Falar com o dono": o caminho existe inteiro, e morre no fim (06/10)
+
+Pergunta do dono: quando o cliente pede para falar com uma pessoa, o sistema
+esta de pe? **Esta — ate o ponto em que precisa chamar o dono.**
+
+**O que funciona, conferido no que esta no ar:**
+
+1. O agente tem a ferramenta `Chamar o Dono (needs_human)` no workflow
+   `rJO1n7cFeNDIJyB5`, que esta **ativo**.
+2. Ela marca `needs_human: true` **e** `agent_paused: true` na mesma escrita: o
+   agente se cala na hora, sem esperar ninguem.
+3. Grava um `resumo_contexto` escrito pela IA, com instrucao exigente -- quem e
+   o cliente, o que quer, o que ja foi combinado, o que falta decidir, e proibido
+   escrever so "o cliente pediu para falar com o dono".
+4. Antes de qualquer resposta, o fluxo le `agent_paused` (`Consultar
+   agent_paused` -> `Agente Pausado?`) e desvia para `Fim - Agente Pausado
+   (Dono Assumiu)`. Nao ha risco de o agente falar por cima.
+5. Com o CRM ABERTO o aviso e **imediato**: `usePendingConversations` escuta
+   `postgres_changes` em tempo real, toca som e acende o botao WEB em qualquer
+   tela. Na aba Conversas aparece "Solicitou falar com o dono" com contador,
+   selo "Pediu voce" e o resumo no banner.
+6. Quando o dono responde, a edge `whatsapp` zera `needs_human` e `agent_paused`
+   juntos.
+
+**O buraco:** se o CRM nao estiver aberto, **ninguem avisa o dono**. Medido:
+
+- `whatsapp_conversations` **nao tem** coluna de carimbo (`needs_human_em`),
+  pendencia que o proprio backlog registrou em 14/09 e segue aberta;
+- a tabela tem **zero gatilhos**;
+- a view `notificacoes_do_salao` **nao cita `needs_human`** -- o sino nao cobre
+  o evento (conferido por consulta, nao por leitura de codigo);
+- nenhum dos **7 jobs do pg_cron** toca `needs_human` ou `agent_paused`;
+- nenhum fluxo do n8n manda e-mail ou WhatsApp ao dono nesse caso.
+
+**E o silencio do agente piora a falha.** Como o passo 2 pausa o agente, o
+cliente que pediu uma pessoa deixa de receber qualquer resposta automatica --
+e fica esperando indefinidamente, porque nada destrava sozinho. Antes de pedir
+o dono ele pelo menos era atendido pelo robo. Hoje, com o dono cortando cabelo
+e o CRM fechado, o cliente cai num vacuo.
+
+**Caminho, na ordem do custo:** (1) coluna `needs_human_em` preenchida pela
+ferramenta do agente -- destrava o sino e o historico; (2) quarto ramo na
+`notificacoes_do_salao`; (3) um aviso que saia do CRM (e-mail pelo canal de
+alertas ja existente, que e o caminho mais barato e ja resolvido para auditoria);
+(4) um prazo que devolva a conversa ao agente se o dono nao assumir, para o
+cliente nao ficar no vacuo.
+
+Nada disso foi feito aqui: a pergunta era de diagnostico.

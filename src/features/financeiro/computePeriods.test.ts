@@ -57,3 +57,57 @@ describe('computePeriods com dia escolhido', () => {
     expect(semRef.currentStart.getMonth()).toBe(hoje.getMonth())
   })
 })
+
+/**
+ * O RECORTE IGUAL (06/10).
+ *
+ * Até aqui o filtro "Este mês" comparava "do dia 1 até agora" contra "o mês
+ * passado INTEIRO". No dia 6, eram 6 dias contra 30 — uma queda de ~80% por
+ * construção, estampada em vermelho no cartão de faturamento de uma barbearia
+ * que estava indo bem. Só virava verde nos últimos dias do mês.
+ *
+ * A asserção que não pode cair é a primeira: o período anterior termina no
+ * MESMO dia do mês que o atual. Qualquer volta ao "mês anterior inteiro" a
+ * derruba.
+ */
+describe('computePeriods: o periodo anterior usa o mesmo recorte', () => {
+  it('no dia 6, compara 1-6 contra 1-6 do mes passado', () => {
+    const p = computePeriods('mes', '2026-10', undefined, new Date(2026, 9, 6, 15, 30))
+    expect(p.currentStart.getDate()).toBe(1)
+    expect(p.currentEnd.getDate()).toBe(6)
+    expect(p.prevStart.getMonth()).toBe(8) // setembro
+    expect(p.prevStart.getDate()).toBe(1)
+    expect(p.prevEnd.getMonth()).toBe(8)
+    expect(p.prevEnd.getDate()).toBe(6)
+  })
+
+  it('o anterior cobre a mesma quantidade de dias que o atual', () => {
+    const p = computePeriods('mes', '2026-10', undefined, new Date(2026, 9, 6, 15, 30))
+    const dias = (a: Date, b: Date) => Math.round((b.getTime() - a.getTime()) / 86400000)
+    expect(dias(p.prevStart, p.prevEnd)).toBe(dias(p.currentStart, p.currentEnd))
+  })
+
+  it('dia 31 contra um mes anterior mais curto para no ultimo dia dele', () => {
+    // 31/03 contra fevereiro, que tem 28 em 2026: sem o `min`, o JavaScript
+    // empurraria para 3 de marco e a comparacao sairia do mes.
+    const p = computePeriods('mes', '2026-03', undefined, new Date(2026, 2, 31, 10, 0))
+    expect(p.prevEnd.getMonth()).toBe(1) // fevereiro
+    expect(p.prevEnd.getDate()).toBe(28)
+  })
+
+  it('mes ja fechado continua comparando mes inteiro contra mes inteiro', () => {
+    // Navegou para agosto estando em outubro: os dois lados sao meses cheios.
+    const p = computePeriods('mes', '2026-08', undefined, new Date(2026, 9, 6, 15, 30))
+    expect(p.currentEnd.getDate()).toBe(31) // agosto inteiro
+    expect(p.prevEnd.getMonth()).toBe(6) // julho
+    expect(p.prevEnd.getDate()).toBe(31) // julho inteiro
+  })
+
+  it('sem relogio injetado, o comportamento e o de hoje', () => {
+    const agora = new Date()
+    const mes = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`
+    const comRelogio = computePeriods('mes', mes, undefined, agora)
+    const semRelogio = computePeriods('mes', mes)
+    expect(semRelogio.prevEnd.getDate()).toBe(comRelogio.prevEnd.getDate())
+  })
+})

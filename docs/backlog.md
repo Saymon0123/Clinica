@@ -8454,3 +8454,52 @@ que as usam. A primeira execução real é quem diz.
 
 Faltando qualquer uma, nada é avisado — e o gate da 0215 garante que nada seja
 reivindicado nem cancelado também.
+
+### O lint caiu de 281 para 276 sozinho, e o motivo é bom (06/10)
+
+Mergeados os três PRs seguros do dependabot (187, 170, 159), a contagem de avisos
+do lint **caiu cinco** sem ninguém tocar em código. Número que se mexe sozinho é
+exatamente o que não se deve aceitar sem olhar.
+
+A causa: `oxlint` foi de **1.82 para 1.86**. Isolado rodando a versão antiga
+contra o código de hoje (`npx oxlint@1.82.0`), que é barato e não exige
+reinstalar nada:
+
+| Regra | 1.82 | 1.86 | |
+|---|---|---|---|
+| `eslint(no-unused-vars)` | 98 | 88 | **−10** |
+| `react(purity)` | 7 | 12 | **+5** |
+| todo o resto | — | igual | 0 |
+
+**Os 10 que sumiram não eram nossos.** `no-unused-vars` não dispara em `src/` nem
+em `supabase/` em nenhuma das duas versões — os 98 e os 88 estão todos em
+`.agents/skills/`, que é código vendorizado de terceiros.
+
+**Os 5 que apareceram são nossos, e a regra apertou.** O oxlint 1.86 passou a
+flagrar `new Date()` sem argumento durante o render, além do `Date.now()` que já
+flagrava:
+
+- `MiniCalendar.tsx:36`
+- `AgendaPublicaPage.tsx:782`
+- `FechamentoComissaoModal.tsx:122`
+- `VendasPage.tsx:1158` (a linha do `© {new Date().getFullYear()}` no rodapé)
+- `WhatsAppWebPage.tsx:160`
+
+Todos **pré-existentes** — nenhum nasceu hoje. O do rodapé é inofensivo (o ano
+não muda entre dois renders); os outros merecem um olhar quando alguém passar por
+ali, porque `new Date()` durante o render é a mesma família do `Date.now()` que o
+backlog já registrou no `AgendaPublicaPage`.
+
+Não foram silenciados nem consertados aqui: silenciar aviso foi o que criou o
+defeito do fechamento congelado em 04/10.
+
+**Ficam de fora, de propósito:** os dois PRs de major do dependabot — `vitest 4→5`
+(#161) e `typescript 6→7` (#160). CI verde num major significa que os testes
+compilam e passam, não que o comportamento é idêntico — e as catracas deste
+projeto leem arquivos como TEXTO, então continuariam passando mesmo se a
+semântica do runner mudasse por baixo. Se forem mergeados, que seja **um de cada
+vez**, com a suíte rodando entre eles.
+
+**E o PR #1 foi fechado.** Aberto em 03/10/2025 da branch do Cursor que montou o
+andaime original, com +13.234 linhas de um estado que a `main` deixou para trás há
+um ano. Fechado para a lista de PRs parar de sugerir trabalho pendente.

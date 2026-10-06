@@ -8314,3 +8314,143 @@ Tirar as três ferramentas e o bloco do prompt do agente. Hoje ele continua
 oferecendo a fila e recebendo a recusa da 0214 — honesto, mas desperdiça uma ida
 ao banco e uma volta de conversa. O que sai, e como repor, está em
 [`a-fila-no-agente.md`](a-fila-no-agente.md).
+
+---
+
+## 2026-10-05 — O aviso do imprevisto ganhou motor próprio (0215)
+
+A folga (0213) fecha o dia para novos. Os que já estavam marcados continuam lá —
+e é isso que ela sozinha não resolve: *"no dia 7 ele possui 10 agendamentos"*.
+
+### Por que motor próprio
+
+O desenho de 04/10 dizia que o aviso *"é a fila de espera ao contrário, e reusa o
+mesmo motor"*. Em 05/10 o dono adiou a fila. Reusar o motor dela seria pendurar
+um recurso vivo num que está desligado por decisão — então o dono pediu motor
+próprio.
+
+São parecidos e não iguais: a fila **procura vaga para quem espera**; este
+**procura gente para avisar que a vaga sumiu**. A fila chama em paralelo e segura
+reserva; este chama **um de cada vez** e não segura nada.
+
+### O prazo: calculado, não fixo
+
+O dono decidiu a forma em 04/10, não o número. Aqui ele sai de uma conta:
+
+    prazo = min(tempo até o dia ÷ quem ainda falta avisar, teto de 3h)
+
+com **piso de 30 minutos**. Fixo não serviria: uma folga marcada com três dias de
+antecedência tem janela de sobra; uma marcada para amanhã com dez pessoas não
+tem.
+
+**Quando o piso não cabe, o escalonamento é abandonado** e todos são avisados de
+uma vez, com prazo até o começo do dia. É a escolha menos ruim: dez avisos juntos
+disputando vagas é ruim, mas deixar a décima pessoa sem aviso e cancelá-la no dia
+é pior — e romperia a promessa de que *"ele foi avisado"*.
+
+### Como se sabe que a pessoa resolveu
+
+Pelo próprio agendamento, não por resposta. O template tem **um botão de URL** (a
+Meta não deixa misturar resposta rápida com link), e ele leva à página de gestão,
+onde o cliente remarca ou cancela sozinho desde a 0176. Remarcou: sai do dia.
+Cancelou: sai do `agendado/confirmado`. Nos dois casos deixa de ser candidato, e o
+próximo anda. **Não há webhook de resposta para manter** — menos uma peça viva.
+
+### Reivindicar antes de enviar, e devolver quando falha
+
+`proximos_avisos_do_imprevisto` grava a linha **antes** de o n8n enviar: sem isso,
+duas varreduras sobrepostas avisariam a mesma pessoa duas vezes, o que a regra do
+aviso único proíbe. O preço é que o fluxo precisa **devolver** a reivindicação
+quando o envio falha, senão uma falha de rede consome o aviso único de quem nunca
+o recebeu.
+
+É o espelho invertido do que a fila faz: lá se grava **depois** do envio, porque o
+que se guarda é o WAMID; aqui se grava **antes**, porque o que se guarda é o LUGAR
+na fila.
+
+E a devolução só apaga quando `message_id is null`: devolução atrasada, depois de
+a mensagem ter saído, não pode fazer a pessoa ser avisada de novo.
+
+### A assimetria que protege a promessa
+
+O cancelamento no vencimento alcança **só quem foi avisado**. A regra "um aviso
+só, e quem não remarca perde o horário" só é justa com quem recebeu o aviso —
+cancelar quem nunca soube é exatamente o que ela não autoriza. A asserção 5 do
+pgTAP guarda isso, e é fácil de perder num refactor: o cliente só descobriria
+chegando à barbearia fechada.
+
+### Quem não tem telefone utilizável
+
+Entra na reivindicação do mesmo jeito, com `destino` nulo — o n8n não envia, e a
+fila **anda** em vez de travar para sempre no mesmo nome. Aparece na agenda do
+dono, que liga à mão. Travar por causa dele deixaria todos os seguintes sem aviso.
+
+### Medido em produção
+
+Ensaio em transação com três agendamentos (inseridos **fora de ordem** de
+propósito): a primeira varredura devolveu **um**, o das 09:00; a segunda em
+seguida devolveu **zero**; resolvido o primeiro, a terceira devolveu o das 11:00;
+e no vencimento **um** foi cancelado — o que foi avisado, não o que nunca foi.
+Depois de aplicar, a varredura real devolveu `{"avisos":[],"cancelados":0}` e os
+grants ficaram só com `postgres` e `service_role`.
+
+### Um erro meu, que o próprio teste pegou
+
+As asserções 7 e 8 reprovaram na primeira rodada porque eu tinha posto **efeito
+colateral dentro de expressão booleana** — `ok(devolver(...) and not exists(...))`.
+O Postgres não garante que o lado esquerdo do `and` seja avaliado primeiro, então
+a conferência podia rodar antes da chamada. Separado em bloco `do` próprio.
+
+### O que falta
+
+O **fluxo do n8n** que chama `rodar_os_avisos_do_imprevisto`, manda o
+`imprevisto_na_barbearia` (já aprovado) pelo número central e chama
+`registrar_aviso_do_imprevisto` no sucesso / `devolver_aviso_do_imprevisto` na
+falha. O motor está pronto e inerte até ele existir.
+
+### O fluxo do n8n do aviso (05/10)
+
+**`CRM Salão - Aviso de Imprevisto (Folga)`**, id `R4PMPsM96cVDF09b`, **inativo de
+propósito**. 13 nós, no projeto pessoal.
+
+A cada 10 minutos: gate do template → remetente central → `rodar_os_avisos_do_imprevisto`
+→ separar → um a um → enviar pelo número central → registrar o WAMID.
+
+**O ramo de erro é o que esta feature tem de diferente da fila.** `Enviar` sai com
+`onError: continueErrorOutput`, e a saída 1 vai para **`Devolver Aviso`**:
+
+    Enviar → [0] Registrar Aviso → Um a Um
+           → [1] Devolver Aviso  → Um a Um
+
+Sem essa linha, uma falha de rede consumiria o aviso **único** de quem nunca o
+recebeu — a reivindicação é gravada antes do envio justamente para duas
+varreduras não avisarem a mesma pessoa duas vezes, e o preço disso é ter de
+devolver quando não deu. Na fila é o contrário: lá se grava **depois** do envio,
+porque o que se guarda é o WAMID.
+
+**O botão de URL:** o nó nativo do WhatsApp aceita `sub_type: 'url'`, `index: 0` e
+`buttonParameters`, então não precisou de HTTP Request cru para montar o
+componente — o que eu temia ao começar.
+
+#### Medido com `test_workflow`
+
+Pin data com uma resposta realista da RPC (dois avisos, um **sem telefone**):
+
+- `Template Liberado?` mandou para a saída verdadeira — o gate abre com o
+  template aprovado e ativo;
+- `Separar Avisos` devolveu **um** item de dois: `parametros: ["João", "07/10",
+  "09:00", "El Corte"]`, token separado, e **o sem destino filtrado**;
+- o primeiro nome saiu sozinho e **com acento** (`João`), que era o risco depois
+  do episódio de codificação do mesmo dia;
+- o laço chegou ao `Fim`.
+
+O que o teste **não** prova: as credenciais, porque `test_workflow` fixa os nós
+que as usam. A primeira execução real é quem diz.
+
+#### Para ligar, nesta ordem
+
+1. `update public.whatsapp_templates set ativo = true where chave = 'horario_cancelado_pela_barbearia';`
+2. Ativar o workflow `R4PMPsM96cVDF09b`.
+
+Faltando qualquer uma, nada é avisado — e o gate da 0215 garante que nada seja
+reivindicado nem cancelado também.

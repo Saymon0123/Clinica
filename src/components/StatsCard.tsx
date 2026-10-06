@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { alturaDaBarra } from './alturaDaBarra'
 
 type BarPoint = { label: string; value: number; highlight?: boolean }
 
@@ -29,7 +30,8 @@ export function StatsCard({
   formattedValue,
   badge,
   bars,
-  barColor = 'bg-primary/25',
+  eixo,
+  barColor = 'bg-primary/40',
   barHighlightColor = 'bg-primary',
   hero = false,
   detalhe,
@@ -46,6 +48,12 @@ export function StatsCard({
    */
   detalhe?: ReactNode
   bars: BarPoint[]
+  /**
+   * As duas pontas do eixo do mini-gráfico ("1 out" … "hoje"). Sem elas o
+   * desenho não diz o que é: são 5 barras no dia 5 do mês, 31 no fim dele e 7
+   * no filtro por dia, e nada na tela explicava a diferença.
+   */
+  eixo?: [string, string]
   barColor?: string
   barHighlightColor?: string
   /**
@@ -112,21 +120,44 @@ export function StatsCard({
         )}
       </div>
 
-      <div className="flex h-9 items-end gap-1">
+      {/* O vão encolhe quando o mês cresce: 4px servem para os 7 dias do filtro
+          "Dia", mas num mês de 31 barras eles comem 120px dos ~300 do card e o
+          gráfico vira um pente. */}
+      <div
+        className={`flex h-9 items-end border-b ${bars.length > 10 ? 'gap-0.5' : 'gap-1'} ${
+          bars.length === 0
+            ? 'border-transparent'
+            : hero
+              ? 'border-primary-foreground/25'
+              : 'border-border-strong'
+        }`}
+      >
         {bars.map((bar, i) => (
           <div key={i} className="flex-1 h-full flex items-end">
             <div
-              className={`w-full rounded-sm transition-[height] duration-700 ease-out ${
+              className={`w-full rounded-t-sm transition-[height] duration-700 ease-out ${
                 bar.highlight ? barHighlightColor : barColor
               }`}
               style={{
-                height: visible ? `${Math.max((Math.abs(bar.value) / maxBar) * 100, 6)}%` : '0%',
+                height: visible ? alturaDaBarra(bar.value, maxBar) : '0%',
                 transitionDelay: `${i * 40}ms`,
               }}
-              title={`${bar.label}: ${bar.value}`}
+              title={`${bar.label} · ${formattedValue(bar.value)}`}
             />
           </div>
         ))}
+      </div>
+
+      {/* A linha do eixo sai mesmo vazia: o card de comissão do barbeiro não
+          tem gráfico, e sem este espaço ele ficaria mais baixo que os outros
+          três da mesma fileira. */}
+      <div
+        className={`flex justify-between text-[11px] mt-1.5 ${
+          hero ? 'text-primary-foreground/75' : 'text-muted-foreground'
+        }`}
+      >
+        <span>{eixo ? eixo[0] : ' '}</span>
+        <span>{eixo ? eixo[1] : ''}</span>
       </div>
     </div>
   )

@@ -8503,3 +8503,63 @@ vez**, com a suíte rodando entre eles.
 **E o PR #1 foi fechado.** Aberto em 03/10/2025 da branch do Cursor que montou o
 andaime original, com +13.234 linhas de um estado que a `main` deixou para trás há
 um ano. Fechado para a lista de PRs parar de sugerir trabalho pendente.
+
+### O tracejado nos cards do Financeiro era um piso de 6% (05/10)
+
+O dono circulou os quatro mini-gráficos da aba Financeiro: "está meio estranho
+aos meus olhos". Estava mesmo, e a causa era uma linha só do `StatsCard`.
+
+Toda barra tinha piso de **6%** da faixa — zero inclusive. A faixa tem 36px, e
+6% dela são **2,16px**. Com o vão de 4px entre as barras, uma sequência de dias
+zerados desenhava um **tracejado** rente ao fundo do card. Não é informação: é
+o que qualquer pessoa lê como defeito de renderização.
+
+Pior que feio. O piso **apagava a diferença entre "ninguém veio" e "veio um"**:
+1 de 40 é 2,5%, então o piso empurrava os dois para os mesmos 6% e o dono não
+tinha como distinguir um dia parado de um dia fraco. E o destaque do último dia
+piorava — um dia zerado saía com a cor cheia, virando um sublinhado deliberado.
+
+**O que mudou, item a item:**
+
+1. **Zero não desenha.** `alturaDaBarra` saiu para módulo próprio (função pura,
+   testável, e arquivo que exporta componente + função quebra o fast refresh —
+   o oxlint avisa). Zero devolve `0%`; o piso de 8% vale só para valor diferente
+   de zero.
+2. **Linha de base.** Quem diz que o dia existiu passa a ser uma régua de 1px
+   embaixo da faixa (`--border-strong`, ou branco a 25% no card-herói). Sem ela
+   o zero não se lê como zero.
+3. **As duas pontas do eixo** ("1 out" … "hoje"). São 5 barras no dia 5, 31 no
+   fim do mês e 7 no filtro por dia — e nada na tela dizia qual. A ponta direita
+   vira "hoje" quando é hoje, o que também explica sozinha por que a última
+   barra costuma ser mais baixa: o dia ainda não acabou.
+4. **O vão encolhe acima de 10 barras** (4px → 2px). Num mês de 31 dias os 4px
+   comiam 120px dos ~300 do card: o gráfico virava um pente.
+5. **A cor da barra subiu de 25% para 40%.** 25% do verde sobre o branco dá
+   `rgb(199,215,208)` — um cinza que mal se distinguia do card. O dia destacado
+   continua se separando por ser a cor cheia.
+6. **Sob erro o gráfico cala.** O hook sai cedo quando a consulta falha e **não**
+   zera o que já estava em `data`: sem guarda, uma recarga que falha deixava o
+   número em "—" e as barras desenhando os dados velhos ao lado. É o achado 31
+   em forma de barra. Achado enquanto se mexia aqui, consertado aqui.
+
+**A catraca:** `src/components/StatsCard.test.ts`, 11 asserções. A que não pode
+cair é a de que **zero e pouco desenham diferente** — qualquer piso reaplicado ao
+zero a derruba, inclusive um reintroduzido de boa fé para "a barra não sumir".
+Provado que falha: repondo o piso de 6%, 4 asserções quebram.
+
+**Verificado em tela** com o componente de verdade e o CSS de verdade (não uma
+maquete): claro e escuro, 5 barras e 31, celular e desktop, e os quatro estados
+— cheio, série toda zerada, sob erro e sem série (o card de comissão do
+barbeiro, que não tem gráfico e não podia ganhar uma linha de base solta nem
+ficar mais baixo que os três ao lado).
+
+**Conferido que o Tailwind gerou as classes novas** lendo o CSS do build, uma a
+uma — `border-border-strong`, `bg-primary/40`, `bg-danger/40`,
+`bg-primary-foreground/30`, `border-primary-foreground/25`, `rounded-t-sm`,
+`gap-0.5`, `text-[11px]`. Classe sem token não reclama em lugar nenhum: some.
+
+**Onde mais isso aparecia: em lugar nenhum.** O `StatsCard` só é usado no
+Financeiro, e os cards da `RedePage`, que parecem irmãos, são de número puro —
+não têm mini-gráfico. O conserto cobre tudo o que existe hoje.
+
+Lint segue em **276**; 611 testes verdes em 68 arquivos.

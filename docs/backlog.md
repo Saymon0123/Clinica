@@ -9047,3 +9047,32 @@ duas telas como texto (padrao do tripwire de `ErroDeCarga`). Tres assercoes
 reprovam contra o texto antigo -- conferido devolvendo os arquivos por stash.
 A quarta guarda a promessa de lembrete e reativacao sem custo, que segue
 verdadeira e pode cair por tabela numa proxima mexida na seccao de preco.
+
+
+### Nome de exibição na Meta: o recurso está pronto, falta enviar (07/10)
+
+O nome do número central foi recusado **quatro vezes com o mesmo código**,
+`BIZ_COMMERCE_VIOLATION_OTHER`: `Club_Cut` (08/09), `Club Cut` (14/09),
+`Club Cut - Aura IA` (19/09) e `Aura IA - Club Cut` (06/10). Quatro formatos, um
+motivo só: o bloqueio é a avaliação do **negócio**, não a grafia — e trocar a
+grafia de novo é queimar tentativa.
+
+**Onde o motivo mora.** Nem o WhatsApp Manager nem a Graph API mostram: ele chega
+pelo webhook `phone_number_name_update` e fica gravado em
+`public.eventos_da_waba`. Foi assim que as quatro recusas apareceram.
+
+**Descartado:** a verificação de Tech Provider. Ela já está **verificada** no
+portfólio, então não é ela que trava o nome.
+
+**O recurso**, preenchido em 07/10 no Suporte Direto ("Dev: Phone Number &
+Registration" → "Appeal Display Name Rejection"), pede à Meta o ponto exato da
+política e o que mudar. Ficou aberto no navegador do dono, **sem enviar**.
+
+**Pendente (fora do repositório):**
+- **Dono:** anexar o documento do CNPJ ao recurso e enviar. Depois, ler a
+  resposta antes de qualquer nova submissão de nome.
+- **Site da AURA** (aurastudioai.com.br, que é o site cadastrado no portfólio
+  verificado e portanto o que o revisor usa para ligar o nome à empresa): ele
+  escreve o produto como **"ClubCut"**, junto, e linka para
+  `clubcut.vercel.app/inicio`. O certo é **"Club Cut"** e **clubcut.space** —
+  mesma grafia e mesmo endereço do nome pedido e do perfil comercial do número.

@@ -8849,3 +8849,44 @@ a mao, com -3h fixo (o Brasil nao tem horario de verao desde 2019).
 O agente, ao voltar, pode oferecer chamar o dono de novo e entrar em laco. Nao e
 defeito desta entrega -- e materia do prompt dele, e precisa de uma passada
 separada. Para LIGAR o e-mail: ativar o workflow `tlkSsBL5clXvuuDT`.
+
+### O agente nao chama o dono duas vezes pelo mesmo assunto (06/10)
+
+Buraco deixado em aberto pela 0216 e fechado em seguida. Com o prazo de 30
+minutos devolvendo a conversa ao agente, abriu-se um laco possivel: cliente
+reclama -> agente chama o dono e se cala -> 30 min -> o cron devolve -> cliente
+manda outra mensagem -> o agente le a reclamacao de novo e **chama o dono outra
+vez**. A cada meia hora, um e-mail novo e mais uma pausa.
+
+**O conserto nao foi no prompt do sistema, foi no CONTEXTO.** O bloco
+`[CONTEXTO INTERNO]` que o agente recebe a cada mensagem ganhou uma linha:
+
+    PEDIDO DE DONO: JA EXISTE UM EM ABERTO (desde <carimbo>). Voce ja chamou o
+    dono para este cliente e ele ainda nao respondeu. NAO chame de novo - nem
+    que o assunto volte, nem que ele insista, nem que pareca outro motivo. Diga
+    em UMA frase que o recado ja esta com o dono e que ele responde assim que
+    puder, e siga ajudando no que e seu: marcar, remarcar, cancelar, ver
+    horarios. Chamar duas vezes nao acelera nada.
+
+Quando nao ha pedido aberto, a linha diz `nenhum em aberto.` e nada muda.
+
+**Por que no contexto e nao nas 15 mil letras do prompt do sistema:** e o estilo
+que ja estava la -- as linhas do contexto ja carregam instrucao ("NUNCA
+pergunte", "esta e a UNICA verdade sobre a agenda dele"). E uma regra que so
+aparece quando vale pesa mais que uma regra enterrada numa lista de sete itens
+que o modelo le em toda mensagem, inclusive nas 99% em que ela nao se aplica.
+
+O dado vem do no `Consultar agent_paused`, que ja rodava antes do agente e ja
+lia a conversa inteira -- nao foi preciso consulta nova. Se o campo vier
+indefinido, a expressao cai em "nenhum em aberto": o pior caso e o
+comportamento de antes, nunca um erro.
+
+**Conferido por diff** contra a versao anterior do workflow: uma unica insercao
+de 565 caracteres, nada removido, os outros 90 nos byte a byte iguais. Num
+agente de 91 nos que esta no ar, isso nao se confere de olho.
+
+**O que fica em aberto, de propósito:** se o cliente levantar um assunto
+REALMENTE novo enquanto um pedido esta aberto, o agente nao vai chamar o dono de
+novo -- vai dizer que o recado ja esta com ele. E a troca certa (um e-mail a
+menos vale mais que um assunto a mais no resumo), mas e uma escolha, nao um
+acidente.

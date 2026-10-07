@@ -51,8 +51,15 @@ function parseDiaLocal(refDia: string): Date {
  * o dono quer descer a qualquer dia e achar os de mais movimento). Sem
  * refDia, "dia" continua sendo hoje.
  */
-export function computePeriods(filter: PeriodFilter, refMonth: string, refDia?: string): Periods {
-  const now = new Date()
+export function computePeriods(
+  filter: PeriodFilter,
+  refMonth: string,
+  refDia?: string,
+  /** Só o teste passa: sem relógio injetável não dá para prender a regra do
+   *  recorte igual sem depender do dia em que a suíte roda. */
+  agora: Date = new Date(),
+): Periods {
+  const now = agora
 
   if (filter === 'dia') {
     const base = refDia ? parseDiaLocal(refDia) : now
@@ -75,7 +82,29 @@ export function computePeriods(filter: PeriodFilter, refMonth: string, refDia?: 
   const ultimoDia = ehMesCorrente ? now.getDate() : new Date(ano, mes, 0).getDate()
   const currentEnd = endOfDay(ehMesCorrente ? now : new Date(ano, mes, 0))
   const prevStart = startOfDay(new Date(ano, mes - 2, 1))
-  const prevEnd = endOfDay(new Date(ano, mes - 1, 0))
+  /**
+   * O período anterior termina no MESMO ponto do mês, não no fim dele.
+   *
+   * Até 06/10 a comparação era "do dia 1 até agora" contra "o mês passado
+   * inteiro". No dia 6, isso punha 6 dias contra 30: a conta dá ~80% de queda
+   * sempre, e o cartão de faturamento — o primeiro que o dono olha — abria com
+   * **"queda de 82,7%" em vermelho** numa barbearia que estava faturando mais
+   * que no mês anterior. O número só ficava verde nos últimos dias do mês,
+   * quando os dois lados enfim tinham tamanho parecido.
+   *
+   * Agora, no dia 6, compara 1–6 contra 1–6. O `min` é para o dia 31 cair no
+   * último dia de um mês anterior mais curto, em vez de transbordar para o mês
+   * seguinte — `new Date(2026, 1, 31)` vira 3 de março, não 31 de fevereiro.
+   *
+   * Mês fechado (navegou para trás) não entra aqui: ali os dois lados já são
+   * meses inteiros, e truncar o anterior é que seria injusto.
+   */
+  const diasNoMesAnterior = new Date(ano, mes - 1, 0).getDate()
+  const prevEnd = endOfDay(
+    ehMesCorrente
+      ? new Date(ano, mes - 2, Math.min(now.getDate(), diasNoMesAnterior))
+      : new Date(ano, mes - 1, 0),
+  )
   const sparkDays: Date[] = []
   for (let d = 1; d <= ultimoDia; d++) {
     sparkDays.push(startOfDay(new Date(ano, mes - 1, d)))

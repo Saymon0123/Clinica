@@ -24,7 +24,7 @@ create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
 begin;
-select plan(10);
+select plan(11);
 
 \set salao 'eeee0217-0000-0000-0000-000000000001'
 \set prof  'eeee0217-0001-0000-0000-000000000001'
@@ -92,6 +92,24 @@ select is(
   (select count(*)::int from eventos_cobraveis where appointment_id = :'blo'),
   0,
   'bloqueio de agenda nao gera cobranca, mesmo com origem agente'
+);
+
+-- 6b: reativacao que JA CHEGA confirmada tambem cobra.
+--
+-- Este caso nasceu de um defeito meu: o gatilho so tratava a confirmacao no
+-- UPDATE, e uma reativacao inserida pronta passava de graca. Quem pegou foi o
+-- pgTAP antigo (`um_numero_so`), cuja fixture insere exatamente assim -- a
+-- regra da view sempre contou essa linha.
+insert into appointments (id, salon_id, client_id, professional_id, service_id,
+                          data_hora_inicio, status, origem, reativacao_confirmada_em)
+values ('eeee0217-0004-0000-0000-000000000005', :'salao', :'cli', :'prof', :'serv',
+        now() + interval '6 days', 'agendado', 'reativacao', now());
+
+select is(
+  (select count(*)::int from eventos_cobraveis
+    where appointment_id = 'eeee0217-0004-0000-0000-000000000005'),
+  1,
+  'reativacao inserida JA confirmada cobra -- o gatilho nao pode depender do UPDATE'
 );
 
 -- 7: o agendamento e cobrado UMA vez, por mais que a linha seja mexida.

@@ -9014,3 +9014,12 @@ fatura ja inserida e saia pelo caminho do "periodo ja faturado". A leitura certa
 materializa a chamada antes (`create temp table ... as select funcao(...)`). Esta
 na mesma familia do snapshot de subconsulta irma: **conferir efeito de funcao que
 escreve exige separar a chamada da leitura.**
+
+**Correcao no mesmo dia, pega pelo CI.** O gatilho so tratava a confirmacao da
+reativacao no UPDATE -- uma reativacao INSERIDA ja confirmada passava de graca.
+Quem denunciou foi o pgTAP antigo `um_numero_so`, cuja fixture insere exatamente
+assim e cuja assercao e "a fatura conta o mesmo numero que a view do mes": a
+regra da view sempre contou aquela linha. Tres assercoes dele reprovaram, o meu
+teste novo passou, e a conclusao certa era que o gatilho estava errado -- nao o
+teste velho. Corrigido para cobrir as duas portas do nascimento, e o caso virou
+a assercao 6b do teste novo.

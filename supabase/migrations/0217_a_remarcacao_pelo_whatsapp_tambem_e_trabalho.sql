@@ -64,10 +64,17 @@ set search_path to 'public', 'pg_temp'
 as $$
 begin
   if tg_op = 'INSERT' then
-    -- Nasceu no WhatsApp: cobra. Bloqueio de agenda nao e atendimento.
-    if new.origem = 'agente' and new.status <> 'bloqueio' then
+    -- As DUAS portas do nascimento. A segunda -- reativacao que ja chega
+    -- confirmada -- foi um buraco que o pgTAP antigo (`um_numero_so`) pegou: a
+    -- regra da view contava aquela linha, e o gatilho, que so tratava a
+    -- confirmacao no UPDATE, deixava passar de graca. Importacao, correcao a
+    -- mao ou um caminho futuro que insira pronta precisa cobrar igual.
+    if (new.origem = 'agente'
+        or (new.origem = 'reativacao' and new.reativacao_confirmada_em is not null))
+       and new.status <> 'bloqueio' then
       insert into public.eventos_cobraveis (salon_id, appointment_id, tipo, ocorrido_em)
-      values (new.salon_id, new.id, 'agendamento', new.created_at)
+      values (new.salon_id, new.id, 'agendamento',
+              coalesce(new.reativacao_confirmada_em, new.created_at))
       on conflict do nothing;
     end if;
     return new;

@@ -16,6 +16,7 @@ function n(sobre: Partial<Notificacao>): Notificacao {
     cliente: 'João',
     barbeiro: 'Rafa',
     servicos: 'Corte + Barba',
+    detalhe: null,
     ...sobre,
   }
 }
@@ -85,5 +86,55 @@ describe('contarNaoVistas', () => {
   it('lista vazia é zero com ou sem marco', () => {
     expect(contarNaoVistas([], null)).toBe(0)
     expect(contarNaoVistas([], '2026-09-14T11:00:00Z')).toBe(0)
+  })
+})
+
+/**
+ * O QUARTO TIPO (0216): "pediu para falar com voce".
+ *
+ * Ele e diferente dos tres anteriores em uma coisa que quebra a tela: NAO tem
+ * agendamento por tras, entao `data_hora_inicio` chega nulo. Antes da 0216 o
+ * campo era `string` e a formatacao era incondicional -- com nulo, o dono leria
+ * "Invalid Date" no sino.
+ *
+ * A asseracao que nao pode cair e a primeira: nenhuma data invalida na tela.
+ */
+describe('a notificacao de pedido de dono', () => {
+  const pedido = n({
+    tipo: 'pediu_dono',
+    data_hora_inicio: null,
+    barbeiro: null,
+    servicos: null,
+    detalhe: 'Cliente desde marco. Quer saber se a barbearia faz progressiva.',
+  })
+
+  it('NUNCA escreve data invalida, mesmo sem horario nenhum', () => {
+    const { titulo, detalhe } = rotuloDaNotificacao(pedido)
+    expect(titulo + detalhe).not.toMatch(/Invalid Date/i)
+  })
+
+  it('diz quem quer falar', () => {
+    expect(rotuloDaNotificacao(pedido).titulo).toBe('João quer falar com você')
+  })
+
+  it('mostra o resumo que o agente escreveu', () => {
+    expect(rotuloDaNotificacao(pedido).detalhe).toContain('progressiva')
+  })
+
+  it('sem resumo, diz que nao houve -- e nao fica vazio', () => {
+    const semResumo = rotuloDaNotificacao({ ...pedido, detalhe: null })
+    expect(semResumo.detalhe).toBe('O agente não registrou o motivo.')
+  })
+
+  it('sem nome no contato, cai na palavra neutra', () => {
+    expect(rotuloDaNotificacao({ ...pedido, cliente: null }).titulo).toBe(
+      'Um cliente quer falar com você',
+    )
+  })
+
+  it('os tipos antigos continuam formatando o horario', () => {
+    const marcou = rotuloDaNotificacao(n({ tipo: 'novo_horario' }))
+    expect(marcou.detalhe).not.toMatch(/Invalid Date/i)
+    expect(marcou.detalhe).toContain('20/09')
   })
 })

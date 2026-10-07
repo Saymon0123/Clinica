@@ -8780,3 +8780,72 @@ alertas ja existente, que e o caminho mais barato e ja resolvido para auditoria)
 cliente nao ficar no vacuo.
 
 Nada disso foi feito aqui: a pergunta era de diagnostico.
+
+### O pedido de dono deixou de morrer com o CRM fechado (0216, 06/10)
+
+Os quatro buracos do diagnostico, fechados. Migration **aplicada em producao** e
+conferida por consulta; o fluxo do n8n criado e testado, **inativo de proposito**.
+
+**1. O carimbo `needs_human_em`.** Mantido por GATILHO, nao pelo n8n -- vale para
+quem quer que vire a chave, inclusive o CRM, e nao pode dessincronizar. O ponto
+fino esta no que ele NAO faz: pedido que continua de pe nao e re-carimbado.
+`last_message_at` muda a cada mensagem, e quem esta esperando manda "oi?",
+"alguem ai?" -- se cada uma reiniciasse o carimbo, o prazo da devolucao nunca
+venceria justamente para quem mais precisa dele. E a assercao 2 do pgTAP.
+
+**2. O quarto ramo do sino.** A view ganhou a coluna `detalhe`, que carrega o
+resumo do agente: enfiar o resumo em `servicos` seria mentir sobre o que a
+coluna e. `data_hora_inicio` vem **nulo** -- nao ha agendamento por tras de um
+pedido de dono, e inventar um horario seria pior que deixar vazio. O CRM trata o
+tipo a parte, antes de qualquer formatacao de data; sem isso o dono leria
+"Invalid Date" no sino, que e a assercao decisiva do teste de unidade.
+
+**3. O aviso por e-mail, para o DONO DA BARBEARIA.** Lido de `auth.users` pelo
+vinculo em `user_salons`, via `security definer`. **Nao** vai para
+`canal_de_alertas`: aquele canal e o produto falando com quem o mantem, e tem um
+destinatario so para todas as barbearias -- usa-lo mandaria o pedido do cliente
+de um salao para a caixa de outra pessoa. WhatsApp seria melhor e nao da hoje:
+mensagem que a plataforma inicia exige template aprovado, e nao existe um.
+Registrar vem DEPOIS do envio, ao contrario do motor do imprevisto: la a
+reivindicacao vem antes porque o aviso e unico e disputado; aqui um e-mail
+repetido e muito melhor que um que nunca sai.
+
+**4. O prazo que desempata.** `devolver_conversas_sem_dono(30)` no pg_cron a cada
+5 min -- no banco, nao no n8n, para nao depender de o n8n estar de pe. Devolve a
+conversa ao agente e **nao** limpa `needs_human`: o pedido continua na lista do
+dono, so para de deixar o cliente sem resposta. Conversa que o dono pausou a mao
+(agent_paused sem needs_human) nao e tocada -- ele esta conversando, e o robo
+voltar por cima seria pior que o problema original.
+
+#### O que o ensaio pegou, e que teria passado
+
+A view recriada com `drop` + `create` **NASCE com `select` para `anon`** pelo
+padrao do schema, mesmo a antiga nunca tendo tido. Sendo exato: a unica politica
+de `whatsapp_conversations` e do papel `public` e exige gestor logado, entao
+`anon` cairia em zero linhas de qualquer jeito -- nao era porta aberta. O que a
+linha `revoke` impede e a DERIVA: sair da migration com grants diferentes dos que
+entraram. Virou a assercao 5 do pgTAP.
+
+#### Conferido em producao, depois de aplicar
+
+Coluna, gatilho, view com 10 colunas e `security_invoker=on`, `authenticated` le
+e `anon` nao, as 5 funcoes `security definer` com `search_path` fixo,
+`service_role` executa o motor e `authenticated` nao executa a devolucao, cron
+ativo, o sino continua devolvendo as 1.130 linhas de antes (sem regressao), o
+motor devolve `{"pedidos": []}` e a devolucao devolve 0. Tudo inerte.
+
+#### O fluxo do n8n
+
+`CRM Salao - Aviso de Pedido de Dono`, id `tlkSsBL5clXvuuDT`, **inativo**.
+9 nos, errorWorkflow apontado, credenciais ligadas. Testado com `test_workflow`.
+
+Uma armadilha evitada no caminho: o `toLocaleString('pt-BR')` depende do ICU
+completo do Node. Numa instancia com small-icu ele cai **calado** para o formato
+ingles, e a data no e-mail do dono viraria "10/06 03:00 PM". A formatacao e feita
+a mao, com -3h fixo (o Brasil nao tem horario de verao desde 2019).
+
+#### O que fica em aberto
+
+O agente, ao voltar, pode oferecer chamar o dono de novo e entrar em laco. Nao e
+defeito desta entrega -- e materia do prompt dele, e precisa de uma passada
+separada. Para LIGAR o e-mail: ativar o workflow `tlkSsBL5clXvuuDT`.

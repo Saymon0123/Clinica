@@ -60,8 +60,10 @@ export function TermosPage() {
         <p>
           Conta como agendamento cobrável o que o atendimento automático criar,{' '}
           <strong>mesmo que ele seja cancelado depois</strong> — o serviço de marcar foi prestado.
-          Remarcar um horário já criado não gera nova cobrança, e agendamentos feitos por você
-          direto no sistema ou pelo QR do balcão não são cobrados.
+          Conta também a <strong>remarcação que o cliente pedir pelo WhatsApp</strong>, de um
+          horário que o atendimento automático marcou: remarcar é atender de novo. Não são
+          cobrados os agendamentos feitos por você direto no sistema ou pelo QR do balcão, nem
+          a remarcação deles, nem o horário que você mesmo mover na agenda.
         </p>
         <p>
           Lembretes, confirmações e mensagens de reativação <strong>não têm custo</strong> para

@@ -825,12 +825,23 @@ const RECURSOS_INCLUSOS = [
  * ────────────────────────────────────────────────────────────────────────────
  * CADA LINHA FOI CONFERIDA CONTRA O CÓDIGO QUE COBRA, não contra os Termos.
  *
- * `gerar_fatura_de_uso` (migration 0130, linhas 134-137) conta
- * `origem = 'agente'` e descarta `status = 'bloqueio'`; a Parte A da mesma
- * migration exclui os dias dentro de `trial_ate`. Remarcar não gera linha
- * nova: a migration 0169 diz, no cabeçalho, que remarcar é "escolher outro
- * horário para o MESMO agendamento". Lembrete e envio de reativação entram
- * na fatura como CONTAGEM (`v_lembretes`, `v_reativacoes`), nunca como valor.
+ * `gerar_fatura_de_uso` (migration 0217) conta EVENTOS da tabela
+ * `eventos_cobraveis`, gravados por gatilho: nascimento com
+ * `origem = 'agente'` (descartando `status = 'bloqueio'`) e remarcação do
+ * cliente num horário dessa origem. A Parte A da 0130 exclui os dias dentro
+ * de `trial_ate`. Lembrete e envio de reativação entram na fatura como
+ * CONTAGEM (`v_lembretes`, `v_reativacoes`), nunca como valor.
+ *
+ * A LINHA DA REMARCAÇÃO TROCOU DE LADO EM 07/10, e é por isso que esta
+ * cabeceira existe. Até a 0216 a página dizia, com razão, que remarcar não
+ * gerava cobrança. A 0217 passou a cobrar — decisão do dono, opção A — e por
+ * um momento o banco cobrou o que esta página e os Termos de Uso prometiam
+ * de graça. Zero faturas emitidas, então ninguém foi cobrado contra a
+ * promessa; o texto andou junto com a migration, no mesmo PR.
+ *
+ * O barbeiro arrastando o horário na grade continua de graça: só
+ * `remarcar_pelo_cliente` grava `remarcado_pelo_cliente_em`, e é esse carimbo
+ * que o gatilho observa.
  *
  * O QUE FICOU DE FORA DE PROPÓSITO: a 0130 também cobra
  * `origem = 'reativacao'` quando o cliente confirmou. É regra real, mas o
@@ -841,12 +852,13 @@ const RECURSOS_INCLUSOS = [
  */
 const O_QUE_CONTA = [
   'O horário que o atendimento automático marcou — mesmo que o cliente cancele depois. O serviço de marcar foi prestado.',
+  'A remarcação que o cliente pedir pelo WhatsApp, de um horário marcado por lá — remarcar é atender de novo.',
 ]
 
 const O_QUE_NAO_CONTA = [
   'Horário que você lançou no sistema',
   'Horário marcado pelo QR do balcão',
-  'Remarcação de um horário que já existe',
+  'Horário que você mesmo mover na agenda',
   'Lembrete e mensagem de retorno',
   `Qualquer horário nos ${DIAS_DE_TESTE} dias de teste`,
 ]
@@ -915,7 +927,7 @@ function Preco() {
             {/*
               A régua do medidor, dentro do card de preço e não em letra
               miúda: é ela que muda a conta que o leitor faz. Duas colunas
-              para a assimetria aparecer — uma linha conta, cinco não.
+              para a assimetria aparecer — duas linhas contam, cinco não.
             */}
             <div className="mt-9 grid gap-6 border-t border-[var(--l-line)] pt-8 sm:grid-cols-2 sm:gap-10">
               <div>

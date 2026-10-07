@@ -8946,3 +8946,71 @@ Alvos de toque abaixo dos 44px da regra da casa, todos pre-existentes e no
 casco do app: o sino (34x34), o interruptor de tema (56x32), as setas do seletor
 de periodo (28x28) e um botao de 24x24 na agenda. Nao mexi porque mudar altura
 de botao do casco mexe em toda tela e merece uma passada propria.
+
+### A remarcacao pelo WhatsApp passou a ser cobrada (0217, 07/10)
+
+Decidido pelo dono: "agendamentos e reagendamentos feitos pelo whats seriam
+cobrados; link publico e balcao nao". A primeira metade ja valia; a segunda
+nao. O cliente podia remarcar tres vezes pelo WhatsApp e o agente trabalhava
+tres vezes de graca.
+
+#### Por que nao deu para so contar a coluna que ja existia
+
+`remarcado_pelo_cliente_em` e UM carimbo, sobrescrito a cada remarcacao. Ele
+sabe dizer "houve pelo menos uma", nunca "houve duas" -- e muito menos em que
+mes cada uma caiu. Cobranca precisa de EVENTO com data propria, senao a
+remarcacao de novembro cairia na fatura de outubro so porque o horario nasceu
+em outubro.
+
+Dai a tabela `eventos_cobraveis`: uma linha por evento, gravada por gatilho em
+`appointments`. O indice unico parcial (`where tipo='agendamento'`) garante que
+o horario e cobrado UMA vez; a remarcacao fica de fora do indice de proposito,
+porque ela repete.
+
+#### A regra, e a bifurcacao que o dono resolveu
+
+`remarcar_pelo_cliente` e chamada **tanto pelo agente quanto pelo link
+publico**, e nao tem parametro de canal. Duas leituras:
+
+- **A (escolhida):** cobra remarcacao de horario que NASCEU no agente, nao
+  importa por onde o cliente remarcou. Uma migration, nada de n8n nem de edge.
+- **B:** parametro de canal novo, mexendo em tres pecas.
+
+O dono escolheu A em 07/10. Consequencia declarada: cliente que usa o link de
+gestao para remarcar um horario que o agente marcou **gera cobranca**.
+
+Detalhe que fecha a regra: **so `remarcar_pelo_cliente` grava aquele carimbo**
+-- conferido, e a unica funcao do banco que mexe nele. O barbeiro arrastando o
+horario na grade do CRM nao cai no gatilho.
+
+#### O que mudou na fatura
+
+`gerar_fatura_de_uso` passou a contar EVENTOS. A coluna `agendamentos` guarda o
+total de cobrancas e a nova `remarcacoes` diz quantas delas foram remarcacao.
+
+**`valor_gerado` soma so os agendamentos.** E "quanto a barbearia faturou", e o
+dono usa esse numero para comparar com o que paga: somar o preco do servico de
+novo a cada remarcacao inflaria o numero e faria o produto parecer melhor do
+que e. Virou a assercao 9 do pgTAP, que e a que ninguem olharia.
+
+#### Medido
+
+Ensaio em producao, em transacao desfeita: 1 agendamento + 2 remarcacoes = 3
+cobrancas, **R$ 2,25** a R$ 0,75, com `valor_gerado` em R$ 50,00 (o servico uma
+vez so). Link publico, balcao e bloqueio: zero eventos.
+
+Aplicada e conferida: **584 eventos retroativos, exatamente os 584 cobraveis
+antigos**, com a data de criacao original -- senao todos cairiam na fatura
+deste mes. Gatilho no lugar, RLS ligada, `anon` e `authenticated` sem leitura, a
+coluna nova herdou o grant (a tabela concede por tabela, nao por coluna --
+conferido antes). **Zero faturas emitidas ate hoje**, entao o retroativo nao
+mudou valor de ninguem.
+
+#### Um tropeco de metodo, que vale guardar
+
+Ler `(gerar_fatura_de_uso(...)).*` direto devolveu quase tudo nulo: o Postgres
+chama a funcao **uma vez por coluna**, e da segunda em diante ela encontrava a
+fatura ja inserida e saia pelo caminho do "periodo ja faturado". A leitura certa
+materializa a chamada antes (`create temp table ... as select funcao(...)`). Esta
+na mesma familia do snapshot de subconsulta irma: **conferir efeito de funcao que
+escreve exige separar a chamada da leitura.**

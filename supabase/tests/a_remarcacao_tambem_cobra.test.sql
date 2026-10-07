@@ -13,7 +13,7 @@
 -- venda repete. Cobrar o que a página promete de graça é o tipo de erro que o
 -- cliente descobre na primeira fatura.
 --
--- **A 8 é a que ninguém olharia.** `valor_gerado` é "quanto a barbearia
+-- **A 10 é a que ninguém olharia.** `valor_gerado` é "quanto a barbearia
 -- faturou", e o dono compara com o que paga. Remarcação não traz dinheiro novo:
 -- somar o preço do serviço de novo a cada remarcação inflaria o número e
 -- faria o produto parecer melhor do que é.
@@ -24,7 +24,7 @@ create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
 begin;
-select plan(11);
+select plan(12);
 
 \set salao 'eeee0217-0000-0000-0000-000000000001'
 \set prof  'eeee0217-0001-0000-0000-000000000001'
@@ -122,9 +122,24 @@ select is(
   'mexer no horario nao cobra de novo -- o indice unico segura o agendamento'
 );
 
--- 8 e 9: a fatura. Um `create table as` materializa a chamada: lendo
--- `(funcao()).*` direto, o Postgres chama a funcao UMA VEZ POR COLUNA e o
--- resultado sai quase todo nulo -- aconteceu ao escrever este teste.
+-- 9 e 10: a fatura, somando TUDO o que as asserções acima criaram.
+--
+-- A conta, para ninguém ter de refazê-la: as três portas de cobrança deste
+-- arquivo caem todas no período. Agendamento pelo agente (1) + duas
+-- remarcações (2) + a reativação confirmada da 6b (1) = QUATRO eventos a
+-- R$ 0,75 = R$ 3,00. Link público, balcão e bloqueio não entram.
+--
+-- `valor_gerado` conta DOIS agendamentos (o do agente e o da reativação) a
+-- R$ 50 = R$ 100,00. É aqui que a asserção 10 morde: se a remarcação somasse
+-- o preço do serviço de novo, daria R$ 200 — o dobro do que a barbearia
+-- faturou de verdade.
+--
+-- Mexer nas fixtures acima muda estes dois números. Eu mesmo esqueci: a 6b
+-- nasceu depois destas duas asserções e o CI reprovou com 3,00 contra 2,25.
+--
+-- Um `create table as` materializa a chamada: lendo `(funcao()).*` direto, o
+-- Postgres chama a funcao UMA VEZ POR COLUNA e o resultado sai quase todo
+-- nulo -- aconteceu ao escrever este teste.
 create temp table _fatura as
   select public.gerar_fatura_de_uso(
     :'salao',
@@ -134,14 +149,22 @@ create temp table _fatura as
 
 select is(
   (select (r).valor from _fatura),
-  2.25::numeric,
-  'a fatura cobra os TRES eventos a R$ 0,75: um agendamento e duas remarcacoes'
+  3.00::numeric,
+  'a fatura cobra os QUATRO eventos a R$ 0,75: dois agendamentos e duas remarcacoes'
 );
 
 select is(
   (select (r).valor_gerado from _fatura),
-  50.00::numeric,
-  'o que a barbearia FATUROU conta o servico uma vez -- remarcacao nao traz dinheiro novo'
+  100.00::numeric,
+  'o que a barbearia FATUROU conta so os agendamentos -- remarcacao nao traz dinheiro novo'
+);
+
+-- 10b: a coluna que explica a fatura ao dono. Duas das quatro cobrancas sao
+-- remarcacao; sem isso ele ve "4 agendamentos" e nao reconhece o numero.
+select is(
+  (select (r).remarcacoes from _fatura),
+  2,
+  'a fatura separa quantas cobrancas foram remarcacao -- senao o detalhamento mente'
 );
 
 -- 10: o trinco.

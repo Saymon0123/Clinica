@@ -9023,3 +9023,27 @@ regra da view sempre contou aquela linha. Tres assercoes dele reprovaram, o meu
 teste novo passou, e a conclusao certa era que o gatilho estava errado -- nao o
 teste velho. Corrigido para cobrir as duas portas do nascimento, e o caso virou
 a assercao 6b do teste novo.
+
+
+#### O achado que quase saiu junto: os Termos prometiam o contrario
+
+A 0217 cobra a remarcacao. Os **Termos de Uso**, seccao 4, diziam: *"Remarcar um
+horario ja criado nao gera nova cobranca."* A pagina de venda repetia, na lista
+"O QUE NAO CONTA": *"Remarcacao de um horario que ja existe."* Por um momento o
+banco cobrou o que o contrato prometia de graca.
+
+**Nao virou dano porque nao ha fatura emitida nenhuma** -- conferido em
+producao: 1 salao ativo (o de teste), 0 faturas, 0 remarcacoes registradas.
+O que salvou foi cronograma, nao processo.
+
+**Como passou.** A mudanca foi mapeada como peca Supabase -- migration, gatilho,
+fatura, pgTAP -- e a peca CRM foi dada como "nada muda". Mudava: a promessa
+publica vive nela, em duas telas. Procurei no codigo que cobra e nao procurei a
+frase nas telas. **Mudanca de regra de cobranca tem de varrer o texto publico
+tambem** -- Termos, pagina de venda e qualquer lugar que repita a regra.
+
+Consertado no mesmo PR, com catraca: `src/lib/aPromessaDeCobranca.test.ts` le as
+duas telas como texto (padrao do tripwire de `ErroDeCarga`). Tres assercoes
+reprovam contra o texto antigo -- conferido devolvendo os arquivos por stash.
+A quarta guarda a promessa de lembrete e reativacao sem custo, que segue
+verdadeira e pode cair por tabela numa proxima mexida na seccao de preco.

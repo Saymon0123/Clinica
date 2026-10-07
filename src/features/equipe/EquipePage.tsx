@@ -842,7 +842,13 @@ export function EquipePage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-1 shrink-0">
+            {/* Quebra linha, e sem `shrink-0`. A fila chega a cinco botões
+                ("Sem acesso · Comissão · Serviços · Horário · Desativar") e
+                media 398px num celular de 375: o `shrink-0` impedia a caixa de
+                encolher, e a PÁGINA INTEIRA ganhava 23px de rolagem lateral.
+                Medido em 07/10. Com a quebra, a fila desce para a segunda linha
+                em vez de empurrar a tela. */}
+            <div className="flex flex-wrap items-center justify-end gap-1">
               {(() => {
                 // Só o dono promove e rebaixa — gerente vê a função como texto.
                 // Dono DESTA unidade (passo 4.3): é o que definir_papel_do_membro exige.

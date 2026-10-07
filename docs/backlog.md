@@ -8890,3 +8890,59 @@ REALMENTE novo enquanto um pedido esta aberto, o agente nao vai chamar o dono de
 novo -- vai dizer que o recado ja esta com ele. E a troca certa (um e-mail a
 menos vale mais que um assunto a mais no resumo), mas e uma escolha, nao um
 acidente.
+
+### Duas telas rolavam de lado no celular (07/10)
+
+Vistoria pedida pelo dono depois das alteracoes da semana. **Os dois defeitos
+achados sao antigos, nenhum e regressao** -- o botao do Caixa entrou no
+cabecalho em `a9580aa` e o `PageHeader` nao muda desde o PR #70.
+
+**O que quase me fez dar tela limpa por engano.** O emulador de viewport do
+painel dizia "375x812", mas a pagina se via com **550px** -- e em 550 nada
+estoura. Varri seis telas achando que media celular. So descobri porque uma
+medicao devolveu `window.innerWidth: 550` quando eu esperava 375.
+
+A saida foi uma moldura: `preview.local/celular.html` poe o app num `iframe` de
+375px fixo e roda a vistoria LA DENTRO, por `contentWindow`. A largura passa a
+ser do documento, nao do painel, e cada resultado carrega o
+`larguraDeDentro` junto -- numero que eu possa conferir em vez de confiar.
+
+#### Defeito 1 -- Financeiro: 176px de rolagem lateral
+
+O `PageHeader` ja tinha `flex-wrap` na linha de fora, mas ela so deixava o BLOCO
+inteiro de acoes descer; dentro dele os botoes ficavam numa fila rigida. No
+Financeiro a fila e "Hoje · Este mes · Caixa · abre na 1a venda · Exportar":
+**551px num celular de 375**.
+
+Conserto de uma palavra -- `flex-wrap` no container das acoes. **Dez paginas
+usam o `PageHeader`**, entao vale para todas.
+
+#### Defeito 2 -- Equipe: 23px de rolagem lateral
+
+A fila de acoes de cada membro ("Sem acesso · Comissao · Servicos · Horario ·
+Desativar") tinha `shrink-0`: a caixa nao podia encolher, e empurrava a pagina.
+Trocado por `flex-wrap` + `justify-end`, sem o `shrink-0`.
+
+#### A catraca, e o teste que nasceu sem valer nada
+
+`PageHeader.test.ts`, 4 assercoes. A primeira versao **passava com o defeito de
+pe**: o seletor era "o primeiro div que contem um botao", que pega a linha de
+FORA -- a que ja tinha `flex-wrap`. So descobri tentando fazer o teste falhar.
+Corrigido para o pai DIRETO do botao; agora reprova sem o conserto.
+
+Vale dizer o limite: jsdom nao tem motor de layout, nao sabe que 551 nao cabe em
+375. **O teste prende a CLASSE; quem prova o pixel e a moldura de 375.**
+
+#### O que passou limpo, medido em 375
+
+Agenda (claro e escuro), Clientes, Conversas, Catalogo, Configuracoes e a agenda
+publica de producao: zero rolagem lateral, zero texto cortado, zero campo de
+texto com fonte abaixo de 16px (o que faria o iPhone dar zoom sozinho). Erro de
+console, nenhum do app -- so o JWT falso da propria moldura.
+
+#### O que fica anotado, e nao e desta entrega
+
+Alvos de toque abaixo dos 44px da regra da casa, todos pre-existentes e no
+casco do app: o sino (34x34), o interruptor de tema (56x32), as setas do seletor
+de periodo (28x28) e um botao de 24x24 na agenda. Nao mexi porque mudar altura
+de botao do casco mexe em toda tela e merece uma passada propria.

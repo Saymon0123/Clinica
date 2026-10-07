@@ -7,6 +7,14 @@ import type { ReactNode } from 'react'
  *
  * `acoes` fica à direita, na mesma linha — é só posição, os botões continuam
  * sendo os das próprias telas.
+ *
+ * **As ações quebram linha.** O `flex-wrap` da linha de fora só deixava o bloco
+ * INTEIRO de ações descer; dentro dele os botões continuavam numa fila rígida.
+ * No Financeiro, a fila é "Hoje · Este mês · Caixa · abre na 1ª venda ·
+ * Exportar": media 551px num celular de 375, e a PÁGINA ganhava 176px de
+ * rolagem lateral — o sintoma clássico de tela quebrada no telefone. Medido em
+ * 07/10 numa moldura de 375px de verdade, porque o emulador do painel estava
+ * entregando 550 e escondendo o defeito.
  */
 export function PageHeader({
   titulo,
@@ -23,7 +31,7 @@ export function PageHeader({
         <h1 className="text-2xl font-bold tracking-tight text-foreground">{titulo}</h1>
         {subtitulo && <p className="text-sm text-muted-foreground mt-0.5">{subtitulo}</p>}
       </div>
-      {acoes && <div className="flex items-center gap-2">{acoes}</div>}
+      {acoes && <div className="flex flex-wrap items-center gap-2">{acoes}</div>}
     </div>
   )
 }

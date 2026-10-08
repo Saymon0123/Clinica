@@ -662,4 +662,23 @@ begin
 end;
 $fn$;
 
+-- ------------------------------------------------------------ 8) A documentação
+--
+-- O DROP do passo 1 levou junto o comentário que a 0169 tinha deixado em
+-- `horarios_livres` -- calado, como o `create or replace` de view faz com o que
+-- não foi redigitado. Volta aqui, com os dois parâmetros novos. O pgTAP desta
+-- migration confere que ele continua existindo.
+
+comment on function public.horarios_livres(uuid, date, integer, uuid, uuid, integer, boolean) is
+  'Horarios livres de um dia. p_ignorar_agendamento (0169) existe para REMARCAR: sem ele, o agendamento que esta sendo movido bloqueia os horarios proximos ao proprio, e quem quer sair das 10:00 para as 10:20 nao ve as 10:20. p_passo_minutos e p_com_encaixe (0218): a agenda publica pede 30 minutos sem encaixe; o padrao (10, com encaixe) e o de sempre, usado pelo agente e pelo balcao.';
+
+comment on function public.barbeiros_que_fazem_os_servicos(uuid, uuid[]) is
+  'Quem faz TODOS os servicos pedidos; barbeiro sem nenhum servico ligado conta como faz todos. A mesma regua de horarios_livres_pelo_agente (0199), usada pela agenda publica desde a 0218.';
+
+comment on function public.agenda_publica_horarios(uuid, uuid[], text, date, integer, uuid) is
+  'A agenda publica em passos (0218): barbeiros com o proximo horario, a faixa de dias e os horarios de 30 em 30 do dia, todos da mesma conta de vagas. p_escolha: nula (so os barbeiros), qualquer, ou o uuid do barbeiro.';
+
+comment on function public.agenda_publica_candidatos(uuid, timestamptz, uuid[], uuid, uuid) is
+  'Ordem de tentativa para gravar um horario da agenda publica (0218): o preferido (o nome que a tela mostrou) se ainda livre; depois menos agendamentos no dia, menos minutos, sorteio.';
+
 notify pgrst, 'reload schema';

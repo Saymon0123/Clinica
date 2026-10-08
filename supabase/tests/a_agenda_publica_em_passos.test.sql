@@ -32,7 +32,7 @@ create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
 begin;
-select plan(17);
+select plan(18);
 
 \set salao   'eeee0218-0000-0000-0000-000000000001'
 \set ana     'eeee0218-0001-0000-0000-000000000001'
@@ -258,6 +258,13 @@ select ok(
   and not has_function_privilege('anon', 'public.horarios_livres(uuid,date,integer,uuid,uuid,integer,boolean)', 'execute')
   and not has_function_privilege('authenticated', 'public.horarios_livres(uuid,date,integer,uuid,uuid,integer,boolean)', 'execute'),
   'ninguem de fora chama as funcoes novas pelo REST: so o service_role, pela edge'
+);
+
+-- DROP + CREATE leva junto o comentario da funcao, calado -- foi o que a
+-- propria 0218 fez com o da 0169 antes de repo-lo. Esta assercao e a catraca.
+select ok(
+  obj_description('public.horarios_livres(uuid,date,integer,uuid,uuid,integer,boolean)'::regprocedure, 'pg_proc') like '%p_ignorar_agendamento (0169)%',
+  'horarios_livres continua documentada: o proximo drop + create nao apaga o comentario calado'
 );
 
 select * from finish();

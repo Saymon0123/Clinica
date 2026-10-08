@@ -9129,6 +9129,13 @@ idêntica fora do bloco novo; 15 de 15 verificações do cenário passaram. Depo
 de aplicar, o md5 de cada uma das sete funções em produção bateu com o do
 arquivo.
 
+**Um tropeço meu, pego pelo CI.** O `drop` + `create` de `horarios_livres`
+levou junto o comentário que a 0169 tinha deixado na função — calado, a mesma
+armadilha do `create or replace` de view. O ensaio comparou saída e acessos,
+mas não comentário. Reposto (com os parâmetros novos) e com catraca no pgTAP.
+E o CI reprovou um teste ANTIGO (`remarcar_sem_bloquear_a_si_mesmo`) que citava
+a função pela assinatura de cinco parâmetros: o nome antigo deixou de existir.
+
 **Correção do que a 0217 afirmou.** Ela diz que só `remarcar_pelo_cliente` grava
 `remarcado_pelo_cliente_em`. A edge `agenda-publica` também grava, no remarcar
 pelo link. A cobrança continua certa (opção A do dono); só a frase estava

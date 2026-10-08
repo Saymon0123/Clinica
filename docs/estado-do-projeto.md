@@ -1,8 +1,9 @@
 # Estado do projeto
 
-**Atualizado em 2026-10-03** (atualização parcial: a fila de espera, a troca do
-provedor de pagamento e a contagem de testes. O resto do arquivo é de 2026-08-16
-e **envelheceu** — conferir no [`backlog.md`](backlog.md) antes de confiar.)
+**Atualizado em 2026-10-08** (atualização parcial: a agenda pública em passos;
+em 03/10, a fila de espera, a troca do provedor de pagamento e a contagem de
+testes. O resto do arquivo é de 2026-08-16 e **envelheceu** — conferir no
+[`backlog.md`](backlog.md) antes de confiar.)
 
 Três perguntas, meia página. Se passar de uma, virou backlog — e para isso já
 existe o [`backlog.md`](backlog.md).
@@ -27,7 +28,7 @@ criada → assinatura → pagamento → acesso liberado pelo webhook, sem interv
 | Lembrete e confirmação de chegada | só no Pro, via `salons_com_automacao` |
 | Cobrança | assinar, pagar, trocar de plano com rateio, cancelar, bloquear |
 | Entrada de clientes | cadastro aberto **e** convite por link |
-| QR do balcão | cliente sem hora marcada agenda sozinho — **só na Curitiba**, pela chave `agenda_publica` |
+| Agenda pública (QR do balcão e link) | o cliente marca, remarca e cancela sozinho, em passos: serviço → barbeiro (ou "qualquer um") → horário de 30 em 30 (0218, 08/10). Ligada hoje **só na El Corte**, pela chave `agenda_publica` |
 | Fila de espera | o cliente se inscreve pela conversa, o sistema procura a vaga e segura por 30 min, e o dono vê na agenda com o telefone. **O aviso automático está pronto e DESLIGADO** — ver as decisões suas, abaixo |
 | Folga do barbeiro | o dia fecha para novos nas seis portas (agenda pública, agente, remarcação, reativação, fila, "quem pode assumir") **sem colidir** com os horários já marcados, que ficam na agenda para resolver. Marcada no painel de conflitos do bloqueio de dia inteiro, removida pelo aviso acima da grade; a coluna fica cinza. **O aviso ao cliente ainda não existe** — o template `imprevisto_na_barbearia` já está APROVADO, falta o motor do aviso escalonado |
 | Jurídico | termos e privacidade publicados, com aceite registrado |
@@ -79,9 +80,11 @@ usada no teste de pagamento.
 - Comarca do contrato e se haverá multa (recomendação: não haver)
 - Levar o [`contrato.md`](contrato.md) a um advogado
 
-**Verificação que falta:** o QR do balcão foi testado num **domingo**, com a
-Curitiba aberta na marra e restaurada depois. Falta ver a lista real num dia
-útil, com os dois barbeiros e a agenda cheia.
+**Verificação que falta:** a agenda pública em passos foi conferida com a edge
+publicada só em consultas — num dia útil (quinta, 08/10), na El Corte, com
+cinco barbeiros: 7 horários de 30 em 30 para o corte da tarde. Falta **uma
+marcação de verdade**, cancelada logo em seguida, e com ela o modo remarcar —
+só com o ok do dono.
 
 **Dívida conhecida:** ver [`backlog.md`](backlog.md) — 33 itens abertos.
 

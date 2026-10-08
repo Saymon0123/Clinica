@@ -9090,3 +9090,76 @@ esconde os fechados no filtro padrão — por isso ele passou despercebido.
   escreve o produto como **"ClubCut"**, junto, e linka para
   `clubcut.vercel.app/inicio`. O certo é **"Club Cut"** e **clubcut.space** —
   mesma grafia e mesmo endereço do nome pedido e do perfil comercial do número.
+
+
+### A agenda pública em passos (0218, 08/10)
+
+O dono disse que a agenda pública mostrava horários demais. A causa: cada
+horário aparecia uma vez POR BARBEIRO, de dez em dez minutos. **Medido na El
+Corte, para amanhã: 273 botões. Agora são 19.** O fluxo virou
+serviço → barbeiro (ou "qualquer um") → horário de 30 em 30 → dados, na mesma
+página.
+
+**As decisões do dono, e onde moram.**
+
+- **Barbeiro antes do horário**, por causa de quem tem barbeiro fixo. Inverte a
+  decisão da v1 ("escolher o barbeiro primeiro e descobrir que ele está cheio é
+  porta fechada"). A resposta a esse risco é que cada barbeiro aparece com o
+  PRÓXIMO horário dele, e a grade abre no dia desse horário
+  (`src/features/agendaPublica/barbeiros.ts`).
+- **30 em 30 sem encaixe, só na agenda pública.** O agente e o balcão seguem
+  de 10 em 10 com encaixe. `horarios_livres` ganhou `p_passo_minutos` e
+  `p_com_encaixe` com padrões que reproduzem o de antes.
+- **"Qualquer um" é regra do banco**: menos agendamentos no dia, depois menos
+  minutos, depois sorteio (`private.carga_do_dia`,
+  `agenda_publica_candidatos`). A tela mostra o nome que a régua escolheria
+  antes de confirmar; o servidor o mantém se ele ainda estiver livre.
+- **O nome do barbeiro na confirmação**, antes e depois de marcar.
+
+**O defeito corrigido junto.** A agenda pública nunca conferiu quem faz qual
+serviço — a 0199 ensinou isso só ao agente. Na El Corte não aparecia (os cinco
+fazem os oito serviços). Agora a régua é a mesma nas duas portas
+(`barbeiros_que_fazem_os_servicos`), e vale também no remarcar pelo link e na
+troca de serviços (`alterar_servicos_pelo_cliente`, que o agente também usa).
+
+**Ensaiado em produção antes de aplicar**, em transação desfeita:
+`horarios_livres` com os padrões devolveu as MESMAS 9.616 linhas que a versão
+antiga (todas as barbearias, 14 dias, três durações); a troca de serviços ficou
+idêntica fora do bloco novo; 15 de 15 verificações do cenário passaram. Depois
+de aplicar, o md5 de cada uma das sete funções em produção bateu com o do
+arquivo.
+
+**Um tropeço meu, pego pelo CI.** O `drop` + `create` de `horarios_livres`
+levou junto o comentário que a 0169 tinha deixado na função — calado, a mesma
+armadilha do `create or replace` de view. O ensaio comparou saída e acessos,
+mas não comentário. Reposto (com os parâmetros novos) e com catraca no pgTAP.
+E o CI reprovou um teste ANTIGO (`remarcar_sem_bloquear_a_si_mesmo`) que citava
+a função pela assinatura de cinco parâmetros: o nome antigo deixou de existir.
+
+**Correção do que a 0217 afirmou.** Ela diz que só `remarcar_pelo_cliente` grava
+`remarcado_pelo_cliente_em`. A edge `agenda-publica` também grava, no remarcar
+pelo link. A cobrança continua certa (opção A do dono); só a frase estava
+incompleta.
+
+**Pendente:**
+- **A ordem do deploy — feito em 08/10.** A edge subiu ANTES do merge (a tela
+  nova com a edge antiga trava no passo 2), pelo MCP do Supabase, versão 44,
+  porque o token da CLI em `~/.clubcut/supabase-access-token.txt` foi recusado
+  pela API (expirado ou revogado). Conferida arquivo a arquivo contra o
+  repositório (md5 dos nove arquivos igual) e testada ao vivo só com consultas:
+  a tela antiga segue recebendo os 109 horários de 10 em 10 por barbeiro; a nova
+  recebe 7, de 30 em 30, para o corte da tarde, com um nome previsto em cada.
+  **Continua pendente:** o dono gerar um token novo antes do próximo deploy
+  pela CLI.
+- **Primeira marcação de verdade** pela edge publicada, com cancelamento logo
+  em seguida — só com o ok do dono. Ela cobre também o **modo remarcar**, que
+  não deu para testar ao vivo: não há nenhum agendamento futuro na El Corte.
+- **Remarcar abre em hoje**, e não no dia do próximo horário do barbeiro atual.
+  Não trava (a faixa diz "lotado"), mas é um toque a mais.
+- **n8n:** o agente pode usar a mesma régua do "qualquer um" quando o cliente
+  não tem preferência — hoje quem escolhe é o próprio modelo. Decisão do dono.
+- **As funções de escrita do agente não conferem quem faz o quê**
+  (`agendar_pelo_agente`, `remarcar_pelo_cliente`): só a listagem confere. Se o
+  cliente pedir pelo nome um barbeiro que não faz o serviço, passa.
+- **O caminho antigo do `consultar`** (sem `versao: 2`) pode sair depois que a
+  tela nova estiver no ar há alguns dias.

@@ -101,10 +101,12 @@ select is(
 );
 
 -- ── O trinco ───────────────────────────────────────────────────────────────
+-- A assinatura e a da 0218, que acrescentou passo e encaixe: parametro novo
+-- muda a identidade da funcao, e o nome antigo deixou de existir.
 select ok(
-  not has_function_privilege('anon', 'public.horarios_livres(uuid,date,integer,uuid,uuid)', 'execute')
-  and not has_function_privilege('authenticated', 'public.horarios_livres(uuid,date,integer,uuid,uuid)', 'execute')
-  and has_function_privilege('service_role', 'public.horarios_livres(uuid,date,integer,uuid,uuid)', 'execute'),
+  not has_function_privilege('anon', 'public.horarios_livres(uuid,date,integer,uuid,uuid,integer,boolean)', 'execute')
+  and not has_function_privilege('authenticated', 'public.horarios_livres(uuid,date,integer,uuid,uuid,integer,boolean)', 'execute')
+  and has_function_privilege('service_role', 'public.horarios_livres(uuid,date,integer,uuid,uuid,integer,boolean)', 'execute'),
   'horarios_livres so e executavel por service_role -- a 0169 derrubou e recriou a funcao, e funcao recriada nasce aberta para public'
 );
 

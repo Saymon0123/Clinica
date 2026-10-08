@@ -1,7 +1,25 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { diaParaAbrir, proximoDeQualquerUm, rotuloDoProximo, type BarbeiroDaAgenda } from './barbeiros'
+import {
+  diaParaAbrir,
+  proximoDeQualquerUm,
+  rotuloDoHorarioMarcado,
+  rotuloDoProximo,
+  type BarbeiroDaAgenda,
+} from './barbeiros'
 
-// Quarta-feira, 08/10/2026, 10:00 em São Paulo (13:00 UTC).
+/**
+ * O caminho entra por PARÂMETRO, como nos outros tripwires (`ErroDeCarga`,
+ * `aPromessaDeCobranca`). Escrito direto -- `new URL('./x.tsx',
+ * import.meta.url)` --, o Vite o reescreve como endereço de asset
+ * (http://localhost:3000/...), e o readFileSync recusa: "The URL must be of
+ * scheme file".
+ */
+function fonte(arquivo: string) {
+  return readFileSync(new URL(arquivo, import.meta.url), 'utf-8')
+}
+
+// Quinta-feira, 08/10/2026, 10:00 em São Paulo (13:00 UTC).
 const AGORA = new Date('2026-10-08T13:00:00Z')
 
 describe('o próximo horário de cada barbeiro', () => {
@@ -27,6 +45,33 @@ describe('o próximo horário de cada barbeiro', () => {
     // "hoje" para um horário que é amanhã na barbearia.
     const tardeDaNoite = new Date('2026-10-09T02:30:00Z')
     expect(rotuloDoProximo('2026-10-09T03:30:00Z', tardeDaNoite)).toBe('amanhã às 00:30')
+  })
+})
+
+describe('o horário marcado, na confirmação e na tela de sucesso', () => {
+  it('diz o DIA, e não só a hora -- "10:00" sozinho parecia hoje', () => {
+    expect(rotuloDoHorarioMarcado({ inicio: '2026-10-09T13:00:00Z', hora_local: '10:00' }, AGORA)).toBe(
+      'Amanhã às 10:00',
+    )
+    expect(rotuloDoHorarioMarcado({ inicio: '2026-10-08T17:30:00Z', hora_local: '14:30' }, AGORA)).toBe(
+      'Hoje às 14:30',
+    )
+    expect(rotuloDoHorarioMarcado({ inicio: '2026-10-16T12:00:00Z', hora_local: '09:00' }, AGORA)).toBe(
+      'Sex, 16/10 às 09:00',
+    )
+  })
+
+  it('instante quebrado cai na hora do servidor, nunca em "sem vaga"', () => {
+    expect(rotuloDoHorarioMarcado({ inicio: 'isso nao e data', hora_local: '10:00' }, AGORA)).toBe('10:00')
+  })
+
+  it('A TELA usa o rótulo: nenhuma confirmação mostra a hora sozinha antes do barbeiro', () => {
+    // O defeito morava no JSX, não nesta função: `{escolhido.hora_local} com
+    // {escolhido.profissional}`, no passo 3 e no sucesso. Ler a página como
+    // texto é o que impede a hora sozinha de voltar.
+    const pagina = fonte('./AgendaPublicaPage.tsx')
+    expect(pagina).not.toMatch(/hora_local\}(<\/strong>)?\s*com\b/)
+    expect(pagina.match(/rotuloDoHorarioMarcado\(escolhido, agora\)/g)?.length ?? 0).toBeGreaterThanOrEqual(2)
   })
 })
 

@@ -25,6 +25,7 @@ import { eventoIcs } from './calendario'
 import {
   diaParaAbrir,
   proximoDeQualquerUm,
+  rotuloDoHorarioMarcado,
   rotuloDoProximo,
   type BarbeiroDaAgenda,
 } from './barbeiros'
@@ -1113,9 +1114,11 @@ export function AgendaPublicaPage() {
                 </h2>
               </div>
               {/* O nome que vale é o do SERVIDOR: num "qualquer um" ele pode
-                  diferir do previsto, se o previsto foi pego nesses segundos. */}
+                  diferir do previsto, se o previsto foi pego nesses segundos.
+                  E o DIA vem junto: "10:00" sozinho, com a grade abrindo em
+                  amanhã ou depois, parecia hoje. */}
               <p className="text-sm text-foreground">
-                <strong>{escolhido?.hora_local}</strong> com{' '}
+                <strong>{escolhido && rotuloDoHorarioMarcado(escolhido, agora)}</strong> com{' '}
                 <strong>{profissionalFinal ?? escolhido?.profissional}</strong>
                 {resumoDosServicos ? `, ${resumoDosServicos}` : ''}.
               </p>
@@ -1228,7 +1231,7 @@ export function AgendaPublicaPage() {
             <form onSubmit={agendar} className="surge mx-auto max-w-md space-y-4">
               <div className="rounded-xl border border-primary/40 bg-primary-soft/40 p-4">
                 <div className="text-base font-semibold text-foreground">
-                  {escolhido.hora_local} com {escolhido.profissional}
+                  {rotuloDoHorarioMarcado(escolhido, agora)} com {escolhido.profissional}
                 </div>
                 {/* O nome vem ANTES da confirmação, pedido do dono. No "qualquer
                     um" ele é o que a régua escolheu agora — e a frase diz por

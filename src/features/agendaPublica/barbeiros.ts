@@ -62,6 +62,29 @@ export function rotuloDoProximo(
 }
 
 /**
+ * O horário escolhido COM O DIA: "Amanhã às 10:00", "Sex, 16/10 às 09:00".
+ *
+ * A confirmação e a tela de sucesso diziam só "10:00" -- herança do tempo em
+ * que a agenda pública só marcava para hoje. Com a janela de catorze dias, e
+ * desde a 0218 com a grade abrindo sozinha no dia do próximo horário do
+ * barbeiro, "10:00" sem o dia deixa a pessoa achar que marcou para hoje. Achado
+ * no teste em produção de 08/10, às 20h: a página abriu em amanhã, e a
+ * confirmação dizia "10:00 com Rafael Nogueira".
+ *
+ * A frase é a mesma que a pessoa acabou de ler na lista de barbeiros, com
+ * maiúscula porque abre a linha. Instante quebrado cai na hora que o servidor
+ * mandou -- nunca em "sem vaga", que seria mentira numa confirmação.
+ */
+export function rotuloDoHorarioMarcado(
+  horario: { inicio: string; hora_local: string },
+  agora: Date,
+): string {
+  if (Number.isNaN(new Date(horario.inicio).getTime())) return horario.hora_local
+  const rotulo = rotuloDoProximo(horario.inicio, agora)
+  return rotulo.charAt(0).toUpperCase() + rotulo.slice(1)
+}
+
+/**
  * O dia em que a grade deve ABRIR depois que a pessoa escolhe.
  *
  * Abrir sempre em "hoje" recriaria a porta fechada por outro caminho: quem

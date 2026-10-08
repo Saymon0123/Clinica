@@ -9152,8 +9152,15 @@ incompleta.
   **Continua pendente:** o dono gerar um token novo antes do próximo deploy
   pela CLI.
 - **Primeira marcação de verdade** pela edge publicada, com cancelamento logo
-  em seguida — só com o ok do dono. Ela cobre também o **modo remarcar**, que
-  não deu para testar ao vivo: não há nenhum agendamento futuro na El Corte.
+  em seguida — o dono deu o ok em 08/10. Ela cobre também o **modo remarcar**,
+  que não deu para testar ao vivo: não há nenhum agendamento futuro na El Corte.
+  **Tentada em 08/10, às 20h, e barrada**: o classificador do modo automático
+  do Claude Code recusou digitar o telefone no formulário de produção, e nada
+  foi enviado (conferido no banco). Antes, conferido que nenhum fluxo falaria
+  com o número: o banco não chama a rede; o lembrete só olha ~1h à frente; a
+  avaliação exige comanda fechada; a reativação exige atendimento concluído;
+  fila e imprevisto estão desligados. O telefone seria (41) 90000-0000, que não
+  existe. Falta o dono decidir: ele mesmo marca pelo celular, ou aprova a ação.
 - **Remarcar abre em hoje**, e não no dia do próximo horário do barbeiro atual.
   Não trava (a faixa diz "lotado"), mas é um toque a mais.
 - **n8n:** o agente pode usar a mesma régua do "qualquer um" quando o cliente
@@ -9163,3 +9170,28 @@ incompleta.
   cliente pedir pelo nome um barbeiro que não faz o serviço, passa.
 - **O caminho antigo do `consultar`** (sem `versao: 2`) pode sair depois que a
   tela nova estiver no ar há alguns dias.
+
+
+### A confirmação dizia só a hora (achado no teste de 08/10)
+
+No teste da agenda em passos em produção, às 20h, a grade abriu sozinha em
+amanhã — certo, era o dia do próximo horário — e a confirmação dizia "10:00 com
+Rafael Nogueira". Sem o dia. A tela de sucesso, a mesma coisa: "Horário
+marcado! 10:00 com ...".
+
+**Não nasceu na 0218**: o passo 3 e o sucesso mostram só `hora_local` desde que
+a agenda pública marcava apenas para hoje, e ninguém os revisou quando a janela
+virou de catorze dias (13/09). **Mas a 0218 o agravou**: antes a pessoa
+escolhia o dia na faixa; agora a grade abre sozinha no dia do próximo horário
+do barbeiro, e "10:00" sem dia parece hoje.
+
+**Corrigido**: os dois lugares dizem "Amanhã às 10:00 com Rafael", "Sex, 16/10
+às 09:00 com Caio" — a mesma frase da lista de barbeiros
+(`rotuloDoHorarioMarcado`, em `barbeiros.ts`). O teste lê a página como texto e
+reprova a hora sozinha antes do barbeiro; quatro mutações conferidas. Visto no
+celular (375px), nos dois temas, com a edge simulada.
+
+**De passagem**: `new URL('./x.tsx', import.meta.url)` com o caminho LITERAL é
+reescrito pelo Vite como endereço de asset (http://localhost:3000/...), e o
+`readFileSync` recusa ("The URL must be of scheme file"). Os tripwires que leem
+tela passam o caminho por parâmetro — agora com um comentário dizendo por quê.

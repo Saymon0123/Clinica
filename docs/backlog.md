@@ -9142,13 +9142,18 @@ pelo link. A cobrança continua certa (opção A do dono); só a frase estava
 incompleta.
 
 **Pendente:**
-- **A ORDEM DO DEPLOY IMPORTA.** A edge nova tem de subir ANTES do merge: a tela
-  nova com a edge antiga não recebe a lista de barbeiros e trava no passo 2. A
-  edge nova com a tela antiga funciona (caminho antigo preservado). **Bloqueado**:
-  o token em `~/.clubcut/supabase-access-token.txt` foi recusado pela API em
-  08/10 (expirado ou revogado) — o dono precisa gerar outro.
+- **A ordem do deploy — feito em 08/10.** A edge subiu ANTES do merge (a tela
+  nova com a edge antiga trava no passo 2), pelo MCP do Supabase, versão 44,
+  porque o token da CLI em `~/.clubcut/supabase-access-token.txt` foi recusado
+  pela API (expirado ou revogado). Conferida arquivo a arquivo contra o
+  repositório (md5 dos nove arquivos igual) e testada ao vivo só com consultas:
+  a tela antiga segue recebendo os 109 horários de 10 em 10 por barbeiro; a nova
+  recebe 7, de 30 em 30, para o corte da tarde, com um nome previsto em cada.
+  **Continua pendente:** o dono gerar um token novo antes do próximo deploy
+  pela CLI.
 - **Primeira marcação de verdade** pela edge publicada, com cancelamento logo
-  em seguida — só com o ok do dono.
+  em seguida — só com o ok do dono. Ela cobre também o **modo remarcar**, que
+  não deu para testar ao vivo: não há nenhum agendamento futuro na El Corte.
 - **Remarcar abre em hoje**, e não no dia do próximo horário do barbeiro atual.
   Não trava (a faixa diz "lotado"), mas é um toque a mais.
 - **n8n:** o agente pode usar a mesma régua do "qualquer um" quando o cliente

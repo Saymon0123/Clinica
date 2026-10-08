@@ -9047,3 +9047,46 @@ duas telas como texto (padrao do tripwire de `ErroDeCarga`). Tres assercoes
 reprovam contra o texto antigo -- conferido devolvendo os arquivos por stash.
 A quarta guarda a promessa de lembrete e reativacao sem custo, que segue
 verdadeira e pode cair por tabela numa proxima mexida na seccao de preco.
+
+
+### Nome de exibição na Meta: o recurso reabriu a análise (07/10 e 08/10)
+
+O nome do número central foi recusado **quatro vezes com o mesmo código**,
+`BIZ_COMMERCE_VIOLATION_OTHER`: `Club_Cut` (08/09), `Club Cut` (14/09),
+`Club Cut - Aura IA` (19/09) e `Aura IA - Club Cut` (06/10). Quatro formatos, um
+motivo só: o bloqueio é a avaliação do **negócio**, não a grafia — e trocar a
+grafia de novo é queimar tentativa.
+
+**Onde o motivo mora.** Nem o WhatsApp Manager nem a Graph API mostram: ele chega
+pelo webhook `phone_number_name_update` e fica gravado em
+`public.eventos_da_waba`. Foi assim que as quatro recusas apareceram.
+
+**Descartado:** a verificação de Tech Provider. Ela já está **verificada** no
+portfólio, então não é ela que trava o nome.
+
+**O recurso**, enviado em 07/10 pelo Suporte Direto ("Appeal Display Name
+Rejection"), perguntou o ponto exato da política. A resposta veio por **chat**,
+no painel lateral do caso, e não como comentário:
+
+- **O suporte não enxerga o ponto da política** de um
+  `BIZ_COMMERCE_VIOLATION_OTHER`. A pergunta principal ficou sem resposta, e
+  nenhum chamado vai responder.
+- **A análise foi reaberta.** Conferido na Graph API em 08/10:
+  `new_display_name` = **"Aura IA - Club Cut"**, `new_name_status` =
+  `PENDING_REVIEW` (na véspera era `DECLINED`). Prazo dito: 1 a 2 dias úteis.
+- **Mandar outra variação reinicia a análise.** Se for aprovado, o nome que o
+  cliente vê é "Aura IA - Club Cut", e não "Club Cut".
+
+**Um caso anterior morreu por silêncio.** O de 20/09 recebeu da Meta, em 25/09,
+um pedido de "informações adicionais" sem dizer quais, e foi fechado por
+inatividade em 27/09. Caso fechado não reabre. A lista do Suporte Direto
+esconde os fechados no filtro padrão — por isso ele passou despercebido.
+
+**Pendente (fora do repositório):**
+- **Aguardar a decisão**, que chega pelo webhook em `eventos_da_waba`. Não
+  reenviar variação enquanto estiver em análise.
+- **Site da AURA** (aurastudioai.com.br, que é o site cadastrado no portfólio
+  verificado e portanto o que o revisor usa para ligar o nome à empresa): ele
+  escreve o produto como **"ClubCut"**, junto, e linka para
+  `clubcut.vercel.app/inicio`. O certo é **"Club Cut"** e **clubcut.space** —
+  mesma grafia e mesmo endereço do nome pedido e do perfil comercial do número.

@@ -5,6 +5,7 @@ import { marcarSalao } from '../_shared/log.ts'
 import { ipDe, taxaExcedida } from '../_shared/limite.ts'
 import { numeroParaWhatsApp } from '../_shared/whatsapp.ts'
 import { servicosPedidos, somaDuracao } from '../_shared/servicos.ts'
+import { lerEscolha, tentarEmOrdem, type Candidato, type Escolha } from '../_shared/escolhaDoBarbeiro.ts'
 
 /**
  * Agenda pública — o QR do balcão.
@@ -432,8 +433,10 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
     }
 
     const quando = new Date((body.inicio as string | undefined) ?? '')
-    const profissionalId = body.profissionalId as string | undefined
-    if (Number.isNaN(quando.getTime()) || !profissionalId) {
+    // Um barbeiro ou "qualquer um" (0218). O texto que não for nenhum dos dois
+    // vira nulo, e nulo é a mesma resposta de antes: escolha um horário.
+    const escolha = lerEscolha(body.profissionalId)
+    if (Number.isNaN(quando.getTime()) || !escolha) {
       return json({ error: 'Escolha um horário.' }, 400)
     }
 
@@ -451,7 +454,7 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
     // requisição decide quanto tempo de cadeira se reserva.
     const { data: linhas } = await admin
       .from('appointment_services')
-      .select('services(duracao_minutos)')
+      .select('service_id, services(duracao_minutos)')
       .eq('appointment_id', ag.id)
     const duracaoTotal = (linhas ?? []).reduce((total, linha) => {
       const s = (Array.isArray(linha.services) ? linha.services[0] : linha.services) as
@@ -464,52 +467,94 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
       return json({ error: 'Não foi possível remarcar. Fale com a barbearia.', whatsappBarbearia: whatsapp }, 500)
     }
 
-    // `p_ignorar_agendamento` (migration 0169) é o que permite mover de 10:00
-    // para 10:20: sem ele, o próprio agendamento esconde os horários vizinhos
-    // do seu.
-    const { data: livres } = await admin.rpc('horarios_livres', {
-      p_salon_id: ag.salon_id,
-      p_data: diaNovo,
-      p_duracao_minutos: duracaoTotal,
-      p_professional_id: profissionalId,
-      p_ignorar_agendamento: ag.id,
-    })
-    const valido = (livres ?? []).some(
-      (h: { inicio: string }) => new Date(h.inicio).getTime() === quando.getTime(),
-    )
-    if (!valido) {
+    const servicoIds = (linhas ?? []).map((linha) => linha.service_id as string)
+
+    // QUEM PODE FICAR COM ESTE HORÁRIO (0218), na ordem em que se tenta.
+    //
+    // "Qualquer um": a régua do banco, que ignora o próprio agendamento na
+    // carga -- senão o barbeiro atual seria punido pelo horário que o cliente
+    // quer mover. Um barbeiro escolhido: confere que ele faz os serviços (o
+    // defeito que a 0218 corrigiu nesta porta) e que está livre, como antes.
+    let candidatos: Candidato[]
+    if (escolha === 'qualquer') {
+      const previsto = lerEscolha(body.previsto)
+      const { data: lista, error: erroLista } = await admin.rpc('agenda_publica_candidatos', {
+        p_salon_id: ag.salon_id,
+        p_inicio: quando.toISOString(),
+        p_service_ids: servicoIds,
+        p_preferido: previsto && previsto !== 'qualquer' ? previsto : null,
+        p_ignorar_agendamento: ag.id,
+      })
+      if (erroLista) {
+        console.error('Erro ao listar candidatos ao remarcar:', erroLista)
+        return json({ error: 'Não foi possível remarcar. Tente novamente.', whatsappBarbearia: whatsapp }, 500)
+      }
+      candidatos = (lista ?? []) as Candidato[]
+    } else {
+      const { data: quem } = await admin.rpc('barbeiros_que_fazem_os_servicos', {
+        p_salon_id: ag.salon_id,
+        p_service_ids: servicoIds,
+      })
+      if (!((quem ?? []) as string[]).includes(escolha)) {
+        return json(
+          { error: 'Esse barbeiro não faz esse serviço. Escolha outro.', conflito: true, whatsappBarbearia: whatsapp },
+          409,
+        )
+      }
+      // `p_ignorar_agendamento` (migration 0169) é o que permite mover de 10:00
+      // para 10:20: sem ele, o próprio agendamento esconde os horários
+      // vizinhos do seu.
+      const { data: livres } = await admin.rpc('horarios_livres', {
+        p_salon_id: ag.salon_id,
+        p_data: diaNovo,
+        p_duracao_minutos: duracaoTotal,
+        p_professional_id: escolha,
+        p_ignorar_agendamento: ag.id,
+      })
+      const linha = ((livres ?? []) as { inicio: string; profissional: string }[]).find(
+        (h) => new Date(h.inicio).getTime() === quando.getTime(),
+      )
+      candidatos = linha ? [{ professional_id: escolha, profissional: linha.profissional }] : []
+    }
+    if (!candidatos.length) {
       return json({ error: 'Esse horário não está mais disponível. Escolha outro.', conflito: true }, 409)
     }
 
-    const { error: erroRemarcar } = await admin
-      .from('appointments')
-      .update({
-        data_hora_inicio: quando.toISOString(),
-        data_hora_fim: new Date(quando.getTime() + duracaoTotal * 60000).toISOString(),
-        professional_id: profissionalId,
-        // VOLTA A 'agendado' mesmo se estava 'confirmado': a pessoa confirmou a
-        // hora ANTIGA. Deixar 'confirmado' mostraria ao barbeiro uma presença
-        // confirmada para um horário que ninguém confirmou.
-        status: 'agendado',
-        // O LEMBRETE TEM DE SER REFEITO. Ele já foi enviado para a hora antiga,
-        // e `lembrete_enviado` impediria o novo. Pior: `lembrete_message_id`
-        // ainda apontaria para a mensagem velha, e o toque nos botões dela
-        // agiria sobre este agendamento com a hora errada na resposta.
-        lembrete_enviado: false,
-        lembrete_message_id: null,
-        lembrete_respondido_em: null,
-        envio_reservado_ate: null,
-        // O pedido de reagendamento foi atendido.
-        reagendamento_pedido_em: null,
-        remarcado_pelo_cliente_em: new Date().toISOString(),
-      })
-      .eq('id', ag.id)
-
-    if (erroRemarcar) {
+    const resultado = await tentarEmOrdem(candidatos, async (c) => {
+      const { error: erroRemarcar } = await admin
+        .from('appointments')
+        .update({
+          data_hora_inicio: quando.toISOString(),
+          data_hora_fim: new Date(quando.getTime() + duracaoTotal * 60000).toISOString(),
+          professional_id: c.professional_id,
+          // VOLTA A 'agendado' mesmo se estava 'confirmado': a pessoa confirmou
+          // a hora ANTIGA. Deixar 'confirmado' mostraria ao barbeiro uma
+          // presença confirmada para um horário que ninguém confirmou.
+          status: 'agendado',
+          // O LEMBRETE TEM DE SER REFEITO. Ele já foi enviado para a hora
+          // antiga, e `lembrete_enviado` impediria o novo. Pior:
+          // `lembrete_message_id` ainda apontaria para a mensagem velha, e o
+          // toque nos botões dela agiria sobre este agendamento com a hora
+          // errada na resposta.
+          lembrete_enviado: false,
+          lembrete_message_id: null,
+          lembrete_respondido_em: null,
+          envio_reservado_ate: null,
+          // O pedido de reagendamento foi atendido.
+          reagendamento_pedido_em: null,
+          remarcado_pelo_cliente_em: new Date().toISOString(),
+        })
+        .eq('id', ag.id)
+      if (!erroRemarcar) return { ok: true, valor: null }
       // 23P01: duas pessoas mexeram no mesmo vão ao mesmo tempo, ou a folga
-      // entre atendimentos foi violada. O banco recusou, que é o certo.
-      const conflito = erroRemarcar.code === '23P01'
-      if (!conflito) console.error('Erro ao remarcar:', erroRemarcar)
+      // entre atendimentos foi violada. O banco recusou, que é o certo -- e,
+      // num "qualquer um", o próximo barbeiro da lista ainda pode estar livre.
+      return { ok: false, conflito: erroRemarcar.code === '23P01', erro: erroRemarcar }
+    })
+
+    if (!resultado.ok) {
+      const conflito = resultado.motivo !== 'erro'
+      if (!conflito) console.error('Erro ao remarcar:', resultado.erro)
       return json(
         {
           error: conflito
@@ -521,7 +566,15 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
       )
     }
 
-    return json({ ok: true, inicio: quando.toISOString(), whatsappBarbearia: whatsapp })
+    // O NOME de quem vai atender volta junto: num "qualquer um" a tela só
+    // sabe com quem ficou depois daqui, e a confirmação tem de dizer.
+    return json({
+      ok: true,
+      inicio: quando.toISOString(),
+      whatsappBarbearia: whatsapp,
+      profissionalId: resultado.quem.professional_id,
+      profissional: resultado.quem.profissional,
+    })
   }
 
   // ------------------------------------------------------------------
@@ -705,13 +758,16 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
     const remarcarToken = (body.remarcarToken as string | undefined)?.trim()
     let remarcandoId: string | null = null
     let servicosDoRemarcado: string[] | null = null
+    // O barbeiro de hoje desse horário (0218). Quem remarca quase sempre quer
+    // o mesmo barbeiro em outra hora, então a tela já chega com ele escolhido.
+    let barbeiroAtual: string | null = null
     if (remarcarToken) {
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(remarcarToken)) {
         return json({ error: 'Link inválido.' }, 400)
       }
       const { data: aRemarcar } = await admin
         .from('appointments')
-        .select('id, salon_id, status, appointment_services(service_id, ordem)')
+        .select('id, salon_id, status, professional_id, appointment_services(service_id, ordem)')
         .eq('token_gestao', remarcarToken)
         .maybeSingle()
       if (
@@ -722,6 +778,7 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
         return json({ error: 'Esse horário já não está mais de pé.', whatsappBarbearia }, 409)
       }
       remarcandoId = aRemarcar.id
+      barbeiroAtual = (aRemarcar.professional_id as string | null) ?? null
       servicosDoRemarcado = (
         (aRemarcar.appointment_services ?? []) as { service_id: string; ordem: number }[]
       )
@@ -749,8 +806,15 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
       .eq('ativo', true)
       .order('preco')
 
-    // Sem escolha nenhuma cai no primeiro do catálogo (ordenado por preço), que
-    // é o que a tela sempre mostrou pré-selecionado.
+    // A AGENDA EM PASSOS (0218) manda `versao: 2`, e nela NADA vem
+    // pré-escolhido: os barbeiros só aparecem depois do serviço, e os horários
+    // depois do barbeiro. Sem a versão é a tela anterior -- nos minutos entre a
+    // edge subir e a Vercel terminar o build, e no celular de quem deixou a aba
+    // aberta --, e ela continua recebendo o que sempre recebeu.
+    const versao2 = body.versao === 2
+
+    // Sem escolha nenhuma, a tela anterior cai no primeiro do catálogo
+    // (ordenado por preço), que é o que ela sempre mostrou pré-selecionado.
     const pedidos = servicosPedidos(
       // Em modo remarcar a lista vem do AGENDAMENTO, nunca do corpo: trocar o
       // servico aqui mudaria preco e duracao sem passar pelo `remarcar_horario`,
@@ -758,11 +822,13 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
       servicosDoRemarcado ? { servicoIds: servicosDoRemarcado } : body,
       servicos ?? [],
     )
-    const escolhidos = pedidos.length ? pedidos : servicos?.slice(0, 1) ?? []
+    const escolhidos = pedidos.length ? pedidos : versao2 ? [] : servicos?.slice(0, 1) ?? []
     const escolhido = escolhidos[0]
     const duracaoTotal = somaDuracao(escolhidos)
 
-    if (!escolhido) {
+    // O catálogo vazio, e não "nada escolhido": na versão 2 começar sem serviço
+    // é o normal, não um beco.
+    if (!servicos?.length) {
       // Sem serviço ativo a tela mostrava um seletor vazio e mandava "tentar
       // outro serviço acima" (M8). Agora ela sabe o que dizer.
       return json({
@@ -787,38 +853,124 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
     const data = pedida || hoje
     const ehHoje = data === hoje
 
-    const { data: horarios, error: erroHorarios } = await admin.rpc('horarios_livres', {
-      p_salon_id: salonId,
-      p_data: data,
-      // A soma, não a duração do principal: é ela que decide se o encaixe cabe.
-      p_duracao_minutos: duracaoTotal,
-      p_ignorar_agendamento: remarcandoId,
-    })
+    type HorarioLivre = { professional_id: string; profissional: string; inicio: string; hora_local: string }
+    type BarbeiroDaAgenda = { id: string; nome: string; proximo: string | null }
+    let horarios: HorarioLivre[] = []
+    let dias: { dia: string; livres: number }[] = []
+    let barbeiros: BarbeiroDaAgenda[] = []
+    let escolhaFeita: Escolha | null = null
+    let barbeiroRecusado = false
 
-    if (erroHorarios) {
-      console.error('Erro ao calcular horarios:', erroHorarios)
-      return json({ error: 'Não foi possível carregar os horários.', whatsappBarbearia }, 500)
+    if (versao2) {
+      // ------------------------------------------------ a agenda em passos
+      //
+      // Uma chamada só (`agenda_publica_horarios`, 0218): os barbeiros que
+      // fazem os serviços, cada um com o próximo horário livre; e, depois que a
+      // pessoa escolhe um barbeiro ou "qualquer um", a faixa de catorze dias e
+      // os horários do dia, de 30 em 30. As três respostas saem da MESMA conta
+      // de vagas, e por isso não discordam: "7 livres" na faixa são os mesmos
+      // sete botões na grade.
+      //
+      // No REMARCAR, sem escolha na requisição, vale o barbeiro de hoje desse
+      // horário: quem remarca quase sempre quer o mesmo barbeiro em outra hora.
+      if (escolhidos.length) {
+        const pedida = lerEscolha(body.profissionalId)
+        escolhaFeita = pedida ?? barbeiroAtual
+        const consultarAgenda = (escolhaDaVez: Escolha | null) =>
+          admin.rpc('agenda_publica_horarios', {
+            p_salon_id: salonId,
+            p_service_ids: escolhidos.map((s) => s.id),
+            p_escolha: escolhaDaVez,
+            p_data: data,
+            p_dias: DIAS_VISIVEIS,
+            p_ignorar_agendamento: remarcandoId,
+          })
+        let { data: agenda, error: erroAgenda } = await consultarAgenda(escolhaFeita)
+        type Agenda = {
+          ok: boolean
+          motivo?: string
+          barbeiros?: BarbeiroDaAgenda[]
+          dias?: { dia: string; livres: number }[]
+          horarios?: HorarioLivre[]
+        }
+        // O BARBEIRO QUE NÃO FAZ O SERVIÇO volta para a lista, com aviso -- e
+        // não para um erro. Acontece quando a pessoa escolhe o Diego e DEPOIS
+        // acrescenta luzes, que ele não faz; ou quando o barbeiro de hoje de um
+        // horário sendo remarcado saiu da equipe. Nos dois casos o certo é
+        // mostrar quem faz, e deixar a pessoa escolher de novo.
+        if (!erroAgenda && !(agenda as Agenda | null)?.ok && escolhaFeita) {
+          barbeiroRecusado = !!pedida
+          escolhaFeita = null
+          ;({ data: agenda, error: erroAgenda } = await consultarAgenda(null))
+        }
+        if (erroAgenda || !(agenda as Agenda | null)?.ok) {
+          console.error('Erro ao montar a agenda em passos:', erroAgenda)
+          return json({ error: 'Não foi possível carregar os horários.', whatsappBarbearia }, 500)
+        }
+        let resposta = agenda as Agenda
+
+        // BARBEARIA DE UM BARBEIRO SÓ, a mais comum: não há o que escolher, e
+        // fazer a pessoa tocar no único nome seria um passo à toa. Ele já vem
+        // escolhido, com os horários dele.
+        const unico = resposta.barbeiros?.length === 1 ? resposta.barbeiros[0] : null
+        if (!escolhaFeita && unico?.proximo) {
+          const { data: dele, error: erroDele } = await consultarAgenda(unico.id)
+          if (!erroDele && (dele as Agenda | null)?.ok) {
+            escolhaFeita = unico.id
+            resposta = dele as Agenda
+          }
+        }
+
+        barbeiros = resposta.barbeiros ?? []
+        horarios = resposta.horarios ?? []
+        dias = resposta.dias ?? []
+      }
+    } else {
+      // ------------------------------------------- a tela anterior, como era
+      const { data: livres, error: erroHorarios } = await admin.rpc('horarios_livres', {
+        p_salon_id: salonId,
+        p_data: data,
+        // A soma, não a duração do principal: é ela que decide se o encaixe cabe.
+        p_duracao_minutos: duracaoTotal,
+        p_ignorar_agendamento: remarcandoId,
+      })
+
+      if (erroHorarios) {
+        console.error('Erro ao calcular horarios:', erroHorarios)
+        return json({ error: 'Não foi possível carregar os horários.', whatsappBarbearia }, 500)
+      }
+
+      // Quem faz o quê (0218), também na tela anterior: sem isto ela seguiria
+      // oferecendo o barbeiro que não faz o serviço -- e o `agendar` agora o
+      // recusa, então a pessoa escolheria um horário que não pode marcar.
+      const { data: quem } = await admin.rpc('barbeiros_que_fazem_os_servicos', {
+        p_salon_id: salonId,
+        p_service_ids: escolhidos.map((s) => s.id),
+      })
+      const quemFaz = new Set((quem ?? []) as string[])
+      horarios = ((livres ?? []) as HorarioLivre[]).filter((h) => quemFaz.has(h.professional_id))
+
+      // A faixa de dias: quantos horários sobraram em cada um dos catorze.
+      //
+      // SEM A CONTAGEM a faixa seria uma armadilha — a pessoa toca terça, não
+      // acha nada, toca quarta, não acha nada, e desiste no terceiro toque sem
+      // nunca ver que sexta estava cheia de vaga. Um dia que parece disponível
+      // e não está é pior que um dia marcado como cheio.
+      //
+      // Uma consulta só (`dias_com_horario`, migration 0167): medida em 20 ms
+      // para os catorze na El Guardians. Catorze chamadas daqui seriam catorze
+      // idas e voltas de rede.
+      const { data: contagem, error: erroDias } = await admin.rpc('dias_com_horario', {
+        p_salon_id: salonId,
+        p_de: hoje,
+        p_dias: DIAS_VISIVEIS,
+        p_duracao_minutos: duracaoTotal,
+        // Sem isto a faixa diria "54 livres" e a grade mostraria 61 no mesmo dia.
+        p_ignorar_agendamento: remarcandoId,
+      })
+      if (erroDias) console.error('Erro ao contar os dias:', erroDias)
+      dias = (contagem ?? []) as { dia: string; livres: number }[]
     }
-
-    // A faixa de dias: quantos horários sobraram em cada um dos catorze.
-    //
-    // SEM A CONTAGEM a faixa seria uma armadilha — a pessoa toca terça, não
-    // acha nada, toca quarta, não acha nada, e desiste no terceiro toque sem
-    // nunca ver que sexta estava cheia de vaga. Um dia que parece disponível e
-    // não está é pior que um dia marcado como cheio.
-    //
-    // Uma consulta só (`dias_com_horario`, migration 0167): medida em 20 ms
-    // para os catorze na El Guardians. Catorze chamadas daqui seriam catorze
-    // idas e voltas de rede.
-    const { data: dias, error: erroDias } = await admin.rpc('dias_com_horario', {
-      p_salon_id: salonId,
-      p_de: hoje,
-      p_dias: DIAS_VISIVEIS,
-      p_duracao_minutos: duracaoTotal,
-      // Sem isto a faixa diria "54 livres" e a grade mostraria 61 no mesmo dia.
-      p_ignorar_agendamento: remarcandoId,
-    })
-    if (erroDias) console.error('Erro ao contar os dias:', erroDias)
 
     // Em que dias da semana ALGUÉM da equipe trabalha. A tela precisa disto
     // para separar "fechado" de "lotado" na faixa: um dia sem ninguém de
@@ -877,15 +1029,21 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
     // O tipo vem anotado à mão: `dias` sai de um `rpc()` sem tipo gerado, e o
     // `deno check` do CI (que o `tsc` do projeto não cobre) reprova o `any`
     // implícito — foi assim que isto custou três idas ao CI em 01/10.
-    const diasFechados = (dias ?? [])
-      .map((d: { dia: string }) => d.dia)
-      .filter((iso: string) => !trabalhaNoDia(iso))
+    // A janela INTEIRA, e não só os dias que vieram contados: na agenda em
+    // passos os dias só são contados depois da escolha do barbeiro, mas a
+    // folga da equipe vale desde o primeiro toque.
+    const diasFechados = Array.from({ length: DIAS_VISIVEIS }, (_, i) => somaDias(hoje, i)).filter(
+      (iso: string) => !trabalhaNoDia(iso),
+    )
 
     // Lista vazia tem quatro causas, e a tela dizia a mesma frase para todas —
     // "tente outro serviço acima", inclusive às 23h e em dia de folga (M8). O
     // motivo vai junto para ela poder dizer a verdade.
+    //
+    // Na agenda em passos, lista vazia ANTES de escolher o barbeiro não é falta
+    // de vaga: é só que a pergunta ainda não foi feita.
     let motivoVazio: string | null = null
-    if (!horarios?.length) {
+    if (!horarios.length && (!versao2 || escolhaFeita)) {
       motivoVazio = motivoSemHorario({
         horario: salao.horario_funcionamento,
         dia: chaveDoDia(data),
@@ -909,7 +1067,7 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
       servicos: servicos ?? [],
       // `servicoEscolhido` (singular) fica por compatibilidade: a tela antiga
       // le so ele durante os minutos entre a edge subir e a Vercel terminar.
-      servicoEscolhido: escolhido.id,
+      servicoEscolhido: escolhido?.id ?? null,
       servicosEscolhidos: escolhidos.map((s) => s.id),
       duracaoTotal,
       /** O token CONFIRMADO pelo servidor. A tela so entra em modo remarcar
@@ -917,11 +1075,16 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
        *  mudar um horario que nao existe. */
       remarcando: remarcandoId ? remarcarToken : null,
       data,
-      dias: dias ?? [],
+      dias,
       diasDeTrabalho,
       diasFechados,
-      horarios: horarios ?? [],
+      horarios,
       motivoVazio,
+      // Agenda em passos (0218). A tela anterior não lê nenhum destes.
+      barbeiros,
+      escolha: escolhaFeita,
+      barbeiroAtual,
+      barbeiroRecusado,
     })
   }
 
@@ -942,7 +1105,9 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
 
   const nome = (body.nome as string | undefined)?.trim()
   const telefone = (body.telefone as string | undefined)?.replace(/\D/g, '') ?? ''
-  const profissionalId = body.profissionalId as string | undefined
+  // Um barbeiro ou "qualquer um" (0218). Texto que não for nenhum dos dois
+  // vira nulo, e nulo é a resposta de sempre: escolha um horário.
+  const escolha = lerEscolha(body.profissionalId)
   const inicio = body.inicio as string | undefined
 
   if (!nome) return json({ error: 'Informe seu nome.' }, 400)
@@ -956,7 +1121,7 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
       400,
     )
   }
-  if (!profissionalId || !inicio) {
+  if (!escolha || !inicio) {
     return json({ error: 'Escolha um horário.' }, 400)
   }
 
@@ -1015,26 +1180,60 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
     )
   }
 
-  // Revalidar contra a mesma função que gerou a lista fecha a porta e, de
-  // quebra, resolve o caso de alguém deixar a tela aberta por meia hora: o
-  // horário some da lista e a marcação é recusada com explicação.
-  const { data: livres } = await admin.rpc('horarios_livres', {
-    p_salon_id: salonId,
-    p_data: diaDoPedido,
-    // A SOMA. Revalidar com a duração do principal aceitaria um corte+barba de
-    // 70 min num vão de 40 — a trava de sobreposição do banco recusaria depois,
-    // mas com a mensagem errada; e num vão folgado ela passaria, reservando
-    // menos tempo que o atendimento leva.
-    p_duracao_minutos: duracaoTotal,
-    p_professional_id: profissionalId,
-  })
-
+  // QUEM PODE FICAR COM ESTE HORÁRIO, na ordem em que se tenta (0218).
+  //
+  // Revalidar contra o banco fecha a porta e, de quebra, resolve o caso de
+  // alguém deixar a tela aberta por meia hora: o horário some da lista e a
+  // marcação é recusada com explicação.
+  //
+  // "QUALQUER UM": a régua do banco (`agenda_publica_candidatos`) devolve quem
+  // está livre naquele instante e faz os serviços, na ordem do dono -- menos
+  // agendamentos no dia, menos minutos, sorteio. O `previsto` é o nome que a
+  // tela mostrou antes da confirmação; se ele ainda estiver livre, fica.
+  //
+  // UM BARBEIRO: confere que ele faz os serviços -- o defeito que a 0218
+  // corrigiu nesta porta -- e que está livre, pela mesma conta de sempre.
+  const servicoIds = servicos.map((s) => s.id)
   const pedido = quandoPedido.getTime()
-  const valido = (livres ?? []).some(
-    (h: { inicio: string }) => new Date(h.inicio).getTime() === pedido,
-  )
+  let candidatos: Candidato[]
+  if (escolha === 'qualquer') {
+    const previsto = lerEscolha(body.previsto)
+    const { data: lista, error: erroLista } = await admin.rpc('agenda_publica_candidatos', {
+      p_salon_id: salonId,
+      p_inicio: quandoPedido.toISOString(),
+      p_service_ids: servicoIds,
+      p_preferido: previsto && previsto !== 'qualquer' ? previsto : null,
+    })
+    if (erroLista) {
+      console.error('Erro ao listar candidatos:', erroLista)
+      return json({ error: 'Não foi possível agendar. Tente novamente.' }, 500)
+    }
+    candidatos = (lista ?? []) as Candidato[]
+  } else {
+    const { data: quem } = await admin.rpc('barbeiros_que_fazem_os_servicos', {
+      p_salon_id: salonId,
+      p_service_ids: servicoIds,
+    })
+    if (!((quem ?? []) as string[]).includes(escolha)) {
+      return json({ error: 'Esse barbeiro não faz esse serviço. Escolha outro.', conflito: true }, 409)
+    }
+    const { data: livres } = await admin.rpc('horarios_livres', {
+      p_salon_id: salonId,
+      p_data: diaDoPedido,
+      // A SOMA. Revalidar com a duração do principal aceitaria um corte+barba
+      // de 70 min num vão de 40 — a trava de sobreposição do banco recusaria
+      // depois, mas com a mensagem errada; e num vão folgado ela passaria,
+      // reservando menos tempo que o atendimento leva.
+      p_duracao_minutos: duracaoTotal,
+      p_professional_id: escolha,
+    })
+    const linha = ((livres ?? []) as { inicio: string; profissional: string }[]).find(
+      (h) => new Date(h.inicio).getTime() === pedido,
+    )
+    candidatos = linha ? [{ professional_id: escolha, profissional: linha.profissional }] : []
+  }
 
-  if (!valido) {
+  if (!candidatos.length) {
     return json({ error: 'Esse horário não está mais disponível. Escolha outro.', conflito: true }, 409)
   }
 
@@ -1130,28 +1329,34 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
   // trava de sobreposição reserva o tempo inteiro no PRIMEIRO instante — antes
   // mesmo de a filha existir. É o único ponto em que a corrida importa.
   const fim = new Date(quandoPedido.getTime() + duracaoTotal * 60000).toISOString()
-  const { data: agendamento, error: erroAgendamento } = await admin
-    .from('appointments')
-    .insert({
-      salon_id: salonId,
-      client_id: clientId,
-      professional_id: profissionalId,
-      // O principal é o primeiro escolhido: é o que a agenda do CRM, a fatura e
-      // o histórico do cliente leem quando leem um serviço só.
-      service_id: servicos[0].id,
-      data_hora_inicio: inicio,
-      data_hora_fim: fim,
-      status: 'agendado',
-      origem: 'publico',
-    })
-    .select('id, data_hora_inicio, token_gestao')
-    .single()
-
-  if (erroAgendamento) {
+  type Gravado = { id: string; data_hora_inicio: string; token_gestao: string }
+  const resultado = await tentarEmOrdem<Gravado>(candidatos, async (c) => {
+    const { data: gravado, error: erroAgendamento } = await admin
+      .from('appointments')
+      .insert({
+        salon_id: salonId,
+        client_id: clientId,
+        professional_id: c.professional_id,
+        // O principal é o primeiro escolhido: é o que a agenda do CRM, a fatura
+        // e o histórico do cliente leem quando leem um serviço só.
+        service_id: servicos[0].id,
+        data_hora_inicio: inicio,
+        data_hora_fim: fim,
+        status: 'agendado',
+        origem: 'publico',
+      })
+      .select('id, data_hora_inicio, token_gestao')
+      .single()
+    if (!erroAgendamento && gravado) return { ok: true, valor: gravado as Gravado }
     // 23P01 é a trava de sobreposição: duas pessoas escanearam o QR ao mesmo
     // tempo e escolheram o mesmo horário. O banco recusou a segunda, que é o
-    // certo — o que não pode é a pessoa ver um erro sem entender.
-    const conflito = erroAgendamento.code === '23P01'
+    // certo — e, num "qualquer um", o próximo barbeiro da lista ainda pode
+    // estar livre, e é com ele que se tenta.
+    return { ok: false, conflito: erroAgendamento?.code === '23P01', erro: erroAgendamento }
+  })
+
+  if (!resultado.ok) {
+    const conflito = resultado.motivo !== 'erro'
 
     // Cliente criado nesta tentativa e agendamento recusado deixaria um
     // cadastro órfão. Mesmo defeito que já aconteceu na tela de agendamento do
@@ -1160,7 +1365,7 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
       await admin.from('clients').delete().eq('id', clientId)
     }
 
-    if (!conflito) console.error('Erro ao agendar:', erroAgendamento)
+    if (!conflito) console.error('Erro ao agendar:', resultado.erro)
     return json(
       {
         error: conflito
@@ -1171,6 +1376,7 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
       conflito ? 409 : 500,
     )
   }
+  const agendamento = resultado.valor
 
   // Os serviços além do principal. O principal já entrou sozinho, pelo trigger
   // `trg_espelha_servico_principal` (0120) — por isso o `slice(1)` e o
@@ -1211,5 +1417,9 @@ Deno.serve(comSentry('agenda-publica', async (req: Request, ctx) => {
     inicio: agendamento.data_hora_inicio,
     // O link de gestão: é assim que quem marcou pode cancelar sozinho depois.
     tokenGestao: agendamento.token_gestao,
+    // Quem vai atender (0218). Num "qualquer um" a tela só sabe depois daqui,
+    // e a confirmação tem de dizer o nome -- pedido do dono.
+    profissionalId: resultado.quem.professional_id,
+    profissional: resultado.quem.profissional,
   })
 }))

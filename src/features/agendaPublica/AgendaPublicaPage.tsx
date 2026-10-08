@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react'
 import { MarcaClubCut } from '../../components/MarcaClubCut'
 import { useParams, useSearchParams } from 'react-router-dom'
-import { ArrowRight, CalendarPlus, Check, Clock, MapPin, MessageCircle } from 'lucide-react'
+import { ArrowRight, CalendarPlus, Check, Clock, MapPin, MessageCircle, Users } from 'lucide-react'
 import { invokeFunction } from '../../lib/invokeFunction'
 import { ErroInline } from '../../components/ErroInline'
 import { AVISO_TELEFONE_FORMATO, classificarTelefone } from '../../lib/telefone'
@@ -22,6 +22,12 @@ import {
 } from './dias'
 import { esquecer, guardar, lerGuardados, tokensAEsquecer } from './guardados'
 import { eventoIcs } from './calendario'
+import {
+  diaParaAbrir,
+  proximoDeQualquerUm,
+  rotuloDoProximo,
+  type BarbeiroDaAgenda,
+} from './barbeiros'
 
 /**
  * A página que o QR do balcão abre.
@@ -79,6 +85,31 @@ import { eventoIcs } from './calendario'
  * AINDA FORA, de propósito: **remarcar pelo link** (etapa 4) e o **aviso à
  * barbearia** quando o cliente cancela sozinho (etapa 6) — que fica mais
  * urgente agora, porque a etapa 3 faz mais gente cancelar sem avisar ninguém.
+ *
+ * ─── A agenda em passos (08/10/2026, migration 0218) ───────────────────────
+ *
+ * O dono olhou a tela e disse que ela mostrava horários demais. A causa: cada
+ * horário aparecia uma vez POR BARBEIRO, de dez em dez minutos — 273 botões
+ * num dia da El Corte, 84 só de manhã. Agora são quatro passos, na mesma
+ * página, cada um aparecendo abaixo do anterior:
+ *
+ *   serviço  →  barbeiro (ou "qualquer um")  →  dia e horário  →  seus dados
+ *
+ * O BARBEIRO VEM ANTES DO HORÁRIO, e isso INVERTE a decisão escrita acima
+ * ("mostra por horário, com o barbeiro em cada um"). Foi decisão do dono, por
+ * causa de quem tem barbeiro fixo: com o horário primeiro, quem quer o Diego
+ * tenta 10h, 10h30, 11h até achar uma em que ele esteja. O risco que a decisão
+ * antiga evitava — escolher o barbeiro e descobrir que ele está cheio — tem
+ * resposta própria: cada barbeiro aparece com o PRÓXIMO horário livre dele, e
+ * a grade abre direto no dia desse horário (`barbeiros.ts`).
+ *
+ * DE 30 EM 30, SEM ENCAIXE, só aqui. O agente do WhatsApp e o balcão continuam
+ * de 10 em 10 com encaixe, tapando os buracos que a grade limpa deixa.
+ *
+ * "QUALQUER UM" é regra do banco, não da tela: fica com quem tem menos
+ * agendamentos no dia, depois menos minutos, depois sorteio. A tela mostra o
+ * nome que a regra escolheria antes da confirmação, e o servidor o mantém se
+ * ele ainda estiver livre — a pessoa leu "com o Rafael" e confirmou.
  */
 
 type Servico = { id: string; nome: string; preco: number; duracao_minutos: number }
@@ -116,6 +147,16 @@ type Consulta = {
   horarios: Horario[]
   /** Por que `horarios` veio vazio (M8). Ausente numa função anterior a isto. */
   motivoVazio?: MotivoSemHorario | null
+  /** Agenda em passos (0218): quem faz os serviços escolhidos, cada um com o
+   *  próximo horário livre. Vazio antes de escolher o serviço. */
+  barbeiros?: BarbeiroDaAgenda[]
+  /** A escolha que o servidor de fato usou: 'qualquer', o id do barbeiro, ou
+   *  nula. No remarcar, sem escolha pedida, vem o barbeiro de hoje. */
+  escolha?: string | null
+  /** O barbeiro de hoje do horário sendo remarcado. */
+  barbeiroAtual?: string | null
+  /** O barbeiro pedido deixou de fazer o serviço (409). */
+  barbeiroRecusado?: boolean
 }
 
 /** Um horário que este celular guardou, já conferido com o servidor. */
@@ -508,6 +549,95 @@ function rotuloDoEstado(d: DiaDaFaixa) {
 }
 
 /**
+ * O passo do barbeiro (0218).
+ *
+ * "QUALQUER UM" PRIMEIRO, com o primeiro horário livre de todos: é a escolha
+ * de quem não tem barbeiro fixo — a maioria —, e não pode parecer a opção de
+ * segunda. Só aparece com dois barbeiros ou mais; com um só, a edge já o
+ * entrega escolhido.
+ *
+ * CADA BARBEIRO COM O PRÓXIMO HORÁRIO DELE. É o que impede a porta fechada que
+ * a v1 temia: ninguém escolhe às cegas. Sem vaga na janela, o cartão continua
+ * na lista, desabilitado, dizendo isso — escondê-lo faria quem tem barbeiro
+ * fixo procurar o nome e achar que a página quebrou.
+ *
+ * BOLINHA, não quadradinho: aqui é UMA escolha. O quadradinho dos serviços diz
+ * "dá para marcar vários", e a mesma forma aqui mentiria. A bolinha é o próprio
+ * avatar, que fica verde quando escolhido.
+ */
+function EscolhaDoBarbeiro({
+  barbeiros,
+  atual,
+  barbeiroAtual,
+  agora,
+  aoEscolher,
+}: {
+  barbeiros: BarbeiroDaAgenda[]
+  atual: string | null
+  /** No remarcar: quem atende hoje esse horário, marcado como "atual". */
+  barbeiroAtual?: string | null
+  agora: Date
+  aoEscolher: (escolha: string) => void
+}) {
+  const primeiroDeTodos = proximoDeQualquerUm(barbeiros)
+  const opcoes = [
+    ...(barbeiros.length > 1
+      ? [
+          {
+            id: 'qualquer',
+            titulo: 'Qualquer um',
+            detalhe: primeiroDeTodos
+              ? `quem estiver mais livre · ${rotuloDoProximo(primeiroDeTodos, agora)}`
+              : rotuloDoProximo(null, agora),
+            semVaga: !primeiroDeTodos,
+          },
+        ]
+      : []),
+    ...barbeiros.map((b) => ({
+      id: b.id,
+      titulo: b.nome,
+      detalhe: b.proximo ? `próximo: ${rotuloDoProximo(b.proximo, agora)}` : rotuloDoProximo(null, agora),
+      semVaga: !b.proximo,
+    })),
+  ]
+
+  return (
+    <div role="radiogroup" aria-label="Com quem?" className="grid gap-2.5 sm:grid-cols-2">
+      {opcoes.map((o) => {
+        const marcado = atual === o.id
+        return (
+          <button
+            key={o.id}
+            type="button"
+            role="radio"
+            aria-checked={marcado}
+            disabled={o.semVaga}
+            onClick={() => aoEscolher(o.id)}
+            className="group grid grid-cols-[auto_1fr] items-center gap-x-3 rounded-xl border-[1.5px] border-border bg-surface p-3.5 text-left transition-[border-color,background-color,transform] duration-150 hover:border-primary active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:border-border aria-checked:border-primary aria-checked:bg-primary-soft/50"
+          >
+            <span
+              aria-hidden
+              className="row-span-2 flex h-9 w-9 items-center justify-center rounded-full bg-surface-2 text-xs font-bold text-foreground transition-colors duration-150 group-aria-checked:bg-primary group-aria-checked:text-primary-foreground"
+            >
+              {o.id === 'qualquer' ? <Users size={16} /> : iniciaisDe(o.titulo)}
+            </span>
+            <strong className="flex min-w-0 items-center gap-2 text-[15px] font-semibold text-foreground">
+              <span className="truncate">{o.titulo}</span>
+              {barbeiroAtual === o.id && (
+                <span className="shrink-0 rounded-full bg-surface-2 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+                  atual
+                </span>
+              )}
+            </strong>
+            <span className="text-[13px] text-muted-foreground">{o.detalhe}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/**
  * O esqueleto tem a FORMA do que vem: título, cartões de serviço, o destaque do
  * próximo horário e a grade. É isso que o diferencia de um "carregando" — ele
  * já diz que tipo de página é, antes de a página existir.
@@ -552,7 +682,23 @@ export function AgendaPublicaPage() {
   // LISTA, nao um id. Corte + barba num agendamento so ja existia no balcao
   // desde a migration 0120; o QR era a "fase 2" que ela deixou escrita.
   const [servicoIds, setServicoIds] = useState<string[]>([])
+  // O passo do barbeiro (0218): 'qualquer', o id dele, ou nulo antes de
+  // escolher. Quem manda é o servidor — ele devolve a escolha que de fato usou.
+  const [barbeiro, setBarbeiro] = useState<string | null>(null)
   const [escolhido, setEscolhido] = useState<Horario | null>(null)
+  // Quem DE FATO ficou com o horário. Num "qualquer um" só o servidor sabe, e
+  // pode não ser o nome mostrado antes: se o Rafael foi pego nesses segundos,
+  // vai o próximo da régua — e a confirmação tem de dizer o nome certo.
+  const [profissionalFinal, setProfissionalFinal] = useState<string | null>(null)
+
+  // Cada passo aparece ABAIXO do anterior, e no celular abaixo da dobra: com
+  // oito serviços, a lista de barbeiros nasce a mais de uma tela de distância, e
+  // a pessoa não vê que algo aconteceu. Depois que a resposta chega, a tela
+  // rola até o passo novo. Ref, e não estado: é um pedido para depois da
+  // próxima pintura, não algo que a tela precise desenhar.
+  const secaoBarbeiros = useRef<HTMLElement | null>(null)
+  const secaoHorarios = useRef<HTMLElement | null>(null)
+  const rolarPara = useRef<'barbeiros' | 'horarios' | null>(null)
   const [nome, setNome] = useState('')
   const [telefone, setTelefone] = useState('')
 
@@ -587,7 +733,13 @@ export function AgendaPublicaPage() {
   const consultar = useCallback(
     async (
       servicos?: string[],
-      opcoes?: { manterErro?: boolean; recarga?: boolean; data?: string },
+      opcoes?: {
+        manterErro?: boolean
+        recarga?: boolean
+        data?: string
+        /** 'qualquer' ou o id do barbeiro. Sem ela, só a lista de barbeiros. */
+        escolha?: string | null
+      },
     ) => {
       if (opcoes?.recarga) setAtualizando(true)
       else setCarregando(true)
@@ -609,6 +761,10 @@ export function AgendaPublicaPage() {
           // cairia no mais barato do catalogo -- marcaria o servico errado.
           servicoId: servicos?.[0],
           data: opcoes?.data,
+          // A agenda em passos (0218): nada pré-escolhido, barbeiro antes do
+          // horário, horários de 30 em 30.
+          versao: 2,
+          profissionalId: opcoes?.escolha ?? undefined,
         },
       })
       setCarregando(false)
@@ -629,20 +785,47 @@ export function AgendaPublicaPage() {
       setServicoIds(
         data.servicosEscolhidos ?? (data.servicoEscolhido ? [data.servicoEscolhido] : []),
       )
+      // A escolha que o servidor de fato usou. Ela pode diferir da pedida: o
+      // barbeiro que não faz o serviço volta para a lista (com aviso), e a
+      // barbearia de um barbeiro só já o devolve escolhido.
+      const escolhaUsada = data.escolha ?? null
+      setBarbeiro(escolhaUsada)
+      if (data.barbeiroRecusado) {
+        setErro('Esse barbeiro não faz esse serviço. Escolha outro.')
+      }
       // O horário escolhido só sobrevive se ainda estiver na lista nova. Se
       // alguém o pegou no meio, ele some da tela sem a pessoa precisar clicar —
-      // e a mensagem de cima diz o porquê.
-      setEscolhido((atual) =>
-        atual &&
-        data.horarios.some(
-          (h) => h.inicio === atual.inicio && h.professional_id === atual.professional_id,
+      // e a mensagem de cima diz o porquê. No "qualquer um" vale a HORA: o
+      // nome previsto para ela pode ter mudado, e a linha nova traz o atual.
+      setEscolhido((atual) => {
+        if (!atual) return null
+        return (
+          data.horarios.find(
+            (h) =>
+              h.inicio === atual.inicio &&
+              (escolhaUsada === 'qualquer' || h.professional_id === atual.professional_id),
+          ) ?? null
         )
-          ? atual
-          : null,
-      )
+      })
     },
     [salonId, tokenParaRemarcar],
   )
+
+  // A rolagem até o passo novo, depois que ele existe na tela.
+  useEffect(() => {
+    const destino = rolarPara.current
+    if (!destino || carregando || atualizando) return
+    const alvo = destino === 'barbeiros' ? secaoBarbeiros.current : secaoHorarios.current
+    if (!alvo) return
+    rolarPara.current = null
+    const semMovimento = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    // Barbeiros: só o bastante para o título aparecer — a pessoa pode querer
+    // marcar mais um serviço. Horários: até o topo, porque é ali que ela vai.
+    alvo.scrollIntoView({
+      behavior: semMovimento ? 'auto' : 'smooth',
+      block: destino === 'barbeiros' ? 'nearest' : 'start',
+    })
+  }, [dados, carregando, atualizando])
 
   useEffect(() => {
     consultar()
@@ -701,21 +884,26 @@ export function AgendaPublicaPage() {
     if (!escolhido || !servicoIds.length) return setErro('Escolha um horário.')
 
     setEnviando(true)
-    const { data, error, corpo } = await invokeFunction<{ ok: boolean; conflito?: boolean; tokenGestao?: string }>(
-      'agenda-publica',
-      {
-        body: {
-          salonId,
-          acao: 'agendar',
-          nome: nome.trim(),
-          telefone: telefone.trim(),
-          servicoIds,
-          servicoId: servicoIds[0],
-          profissionalId: escolhido.professional_id,
-          inicio: escolhido.inicio,
-        },
+    const { data, error, corpo } = await invokeFunction<{
+      ok: boolean
+      conflito?: boolean
+      tokenGestao?: string
+      profissional?: string
+    }>('agenda-publica', {
+      body: {
+        salonId,
+        acao: 'agendar',
+        nome: nome.trim(),
+        telefone: telefone.trim(),
+        servicoIds,
+        servicoId: servicoIds[0],
+        // "qualquer" ou o barbeiro escolhido. O `previsto` é o nome que a tela
+        // mostrou: o servidor o mantém se ele ainda estiver livre.
+        profissionalId: barbeiro ?? escolhido.professional_id,
+        previsto: escolhido.professional_id,
+        inicio: escolhido.inicio,
       },
-    )
+    })
     setEnviando(false)
 
     if (error || !data?.ok) {
@@ -730,10 +918,11 @@ export function AgendaPublicaPage() {
       // Recarrega NO MESMO DIA que estava na tela. Sem passar a data, a lista
       // voltaria para hoje e a pessoa que tinha escolhido sexta perderia o dia
       // junto com o horário — por causa de um erro de telefone.
-      consultar(servicoIds, { manterErro: true, recarga: true, data: dados?.data })
+      consultar(servicoIds, { manterErro: true, recarga: true, data: dados?.data, escolha: barbeiro })
       return
     }
     setTokenGestao(data.tokenGestao ?? null)
+    setProfissionalFinal(data.profissional ?? escolhido.profissional)
     // O aparelho guarda o link sozinho. Era isto ou o "salve nos favoritos ou
     // tire um print" — que é pedir para a pessoa fazer o trabalho do sistema,
     // no minuto em que ela está com pressa e já conseguiu o que queria.
@@ -754,17 +943,19 @@ export function AgendaPublicaPage() {
     if (!escolhido || !remarcando) return
     setErro(null)
     setEnviando(true)
-    const { data, error, corpo } = await invokeFunction<{ ok: boolean; conflito?: boolean }>(
-      'agenda-publica',
-      {
-        body: {
-          acao: 'remarcar_horario',
-          token: remarcando,
-          inicio: escolhido.inicio,
-          profissionalId: escolhido.professional_id,
-        },
+    const { data, error, corpo } = await invokeFunction<{
+      ok: boolean
+      conflito?: boolean
+      profissional?: string
+    }>('agenda-publica', {
+      body: {
+        acao: 'remarcar_horario',
+        token: remarcando,
+        inicio: escolhido.inicio,
+        profissionalId: barbeiro ?? escolhido.professional_id,
+        previsto: escolhido.professional_id,
       },
-    )
+    })
     setEnviando(false)
 
     if (error || !data?.ok) {
@@ -773,9 +964,10 @@ export function AgendaPublicaPage() {
       setErro(error ?? 'Não foi possível remarcar.')
       // Mesma recarga do agendar: o horario tomado no meio some da grade, mas o
       // motivo fica na tela.
-      consultar(servicoIds, { manterErro: true, recarga: true, data: dados?.data })
+      consultar(servicoIds, { manterErro: true, recarga: true, data: dados?.data, escolha: barbeiro })
       return
     }
+    setProfissionalFinal(data.profissional ?? escolhido.profissional)
 
     // O celular guarda a hora NOVA no mesmo token -- e por isso `guardar`
     // desduplica por token em vez de empilhar.
@@ -794,10 +986,14 @@ export function AgendaPublicaPage() {
   const duracaoTotal = servicosEscolhidos.reduce((t, s) => t + s.duracao_minutos, 0)
   const resumoDosServicos = servicosEscolhidos.map((s) => s.nome).join(' + ')
   const situacao = situacaoAgora(dados?.horarioFuncionamento, agora)
-  // O nome do barbeiro em cada botão só quando há mais de um na lista. Com um
-  // barbeiro só — que é a barbearia mais comum — o nome é a mesma palavra
-  // repetida quarenta vezes, e ruído repetido some da vista junto com o resto.
-  const variosBarbeiros = new Set(dados?.horarios.map((h) => h.professional_id)).size > 1
+  // Os botões de horário NÃO trazem mais o nome do barbeiro (0218): ele foi
+  // escolhido no passo de cima, e com "qualquer um" o nome de cada hora é da
+  // régua, não da pessoa — repeti-lo em cada botão era o ruído que fazia a
+  // grade parecer maior do que é. O nome aparece onde decide: no destaque do
+  // próximo horário e na confirmação.
+  const barbeiros = dados?.barbeiros ?? []
+  const nomeDoBarbeiro =
+    barbeiro && barbeiro !== 'qualquer' ? (barbeiros.find((b) => b.id === barbeiro)?.nome ?? null) : null
   const proximo = dados?.horarios[0] ?? null
   const ehOEscolhido = (h: Horario) =>
     !!escolhido && escolhido.inicio === h.inicio && escolhido.professional_id === h.professional_id
@@ -826,7 +1022,25 @@ export function AgendaPublicaPage() {
   function abrirDia(data: string) {
     if (data === dados?.data) return
     setEscolhido(null)
-    consultar(servicoIds, { recarga: true, data })
+    consultar(servicoIds, { recarga: true, data, escolha: barbeiro })
+  }
+
+  /**
+   * Escolhe o barbeiro (ou "qualquer um") e abre a grade NO DIA DO PRÓXIMO
+   * HORÁRIO dele — não em hoje. Abrir em hoje recriaria a porta fechada por
+   * outro caminho: quem escolhe o Diego, que só tem amanhã, cairia num dia
+   * vazio e acharia que ele não tem horário nenhum.
+   */
+  function escolherBarbeiro(escolha: string) {
+    setBarbeiro(escolha)
+    setEscolhido(null)
+    setErro(null)
+    rolarPara.current = 'horarios'
+    consultar(servicoIds, {
+      recarga: true,
+      data: diaParaAbrir(escolha, barbeiros) ?? dados?.data,
+      escolha,
+    })
   }
 
   /**
@@ -850,7 +1064,11 @@ export function AgendaPublicaPage() {
     setServicoIds(novo)
     setEscolhido(null)
     setErro(null)
-    if (novo.length) consultar(novo, { recarga: true, data: dados?.data })
+    // O barbeiro escolhido FICA: quem escolheu o Diego e lembrou da barba não
+    // quer escolher o Diego de novo. Se ele não fizer o serviço novo, o
+    // servidor devolve a lista com aviso.
+    if (!servicoIds.length && novo.length) rolarPara.current = 'barbeiros'
+    if (novo.length) consultar(novo, { recarga: true, data: dados?.data, escolha: barbeiro })
   }
 
   // No celular o herói é o topo da tela inicial e some nos passos seguintes,
@@ -894,10 +1112,22 @@ export function AgendaPublicaPage() {
                   {remarcando ? 'Horário alterado!' : 'Horário marcado!'}
                 </h2>
               </div>
+              {/* O nome que vale é o do SERVIDOR: num "qualquer um" ele pode
+                  diferir do previsto, se o previsto foi pego nesses segundos. */}
               <p className="text-sm text-foreground">
-                <strong>{escolhido?.hora_local}</strong> com {escolhido?.profissional}
+                <strong>{escolhido?.hora_local}</strong> com{' '}
+                <strong>{profissionalFinal ?? escolhido?.profissional}</strong>
                 {resumoDosServicos ? `, ${resumoDosServicos}` : ''}.
               </p>
+              {barbeiro === 'qualquer' &&
+                profissionalFinal &&
+                escolhido &&
+                profissionalFinal !== escolhido.profissional && (
+                  <p className="text-[13px] text-muted-foreground">
+                    A vaga com {escolhido.profissional} acabou de ser preenchida — quem vai te
+                    atender é {profissionalFinal}.
+                  </p>
+                )}
               {tokenGestao && escolhido ? (
                 <>
                   <button
@@ -914,7 +1144,7 @@ export function AgendaPublicaPage() {
                             new Date(escolhido.inicio).getTime() + duracaoTotal * 60_000,
                           ).toISOString(),
                           servicos: servicosEscolhidos.map((s) => s.nome),
-                          barbeiro: escolhido.profissional,
+                          barbeiro: profissionalFinal ?? escolhido.profissional,
                           barbearia: nomeSalao,
                         },
                         dados?.endereco,
@@ -1000,6 +1230,14 @@ export function AgendaPublicaPage() {
                 <div className="text-base font-semibold text-foreground">
                   {escolhido.hora_local} com {escolhido.profissional}
                 </div>
+                {/* O nome vem ANTES da confirmação, pedido do dono. No "qualquer
+                    um" ele é o que a régua escolheu agora — e a frase diz por
+                    quê, para a pessoa não achar que pediu o Rafael sem querer. */}
+                {barbeiro === 'qualquer' && (
+                  <div className="mt-0.5 text-xs text-muted-foreground">
+                    quem está mais livre nesse horário
+                  </div>
+                )}
                 {servicosEscolhidos.length > 0 && (
                   <div className="mt-1 text-xs text-muted-foreground">
                     {resumoDosServicos} · R$ {precoTotal} · {duracaoTotal} min
@@ -1208,29 +1446,67 @@ export function AgendaPublicaPage() {
               </section>
               )}
 
+              {/* ---------- Passo 2: com quem ----------
+                  Só depois do serviço: quem faz o serviço depende de qual é. */}
+              {servicoIds.length === 0 ? (
+                // Nada escolhido — no começo, ou porque desmarcou tudo. A lista
+                // de barbeiros de antes valia para outros serviços e não serve
+                // mais para nada.
+                <div className="rounded-lg border border-dashed border-border-strong p-4 text-sm text-muted-foreground">
+                  Escolha o serviço acima para ver os barbeiros e os horários.
+                </div>
+              ) : (
+                <section
+                  ref={secaoBarbeiros}
+                  aria-busy={atualizando}
+                  className={`scroll-mt-4 ${atualizando ? 'pointer-events-none opacity-50 transition-opacity' : 'transition-opacity'}`}
+                >
+                  <h2 className="mb-2.5 text-sm font-semibold text-foreground">Com quem?</h2>
+                  {barbeiros.length === 0 ? (
+                    // Ninguém faz o que foi pedido. Com dois serviços a saída
+                    // é tirar um; com um só, é falar com a barbearia — trocar
+                    // de dia não resolve serviço que ninguém faz.
+                    <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
+                      {servicosEscolhidos.length > 1
+                        ? 'Nenhum barbeiro faz esses serviços juntos. Tire um deles ou fale com a barbearia.'
+                        : 'Nenhum barbeiro está fazendo esse serviço agora. Fale com a barbearia.'}
+                      <FalarComABarbearia numero={whatsapp} />
+                    </div>
+                  ) : (
+                    <EscolhaDoBarbeiro
+                      barbeiros={barbeiros}
+                      atual={barbeiro}
+                      barbeiroAtual={dados.barbeiroAtual}
+                      agora={agora}
+                      aoEscolher={escolherBarbeiro}
+                    />
+                  )}
+                </section>
+              )}
+
+              {/* ---------- Passo 3: quando ----------
+                  Só depois do barbeiro, e de 30 em 30. */}
+              {servicoIds.length > 0 && barbeiro && barbeiros.length > 0 && (
               <section
+                ref={secaoHorarios}
                 aria-busy={atualizando}
-                className={atualizando ? 'pointer-events-none opacity-50 transition-opacity' : 'transition-opacity'}
+                className={`scroll-mt-4 ${atualizando ? 'pointer-events-none opacity-50 transition-opacity' : 'transition-opacity'}`}
               >
                 {/* A faixa dos catorze dias (etapa 2). Só aparece quando a edge
                     mandou a contagem — resposta de uma versão anterior devolve
                     a tela ao comportamento de um dia só, em vez de quebrar. */}
                 {faixa.length > 0 && <FaixaDeDias faixa={faixa} atual={dados.data} aoEscolher={abrirDia} />}
 
-                <h2 className="mb-2.5 flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                <h2 className="mb-2.5 flex flex-wrap items-center gap-x-1.5 text-sm font-semibold text-foreground">
                   <Clock size={15} aria-hidden />
                   {remarcando ? 'Mudar para' : 'Horários livres'}{' '}
                   {diaAberto ? diaAberto.porExtenso : 'hoje'}
+                  {nomeDoBarbeiro && (
+                    <span className="font-normal text-muted-foreground">com {nomeDoBarbeiro}</span>
+                  )}
                 </h2>
 
-                {servicoIds.length === 0 ? (
-                  // Desmarcou tudo. A lista que está na tela é a do serviço
-                  // anterior e não vale mais para nada — mostrá-la ofereceria
-                  // horários calculados para uma duração que ninguém escolheu.
-                  <div className="rounded-lg border border-dashed border-border-strong p-4 text-sm text-muted-foreground">
-                    Escolha ao menos um serviço acima para ver os horários.
-                  </div>
-                ) : dados.horarios.length === 0 ? (
+                {dados.horarios.length === 0 ? (
                   <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
                     {mensagemSemHorario({
                       // Função anterior a isto não manda o motivo: cai no caso
@@ -1317,11 +1593,6 @@ export function AgendaPublicaPage() {
                               <span className="block text-[15px] font-bold tabular-nums text-inherit">
                                 {h.hora_local}
                               </span>
-                              {variosBarbeiros && (
-                                <span className="block truncate text-[11px] text-inherit opacity-70">
-                                  {h.profissional}
-                                </span>
-                              )}
                             </button>
                           ))}
                         </div>
@@ -1330,6 +1601,7 @@ export function AgendaPublicaPage() {
                   </div>
                 )}
               </section>
+              )}
 
               <ErroInline>{erro}</ErroInline>
 

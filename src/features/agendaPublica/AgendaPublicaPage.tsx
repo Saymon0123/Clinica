@@ -24,6 +24,7 @@ import { esquecer, guardar, lerGuardados, tokensAEsquecer } from './guardados'
 import { eventoIcs } from './calendario'
 import {
   diaParaAbrir,
+  estadoDaGrade,
   proximoDeQualquerUm,
   rotuloDoHorarioMarcado,
   rotuloDoProximo,
@@ -657,14 +658,22 @@ function Esqueleto() {
           ))}
         </div>
       </div>
-      <div className="space-y-3">
-        <div className="esqueleto h-4 w-32" />
-        <div className="esqueleto h-[68px] w-full rounded-2xl" />
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
-          {Array.from({ length: 9 }, (_, i) => (
-            <div key={i} className="esqueleto h-11 w-full" />
-          ))}
-        </div>
+      <EsqueletoDeHorarios />
+    </div>
+  )
+}
+
+/** A metade de baixo do esqueleto: o destaque e a grade. Serve também sozinha,
+ *  enquanto chegam os horários do barbeiro que a pessoa acabou de escolher. */
+function EsqueletoDeHorarios() {
+  return (
+    <div aria-hidden className="space-y-3">
+      <div className="esqueleto h-4 w-32" />
+      <div className="esqueleto h-[68px] w-full rounded-2xl" />
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+        {Array.from({ length: 9 }, (_, i) => (
+          <div key={i} className="esqueleto h-11 w-full" />
+        ))}
       </div>
     </div>
   )
@@ -995,6 +1004,15 @@ export function AgendaPublicaPage() {
   const barbeiros = dados?.barbeiros ?? []
   const nomeDoBarbeiro =
     barbeiro && barbeiro !== 'qualquer' ? (barbeiros.find((b) => b.id === barbeiro)?.nome ?? null) : null
+  // Os quatro estados da grade (achado de 09/10): a resposta na tela só vale
+  // para a escolha que ela diz ter atendido. Ver `estadoDaGrade`.
+  const grade = estadoDaGrade({
+    escolhaPedida: barbeiro,
+    escolhaRespondida: dados?.escolha,
+    atualizando,
+    horarios: dados?.horarios.length ?? 0,
+  })
+  const gradeRespondida = grade === 'vazia' || grade === 'cheia'
   const proximo = dados?.horarios[0] ?? null
   const ehOEscolhido = (h: Horario) =>
     !!escolhido && escolhido.inicio === h.inicio && escolhido.professional_id === h.professional_id
@@ -1498,18 +1516,41 @@ export function AgendaPublicaPage() {
                 {/* A faixa dos catorze dias (etapa 2). Só aparece quando a edge
                     mandou a contagem — resposta de uma versão anterior devolve
                     a tela ao comportamento de um dia só, em vez de quebrar. */}
-                {faixa.length > 0 && <FaixaDeDias faixa={faixa} atual={dados.data} aoEscolher={abrirDia} />}
+                {gradeRespondida && faixa.length > 0 && (
+                  <FaixaDeDias faixa={faixa} atual={dados.data} aoEscolher={abrirDia} />
+                )}
 
                 <h2 className="mb-2.5 flex flex-wrap items-center gap-x-1.5 text-sm font-semibold text-foreground">
                   <Clock size={15} aria-hidden />
                   {remarcando ? 'Mudar para' : 'Horários livres'}{' '}
-                  {diaAberto ? diaAberto.porExtenso : 'hoje'}
+                  {/* O dia só depois da resposta: antes dela, "hoje" seria o
+                      dia da consulta anterior, não o que a grade vai abrir. */}
+                  {gradeRespondida && (diaAberto ? diaAberto.porExtenso : 'hoje')}
                   {nomeDoBarbeiro && (
                     <span className="font-normal text-muted-foreground">com {nomeDoBarbeiro}</span>
                   )}
                 </h2>
 
-                {dados.horarios.length === 0 ? (
+                {grade === 'carregando' ? (
+                  <div aria-busy="true" aria-label="Carregando os horários">
+                    <EsqueletoDeHorarios />
+                  </div>
+                ) : grade === 'falhou' ? (
+                  // A consulta da escolha não voltou: o motivo aparece logo
+                  // abaixo (`ErroInline`), e aqui fica a saída. Sem isto, o
+                  // esqueleto ficaria na tela para sempre -- carregando
+                  // fingindo de erro, a mesma confusão pelo outro lado.
+                  <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
+                    Os horários não carregaram.
+                    <button
+                      type="button"
+                      onClick={() => barbeiro && escolherBarbeiro(barbeiro)}
+                      className="mt-3 flex w-full items-center justify-center gap-2 btn-secondary rounded-lg px-3 py-3 text-sm font-semibold"
+                    >
+                      Tentar de novo
+                    </button>
+                  </div>
+                ) : grade === 'vazia' ? (
                   <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
                     {mensagemSemHorario({
                       // Função anterior a isto não manda o motivo: cai no caso

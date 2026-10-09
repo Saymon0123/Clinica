@@ -85,6 +85,44 @@ export function rotuloDoHorarioMarcado(
 }
 
 /**
+ * O que a seção de horários mostra, entre os quatro estados.
+ *
+ * ENTRE O TOQUE NUM BARBEIRO E A RESPOSTA, a tela ainda tem a consulta
+ * ANTERIOR -- a de antes da escolha: sem barbeiro, de hoje, sem horário
+ * nenhum. Desenhá-la como se fosse a resposta dizia "Não sobrou horário hoje
+ * para esse serviço. Um serviço mais curto ainda pode caber -- troque acima"
+ * por um segundo e meio, e mandava trocar de serviço quem só precisava
+ * esperar. Achado no teste em produção de 09/10, gravando os estados da tela:
+ * a edge simulada responde na hora, e escondia isto.
+ *
+ * A REGRA: uma resposta só vale para a escolha que ela diz ter atendido. Se a
+ * escolha na tela é outra, a resposta certa ou está chegando ou não veio -- e
+ * nenhum dos dois é "lotado". É a mesma régua de `ErroDeCarga`: carregando,
+ * vazio e erro não podem se parecer.
+ *
+ * Trocar de DIA com o mesmo barbeiro não cai aqui: a escolha não muda, e a
+ * grade anterior fica esmaecida até a nova chegar, com o dia dela no título.
+ */
+export type EstadoDaGrade = 'carregando' | 'falhou' | 'vazia' | 'cheia'
+
+export function estadoDaGrade({
+  escolhaPedida,
+  escolhaRespondida,
+  atualizando,
+  horarios,
+}: {
+  /** O barbeiro marcado na tela ('qualquer', o id, ou nulo). */
+  escolhaPedida: string | null
+  /** A escolha que a resposta na tela diz ter atendido. */
+  escolhaRespondida: string | null | undefined
+  atualizando: boolean
+  horarios: number
+}): EstadoDaGrade {
+  if ((escolhaRespondida ?? null) !== escolhaPedida) return atualizando ? 'carregando' : 'falhou'
+  return horarios === 0 ? 'vazia' : 'cheia'
+}
+
+/**
  * O dia em que a grade deve ABRIR depois que a pessoa escolhe.
  *
  * Abrir sempre em "hoje" recriaria a porta fechada por outro caminho: quem

@@ -86,7 +86,7 @@ cinco barbeiros: 7 horários de 30 em 30 para o corte da tarde. Falta **uma
 marcação de verdade**, cancelada logo em seguida, e com ela o modo remarcar —
 só com o ok do dono.
 
-**Dívida conhecida:** ver [`backlog.md`](backlog.md) — 33 itens abertos.
+**Dívida conhecida:** ver [`backlog.md`](backlog.md).
 
 ## 3. Próximo passo
 

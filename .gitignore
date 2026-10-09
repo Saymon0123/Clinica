@@ -57,3 +57,12 @@ _backup-claude-2026-09-01/
 # a cada run, entao travar as versoes aqui so criaria divergencia entre a
 # maquina de quem escreve e a que valida.
 deno.lock
+
+# Skills de terceiros instaladas pelo `npx skills` (lista em skills-lock.json).
+# Ficam no disco de quem usa e não no repositório: ninguém aqui as mantém, e
+# eram ~800 arquivos de marketing, SEO e animação num repositório público.
+# Só a skill própria do projeto é versionada.
+.agents/
+skills-lock.json
+.claude/skills/*
+!.claude/skills/olhar-critico/

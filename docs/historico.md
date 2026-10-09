@@ -9130,3 +9130,13 @@ esqueleto ficaria na tela para sempre). Trocar de dia com o mesmo barbeiro
 continua como era: a grade anterior esmaecida, com o dia dela no título. Teste
 com quatro mutações; visto no celular com a resposta atrasada de propósito e
 com a falha simulada.
+
+## As skills de terceiros saíram do repositório (2026-10-09)
+
+### ~~`oxlint` analisa `.claude/`~~ — RESOLVIDO em 09/10
+Um warning vinha de `.claude/skills/design-system/scripts/generate-tokens.cjs`,
+que não é código da aplicação, e depois outros de `.agents/skills/`. Resolvido
+com `ignorePatterns` no `.oxlintrc.json`, junto com a saída do git das 98
+skills de terceiros (`.agents/`, os atalhos em `.claude/skills/` e o
+`skills-lock.json`). Elas continuam no disco de quem as instalou; só a
+`olhar-critico`, que é do projeto, segue versionada.

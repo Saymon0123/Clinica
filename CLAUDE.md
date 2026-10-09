@@ -208,6 +208,12 @@ isso não prova nada.
 ## Onde mora cada coisa escrita
 
 - `docs/estado-do-projeto.md` — o que funciona hoje, em meia página.
-- `docs/backlog.md` — o ledger: todo achado, decisão e pendência, com o porquê.
+- `docs/backlog.md` — só o que está **aberto**: achado, decisão pendente,
+  pendência fora do repositório, com o porquê.
+- `docs/historico.md` — o que foi resolvido, com o motivo e a lição. **Ao
+  fechar um item, ele sai do backlog e vem para cá na mesma entrega**; o relato
+  de uma entrega nasce aqui, e no backlog fica só a ponta solta dela. Em 09/10
+  o backlog tinha passado de 9 mil linhas, quase tudo passado, porque cada
+  entrega era registrada nele e nada saía.
 - `CLAUDE.md` (este arquivo) — como se trabalha aqui. Não é changelog: se a
-  informação envelhece a cada entrega, o lugar dela é o backlog.
+  informação envelhece a cada entrega, o lugar dela é o backlog ou o histórico.

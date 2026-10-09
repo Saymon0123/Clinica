@@ -9195,3 +9195,28 @@ celular (375px), nos dois temas, com a edge simulada.
 reescrito pelo Vite como endereço de asset (http://localhost:3000/...), e o
 `readFileSync` recusa ("The URL must be of scheme file"). Os tripwires que leem
 tela passam o caminho por parâmetro — agora com um comentário dizendo por quê.
+
+
+### Carregando parecia "lotado" (achado no teste de 09/10)
+
+Conferindo em produção a correção do dia na confirmação, a primeira leitura
+depois de tocar em "Qualquer um" mostrou "Horários livres hoje — Não sobrou
+horário hoje para esse serviço. Um serviço mais curto ainda pode caber —
+troque acima." Um segundo e meio depois a tela virou "amanhã", com dezenove
+horários. Gravando os estados da tela, ficou provado: entre o toque no
+barbeiro e a resposta, a página desenhava a consulta ANTERIOR (sem barbeiro,
+de hoje, sem horário) como se fosse a resposta, e a falta de motivo caía em
+"lotado". Quem lê isso troca de serviço, ou desiste.
+
+**Nasceu na 0218**: é o passo do barbeiro que abre a seção de horários antes de
+a resposta chegar. **A edge simulada escondia**: ela responde na hora, e a
+vistoria local nunca viu o estado do meio.
+
+**Corrigido**: `estadoDaGrade` (em `barbeiros.ts`) decide entre carregando,
+falhou, vazia e cheia — uma resposta só vale para a escolha que ela diz ter
+atendido. Carregando mostra o esqueleto da grade, sem dia no título; falhou
+mostra "Os horários não carregaram" com "Tentar de novo" (sem isso o
+esqueleto ficaria na tela para sempre). Trocar de dia com o mesmo barbeiro
+continua como era: a grade anterior esmaecida, com o dia dela no título. Teste
+com quatro mutações; visto no celular com a resposta atrasada de propósito e
+com a falha simulada.

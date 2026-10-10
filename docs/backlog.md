@@ -267,11 +267,29 @@ como testar o agente contra abuso, nem limitar o que ele promete ao cliente.
 
 ## Dívida de qualidade
 
+### Quatro arquivos grandes demais: dividir quando forem mexidos (2026-10-09)
+`src/features/agendaPublica/AgendaPublicaPage.tsx` (1.679 linhas),
+`src/features/vendas/NewSaleModal.tsx` (1.440), `src/features/equipe/EquipePage.tsx`
+(1.417) e a edge `supabase/functions/agenda-publica/index.ts` (1.425).
+Funcionam, mas são onde mudar custa mais e onde o lint de render se acumula.
+**Não é mutirão:** quem for mexer num deles extrai antes o pedaço que vai
+tocar (um passo, um modal, uma ação da edge) para arquivo próprio, com o teste
+junto, e só então muda. A catraca de botões já mostrou o caminho: extrair o
+componente fez o teto da página cair de 10 para 7.
+
 ### `src/App.tsx` / shell de rotas com coesão 0,06
 A mais baixa do grafo, 61 nós. É onde tudo se cruza sem estrutura interna.
 Refatoração de conforto, não de risco.
 
 ## Agente de WhatsApp
+
+### O export diário do n8n espera a chave da API (2026-10-09)
+Os workflows do n8n tinham cópia no repositório privado de backups, mas feita à
+mão e parada em 09/09: faltavam quatro fluxos e sete tinham mudado. A Action de
+export diário está no PR #1 de lá. **Falta o dono:** criar a chave em n8n →
+Settings → n8n API, gravar como secret `N8N_API_KEY` daquele repositório,
+mergear e rodar uma vez pelo *Run workflow*. Até lá, o backup do agente segue
+um mês atrasado.
 
 ### `saveDataSuccessExecution` estava em `none`
 Execuções bem-sucedidas não eram gravadas, então o primeiro agendamento

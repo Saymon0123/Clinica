@@ -1,4 +1,4 @@
-# Clínica — CRM para barbearias e salões
+# Club Cut — CRM e atendimento por WhatsApp para barbearias
 
 CRM multi-tenant para barbearias e salões: agenda, clientes, financeiro
 (caixa/comanda/comissões), catálogo de produtos e serviços, equipe, assinatura
@@ -10,7 +10,18 @@ e cobrança por uso, e atendimento por WhatsApp com agente de IA.
 - Tailwind CSS v4
 - Supabase (Postgres + Auth + edge functions em Deno)
 - React Router
-- n8n, fora deste repositório, para tudo que fala com o cliente final
+- n8n, fora deste repositório, para tudo que fala com o cliente final (os
+  workflows têm export diário num repositório privado de backups)
+
+## Nomes que ficaram do começo
+
+O projeto nasceu como "clínica" e virou o Club Cut. Alguns nomes técnicos
+ficaram, de propósito, porque trocar custa mais do que explica:
+
+- o repositório (`Clinica`), o pacote (`clinica-crm`) e o `project_id` do
+  Supabase local;
+- a edge function `asaas`, que não fala com o Asaas: o pagamento é PIX pelo
+  AbacatePay (`cobrar-uso` e `abacate-webhook`).
 
 ## Rodando localmente
 

@@ -200,11 +200,6 @@ Caminho: renomear para o formato de timestamp, casar com o histórico remoto via
 `supabase migration repair --status applied`, e passar a usar
 `supabase migration new`.
 
-### `oxlint` analisa `.claude/`
-Um warning vem de `.claude/skills/design-system/scripts/generate-tokens.cjs`,
-que não é código da aplicação. Ruído no CI. Resolve com `ignorePatterns` no
-`.oxlintrc.json`.
-
 ### Cobertura de testes rasa
 Cobertos: `csv`, `appUrl`, contrato de nomeação das instâncias, isolamento
 multi-tenant (pgTAP, ainda não executado). Sem cobertura: componentes, hooks

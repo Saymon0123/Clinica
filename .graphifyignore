@@ -2,3 +2,5 @@
 # reescaneia ~125 arquivos de skills/configs e afoga o grafo do projeto real.
 .claude/
 graphify-out/
+.agents/
+skills-lock.json

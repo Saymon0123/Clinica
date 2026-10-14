@@ -9140,3 +9140,21 @@ com `ignorePatterns` no `.oxlintrc.json`, junto com a saída do git das 98
 skills de terceiros (`.agents/`, os atalhos em `.claude/skills/` e o
 `skills-lock.json`). Elas continuam no disco de quem as instalou; só a
 `olhar-critico`, que é do projeto, segue versionada.
+
+## O pgTAP que caía às 04:20 (2026-10-14)
+
+### ~~`o_cron_que_para_em_silencio` dependia da hora do CI~~ — RESOLVIDO em 14/10
+O #231 só mexia no README e no backlog, e o pgTAP reprovou nas duas rodadas
+do mesmo commit: quatro dos seis testes de `o_cron_que_para_em_silencio`. O
+teste supunha que, no banco do CI, a rotina `estende-acesso-sem-debito` nunca
+tinha rodado. Só que o pg_cron do container está ligado, a rotina é
+`20 4 * * *` (UTC), e o pgTAP começou às 04:19:55: o cron rodou de verdade no
+meio, com sucesso, e o "nunca rodou" e o "sucesso envelhecido" deixaram de
+valer. Rodado de novo minutos depois, passou.
+
+Conserto: o teste apaga, dentro da própria transação, as execuções reais
+daquela rotina antes de afirmar qualquer coisa, e o rollback devolve tudo.
+Sobra uma janela de milissegundos (o cron terminar entre o `delete` e a última
+asserção), que não vale uma trava. **Lição:** fixture que *supõe* o estado do
+banco em vez de *escrevê-lo* é a mesma família do `current_date` em UTC — passa
+de dia e cai num horário que ninguém olha.

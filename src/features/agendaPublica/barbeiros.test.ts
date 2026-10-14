@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
   diaParaAbrir,
+  estadoDaGrade,
   proximoDeQualquerUm,
   rotuloDoHorarioMarcado,
   rotuloDoProximo,
@@ -72,6 +73,53 @@ describe('o horário marcado, na confirmação e na tela de sucesso', () => {
     const pagina = fonte('./AgendaPublicaPage.tsx')
     expect(pagina).not.toMatch(/hora_local\}(<\/strong>)?\s*com\b/)
     expect(pagina.match(/rotuloDoHorarioMarcado\(escolhido, agora\)/g)?.length ?? 0).toBeGreaterThanOrEqual(2)
+  })
+})
+
+describe('os quatro estados da grade de horários', () => {
+  it('O ACHADO: barbeiro escolhido e a resposta ainda é a de antes -> carregando, NÃO vazia', () => {
+    // Era isto que dizia "Não sobrou horário hoje" por um segundo e meio.
+    expect(estadoDaGrade({ escolhaPedida: 'qualquer', escolhaRespondida: null, atualizando: true, horarios: 0 })).toBe(
+      'carregando',
+    )
+  })
+
+  it('trocar de barbeiro: a grade do anterior não vale pelo novo', () => {
+    expect(estadoDaGrade({ escolhaPedida: 'rafael', escolhaRespondida: 'diego', atualizando: true, horarios: 7 })).toBe(
+      'carregando',
+    )
+  })
+
+  it('a consulta não voltou -> falhou, e não um esqueleto para sempre', () => {
+    expect(estadoDaGrade({ escolhaPedida: 'qualquer', escolhaRespondida: null, atualizando: false, horarios: 0 })).toBe(
+      'falhou',
+    )
+  })
+
+  it('a resposta da escolha: vazia ou cheia', () => {
+    expect(estadoDaGrade({ escolhaPedida: 'diego', escolhaRespondida: 'diego', atualizando: false, horarios: 0 })).toBe(
+      'vazia',
+    )
+    expect(estadoDaGrade({ escolhaPedida: 'diego', escolhaRespondida: 'diego', atualizando: false, horarios: 7 })).toBe(
+      'cheia',
+    )
+  })
+
+  it('trocar de DIA com o mesmo barbeiro mantém a grade, esmaecida, até a nova chegar', () => {
+    expect(estadoDaGrade({ escolhaPedida: 'diego', escolhaRespondida: 'diego', atualizando: true, horarios: 7 })).toBe(
+      'cheia',
+    )
+  })
+
+  it('A TELA decide pelos quatro estados, e não por "lista vazia"', () => {
+    // "Lista vazia" era o atalho que confundia carregando com lotado. A tela
+    // tem de perguntar a `estadoDaGrade`, e o esqueleto e a saída da falha
+    // têm de estar lá.
+    const pagina = fonte('./AgendaPublicaPage.tsx')
+    expect(pagina).toContain('estadoDaGrade({')
+    expect(pagina).not.toMatch(/dados\.horarios\.length === 0 \?/)
+    expect(pagina).toContain("grade === 'carregando'")
+    expect(pagina).toContain("grade === 'falhou'")
   })
 })
 

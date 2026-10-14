@@ -34,8 +34,14 @@ select ok(
 -- ---------------------------------------------------------------------------
 -- Dispara
 -- ---------------------------------------------------------------------------
--- No banco do CI as rotinas existem (as migrations as agendam) e nunca rodaram,
--- então o estado de partida já é o de "nunca teve sucesso".
+-- No banco do CI as rotinas existem (as migrations as agendam), e o estado de
+-- partida PARECIA ser sempre o de "nunca teve sucesso". Não é: o pg_cron do
+-- container está ligado, e esta rotina roda às 04:20 UTC. Em 14/10 o pgTAP
+-- rodou às 04:19:55, o cron rodou de verdade no meio, e quatro dos seis testes
+-- caíram num PR que só mexia no README. Então o estado de partida é escrito
+-- aqui, e não suposto; o rollback devolve tudo.
+delete from cron.job_run_details
+ where jobid = (select jobid from cron.job where jobname = :'rotina');
 
 select is(
   (select count(*)::int from auditoria_crons where chave = 'cron-parado:' || :'rotina'),

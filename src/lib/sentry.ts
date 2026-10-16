@@ -64,6 +64,26 @@ export function iniciarSentry() {
     tracesSampleRate: 0.1,
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 1,
-    sendDefaultPii: false,
+    /*
+      O que o SDK recolhe sozinho, campo a campo. Na v11 o `sendDefaultPii`
+      deixou de existir, e deixar este bloco de fora passa a mandar usuário,
+      cookies e corpo de requisição — o oposto do `sendDefaultPii: false` da
+      v10. Este é o baseline da v10 copiado do guia de migração do Sentry:
+      nada de pessoa, cookie ou corpo sai daqui.
+    */
+    dataCollection: {
+      userInfo: false,
+      cookies: false,
+      httpHeaders: {
+        request: { deny: ['forwarded', '-ip', 'remote-', 'via', '-user'] },
+        response: { deny: ['forwarded', '-ip', 'remote-', 'via', '-user'] },
+      },
+      httpBodies: [],
+      urlQueryParams: { deny: ['forwarded', '-ip', 'remote-', 'via', '-user'] },
+      genAI: { inputs: false, outputs: false },
+      databaseQueryData: false,
+      queues: false,
+      graphQL: { document: false, variables: false },
+    },
   })
 }

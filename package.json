@@ -14,7 +14,7 @@
     "test:db": "supabase test db"
   },
   "dependencies": {
-    "@sentry/react": "^10.73.0",
+    "@sentry/react": "^11.6.0",
     "@supabase/supabase-js": "^2.117.2",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.50.0",
